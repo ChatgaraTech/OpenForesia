@@ -238,7 +238,7 @@ tests/           les raccourcis de lancement a double-cliquer (banc.bat : la sal
 | `Documentation/Etat/GestionnairesEntites.md` | **Le recensement des 1 430 gestionnaires d'entité atteignables**, croisé en trois états — ABSENT (à transcrire), ÉCRIT (branché, jamais appelé), EXERCÉ (la sonde l'a vu passer en jeu). **Généré** par `sh OpenForesia.Tools/census-entity-handlers.sh` ; ne pas éditer à la main. C’est la liste de courses et le tableau de bord. **Le regenerer apres chaque implementation** — et si le gestionnaire etait `implemente=non, teste=oui`, retirer d’abord ses lignes de `handlers-exerces.tsv` : ce « teste » ne prouvait que le plantage. |
 | `Documentation/Etat/ObjetsAtteignables.md` | **Ce qu’utiliser un objet peut atteindre** : les 21 gestionnaires d’entité que les scripts des 2 370 fiches d’objet du CD font naître, triés par nombre d’emplois, plus les genres d’effet et les fiches de sort qu’ils désignent. **Généré** par `sh OpenForesia.Tools/census-item-effects.sh` — il déroule les scripts **hors ligne**, depuis `Bestiaire/objets.csv` ; aucune partie n’est jouée. Deux tableaux : les **21 gestionnaires** que les objets font naître, et les **607 objets** un par un — chacun avec `implemente` (statique) et `teste` (la sonde d’objets `objets-exerces.tsv`), la même lecture en deux colonnes que `GestionnairesEntites.md`. |
 | `Documentation/Etat/SortsAtteignables.md` | **La feuille de route de la magie** : les 123 fiches de sort du CD, une par ligne, avec `implemente` (le gestionnaire d’entité que le sort fait naître existe) et `teste` (la sonde l’a vu partir en jeu) — la même lecture en deux colonnes que les deux documents ci-dessus. **Généré** par `sh OpenForesia.Tools/census-spells.sh` depuis `Bestiaire/sorts.csv` ; aucune partie n’est jouée. Un sort fait naître le sous-type `+0x10` de sa fiche par le **même mécanisme que les opcodes 9/10 du script d’objet**, et aucune fiche n’emploie un sous-type `>= 0xc0` : **un sort fait donc exactement la même chose partout**. Les quatre familles au-delà des écoles sont comptées à part — ce sont vraisemblablement les sorts des monstres, et leur étendue n’est pas établie. |
-| `Documentation/Etat/handlers-exerces.tsv` | **La preuve accumulée** : un couple `(gestionnaire, zone, sous-zone)` par ligne, écrit par la sonde de `WorldMapTick.cs` à la fermeture du jeu, en union avec ce qu'il portait déjà. Suivi par git ; il ne perd jamais rien. `OPENFORESIA_NO_PROBE=1` désarme la sonde. |
+| `Documentation/Etat/handlers-exerces.tsv` | **La preuve accumulée** : un couple `(gestionnaire, zone, sous-zone)` par ligne, écrit par la sonde de `Screens/State03/Dispatch/CoverageProbes.cs` à la fermeture du jeu, en union avec ce qu'il portait déjà. Suivi par git ; il ne perd jamais rien. `OPENFORESIA_NO_PROBE=1` désarme la sonde. |
 | `Documentation/Etat/objets-exerces.tsv` | **La jumelle de la précédente, sur les objets** : un couple `(clé de fiche, zone, sous-zone)` par ligne, écrit dès qu’un objet est employé en jeu. La **clé est l’hexa des seize premiers octets de la fiche**, pas son nom : les noms d’objet ne sont pas de l’ASCII. `census-item-effects.sh` la recalcule depuis `objets.csv` pour retrouver le nom lisible. Même garanties : union, écriture immédiate, suivi par git, `OPENFORESIA_NO_PROBE=1` la désarme. |
 | `Documentation/Etat/sorts-exerces.tsv` | **La troisième sonde, sur les sorts** : un couple `(famille, indice, zone, sous-zone)` par ligne, écrit dès qu’une fiche de sort est déclenchée. La paire famille/indice est ce que `CastSpell_0053A980` reçoit ; `census-spells.sh` retrouve le nom lisible dans `Bestiaire/sorts.csv`. **Le lanceur n’est pas relevé** — une incantation, l’opcode 14 d’un script d’objet et le mot `+0x06` d’une entité de scène entrent par la même fonction, et c’est la *fiche* qu’on vérifie. Mêmes garanties, même `OPENFORESIA_NO_PROBE=1`. |
 | `Documentation/Reference/legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |
@@ -323,6 +323,30 @@ adding or moving code. The short version:
    Screens/    un repertoire par etat de jeu (State00 .. State06), plus le repartiteur
 ```
 
+**`Screens/State03/` is the one screen with sub-directories.** `WorldMapTick.cs` had reached
+74 072 lines and was split on 2026-09-16 into **70 files** across eleven directories, byte for byte
+(`openspec/changes/split-worldmaptick-by-subject`). The seven screen-level files stay at the root of
+`State03/`; the directories are what the screen *reaches*:
+
+```
+   Tick/       la boucle par image, son dessin, son pas de simulation
+   Dispatch/   le carrefour adresse -> methode (426 cases), les tables statiques, les 3 sondes
+   Combat/     ce qui decide qui perd des points de vie
+   Physics/    ce que TOUTE entite subit -- ne consulte jamais son sous-type
+   Entities/   l'infrastructure commune : eveil, ciblage, naissance
+   Effects/    ce qui nait, scintille et meurt -- ne decide de rien
+   Items/      l'objet et ce qu'il declenche
+   Spells/     la magie, une ecole par fichier
+   Cutscene/   les scenes et leurs 32 verbes
+   Ai/         l'intelligence, UNE CREATURE PAR FICHIER, par zone
+   Handlers/   decor et scenario : coffres, radeau, portes, sons
+```
+
+`Ai/` names come from `Documentation/Ennemies/Comportement.md`, **never from a guess** — and beware:
+there are **two « Goblin »** in forest block A (subtypes 2 and 8, unrelated bodies) and **two
+« Abeille tueuse »** (blocks A and C). The species name does not determine the behaviour; the block
+and the subtype do.
+
 **Where a newly-named function goes** — the rule, in order:
 
 1. its VA falls in a known engine address range → that `Engine/` file;
@@ -330,6 +354,9 @@ adding or moving code. The short version:
 3. **several** screens call it → promote to `Engine/` and give it a subsystem name;
 4. otherwise → **it stays with its caller** until the role is established. There is no dumping
    ground file, and deliberately so.
+
+Inside `State03/`, once rule (2) or (4) has fired, the table in `ARCHITECTURE.md` picks the
+sub-directory **by its membership test, not by the apparent subject**.
 
 **Naming**: neutral, descriptive, all `static`. **Never** `Manager`, `Service`, `Controller`,
 `Provider` — those names promise an object with a lifecycle that the transcription does not have,

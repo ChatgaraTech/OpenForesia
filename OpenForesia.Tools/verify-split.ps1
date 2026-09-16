@@ -61,7 +61,11 @@ if ($Snapshot) {
 }
 
 if (-not (Test-Path -LiteralPath $Baseline)) {
-    Write-Host "Aucune reference. Lancer d'abord : verify-split.ps1 -Snapshot" -ForegroundColor Yellow
+    Write-Host "Aucune reference : $Baseline" -ForegroundColor Yellow
+    Write-Host "  - si le fichier source existe encore : verify-split.ps1 -Snapshot -Source <...>" -ForegroundColor Yellow
+    Write-Host "  - s'il a DEJA ete decoupe, il n'y a plus rien a figer : la reference se rederive" -ForegroundColor Yellow
+    Write-Host "    de l'historique : git show <sha-avant-decoupage>:<chemin du source> > $Baseline" -ForegroundColor Yellow
+    Write-Host "    C'est le cas de worldmaptick-baseline.txt, ignore par git ; voir .gitignore." -ForegroundColor Yellow
     exit 2
 }
 

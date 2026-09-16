@@ -21754,3 +21754,77 @@ jour** : l'interpréteur a ses 39 opcodes.
 * **32** tue les trente-deux entités de scène sans tester l'occupation des emplacements ; **33** ne
   retire que les vivantes.
 * **35** ne fait rien et avance de deux octets.
+
+## 2026-09-16 — le découpage de `WorldMapTick.cs` : 74 072 lignes en 70 fichiers, à l'octet
+
+`Screens/State03/WorldMapTick.cs` faisait **74 072 lignes** (3,1 Mo, 1 291 membres). Il n'avait pas
+dérivé : c'est la branche (4) de la règle de routage — « ça reste chez l'appelant tant que le rôle
+n'est pas établi » — qui l'avait rempli, fonction après fonction, pendant un an. Ce qui n'était pas
+vu, c'est la proportion.
+
+| | lignes | part |
+|---|---:|---:|
+| `RunWorldMapTick` (`FUN_00516fc0`) | 645 | 1 % |
+| dessin du HUD + pas de simulation | 3 625 | 5 % |
+| `DispatchEntityHandlerCore`, 426 cases | 1 036 | 1 % |
+| **tout ce que le répartiteur atteint** | **~68 000** | **92 %** |
+
+Et dans ces 92 %, deux sujets font plus de la moitié du fichier : **les sorts** (22 837 l., 123
+fiches) et **l'IA des monstres** (15 934 l., 25 routines).
+
+Découpé en **70 fichiers**, onze répertoires, tous sous `Screens/State03/`. Plus gros :
+`Spells/School0Wizard.cs`, 9 137 l. Médiane : 566. Le détail de la carte et des règles est dans
+`ARCHITECTURE.md` ; le changement est `openspec/changes/split-worldmaptick-by-subject`.
+
+### La preuve
+
+`verify-split.ps1` sur le manifeste complet : **70 vérifiés, 0 en échec**, couverture 25..74071,
+74 047 lignes, aucune perdue ni dupliquée, « Aucune ligne modifiee ». Le découpage avait d'ailleurs
+été **prouvé en entier dans un arbre du scratchpad avant qu'une seule ligne ne bouge dans le
+dépôt** : les huit lots n'ont fait que rejouer une opération déjà validée.
+
+Trois autres barrières à chaque lot : `dotnet build` (0 erreur, **39 avertissements**, 21 couples
+(code, fichier) uniques — quatre ont changé de fichier en suivant leur code, aucun n'est apparu),
+`check-descriptors.sh` (83 lignes, marges par site identiques, alors que **114 planches** ont changé
+de fichier), et les trois recensements (`git status Documentation/` vide).
+
+### Ce que le chantier a appris, et qui vaut au-delà de lui
+
+**Le piège de l'ordre d'initialisation ne s'est pas rejoué, et il faut savoir pourquoi.** Sept
+champs `static readonly` appelaient une méthode dans leur initialiseur. **Un appel de méthode n'est
+pas une lecture de champ** : une méthode est disponible dès le chargement du type, où qu'elle vive.
+Le balayage a couvert *tous* les initialiseurs du fichier, multi-lignes compris — `new()`,
+`GetEnvironmentVariable(…)`, `AllocZeroed(<constante>)`. Zéro propriété calculée à créer, zéro
+ligne de code modifiée par le découpage.
+
+**Quatre scripts codaient le chemin en dur et auraient échoué à zéro.**
+`census-entity-handlers.sh`, `census-item-effects.sh`, `census-spells.sh` et `check-descriptors.sh`
+extraient `DispatchEntityHandlerCore` au `sed` depuis un fichier nommé. Après découpage le chemin
+existe encore — c'est le reliquat — mais ne contient plus rien d'utile : les recensements seraient
+tombés **à zéro sans erreur et sans message**, et `GestionnairesEntites.md` serait passé de 1 430
+lignes à presque rien. Corrigés et prouvés à diff vide **avant** le premier déplacement, sans quoi
+on n'aurait plus su distinguer une régression de script d'une régression de découpage.
+
+**Le sommaire en commentaire ne survit pas à un fichier de cette taille.** Sur les **130 bandeaux**
+`// ====`, 14 débordaient sur plusieurs fichiers cibles, dont **cinq bandeaux-cimetière** qui
+couvraient jusqu'à six sujets sous un seul titre — « LA SONDE DE COUVERTURE » s'étendait sur
+1 300 lignes jusqu'en pleine trigonométrie, et « LES TROIS DERNIÈRES POSTURES » sur 2 379 lignes
+dont les postures n'occupaient que 86. Le deuxième cachait la **résolution de combat entière**
+(1 300 l.), le premier la trigonométrie et l'appariement.
+
+**Trois noms de créature posés à la conception étaient faux, et deux cachaient une bête entière.**
+Les noms viennent de `Comportement.md`, jamais d'une supposition : `BlockAPatrol.cs` n'existait pas
+(c'étaient le **Goblin-sorcier** `0x0049E190` et le **Crotale** `0x0049E920`), `FlyingBeast.cs` est
+l'**Abeille tueuse** `0x004A3C30` du bloc C, et la **Fourmi géante** `0x00499DE0` était rangée sous
+`Ladybug.cs`. Deux pièges que les bandeaux énoncent désormais : deux « Goblin » distincts dans le
+bloc A (sous-types 2 et 8) et deux « Abeille tueuse » (blocs A et C).
+
+**Le contrôle final de classement est passé sans rattrapage.** Après les sept premiers lots, le
+reliquat ne contenait que du `Tick/` ; `Tick/WorldMapTick.cs` déclare aujourd'hui exactement trois
+membres — `RunWorldMapTick`, `CallEntityHook_0056afe8`, `CallEntityHook_0056aff0`.
+
+### Une note sur les renvois de ce fichier
+
+Les renvois `WorldMapTick.cs:NNNN` que porte cet historique — il y en a une vingtaine — **ne sont
+pas réécrits**. Ils sont datés et se lisent comme tels : ils désignent l'état du dépôt au jour de
+leur écriture. Pour retrouver une ligne, chercher le nom du symbole dans `Screens/State03/`.

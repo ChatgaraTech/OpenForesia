@@ -939,7 +939,7 @@ Four fields per descriptor, at the offsets already named on the other instances
 
 | VA | contenu | rôle |
 |---|---|---|
-| `0x0055EB68` | 32 pointeurs → `0x005037d0`, `0x005037e0`, `0x00503850`, `0x005038a0`, `0x00503990`, `0x00503b50`, `0x00503d30`, `0x00503d70`, `0x00503d80`, `0x00503d90`, `0x00503db0`, `0x00503dd0`, `0x00503df0`, `0x00503e10`, `0x00503e50`, `0x00503e80`, `0x00503f10`, `0x00503fa0`, `0x00503fd0`, `0x00504020`, `0x00504070`, `0x005040a0`, `0x00504110`, `0x00504170`, `0x005041a0`, `0x005041d0`, `0x00504200`, `0x00504270`, `0x00504290`, `0x005042b0`, `0x00504310`, `0x005043c0` ; puis `0x00504c80`, puis un dword nul | `PTR_LAB_0055eb68` — les verbes de la caméra de scénette, tous **absents de `Blaze.c`**, transcrits le 2026-08-23 dans `Screens/State03/WorldMapTick.cs`. `0x00504c80` **n'est pas un verbe** : son corps ne suit pas la convention `(curseur, &continuer)` |
+| `0x0055EB68` | 32 pointeurs → `0x005037d0`, `0x005037e0`, `0x00503850`, `0x005038a0`, `0x00503990`, `0x00503b50`, `0x00503d30`, `0x00503d70`, `0x00503d80`, `0x00503d90`, `0x00503db0`, `0x00503dd0`, `0x00503df0`, `0x00503e10`, `0x00503e50`, `0x00503e80`, `0x00503f10`, `0x00503fa0`, `0x00503fd0`, `0x00504020`, `0x00504070`, `0x005040a0`, `0x00504110`, `0x00504170`, `0x005041a0`, `0x005041d0`, `0x00504200`, `0x00504270`, `0x00504290`, `0x005042b0`, `0x00504310`, `0x005043c0` ; puis `0x00504c80`, puis un dword nul | `PTR_LAB_0055eb68` — les verbes de la caméra de scénette, tous **absents de `Blaze.c`**, transcrits le 2026-08-23, aujourd'hui dans `Screens/State03/Cutscene/CutsceneVerbs.cs`. `0x00504c80` **n'est pas un verbe** : son corps ne suit pas la convention `(curseur, &continuer)` |
 | `0x00564F80` | 23 dwords : `00523B00 00523BB0 00523BD0 00523C00 00523C30 00523C70 00523CB0 00523D20 00523D60 00523DD0 00523E10 00523E50 00524060 00523E80 00523ED0 00523F00 00523F10 00523F80 00523FC0 00524060 005240D0 00524140 00524170`, puis un dword nul | `PTR_LAB_00564f80` — **les gestionnaires de la machine a opcodes des objets** (`FUN_00523aa0`). 23 entrees, **22 corps distincts** : 12 et 19 partagent `0x00524060`. **Onze sont absents de `Blaze.c`** — Ghidra ne les a vus que pris en adresse. Etendue deduite du dword nul qui suit |
 | `0x0052403C` | `00 00 01 01 01 02 02 03 03 03 03 04 05 05 05 06 06 07 07 07 07 08` | `DAT_0052403c` — la **famille de l'evenement d'objet**, indexee par `item[0x84]` (0 a 0x15). Lue par l'opcode 18, qui la reduit ensuite a un seul bit par la table de sauts `0x00524014` : 1 pour les familles impaires, 0 sinon |
 | `0x00524014` | 9 dwords : `00523FE9 00523FE2` en alternance, puis `00523FE9 00523FE9` | la table de sauts que l'opcode 18 emprunte apres `DAT_0052403c`. Ses neuf bras ne portent que deux valeurs, `eax = 0` (`0x00523FE9`) et `eax = 1` (`0x00523FE2`) — un `switch` etale sur ce qui tient en une comparaison de parite |
@@ -1075,6 +1075,17 @@ Mesuré au moment du découpage : **398 déclarateurs sur 375 adresses**, dont *
 Tant que tout vivait dans `Blaze.cs`, cette adjacence se voyait en faisant défiler le fichier.
 Elle ne se voit plus. Cette table est ce qui la rend encore consultable.
 
+> **Mise à jour du 2026-09-16 — le découpage de `WorldMapTick.cs`.** Ce fichier a été réparti en
+> 70 fichiers sous `Screens/State03/` (`openspec/changes/split-worldmaptick-by-subject`). La colonne
+> « fichier » a été reprise en conséquence.
+>
+> **Seules cinq entrées étaient concernées**, alors que le changement en annonçait « environ 220 ».
+> L'écart s'explique : cette table indexe les symboles de `.data` **modélisés dans le port**, pas
+> les 122 tableaux `static readonly` de descripteurs que `WorldMapTick.cs` portait — ceux-là sont
+> documentés dans leurs propres sections plus bas, par adresse, et le nom de leur fichier
+> n'y apparaît pas. Le contrôle d'adjacence n'en est pas affaibli : ces tableaux sont des plages
+> relevées entières, protégées par `check-descriptors.sh`, pas par cette table.
+
 ### Les blocs adressés par décalage
 
 Huit blocs sont modélisés comme une allocation unique dont les symboles sont des décalages. Un
@@ -1176,7 +1187,7 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00564558` | `s_CellSkipTables_00564558` | 160 | `Memory/GameMemory.cs` |
 | `0x005645f8` | `s_WorldMapStep_005645f8` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005645fc` | `s_Unknown_005645fc` | 4 | `Screens/State03/WorldMap.cs` |
-| `0x00564600` | `s_SpellCounts_00564600` | 80 | `Screens/State03/WorldMapTick.cs` |
+| `0x00564600` | `s_SpellCounts_00564600` | 80 | `Screens/State03/Tick/PartyMemberStep.cs` |
 | `0x00564650` | `s_WorldMapCamera_00564650` | 956 | `Screens/State03/WorldMap.cs` |
 | `0x00564a0c` | `s_SlashLabel_00564a0c` | 4 | `Screens/State06/Inventory.cs` |
 | `0x00564a10` | `s_PageWaitCommand_00564a10` | 28 | `Screens/State06/Inventory.cs` |
@@ -1230,7 +1241,7 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00567e18` | `s_VtPtr_00567e18` | 1664 | `Engine/EntityVTables.cs` |
 | `0x00568498` | `s_SaveNameTemplate_00568498` | 120 | `Screens/State04/CharacterCreation.cs` |
 | `0x00568510` | `s_ControllerBannerText_00568510` | 9024 | `Engine/SaveData.cs` |
-| `0x0056a850` | `s_MenuLayout_0056a850` | 592 | `Screens/State03/WorldMapTick.cs` |
+| `0x0056a850` | `s_MenuLayout_0056a850` | 592 | `Screens/State03/Tick/WorldMapHud.cs` |
 | `0x0056aca8` | `s_ResourceFixupSchema_0056aca8` | 160 | `Engine/Resources.cs` |
 | `0x0056ad48` | `s_Vt_0056ad48` | 128 | `Engine/Resources.cs` |
 | `0x0056adc8` | `s_Vt_0056adc8` | 256 | `Engine/Resources.cs` |
@@ -1275,7 +1286,7 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x0056d2a0` | `s_AreaToMenuIndex_0056d2a0` | 16 | `Screens/State02/Destination.cs` |
 | `0x0056d2b0` | `s_MenuIndexToArea_0056d2b0` | 16 | `Screens/State02/Destination.cs` |
 | `0x0056d2c0` | `s_DifficultyBonus_0056d2c0` | 128 | `Screens/State04/CharacterCreation.cs` |
-| `0x0056d340` | `s_StatusTimerMasks_0056d340` | 2584 | `Screens/State03/WorldMapTick.cs` |
+| `0x0056d340` | `s_StatusTimerMasks_0056d340` | 2584 | `Screens/State03/Tick/WorldSimulationStep.cs` |
 | `0x0056dd58` | `s_MenuContext_0056dd58` | 2244 | `Screens/State00/Options.cs` |
 | `0x0056e61c` | `s_MenuSelection_0056e61c` | 3 | `Screens/State00/MainMenu.cs` |
 | `0x0056e61f` | `s_Unknown_0056e61f` | 81 | `Screens/State00/MainMenu.cs` |
@@ -1409,7 +1420,7 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 > | VA | symbole C# | taille | fichier |
 > |---|---|---:|---|
 > | `0x005de5f8` | `s_MenuSprite_005de5f8` | 20 | `Screens/State03/WorldMapMenu.cs` |
-> | `0x005de620` | `s_ItemMessageScratch_005de620` | 128 | `Screens/State03/WorldMapTick.cs` |
+> | `0x005de620` | `s_ItemMessageScratch_005de620` | 128 | `Screens/State03/Handlers/Chests.cs` |
 > | `0x005de6a8` | `s_KeyItemIndex_005de6a8` | 32 | `Screens/State03/WorldMapMenu.cs` |
 > | `0x005de6f0` | `s_MenuPage_005de6f0` | 4 | `Screens/State03/WorldMapMenu.cs` |
 >
@@ -1826,7 +1837,7 @@ et de magie, `+0xc2` en ajoute vingt à taux fixe.
 
 ### Dans OpenForesia
 
-`s_StatusTimerMasks_0056d340`, dans `Screens/State03/WorldMapTick.cs` — un seul lecteur, donc chez
+`s_StatusTimerMasks_0056d340`, dans `Screens/State03/Tick/WorldSimulationStep.cs` — un seul lecteur, donc chez
 lui.
 
 ---

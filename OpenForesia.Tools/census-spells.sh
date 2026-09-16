@@ -39,7 +39,7 @@ set -e
 
 BIN=Legacy/Binaries/Blaze.exe
 SPELLS=Documentation/Reference/Bestiaire/sorts.csv
-TICK=OpenForesia/src/Blaze/Screens/State03/WorldMapTick.cs
+TICK_DIR=OpenForesia/src/Blaze/Screens/State03
 HPROBE=Documentation/Etat/handlers-exerces.tsv       # la sonde des gestionnaires
 SPROBE=Documentation/Etat/sorts-exerces.tsv          # la sonde des sorts
 
@@ -50,6 +50,14 @@ EMPTY=00401FA0                    # la souche a corps vide
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
+
+# `WorldMapTick.cs` a ete decoupe en 68 fichiers sous `Screens/State03/` le 2026-09-16. On lit donc
+# L'ARBORESCENCE ENTIERE, concatenee, et non plus un fichier unique : `DispatchEntityHandlerCore`
+# vit desormais dans `Dispatch/EntityHandlerDispatch.cs`, les crochets dans `Tick/WorldMapTick.cs`.
+# Sans cela les `sed -n '/.../,/^    }$/p'` ci-dessous ne trouvent plus rien et le recensement sort
+# A ZERO, sans erreur et sans message - le mode d'echec le plus couteux de ce depot.
+TICK="$TMP/state03-concat.cs"
+find "$TICK_DIR" -name '*.cs' | sort | xargs cat > "$TICK"
 
 dwords() {   # dwords <va> <count>
     od -An -v -tx4 -j $(( $1 - DATA_DELTA )) -N $(( $2 * 4 )) "$BIN" \

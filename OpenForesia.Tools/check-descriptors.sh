@@ -65,6 +65,9 @@ echo
 echo "fonction / tableau / decalage / enregistrements restants"
 echo
 
+# `WorldMapTick.cs` a ete decoupe en 68 fichiers sous `Screens/State03/` le 2026-09-16 : on balaie
+# l'arborescence entiere, pas un fichier. La section 1 ci-dessus etait deja recursive ; celle-ci ne
+# l'etait pas, et aurait rendu une liste VIDE apres le decoupage - sans erreur et sans message.
 awk '
     /private static [A-Za-z0-9_*]+ [A-Za-z_][A-Za-z0-9_]*_00[0-9A-F]+\(/ {
         fn=$0; sub(/.*static [^ ]+ /,"",fn); sub(/\(.*/,"",fn)
@@ -76,7 +79,7 @@ awk '
             o=substr($0, RSTART, RLENGTH); sub(/.*\+ /,"",o); off=strtonum(o)
         }
         printf "%s\t%s\t%d\n", fn, b, off
-    }' "$SRC/Blaze/Screens/State03/WorldMapTick.cs" | sort -u |
+    }' $(find "$SRC/Blaze/Screens/State03" -name '*.cs' | sort) | sort -u |
 while IFS='	' read -r fn base off; do
     recs=$(awk -v n="$base" '$1==n{print $2}' "$TMP/len")
     left=$((recs - off / 8))

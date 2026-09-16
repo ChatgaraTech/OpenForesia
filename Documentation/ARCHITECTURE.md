@@ -204,7 +204,7 @@ src/
         ├─ State00/  MainMenu.cs 526 · Options.cs 2 517
         ├─ State01/  PartySetup.cs 544
         ├─ State02/  Destination.cs 451
-        ├─ State03/  WorldMap.cs 1 173
+        ├─ State03/  WorldMap.cs 1 173  (+ 11 sous-repertoires, voir ci-dessous)
         ├─ State04/  SaveSlots.cs 2 109 · CharacterCreation.cs 1 539 · CharacterSelect.cs 581
         ├─ State06/  Inventory.cs 2 937 · ItemMenu.cs 493
         └─ State10/  RebootScreen.cs 120   (atteint seulement par la ligne REBOOT du menu de mise au point)
@@ -219,6 +219,47 @@ installé pour les exercer sans jouer jusqu'à eux. Il vit là et non dans `src/
 appelle les fonctions du jeu (`SpawnEntityFormation`, `ResolveEntityHandler`) et doit donc faire
 partie de la classe partielle. Son en-tête le dit en majuscules ; voir
 `Documentation/Tests/test-protocol.md`.
+
+---
+
+## `State03/` — le seul écran qui a des sous-répertoires
+
+**Découpé le 2026-09-16** (`openspec/changes/split-worldmaptick-by-subject`). `WorldMapTick.cs`
+avait atteint **74 072 lignes** : la boucle par image (1 %), son dessin et son pas de simulation
+(5 %), et **tout ce que son répartiteur d'entité pouvait atteindre** (92 %). Il n'avait pas dérivé —
+c'est la branche (4) de la règle de routage qui l'avait rempli, fonction après fonction, pendant un
+an. Il est aujourd'hui réparti en **70 fichiers**, onze répertoires, plus gros 9 137 lignes,
+médiane 566.
+
+Les **sept fichiers d'écran restent à la racine** de `State03/` — ils sont le niveau « écran » ;
+les répertoires sont le niveau « ce que l'écran atteint ».
+
+| Répertoire | Ce qu'il contient | Le test d'appartenance |
+|---|---|---|
+| `Tick/` | la boucle par image, son dessin, son pas de simulation | appelé **à chaque image**, depuis `RunWorldMapTick` |
+| `Dispatch/` | le carrefour adresse → méthode, les tables statiques, les 3 sondes | ne fait que router |
+| `Combat/` | ce qui décide qui perd des points de vie | lit ou écrit un bloc de combat / une fiche |
+| `Physics/` | ce que **toute** entité subit | **ne consulte jamais le sous-type** de l'entité |
+| `Entities/` | l'infrastructure commune aux gestionnaires | éveil, ciblage, naissance |
+| `Effects/` | ce qui naît, scintille et meurt | ne décide de rien |
+| `Items/` | l'objet et ce qu'il déclenche | part d'une fiche d'objet |
+| `Spells/` | la magie, une école par fichier | part d'une fiche de sort |
+| `Cutscene/` | les scènes et leurs 32 verbes | la partie ne répond plus aux boutons |
+| `Ai/` | l'intelligence, **une créature par fichier** | choisit une action pour une entité |
+| `Handlers/` | décor et scénario | ni IA ni magie : coffres, radeau, portes, sons |
+
+**Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
+d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son
+appelant » (branche 4) que ce tableau tranche, **par le test d'appartenance, pas par le sujet
+apparent**. Une routine d'ennemi va dans `Ai/<Zone>/<Bête>.cs`, nommée d'après
+`Documentation/Ennemies/Comportement.md` — **jamais d'après une supposition** : trois noms inventés
+à la conception du découpage se sont révélés faux, et deux d'entre eux cachaient une créature
+entière.
+
+Deux pièges de nommage que la table des comportements impose : il y a **deux « Goblin »** dans le
+bloc A de la forêt (sous-types 2 et 8, deux corps sans rapport) et **deux « Abeille tueuse »**
+(blocs A et C). *Le nom d'espèce ne détermine pas le comportement ; le bloc et le sous-type le
+font.*
 
 ---
 
@@ -343,6 +384,17 @@ C'est arrivé : `s_SlotArea_005e9180 = Arena(0x005e9180)` a rendu `null + décal
 > **autre** fichier doit devenir une **propriété calculée** `=>`. Les dépendances intra-fichier sont
 > sûres : l'ordre textuel est garanti à l'intérieur d'un fichier.
 
+**Le piège ne s'est pas rejoué au découpage de `WorldMapTick.cs` (2026-09-16)**, et la raison mérite
+d'être connue : **un appel de méthode n'est pas une lecture de champ**. Les sept champs suspects
+appelaient tous `AllocBytes(…)` ou `BuildDeveloperNotice_00551814()`, et ces méthodes ne lisent
+aucun champ statique — une méthode est disponible dès le chargement du type, où qu'elle vive. Le
+balayage a couvert **tous** les initialiseurs du fichier, multi-lignes compris ; ils se réduisaient
+à `new()`, `Environment.GetEnvironmentVariable(…)` ou `NativeMemory.AllocZeroed(<constante>)`.
+Zéro propriété calculée à créer.
+
+Ce qu'il faut chercher, donc, n'est pas « l'initialiseur appelle-t-il quelque chose », mais
+**« l'initialiseur, ou ce qu'il appelle, lit-il un champ statique ? »**
+
 ---
 
 ## L'outillage du découpage
@@ -356,7 +408,66 @@ Dans `OpenForesia.Tools/`, réutilisable si un redécoupage s'impose :
 | `blaze-baseline.txt` | la référence figée de `Blaze.cs` avant découpage, 23 680 lignes |
 | `apply-split.ps1` | écrit les fichiers **en redérivant depuis la référence** — jamais d'édition en place, donc aucune dérive de numérotation |
 | `verify-split.ps1` | comparaison octet à octet contre la référence, en ISO-8859-1 |
+| `worldmaptick-inventory.awk` | l'inventaire des membres : tête de trivia, déclaration, fin, VA, bandeau courant |
+| `worldmaptick-manifest.awk` | le jumeau de `split-manifest.awk` pour `WorldMapTick.cs` — 77 plages, 70 fichiers |
+| `worldmaptick-manifest.tsv` | le manifeste : 77 plages, 70 fichiers, 74 047 lignes |
+| `worldmaptick-baseline.txt` | la référence figée (3 289 798 octets, 74 072 lignes) — **ignorée par git**, voir ci-dessous |
+
+**La référence de `WorldMapTick.cs` n'est pas dans le dépôt.** 3,1 Mo qui ne servent qu'à rejouer ou
+vérifier le découpage, et qui se redérivent de l'historique — le fichier d'origine est dans le
+parent du commit qui porte le découpage :
+
+```bash
+git show <sha-avant-decoupage>:OpenForesia/src/Blaze/Screens/State03/WorldMapTick.cs \
+    > OpenForesia.Tools/worldmaptick-baseline.txt
+```
+
+Ce dépôt a `core.autocrlf=true` et **pas de `.gitattributes`** : `git show` rend le blob **tel qu'il
+est stocké, en LF**, là où le fichier de travail était en CRLF. Sans conséquence pour les deux
+scripts — ils découpent sur `\r\n|\n` et comparent **ligne par ligne** — mais une comparaison
+d'octets brute sur le fichier entier échouerait, et c'est bon à savoir avant de conclure à une
+régression.
+
+`blaze-baseline.txt` (découpage de 2026-08-19, 1,2 Mo) reste suivi : on ne désindexe pas un fichier
+déjà committé sans raison. L'asymétrie est assumée.
 
 Tout lit et écrit en **ISO-8859-1** (un octet ↔ un caractère) via `[IO.File]::ReadAllBytes` /
 `WriteAllBytes`. `Get-Content` / `Set-Content` sont proscrits sur ces fichiers : ils cassent sur la
 région à encodage double et ont déjà aggravé le problème une fois.
+
+### Ce que le découpage de 2026-09-16 a ajouté aux deux scripts
+
+Les deux `.ps1` sont désormais entièrement paramétrés et servent les deux chantiers. Trois
+paramètres sont nés du second, et chacun répare un défaut qui ne criait pas :
+
+- **`-PreambleRanges`** — le préambule commun n'est pas forcément contigu. Celui de
+  `WorldMapTick.cs` est `1-6,17-24` : ses lignes 8..16 décrivent `FUN_00516fc0` en particulier et
+  n'ont rien à faire en tête des 69 autres fichiers.
+- **`-ResidualPreambleRanges`** — le reliquat garde son propre en-tête. Sans lui, les lignes 8..16,
+  qui ne sont dans **aucune plage du manifeste**, disparaissaient du dépôt pendant sept lots.
+- **`-KeepDone`** — ne pas réécrire les fichiers déjà extraits. Sans lui, la redérivation **efface
+  en silence** les bandeaux d'en-tête écrits à la main : le fichier redevient conforme au manifeste,
+  donc le vérificateur reste vert et rien ne signale la perte. C'est le seul endroit d'un découpage
+  où « redériver depuis la référence » est la mauvaise chose à faire.
+
+Et deux règles de méthode, payées sur le terrain :
+
+- **Le manifeste se génère depuis la référence figée, jamais depuis le fichier de travail.** Dès le
+  premier lot, celui-ci n'est plus que le reliquat ; le regénérer dessus rend un manifeste
+  **plausible et faux** (45 plages au lieu de 77, sans erreur). `worldmaptick-manifest.awk` porte
+  maintenant un garde-fou qui refuse de sortir si le fichier lu est plus court que la référence.
+- **Le bandeau d'en-tête d'un fichier va AU-DESSUS de `using`**, comme le fait déjà
+  `WorldMapCamera.cs`. Le vérificateur délimite un corps de la première ligne valant exactement `{`
+  à la dernière valant `}` : un bandeau posé là est hors de ces bornes, et le script n'a donc rien à
+  apprendre.
+
+### Le contrôle de bandeau orphelin
+
+Un bandeau `// ====` est **orphelin** quand le *premier membre qui le suit* atterrit dans un autre
+fichier — à distinguer de la **dérive de queue**, où c'est un membre tardif qui part, ce qui est
+normal et se résout par un bandeau d'en-tête neuf sur la tranche suivante.
+
+Sur les 130 bandeaux de `WorldMapTick.cs`, 14 dérivaient en queue (dont **cinq
+bandeaux-cimetière** couvrant jusqu'à six fichiers cibles sous un seul titre) et **un seul** était
+orphelin. Le contrôle croise le manifeste et l'inventaire ; il se rejoue à chaque modification du
+manifeste et doit rendre zéro.

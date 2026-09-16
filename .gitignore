@@ -47,3 +47,19 @@ Desktop.ini
 
 # Local tooling
 scratchpad/
+
+# Reference figee du decoupage de WorldMapTick.cs (3,1 Mo) — 2026-09-16.
+# Elle n'est utile qu'a rejouer ou verifier le decoupage, et elle est REGENERABLE depuis
+# l'historique : le fichier d'origine est le parent du commit qui porte le decoupage.
+#
+#   git show <sha-avant-decoupage>:OpenForesia/src/Blaze/Screens/State03/WorldMapTick.cs \
+#       > OpenForesia.Tools/worldmaptick-baseline.txt
+#
+# ATTENTION : ce depot a core.autocrlf=true et pas de .gitattributes, donc `git show` rend le
+# blob tel qu'il est STOCKE, en LF, alors que le fichier de travail etait en CRLF. Ce n'est pas
+# un probleme pour apply-split.ps1 / verify-split.ps1 — ils decoupent sur `\r\n|\n` et comparent
+# LIGNE par ligne — mais une comparaison d'octets brute sur le fichier entier echouerait.
+#
+# `blaze-baseline.txt` (decoupage de 2026-08-19) reste suivi, lui : asymetrie assumee, on ne
+# desindexe pas un fichier deja committe sans raison.
+OpenForesia.Tools/worldmaptick-baseline.txt

@@ -4,6 +4,35 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16
+
+- feat : `Screens/State03/WorldMapTick.cs` — **74 072 lignes** — est découpé en **70 fichiers** et
+  onze répertoires (`Tick/`, `Dispatch/`, `Combat/`, `Physics/`, `Entities/`, `Effects/`, `Items/`,
+  `Spells/`, `Cutscene/`, `Ai/`, `Handlers/`), **à l'octet près** : 70 vérifiés, 0 en échec,
+  0 ligne modifiée. Un fichier par créature dans `Ai/`, une école par fichier dans `Spells/`
+- feat : `apply-split.ps1` gagne `-Residual`, `-PreambleRanges`, `-ResidualPreambleRanges` et
+  `-KeepDone` — sans ce dernier, la redérivation efface en silence les bandeaux écrits à la main
+- feat : `worldmaptick-inventory.awk` et `worldmaptick-manifest.awk`, avec un garde-fou qui refuse
+  de générer le manifeste depuis le fichier de travail plutôt que depuis la référence figée
+- fix : quatre scripts codaient `WorldMapTick.cs` en dur (`census-entity-handlers.sh`,
+  `census-item-effects.sh`, `census-spells.sh`, `check-descriptors.sh`) et seraient **tombés à zéro
+  sans erreur ni message** après le découpage ; corrigés et prouvés à diff vide avant le premier
+  déplacement
+- fix : trois noms de créature étaient faux et deux cachaient une bête entière — le
+  **Goblin-sorcier** `0x0049E190` et le **Crotale** `0x0049E920` (ex-`BlockAPatrol`), la **Fourmi
+  géante** `0x00499DE0` (rangée sous `Ladybug`), et l'**Abeille tueuse** `0x004A3C30`
+  (ex-`FlyingBeast`)
+- doc : sur les **130 bandeaux** `// ====` du fichier, 14 débordaient sur plusieurs sujets, dont
+  cinq couvraient jusqu'à six fichiers cibles sous un seul titre — « LES TROIS DERNIÈRES POSTURES »
+  cachait la résolution de combat entière
+- doc : le piège de l'ordre d'initialisation des champs statiques **ne se rejoue pas** — un appel de
+  méthode n'est pas une lecture de champ ; les sept champs suspects sont sûrs, zéro ligne de code
+  modifiée
+- doc : `ARCHITECTURE.md` porte la carte des onze répertoires de `State03/` et leur test
+  d'appartenance ; `CLAUDE.md`, `DataSymbols.md` et `REVERSE_STATUS.md` suivent
+
+---
+
 ## 2026-09-15 (suite)
 
 - doc : **LB-030**, le souffle du Mechant ours fait clignoter l'ecran en rouge — confirme sur le jeu officiel. Le voile plein ecran est un rectangle semi-transparent (`0x62`) que `winsys3d.dll` peint opaque, et l'effet `0x00413330` l'allume une image sur deux
