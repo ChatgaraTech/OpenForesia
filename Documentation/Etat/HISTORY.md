@@ -30,6 +30,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   modifiée
 - doc : `ARCHITECTURE.md` porte la carte des onze répertoires de `State03/` et leur test
   d'appartenance ; `CLAUDE.md`, `DataSymbols.md` et `REVERSE_STATUS.md` suivent
+- doc : la regle qui evite le prochain fichier de 74 000 lignes — dans `State03/`, on range tout de
+  suite, on n'entasse pas « en attendant », et **un fichier neuf se propose, il ne se cree pas tout
+  seul**. Les deux a surveiller : `Spells/School0Wizard.cs` (9 137 l.) et `Handlers/Forest.cs`
+- doc : `worldmaptick-baseline.txt` (3,1 Mo) est ignore par git — regenerable de l'historique, avec
+  le piege `core.autocrlf=true` ecrit dans le `.gitignore`, `ARCHITECTURE.md` et `verify-split.ps1`
 
 ---
 

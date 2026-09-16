@@ -358,6 +358,19 @@ and the subtype do.
 Inside `State03/`, once rule (2) or (4) has fired, the table in `ARCHITECTURE.md` picks the
 sub-directory **by its membership test, not by the apparent subject**.
 
+**Keep the dynamic — no second 74 000-line file.** `WorldMapTick.cs` did not swell through
+negligence: nobody ever *decided* it would. Rule (4) filled it one justified function at a time for
+a year, and only the cumulative result was wrong. So in `State03/`:
+
+- **file it straight away** in the right directory — rule (4) is no longer an acceptable default
+  here, the eleven directories cover the ground;
+- **never pile up "for now"**: if no existing file really fits, that is the signal a new one is
+  needed, not that one should be forced;
+- **a new file is proposed, never created unilaterally** — put up the name and what it would hold,
+  and let the user decide. A new *directory*, all the more so;
+- **watch what grows**: `Spells/School0Wizard.cs` (9 137 l.) and `Handlers/Forest.cs` (2 969 l.) are
+  the two to look at first. See `ARCHITECTURE.md` for the dial already prepared for the first.
+
 **Naming**: neutral, descriptive, all `static`. **Never** `Manager`, `Service`, `Controller`,
 `Provider` — those names promise an object with a lifecycle that the transcription does not have,
 and invite drift towards a design the source of truth does not contain.

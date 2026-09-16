@@ -261,6 +261,29 @@ bloc A de la forêt (sous-types 2 et 8, deux corps sans rapport) et **deux « Ab
 (blocs A et C). *Le nom d'espèce ne détermine pas le comportement ; le bloc et le sous-type le
 font.*
 
+### Tenir la dynamique — la règle qui évite le prochain fichier de 74 000 lignes
+
+**`WorldMapTick.cs` n'a pas enflé par négligence : personne n'a jamais décidé qu'il enflerait.** La
+branche (4) de la règle de routage l'a rempli fonction après fonction pendant un an, chaque ajout
+étant individuellement justifié. C'est le cumul qui ne l'était pas. Le découpage a coûté huit lots ;
+le rangement au fil de l'eau ne coûte rien.
+
+Donc, pour tout ce qui sera transcrit dans `State03/` désormais :
+
+1. **Ranger tout de suite dans le bon répertoire**, par le test d'appartenance du tableau ci-dessus.
+   La branche (4) — « ça reste chez l'appelant » — ne vaut plus comme réponse par défaut ici : les
+   onze répertoires couvrent le terrain, et un corps dont le rôle est assez établi pour être
+   transcrit l'est assez pour être rangé.
+2. **Ne pas entasser « en attendant ».** Si un fichier existant ne convient pas vraiment, c'est le
+   signal qu'il en faut un neuf — pas celui qu'il faut forcer.
+3. **Un nouveau fichier se propose, il ne se crée pas tout seul.** Soumettre le nom envisagé et ce
+   qu'il contiendrait ; c'est l'utilisateur qui tranche. Un répertoire neuf, a fortiori.
+4. **Surveiller ce qui grossit.** `Spells/School0Wizard.cs` (9 137 l.) et `Handlers/Forest.cs`
+   (2 969 l.) sont les deux à regarder en premier. La molette est prête pour le premier : couper par
+   **indice de sort**, qui est une vraie coordonnée du jeu — c'est l'ordre d'apprentissage.
+
+L'objectif est énoncé simplement : **plus jamais un fichier de 70 000 lignes.**
+
 ---
 
 ## La règle de routage : où va une fonction
