@@ -4,6 +4,26 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite)
+
+- feat : `0x004060C0`, **la troisieme amorce du flash blanc de sortie de zone** — celle de la mine
+  abandonnee (zone 1, sous-zones 0-2, sous-type 33 du bloc `0x00553ca8`). Absente de `Blaze.c`,
+  relevee au desassembleur : dix-sept instructions, le meme corps que les deux amorces de la foret
+  a DEUX differences pres — le genre `+0x5c` vaut `0x39` et non `0x3a`, et l'ancre lue est
+  l'enregistrement **6** de la table `0x005fa5e0` et non le **0**. Zone 1 : 22 -> 23 implementes
+- feat : nouveau fichier `Effects/AreaExitFlash.cs` — le corps `0x004183d0` et ses trois amorces
+  sortent de `ForestParticlesA.cs` : le flash n'est pas un effet de la foret, la mine vient de le
+  prouver
+- fix : `DAT_005fa9a4` et ses cinq voisins ne sont pas des globales isolees —
+  `0x005fa9a4 - 0x1c - 0x005fa5e0 = 0x3a8 = 6 x 0x9c` : ce sont les champs de pose du septieme
+  enregistrement de la troisieme table d'entites
+- fix : **mes appels aux trois recensements pendant le decoupage ecrivaient dans `/dev/null`** — ces
+  scripts ecrivent sur la sortie standard, c'est l'appelant qui redirige. Le `git status` vide ne
+  prouvait donc rien pour eux. Rejoues correctement : `ObjetsAtteignables.md` et
+  `SortsAtteignables.md` sont bien inchanges, aucune regression n'avait ete masquee
+
+---
+
 ## 2026-09-16
 
 - feat : `Screens/State03/WorldMapTick.cs` — **74 072 lignes** — est découpé en **70 fichiers** et
