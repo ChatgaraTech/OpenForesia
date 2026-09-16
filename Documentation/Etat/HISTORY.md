@@ -4,6 +4,24 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 2)
+
+- feat : `0x00406120` / `0x00406130`, **trois particules en une fonction** — sous-type 57 du bloc
+  `0x00553ea8`, sous-zones 0-2 de la mine. L'amorce est absente de `Blaze.c`, le corps y est.
+  Variante 0 : nait noire, spirale vers l'INTERIEUR, s'eclaircit, meurt sous un rayon de 0x50.
+  Variante 1 : nait claire, spirale vers l'EXTERIEUR, s'assombrit. Variante 2 : dispersee, monte
+  en accelerant, s'eteint apres un decompte. Zone 1 : 23 -> 24 implementes
+- feat : nouveau fichier `Effects/MineParticles.cs` — les effets de la zone 1, sur le patron de
+  `ForestParticlesA/B.cs`
+- doc : **le separateur `0x0054f180` EST une tuile, et ce corps s'en sert** — un motif qui borne une
+  plage peut etre le premier enregistrement de la suivante. Plage relevee : cinq enregistrements,
+  fin `0x54f1a8`, confirmee par `check-descriptors.sh`
+- doc : bizarrerie fidele de la variante 2 — `+0x12` est ecrit DEUX fois a la naissance, un tirage
+  sur douze bits puis `rand() % 5 + 5` qui l'ecrase. Du premier il ne reste que sa consommation du
+  generateur, qui decale tous les tirages suivants
+
+---
+
 ## 2026-09-16 (suite)
 
 - feat : `0x004060C0`, **la troisieme amorce du flash blanc de sortie de zone** — celle de la mine

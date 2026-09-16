@@ -3046,3 +3046,34 @@ seize bits : famille 2 indice 0, Dodo.
 **Quatre autres copies du corps lisent leur propre table** : `0x00552A88`, `0x00552E98`,
 `0x00552EF8`, `0x00552FC0`. Les cinq ont été relevées : **mêmes douze octets**. Le C# n'en porte
 qu'une (`s_GremlinSpells_00552A50`), et c'est une conclusion vérifiée, pas un raccourci.
+
+## `0x0054f180` — le séparateur EST une tuile, et quelqu'un s'en sert (2026-09-16)
+
+La note du 2026-08-29 avait relevé le motif `00 00 08 08 01 02 10 00` à `0x0054f180` et l'avait
+qualifié de **séparateur** : une tuile `8 × 8` prise à l'origine de la planche, posée entre deux
+animations, « borne exploitable pour les plages voisines ». Elle l'a été deux fois — c'est elle qui
+ferme `0x0054f160` par le haut.
+
+**Elle est aussi un descripteur employé.** `FUN_00406130` — le sous-type 57 du bloc `0x00553ea8`,
+que la table `0x0056b2c8` installe pour les sous-zones 0 à 2 de la mine abandonnée — pose
+`+0x3c = &DAT_0054f180` et `+0x40 = 0`, dans chacune de ses trois variantes. Le séparateur n'est
+donc pas du remplissage : c'est le sprite de cette particule.
+
+Les deux rôles ne s'excluent pas, et c'est le point à retenir : **un motif qui borne une plage peut
+être le premier enregistrement de la suivante.**
+
+| adresse | octets | page | lu par le corps |
+|---|---|---|---|
+| `0x0054f180` | `00 00 08 08 01 02 10 00` | `02` | **oui**, et lui seul |
+| `0x0054f188` | `c0 c0 3f 3f 01 02 09 00` | `02` | non |
+| `0x0054f190` | `00 d0 10 10 01 03 10 00` | `03` | non |
+| `0x0054f198` | `10 d0 10 10 01 03 10 00` | `03` | non |
+| `0x0054f1a0` | `20 d0 10 10 01 03 10 00` | `03` | non |
+
+**Cinq enregistrements**, et la borne haute se démontre par le même argument qu'en 2026-08-29 : le
+motif reparaît à `0x0054f1a8`, cette fois sur la page `0x03`. `check-descriptors.sh` le confirme
+indépendamment — *« ok 0x0054F180 40 octets = 5 enregistrements, fin 0x54F1A8 »*.
+
+**Le corps n'atteint que l'enregistrement 0** : il pose `+0x40` à zéro à la naissance et n'y revient
+dans aucune des trois variantes. Les quatre autres sont relevés parce que la règle le veut — on
+relève la plage, jamais le descripteur —, pas parce qu'ils servent ici.
