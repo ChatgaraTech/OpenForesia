@@ -4,6 +4,46 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 8)
+
+- feat : `0x00406AA0`, **la poussiere posee contre une paroi** — sous-type 55, decompile dans
+  `Blaze.c`. Sa naissance choisit un AXE a pile ou face : l'axe tire recoit un pas de
+  `(rand % 3 - 1) * 0x64000`, l'axe NON tire recoit un etalement de -100 a +99 cases. Trois etats,
+  le bit `0x4000` tenant l'attente comme dans `EntityHandler_0040F650`
+- feat : `0x00406C40`, **l'eclat qui retombe** — sous-type 54, absent de `Blaze.c`, 432 octets au
+  desassembleur. **Premier corps vraiment balistique du fichier** : vitesse sur les trois axes et
+  gravite de `0x1000` par image sur la verticale. Vingt-quatre images exactement, l'image avancant
+  aux images 6, 12 et 18. Zone 1 : 29 -> 31 implementes
+- doc : **un cas de diagonale** dans `0x00406AA0` — quand l'axe tire sort un `0`, les DEUX axes
+  recoivent l'etalement, et le meme : l'entite se pose sur la diagonale exacte. Le binaire teste
+  les deux independamment
+- doc : **troisieme ecriture morte de la seance** — `0x00406C40` ecrit `+0x28` et `+0x2a` deux fois
+  a la naissance, le second tirage ecrasant le premier. Il ne reste des premiers que leur
+  consommation du generateur
+- doc : planche `0x0054f250`, quatre enregistrements, bornee par le **debut de la bande suivante**
+  (le `y` retombe de `0xc0` a `0x20`) — une quatrieme espece de borne apres le motif separateur, le
+  changement d'attribut et l'adresse referencee par du code
+
+---
+
+## 2026-09-16 (suite 7)
+
+- feat : `0x00406970`, **la bouffee qui part de biais, enfle et ralentit** — sous-type 56 du bloc
+  `0x00553ea8`, sous-zones 0-2 de la mine. Absente de `Blaze.c` alors que sa voisine immediate
+  `FUN_00406aa0` y est ; 304 octets au desassembleur. Zone 1 : 28 -> 29 implementes
+- doc : **un seul champ porte deux roles** — `+0x14` est a la fois la vitesse et le compte a
+  rebours : l'entite avance de `sin/cos(+0x12) * (+0x14 * 2)` puis `+0x14` perd un, donc elle part
+  vite et **ralentit jusqu'a l'arret, ou elle meurt**. Le cap `+0x12` est tire une fois et jamais
+  retouche : c'est une droite, pas une spirale
+- doc : planche `0x0054f280`, **quatre enregistrements et c'est une vraie bande d'animation** —
+  quatre tuiles `0x1f x 0x1f` sur la ligne `y = 0xa0`, `x` avancant de `0x20`. Le corps confirme :
+  `+0x40` va de 0 a 3 puis **s'arrete sur 3**, il ne reboucle pas comme `FUN_00404c80`. Bornee par
+  `0x0054f2a0`, encore une borne prouvee par le code. Partagee avec `FUN_00406aa0`
+- doc : **la mort ne coupe pas le tour** — le bit de vie tombe au milieu du corps et tout ce qui
+  suit (teinte, echelle, avance d'image) s'execute quand meme sur cette derniere image
+
+---
+
 ## 2026-09-16 (suite 6)
 
 - feat : `0x00406810`, **l'eclat bref qui scintille** — sous-type 60 du bloc `0x00553ea8`,

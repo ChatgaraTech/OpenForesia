@@ -715,4 +715,318 @@ public static unsafe partial class Blaze
             if (*(short*)(e + 0x12) < 1) *(uint*)e &= 0x7fffffff;
         }
     }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f280</c> — <b>la bande de quatre images</b> que
+    /// <see cref="EntityHandler_00406970"/> parcourt, et que <c>FUN_00406aa0</c> emploie aussi.
+    ///
+    /// <para>
+    /// <b>C'est une vraie animation, et elle se lit dans la donnee seule</b> : quatre tuiles
+    /// <c>0x1f x 0x1f</c> prises sur la meme ligne <c>y = 0xa0</c>, a <c>x = 0x00</c>, <c>0x20</c>,
+    /// <c>0x40</c>, <c>0x60</c>. Les plages voisines de cette region n'ont ni motif separateur ni
+    /// changement d'attribut ; la borne haute est <c>0x0054f2a0</c>, la planche de
+    /// <see cref="EntityHandler_00406810"/> — une borne prouvee par le CODE.
+    /// </para>
+    /// <para>
+    /// <b>Le corps confirme le compte</b> : son <c>+0x40</c> avance de 0 a 3 puis <b>s'arrete sur
+    /// 3</b>. Il ne reboucle pas, contrairement a <see cref="EntityHandler_00404C80"/> qui remet a
+    /// zero des qu'il depasse 3. Donnee et code se bornent l'un l'autre, exactement.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F280 =
+    [
+        0x00, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f280
+        0x20, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f288
+        0x40, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f290
+        0x60, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f298
+    ];
+
+    private static byte* s_Descriptors0054F280Storage;
+
+    private static byte* Descriptors0054F280()
+        => NativeCopy(s_Descriptors_0054F280, ref s_Descriptors0054F280Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x00406970</c> — <b>la bouffee qui part de biais, enfle et ralentit</b>,
+    /// sous-type <b>56</b> du bloc <c>0x00553ea8</c>, sous-zones 0 a 2 de la mine. Absente de
+    /// <c>Blaze.c</c> — alors que sa voisine immediate <c>FUN_00406aa0</c> y est ; 304 octets
+    /// releves au desassembleur, <c>Legacy/Raw/Blaze/FUN_00406970.asm</c>.
+    ///
+    /// <para>
+    /// <b>Un seul champ porte deux roles, et c'est ce qui fait tout le mouvement.</b>
+    /// <c>+0x14</c> est a la fois la <b>vitesse</b> et le <b>compte a rebours</b> : chaque image,
+    /// l'entite avance de <c>sin/cos(+0x12) * (+0x14 * 2)</c> puis <c>+0x14</c> perd un. Elle part
+    /// donc vite et <b>ralentit jusqu'a l'arret</b>, ou elle meurt — tiree entre 10 et 14 images de
+    /// vie a la naissance.
+    /// </para>
+    /// <para>
+    /// <b>Le cap ne change jamais.</b> <c>+0x12</c> est tire une fois sur douze bits et n'est plus
+    /// touche : la trajectoire est une droite, pas une spirale. Seul le <c>Y</c> monte, d'un
+    /// <c>0xa000</c> constant.
+    /// </para>
+    /// <para>
+    /// <b>L'image avance a une cadence calculee a la naissance</b> : <c>+0x16 = +0x14 / 3</c>, soit
+    /// 3 ou 4 images de tenue par dessin — une division signee par 3, emise par MSVC en
+    /// <c>imul 0x55555556</c> suivi du rattrapage de signe. <c>+0x5c</c> compte les images, et
+    /// quand il atteint <c>+0x16</c> il repart a zero en avancant <c>+0x40</c>. Celui-ci
+    /// <b>s'arrete sur 3</b> et n'y revient pas : la bouffee se fige sur sa derniere image.
+    /// </para>
+    /// <para>
+    /// <b>Elle enfle en s'eteignant</b> : l'echelle gagne <c>0x64</c> par image des deux cotes
+    /// pendant que la teinte perd 6, partie de <c>0x5a</c>.
+    /// </para>
+    /// <para>
+    /// <b>La mort ne coupe pas le tour.</b> Le bit de vie est efface au milieu du corps, et tout ce
+    /// qui suit — la teinte, l'echelle, l'avance de l'image — s'execute quand meme sur cette
+    /// derniere image. C'est le binaire ; transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00406970(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F280();   // Ghidra: &DAT_0054f280
+            *(short*)(e + 0x28) = 0x1000;
+            *(short*)(e + 0x2a) = 0x1000;
+            e[0x0a] = 5;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);   // le cap, fixe une fois pour toutes
+
+            e[0x40] = 0;
+            *(int*)(e + 0x5c) = 0;
+
+            short life = (short)(CrtRand() % 5 + 0x0a);          // 10 a 14
+            *(short*)(e + 0x14) = life;                          // vitesse ET compte a rebours
+            *(short*)(e + 0x16) = (short)(life / 3);             // la tenue d'image, 3 ou 4
+
+            e[0x38] = 0x5a;
+            e[0x39] = 0x5a;
+            e[0x3a] = 0x5a;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(int*)(e + 0x20) += 0xa000;
+
+            short yaw = *(short*)(e + 0x12);
+            short speed = *(short*)(e + 0x14);
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(yaw) * (speed * 2);
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(yaw) * (speed * 2);
+
+            speed -= 1;
+            *(short*)(e + 0x14) = speed;
+            // Le bit de vie tombe ici, mais le tour CONTINUE : tout ce qui suit s'execute encore.
+            if (speed <= 0) *(uint*)e &= 0x7fffffff;
+
+            BrightenEntityTint_00404DE0(e, -6, -6, -6);
+
+            *(short*)(e + 0x28) += 0x64;
+            *(short*)(e + 0x2a) += 0x64;
+
+            *(int*)(e + 0x5c) += 1;
+            if (*(int*)(e + 0x5c) >= *(short*)(e + 0x16))
+            {
+                *(int*)(e + 0x5c) = 0;
+                e[0x40]++;
+                if (e[0x40] >= 4) e[0x40] = 3;   // s'arrete sur la derniere image, ne reboucle pas
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00406aa0 @ 0x00406aa0 — <b>la poussiere posee contre une paroi</b>, sous-type
+    /// <b>55</b> du bloc <c>0x00553ea8</c>, sous-zones 0 a 2 de la mine. Decompilee dans
+    /// <c>Blaze.c</c>. Elle partage la bande de quatre images de
+    /// <see cref="EntityHandler_00406970"/> — <see cref="s_Descriptors_0054F280"/>.
+    ///
+    /// <para>
+    /// <b>Sa naissance choisit un AXE, puis s'etale le long de l'autre.</b> Une piece decide si le
+    /// pas se fait en <c>X</c> ou en <c>Z</c> ; l'axe tire recoit <c>(rand % 3 - 1) * 0x64000</c>,
+    /// soit une case pleine d'un cote, de l'autre, ou rien. L'axe <b>non</b> tire recoit a la place
+    /// un etalement de <c>-100</c> a <c>+99</c> cases de <c>0x1000</c>. C'est un placement en
+    /// bordure : l'entite se range le long d'un mur plutot qu'au hasard dans le volume.
+    /// </para>
+    /// <para>
+    /// <b>Et il y a un cas ou elle part en diagonale.</b> Si l'axe tire sort un <c>0</c> — une fois
+    /// sur trois —, les deux pas sont nuls, donc <b>les deux</b> axes recoivent l'etalement, et le
+    /// meme : l'entite se pose sur la diagonale exacte. Le binaire teste les deux
+    /// independamment ; transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// <b>Trois etats, et le bit <c>0x4000</c> fait l'attente.</b> Meme patron que
+    /// <see cref="EntityHandler_0040F650"/> : l'etat 1 attend <c>+0x14</c> images (0 a 9) avec le
+    /// bit pose ; a son terme l'etat passe a 2 et le bit tombe. L'etat 2 monte de <c>0x5000</c> par
+    /// image et tire son image de <c>+0x12 &gt;&gt; 2</c> — quatre images de tenue chacune —, puis
+    /// meurt quand l'indice depasse 3.
+    /// </para>
+    /// <para>
+    /// <b>Le compteur sert deux fois.</b> <c>+0x12</c> compte les images de l'attente, est remis a
+    /// zero au passage a l'etat 2, et recompte celles de l'animation.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00406AA0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F280();   // Ghidra: &DAT_0054f280
+            *(short*)(e + 0x28) = 0x1000;
+            *(short*)(e + 0x2a) = 0x1000;
+            e[0x0a] = 5;
+            e[0x0b] = 0;
+
+            // Pile ou face : le pas se fait en X ou en Z, jamais dans les deux.
+            short stepX = 0;
+            short stepZ = 0;
+            if (CrtRand() % 2 == 0) stepX = (short)(CrtRand() % 3 - 1);
+            else                    stepZ = (short)(CrtRand() % 3 - 1);
+
+            short spread = (short)(CrtRand() % 200 - 100);
+
+            // L'axe qui n'a pas de pas recoit l'etalement. Quand le pas tire vaut 0, LES DEUX en
+            // recoivent un, et le meme : l'entite part sur la diagonale.
+            *(int*)(e + 0x1c) += stepX * 0x64000 + (stepX == 0 ? spread << 0xc : 0);
+            *(int*)(e + 0x24) += stepZ * 0x64000 + (stepZ == 0 ? spread << 0xc : 0);
+
+            // Puis une gigue de +-5 cases sur les trois axes.
+            *(int*)(e + 0x1c) += (CrtRand() % 10 - 5) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 10 - 5) * 0x1000;
+
+            e[0x40] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(uint*)e |= 0x4000;                          // pose : l'attente ne se montre pas
+
+            *(int*)(e + 0x24) += (CrtRand() % 10 - 5) * 0x1000;
+
+            e[0x38] = 0x50;
+            e[0x39] = 0x50;
+            e[0x3a] = 0x50;
+            *(short*)(e + 0x14) = (short)(CrtRand() % 10);   // l'attente, 0 a 9 images
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) += 1;
+            if (*(short*)(e + 0x14) < *(short*)(e + 0x12))
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+                *(uint*)e &= 0xffffbfff;                  // tombe : elle se montre
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x12) += 1;
+            *(int*)(e + 0x20) += 0x5000;
+
+            byte frame = (byte)(*(short*)(e + 0x12) >> 2);   // quatre images de tenue chacune
+            e[0x40] = frame;
+            if (frame > 3) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f250</c> — <b>la seconde bande de quatre images</b>, celle de
+    /// <see cref="EntityHandler_00406C40"/>.
+    ///
+    /// <para>
+    /// Meme forme que <see cref="s_Descriptors_0054F280"/> : quatre tuiles <c>0x1f x 0x1f</c>
+    /// alignees, <c>x</c> avancant de <c>0x20</c> — mais sur la ligne <c>y = 0xc0</c>, et sur une
+    /// autre page (<c>00 01 18 00</c> au lieu de <c>01 02 18 00</c>).
+    /// </para>
+    /// <para>
+    /// <b>La borne est le debut de la bande suivante</b> : a <c>0x0054f270</c> le <c>y</c> retombe
+    /// de <c>0xc0</c> a <c>0x20</c>, donc une autre animation commence. Le corps le confirme au
+    /// compte pres — son <c>+0x40</c> avance aux images 6, 12 et 18, soit exactement jusqu'a 3.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F250 =
+    [
+        0x00, 0xc0, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f250
+        0x20, 0xc0, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f258
+        0x40, 0xc0, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f260
+        0x60, 0xc0, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f268
+    ];
+
+    private static byte* s_Descriptors0054F250Storage;
+
+    private static byte* Descriptors0054F250()
+        => NativeCopy(s_Descriptors_0054F250, ref s_Descriptors0054F250Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x00406c40</c> — <b>l'eclat qui retombe</b>, sous-type <b>54</b> du bloc
+    /// <c>0x00553ea8</c>, sous-zones 0 a 2 de la mine. Absente de <c>Blaze.c</c> ; 432 octets
+    /// releves au desassembleur, <c>Legacy/Raw/Blaze/FUN_00406C40.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est le premier corps VRAIMENT balistique de ce fichier.</b> Les autres tournent, montent
+    /// ou derivent ; celui-ci se donne une vitesse sur les trois axes — <c>±8</c> cases en <c>X</c>
+    /// et <c>Z</c>, <c>+6</c> a <c>+15</c> vers le haut — et <b>la vitesse verticale perd
+    /// <c>0x1000</c> par image</b>. Il monte, il ralentit, il retombe.
+    /// </para>
+    /// <para>
+    /// <b>Vingt-quatre images, ni plus ni moins</b> : la mort est un test d'egalite sur
+    /// <c>+0x12 == 0x18</c>, pas une comparaison. L'image avance aux images <b>6, 12 et 18</b>,
+    /// trois tests d'egalite a la suite — l'indice va donc exactement de 0 a 3, et la bande en porte
+    /// quatre.
+    /// </para>
+    /// <para>
+    /// <b>Une variante par <c>+0x14</c></b>, et elle ne change qu'une chose : <c>+0x0a</c> vaut
+    /// <c>8</c> quand <c>+0x14</c> vaut 1, <c>6</c> sinon.
+    /// </para>
+    /// <para>
+    /// <b>L'echelle est ecrite DEUX fois a la naissance</b>, comme le <c>+0x12</c> de la variante 2
+    /// de <see cref="EntityHandler_00406130"/> : d'abord <c>rand() % 0x400 + 0xc00</c> sur
+    /// <c>+0x28</c> et <c>+0x2a</c>, puis <c>rand() % 0x800 + 0x800</c> sur les deux, qui ecrase.
+    /// Les deux premiers tirages sont <b>morts</b> — il ne reste d'eux que leur consommation du
+    /// generateur, qui decale la suite. Transcrit tel quel : c'est la troisieme ecriture morte
+    /// relevee dans ce fichier.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00406C40(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F250();   // Ghidra: &DAT_0054f250
+
+            // Premiere echelle : ECRASEE plus bas. Seule sa consommation du generateur compte.
+            *(short*)(e + 0x28) = (short)(CrtRand() % 0x400 + 0xc00);
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 0x400 + 0xc00);
+
+            e[0x0a] = *(short*)(e + 0x14) == 1 ? (byte)8 : (byte)6;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x64 - 0x32) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x64 - 0x32) * 0x1000;
+
+            *(int*)(e + 0x50) = (CrtRand() % 0x10 - 8) * 0x1000;    // vitesse X
+            *(int*)(e + 0x54) = (CrtRand() % 0x0a + 6) * 0x1000;    // vitesse Y, vers le haut
+            *(int*)(e + 0x58) = (CrtRand() % 0x10 - 8) * 0x1000;    // vitesse Z
+
+            *(short*)(e + 0x28) = (short)(CrtRand() % 0x800 + 0x800);   // la vraie echelle
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            e[0x40] = 0;
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 0x800 + 0x800);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(int*)(e + 0x1c) += *(int*)(e + 0x50);
+            *(int*)(e + 0x20) += *(int*)(e + 0x54);
+            *(int*)(e + 0x54) -= 0x1000;                  // la gravite
+            *(int*)(e + 0x24) += *(int*)(e + 0x58);
+
+            *(short*)(e + 0x12) += 1;
+            short age = *(short*)(e + 0x12);
+
+            if (age == 0x18) *(uint*)e &= 0x7fffffff;     // egalite, pas comparaison
+            if (age == 6 || age == 0x0c || age == 0x12) e[0x40]++;
+        }
+    }
 }
