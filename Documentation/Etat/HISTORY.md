@@ -4,6 +4,23 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 21)
+
+- refactor : **`Handlers/Mine.cs` coupe en deux** a 3 734 lignes — `Mine.cs` (2 093 l.) et
+  `Handlers/MineMecanismes.cs` (1 693 l.). Aucun code n'a change : 1 951 lignes de code avant,
+  1 951 apres, les memes 90 membres, verification par tri et `diff`
+- doc : la coupure n'est pas une coupure de taille mais **de role**, avec un test d'appartenance —
+  le decor (ce qui sonne, bouge, brille, tombe, **et frappe**) d'un cote ; de l'autre ce qui prend
+  le groupe ou la partie en charge (compte les membres, lit la table des emplacements, lance un
+  script, coupe les manettes, change de carte). **Abimer n'est pas decider** : le pilon et les deux
+  masses restent du cote decor, la tremie passe du cote mecanismes parce qu'elle change de carte
+- refactor : `ScrapeSoundTick` remis aupres de `TickScrapingBlock`, son autre appelant — il vivait
+  dans la section de la tremie, qui est partie
+- doc : `ARCHITECTURE.md` porte desormais le test `<Zone>.cs` / `<Zone>Mecanismes.cs`, et note que
+  `Forest.cs` s'y preterait de la meme facon
+- doc : ni `Mine.cs` ni `MineMecanismes.cs` ne declarent de champ statique — la coupure est donc a
+  l'abri du piege d'ordre d'initialisation entre fichiers d'une classe partielle
+
 ## 2026-09-16 (suite 20)
 
 - feat : `0x00451B40`, **l'effondrement** — le dernier creneau de la table `0x0056adc8` de la mine.

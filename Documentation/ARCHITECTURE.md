@@ -248,6 +248,22 @@ les répertoires sont le niveau « ce que l'écran atteint ».
 | `Ai/` | l'intelligence, **une créature par fichier** | choisit une action pour une entité |
 | `Handlers/` | décor et scénario | ni IA ni magie : coffres, radeau, portes, sons |
 
+**Une zone peut avoir deux fichiers dans `Handlers/`, et la coupure a son propre test.** La mine
+en a deux depuis le 2026-09-16 : `Mine.cs` (2 079 l.) et `MineMecanismes.cs` (1 694 l.). Ce n'est
+pas une coupure de taille, c'est une coupure de rôle, et elle se lit **dans le corps** :
+
+| fichier | ce qui y va | test d'appartenance |
+|---|---|---|
+| `<Zone>.cs` | le décor : ce qui sonne, bouge, brille, tombe — **et ce qui frappe** | ne consulte jamais le groupe |
+| `<Zone>Mecanismes.cs` | ce qui prend le **groupe** ou la **partie** en charge | compte les membres, lit la table des emplacements, lance un script, coupe les manettes, change de carte |
+
+Le point qui tranche les cas douteux : **abîmer n'est pas décider**. Le pilon et les deux masses
+de la mine enlèvent des points de vie au groupe et restent pourtant du côté décor ; la trémie
+ressemble à un bloc poussé et se range du côté mécanismes, parce qu'elle change de carte. Les deux
+fichiers sont la même classe partielle, et les aides partagées (`ZoneSound`,
+`AddEntityVelocity_00454580`, `EmitJetPair`, `ScrapeSoundTick`) restent dans `<Zone>.cs` —
+**rien n'est dupliqué**.
+
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son
 appelant » (branche 4) que ce tableau tranche, **par le test d'appartenance, pas par le sujet
@@ -281,6 +297,8 @@ Donc, pour tout ce qui sera transcrit dans `State03/` désormais :
 4. **Surveiller ce qui grossit.** `Spells/School0Wizard.cs` (9 137 l.) et `Handlers/Forest.cs`
    (2 969 l.) sont les deux à regarder en premier. La molette est prête pour le premier : couper par
    **indice de sort**, qui est une vraie coordonnée du jeu — c'est l'ordre d'apprentissage.
+   `Handlers/Mine.cs` a été coupé le 2026-09-16 à 3 734 lignes, par le test décor / mécanismes
+   ci-dessus ; `Forest.cs` s'y prêterait de la même façon le jour où il le faudra.
 
 L'objectif est énoncé simplement : **plus jamais un fichier de 70 000 lignes.**
 
