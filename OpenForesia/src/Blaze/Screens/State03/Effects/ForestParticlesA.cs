@@ -1164,10 +1164,20 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_0040F8E0(byte* e)
+        => TickWideSpray_0040F8E0(e, Descriptors0054F778(), 500, 0xfa, 0x46, 0x1e, 0x32);   // Ghidra: &DAT_0054f778
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0040F8E0"/>, avec ce que les copies du Labyrinthe des
+    /// morts changent : la planche, la largeur et le recul des deux dispersions (<c>rand % largeur -
+    /// recul</c> en X et en Y — Z garde <c>±100</c> ; le Y du modele n'est pas centre, <c>0x46</c> et
+    /// <c>0x1e</c>) et le facteur du decalage de Z par le
+    /// sinus du cap, <b>negatif</b> la-bas (<c>neg ecx</c> avant le produit par 50).
+    /// </summary>
+    private static void TickWideSpray_0040F8E0(byte* e, byte* plate, int xSpread, int xBack, int ySpread, int yBack, int zCourse)
     {
         if (*(short*)(e + 0x10) == 0)
         {
-            *(byte**)(e + 0x3c) = Descriptors0054F778();   // Ghidra: &DAT_0054f778
+            *(byte**)(e + 0x3c) = plate;
 
             *(ushort*)(e + 0x28) = (ushort)(SignedMask(CrtRand(), 0x3ff) + 0xc00);
             ushort discarded = (ushort)(SignedMask(CrtRand(), 0x3ff) + 0xc00);
@@ -1175,12 +1185,12 @@ public static unsafe partial class Blaze
             e[0x0b] = 0;
             *(ushort*)(e + 0x2a) = discarded;
 
-            *(int*)(e + 0x1c) += (CrtRand() % 500 - 0xfa) * 0x1000;
-            *(int*)(e + 0x20) += (CrtRand() % 0x46 - 0x1e) * 0x1000;
+            *(int*)(e + 0x1c) += (CrtRand() % xSpread - xBack) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % ySpread - yBack) * 0x1000;
             *(int*)(e + 0x24) += (CrtRand() % 200 - 100) * 0x1000;
 
             short course = *(short*)(e + 0x32);
-            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(course) * 0x32;
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(course) * zCourse;
             *(int*)(e + 0x1c) += Winsys3d.GetCosTableEntry(course) * 0x32;
 
             *(int*)(e + 0x50) = (SignedMask(CrtRand(), 0x0f) - 8) * 0x1000;

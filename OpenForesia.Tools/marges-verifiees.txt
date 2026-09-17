@@ -81,3 +81,12 @@ EntityHandler_0041B420/TickFivePhaseBurst | 0x0054FD08 | +0x08 | TickFivePhaseBu
 # ---- la vieille tour, categorie B lot 3 (2026-09-17)
 EntityHandler_00417000 | 0x0054FA50 | +0x00 | EntityHandler_00417000,BrightenEntityTint_00404DE0 | 468d5b384cb2 | pose 0 a la naissance, ne l'ecrit plus ; BrightenEntityTint_00404DE0 ne touche pas +0x40 (releve FUN_00417000.asm)
 EntityHandler_0041B2F0 | 0x0054FD50 | +0x00 | EntityHandler_0041B2F0 | e0f6d3ecd2a2 | pose 0 a la naissance (Blaze.c FUN_0041b2f0), ne l'ecrit plus
+
+# ---- le Labyrinthe des morts, lot 1 (2026-09-17) : les memes corps que la tour, memes preuves
+EntityHandler_004232A0 | 0x00550280 | +0x00 | EntityHandler_004232A0,TickPurpleSmoke | 78c71b5c0d7a | trois ecritures de +0x40 dans TickPurpleSmoke, toutes a 0 (FUN_004232b0 = FUN_00413850 a la planche pres)
+EntityHandler_00423D40 | 0x00550280 | +0x00 | EntityHandler_00423D40,TickFivePhaseBurst | 1cf37cba270e | TickFivePhaseBurst n'ecrit que des zeros dans +0x40 (cinq ecritures)
+EntityHandler_00424490 | 0x00550280 | +0x00 | EntityHandler_00424490,TickFivePhaseBurst | e3533d0dfbfe | idem
+EntityHandler_00423D40 | 0x00550438 | +0x00 | EntityHandler_00423D40,TickFivePhaseBurst | 1cf37cba270e | role 2 : le corps pose 0 dans la meme passe
+EntityHandler_00424490 | 0x00550438 | +0x08 | EntityHandler_00424490,TickFivePhaseBurst | e3533d0dfbfe | idem, second enregistrement
+EntityHandler_00423D40/TickFivePhaseBurst | 0x00550280 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | role 3 : pose atlas + 8 et 0
+EntityHandler_00424490/TickFivePhaseBurst | 0x00550280 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | idem

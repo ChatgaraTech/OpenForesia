@@ -4,6 +4,35 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 9)
+
+- feat : **le Labyrinthe des morts, premier lot — zone 5, 23 → 42 sur 160**, catégorie A vide : dix-neuf
+  corps branchés sur des corps déjà écrits, à la planche ou à quelques constantes près
+- feat : `Effects/LabyrinthParticles.cs` — douze planches relevées et bornées, et les renvois : grain,
+  escarbille lourde, deux éclats, gerbe serrée, fumée violette, deux amorces de la gerbe à cinq phases
+- feat : `Cutscene/LabyrinthScenes.cs` — les deux amorces de la scène parlante (bloc `0x005714b0`,
+  piste 0x17) ; `AreaExitFlash.cs` — l'amorce du flash, décalée en X et non en Z
+- feat : **l'Agonisant `0x004BEE40` branché sur le Pourpre preux** — mêmes instructions, intégration
+  réordonnée ; la lueur `0x00460F30`/`0x004635B0` sur `0x00452A90`, copie stricte
+- fix : quatre corps modèles paramétrés sans changer leurs appels (`TickHeavySpark_00407800`,
+  `TickWideSpray_0040F8E0`, `TickDriftingShard`, `TickProjectedShard`) ; sept marges courtes
+  prouvées et scellées, aucune preuve périmée
+- doc : **la fumée et la gerbe du Labyrinthe partagent une seule planche**, `0x00550280`, là où la
+  tour en avait deux — la gerbe écrit dans ce que la fumée lit
+
+---
+
+## 2026-09-17 (suite 8)
+
+- doc : **le Labyrinthe des morts est trié** — `Zone5ParComplexite.md` : 137 corps à écrire, 97 formes
+  neuves, 15 corps proches d'un corps déjà écrit
+- doc : **l'Agonisant `0x004BEE40` est le Pourpre preux à 25 lignes près**, et les 17 IA de la zone
+  font 11 lectures ; leurs trois « appelées inconnues » sont des copies du chercheur de proie
+- doc : un pré-filtre par recouvrement de lignes remplace le `diff` corps contre corps : 137 cibles
+  contre 777 corps écrits en trois secondes, le `diff` ne tournant que sur le meilleur candidat
+
+---
+
 ## 2026-09-17 (suite 7)
 
 - feat : **la vieille tour est complète — zone 4, 176 sur 176**. Les 4 corps de la catégorie D et

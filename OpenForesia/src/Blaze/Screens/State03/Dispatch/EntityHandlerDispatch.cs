@@ -1221,6 +1221,9 @@ public static unsafe partial class Blaze
             case 0x004D1F70:
             case 0x004E67C0:
             case 0x004EB530:
+            // L AGONISANT du Labyrinthe des morts (sous-zones 5 a 8) : le Pourpre preux, integration
+            // reordonnee, tables de sauts identiques en relatif, chercheur 0x004BDE40 conforme.
+            case 0x004BEE40:
                 TickSceneEntityAi_004D1F70(record); return;
 
             // LE CHEVALIER NOIR (vieille tour, sous-zones 5, 6, 8, 10) ET LE PLATINUM (3, 7, 9) — le Pourpre
@@ -1664,6 +1667,29 @@ public static unsafe partial class Blaze
             case 0x0045F7E0: TickSaggingWalkway_0045F7E0(record); return;     // la passerelle
             case 0x0045C870: EntityHandler_0045C870(record); return;          // le wagonnet qui regrandit a l arret
             case 0x0045ECC0: EntityHandler_0045ECC0(record); return;          // le wagonnet qui regrandit toujours
+
+            // ====================================================================================
+            // LE LABYRINTHE DES MORTS, lot 1 — des corps deja ecrits, a la planche ou au bloc pres.
+            // Effects/LabyrinthParticles.cs, Cutscene/LabyrinthScenes.cs, Effects/AreaExitFlash.cs.
+            // ====================================================================================
+            case 0x00460F30: EntityHandler_00452A90(record); return;          // la lueur, copie stricte (0-3)
+            case 0x004635B0: EntityHandler_00452A90(record); return;          // la lueur, copie stricte (4, 9)
+            case 0x0041E250: EntityHandler_0041E250(record); return;          // le grain
+            case 0x00421240: EntityHandler_00421240(record); return;
+            case 0x0041E070: EntityHandler_0041E070(record); return;          // l escarbille lourde
+            case 0x00421060: EntityHandler_00421060(record); return;
+            case 0x0041D920: EntityHandler_0041D920(record); return;          // l eclat en ligne droite
+            case 0x00420910: EntityHandler_00420910(record); return;
+            case 0x0041EAF0: EntityHandler_0041EAF0(record); return;          // l eclat projete
+            case 0x00421AE0: EntityHandler_00421AE0(record); return;
+            case 0x0041E430: EntityHandler_0041E430(record); return;          // la gerbe serree
+            case 0x00421420: EntityHandler_00421420(record); return;
+            case 0x004232A0: EntityHandler_004232A0(record); return;          // la fumee violette
+            case 0x00423D40: EntityHandler_00423D40(record); return;          // les amorces de la gerbe
+            case 0x00424490: EntityHandler_00424490(record); return;
+            case 0x004236F0: EntityHandler_004236F0(record); return;          // les amorces de la scene parlante
+            case 0x00424460: EntityHandler_00424460(record); return;
+            case 0x00423240: EntityHandler_00423240(record); return;          // l amorce du flash de sortie
             case 0x0045C2E0: TickWardingGuardroomMaster_0045C2E0(record); return; // le maitre qui rend la garde invulnerable
 
             // Cutscene/OldTowerScenes.cs — les trois fins de scene de 0x0056b0c8.

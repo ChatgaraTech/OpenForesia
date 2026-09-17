@@ -647,14 +647,21 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_00419D30(byte* e)
+        => TickProjectedShard(e, Descriptors0054FBB8(), 2, 3, 0x0a);             // Ghidra: `mov dword [esi+3Ch],54FBB8h`
+
+    /// <summary>Le corps de <see cref="EntityHandler_00419D30"/>. Ses copies du Labyrinthe des morts
+    /// changent la planche, le role de dessin (<c>3</c>), le pas du vol (<c>sin/cos &lt;&lt; 4</c>,
+    /// deux fois plus long) et la cadence d'image (toutes les <c>5</c> images) — la boucle de
+    /// naissance, elle, garde ses onze pas de <c>&lt;&lt; 3</c>.</summary>
+    private static void TickProjectedShard(byte* e, byte* plate, byte drawRole, int flightShift, short frameCadence)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
-            *(byte**)(e + 0x3c) = Descriptors0054FBB8();                         // Ghidra: `mov dword [esi+3Ch],54FBB8h`
+            *(byte**)(e + 0x3c) = plate;
             *(short*)(e + 0x28) = 0x800;
             *(short*)(e + 0x2a) = 0x800;
-            e[0x0a] = 2;
+            e[0x0a] = drawRole;
             e[0x0b] = 0;
 
             int turn = CrtRand();
@@ -688,12 +695,12 @@ public static unsafe partial class Blaze
         // Ghidra: LAB_00419ded
         if (*(short*)(e + 0x10) != 2) return;
 
-        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) << 3;
-        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) << 3;
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) << flightShift;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) << flightShift;
         *(int*)(e + 0x20) += 0x3000;
 
         (*(short*)(e + 0x12))++;
-        if (*(short*)(e + 0x12) < 0x0a) return;
+        if (*(short*)(e + 0x12) < frameCadence) return;
 
         *(short*)(e + 0x12) = 0;
         e[0x40]++;
@@ -1915,13 +1922,19 @@ public static unsafe partial class Blaze
     /// tour ne pose.</para>
     /// </summary>
     private static void TickDriftingShard_00416920(byte* e)
+        => TickDriftingShard(e, Descriptors0054FB88(), 7, 0xfb);            // Ghidra: &DAT_0054fb88
+
+    /// <summary>Le corps de <see cref="TickDriftingShard_00416920"/> : la planche et les deux octets
+    /// de role de dessin <c>+0x0a</c>/<c>+0x0b</c> sont tout ce que ses copies du Labyrinthe des
+    /// morts changent (<c>9</c> et <c>0</c> la-bas).</summary>
+    private static void TickDriftingShard(byte* e, byte* plate, byte drawRole, byte drawLayer)
     {
         if (*(short*)(e + 0x10) == 0)
         {
-            *(byte**)(e + 0x3c) = Descriptors0054FB88();                     // Ghidra: &DAT_0054fb88
+            *(byte**)(e + 0x3c) = plate;
             e[0x40] = 0;
-            e[0x0a] = 7;
-            e[0x0b] = 0xfb;
+            e[0x0a] = drawRole;
+            e[0x0b] = drawLayer;
 
             *(int*)(e + 0x1c) += (CrtRand() % 0x32 - 0x19) * 0x1000;
             *(int*)(e + 0x24) += (CrtRand() % 0x32 - 0x19) * 0x1000;

@@ -1505,10 +1505,16 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_00407800(byte* e)
+        => TickHeavySpark_00407800(e, Descriptors0054F1B0() + 8);   // Ghidra: &DAT_0054f1b8
+
+    /// <summary>Le corps de <see cref="EntityHandler_00407800"/>, sa planche en parametre : le
+    /// Labyrinthe des morts en emet deux copies qui ne different que par elle
+    /// (<c>Effects/LabyrinthParticles.cs</c>).</summary>
+    private static void TickHeavySpark_00407800(byte* e, byte* plate)
     {
         if (*(short*)(e + 0x10) == 0)
         {
-            *(byte**)(e + 0x3c) = Descriptors0054F1B0() + 8;   // Ghidra: &DAT_0054f1b8
+            *(byte**)(e + 0x3c) = plate;
 
             // Premiere echelle : ECRASEE plus bas.
             *(short*)(e + 0x28) = (short)(CrtRand() % 0x400 + 0xc00);

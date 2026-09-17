@@ -37,8 +37,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **451** |
-| à transcrire | **653** |
+| implémentés, jamais appelés | **470** |
+| à transcrire | **634** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -48,7 +48,7 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts | 23 / 160 |
+| 5 | Le Labyrinthe des morts | 42 / 160 |
 | 6 | Le château de l’immortel | 28 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
@@ -83,9 +83,12 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    tous les corps déjà écrits** (diff LOOSE de `census-duplicates.sh`, cache régénéré) avant d'en
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
-5. **La zone 6, le château (28 / 170)**, ou **la zone 5, le Labyrinthe (23 / 160)** : les parentés de
-   la tour y ont déjà servi — la Crapouille, le Pourpre preux et la Belle bleue ont leurs copies
-   dans ces zones. Un tri par complexité suivi du diff contre les corps écrits dira le vrai coût.
+5. **La zone 5, le Labyrinthe (42 / 160) — TRIÉE, premier lot écrit le 2026-09-17** (`Zone5ParComplexite.md`,
+   `REVERSE_STATUS.md` suite 14). 137 corps à écrire, **97 formes neuves** une fois les jumeaux
+   fusionnés, **15 corps proches d'un corps déjà écrit**. Le premier lot — ces copies, les quatre autres amorces et
+   **l’Agonisant, qui est le Pourpre preux** — est branché (catégorie A vide). Reste B 56, C 35, D 11, E 16. Les 17 IA font
+   11 lectures ; leurs « appelées inconnues » sont des copies de `FUN_004A1020`.
+   La zone 6, le château (28 / 170), reste à trier de la même façon.
 6. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et

@@ -137,15 +137,25 @@ public static unsafe partial class Blaze
     /// <see cref="EntityHandler_00418370"/>.</summary>
     private static void EntityHandler_00418640(byte* e) => EnterAreaExitFlash(e, 0x3b, 2, 0x64000);
 
+    /// <summary>
+    /// Ghidra: <c>0x00423240</c> — <b>l'amorce du Labyrinthe des morts</b>, creneau de la table
+    /// <c>0x0056b0c8</c> des sous-zones 4 et 9. Absente de <c>Blaze.c</c> ; dix-neuf instructions.
+    /// Le genre vaut <c>0x2f</c>, l'ancre est l'enregistrement <b>0</b>, et c'est <b>X</b> qui est
+    /// decale, de <c>-0x64000</c> (<c>add ecx,0FFF9C000h</c> sur <c>0x005fa5fc</c>) — la ou la tour
+    /// decalait Z vers l'avant.
+    /// </summary>
+    private static void EntityHandler_00423240(byte* e) => EnterAreaExitFlash(e, 0x2f, 0, 0, -0x64000);
+
     /// <summary>Le corps commun des amorces a ancre : le genre en <c>+0x5c</c>, la pose de
     /// l'enregistrement <paramref name="anchorIndex"/> de <c>0x005fa5e0</c> (position, Z decale de
-    /// <paramref name="zShift"/>, puis les trois angles), et le flash.</summary>
-    private static void EnterAreaExitFlash(byte* e, int kind, int anchorIndex, int zShift)
+    /// <paramref name="zShift"/> et X de <paramref name="xShift"/>, puis les trois angles), et le
+    /// flash.</summary>
+    private static void EnterAreaExitFlash(byte* e, int kind, int anchorIndex, int zShift, int xShift = 0)
     {
         byte* anchor = Mem.Entity(0x005fa5e0) + anchorIndex * 0x9c;
 
         *(int*)(e + 0x5c) = kind;
-        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c) + xShift;
         *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
         *(int*)(e + 0x24) = *(int*)(anchor + 0x24) + zShift;
         *(short*)(e + 0x30) = *(short*)(anchor + 0x30);

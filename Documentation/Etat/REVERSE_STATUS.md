@@ -23126,3 +23126,99 @@ Toutes sous `Ai/OldTower/`, un fichier par routine (règle du répertoire) :
 Vérifications : `dotnet build` 0 erreur (38 avertissements, comme avant) ; quatorze relevés neufs
 sous `Legacy/Raw/Blaze/OldTower/` et `Legacy/Raw/Blaze/AreaVerbs/` ; recensement et tri de la zone
 régénérés ; aucun des corps neufs n'était marqué testé. **Rien n'a tourné en jeu.**
+
+## 2026-09-17 (suite 14) — le Labyrinthe des morts trié, par complexité et par parenté
+
+`Zone5ParComplexite.md` régénéré : **160 gestionnaires, 23 implémentés, 137 à écrire** — A 11,
+B 59, C 39, D 11, E 17. Aucun corps écrit dans cette séance.
+
+### Le tri par parenté, en trois secondes
+
+Le `diff` corps contre corps (le procédé de la suite 13) prenait plusieurs minutes pour une poignée
+de cibles : il est quadratique en nombre de paires. **Le pré-filtre qui l'a remplacé** lit une fois
+`bodies.tsv` (colonne LOOSE) et note chaque paire (à écrire, écrit) de tailles voisines (±30 %) par le
+**recouvrement des multi-ensembles de lignes normalisées**, `2 × commun / (taille A + taille B)`. Les
+137 cibles contre les 777 corps écrits passent en **trois secondes** ; le vrai `diff` ne tourne ensuite
+que sur le meilleur candidat. Même principe entre les cibles elles-mêmes (±25 %, score > 0,9).
+
+Seuil retenu pour « copie » : un `diff` de **15 % au plus** de la taille du corps. Résultat :
+
+| | corps |
+|---|---:|
+| à écrire | 137 |
+| **proches d'un corps déjà écrit** (diff ≤ 15 %) | **15** |
+| formes neuves une fois les jumeaux de la zone fusionnés | **97** |
+
+### Ce que le tri a désigné
+
+- **L'Agonisant `0x004BEE40` est le Pourpre preux** (`0x004D1F70`) à 25 lignes de diff sur 1 214 —
+  recouvrement 0,994. La plus grosse routine de la zone serait une lecture d'écarts.
+- **Les « appelées inconnues » des IA ne bloquent rien** : `0x004B9220`, `0x004C3450` et
+  `0x004BDE40` sont trois copies de `FUN_004A1020`, le chercheur de proie, au saut près (272
+  instructions identiques chacune).
+- **Les 17 routines se ramènent à 11 lectures** : six paires d'un bloc de sous-zones à l'autre —
+  `0x004B8540` = `0x004C2770` (Sanguinaire, identiques), `0x004BB860` ≈ `0x004BD170` (Mort-vivant,
+  4 lignes), `0x004BFE90` ≈ `0x004C5A30` (Ombre, 14), `0x004BA110` ≈ `0x004C3840` (Dunœud, 22),
+  `0x004C1C30` ≈ `0x004C6700` (Revenant, 26), `0x004BAB60` ≈ `0x004C4290` (Persil, 28). Le groupe
+  de l'Ombre est aussi l'un des deux derniers groupes de doublons du `TODO`.
+- **Onze corps sont identiques en LOOSE à un corps écrit** (0 à 8 lignes) : `0x0041E070`/`0x00421060`
+  ≈ `0x00407800`, `0x0041E250`/`0x00421240` ≈ `0x004070F0`, `0x00460F30`/`0x004635B0` ≈ `0x00452A90`,
+  `0x0041D920`/`0x00420910` ≈ `0x00416920`, `0x0041EAF0`/`0x00421AE0` ≈ `0x00419D30`,
+  `0x00423240` ≈ `0x0040A610`, et deux à 15 lignes, `0x0041E430`/`0x00421420` ≈ `0x0040F8E0`. **Les
+  immédiates de donnée restent à relire** — la leçon de `0x0040EA00` en zone 2.
+- **Les blocs de sous-zones 0-3 et 5-8 se recopient massivement** : une vingtaine de paires
+  `0x0041Dxxx`/`0x00420xxx` et `0x0041Exxx`/`0x00421xxx` sont identiques en LOOSE, et le trio
+  `0x0041D310` / `0x0041F760` / `0x0041FF40` (431 instructions) tient en une lecture.
+- **La catégorie D porte trois tables de neuf rappels** (`0x0041CE50..0x0041D050`,
+  `0x0041F2E0..0x0041F4E0`, `0x00422A20..0x00422C20`) : les « appelées inconnues » y sont les cibles
+  d'une table de sauts, à lire avec leur appelant.
+
+## 2026-09-17 (suite 15) — Labyrinthe des morts, lot 1 : les copies et l'Agonisant
+
+Zone 5 : **23 → 42 sur 160**, catégorie A vide. Dix-neuf corps, **aucun corps neuf** : chacun est
+un corps déjà écrit, vérifié au diff STRICT, puis relié à sa planche relevée dans `Blaze.exe`.
+Total : 634 à transcrire, 470 écrits jamais appelés. Trois fichiers ont été soumis à Vincent avant
+création ; deux ont suffi (`Effects/LabyrinthParticles.cs`, `Cutscene/LabyrinthScenes.cs`) :
+l'Agonisant n'a pas demandé de fichier.
+
+### Ce que le diff STRICT a rendu
+
+| corps (0-3 / 5-8 / 4-9) | modèle | écarts |
+|---|---|---|
+| `0x00460F30`, `0x004635B0` | `0x00452A90` (lueur, mine) | aucun |
+| `0x0041E250`, `0x00421240` | `0x004070F0` (grain, mine) | planche |
+| `0x0041E070`, `0x00421060` | `0x00407800` (escarbille, mine) | planche |
+| `0x0041D920`, `0x00420910` | `0x00416920` (éclat, tour) | planche ; rôle de dessin `9`/`0` au lieu de `7`/`0xfb` |
+| `0x0041EAF0`, `0x00421AE0` | `0x00419D30` (éclat projeté, tour) | planche ; rôle `3` ; pas de vol `<< 4` ; cadence d'image 5 |
+| `0x0041E430`, `0x00421420` | `0x0040F8E0` (gerbe, forêt) | planche ; dispersion X `100/50`, Y `50/25` ; **Z décalé de `-50 × sinus`** |
+| `0x004232A0` | `0x00413840` → `FUN_004232b0` = `FUN_00413850` | planche |
+| `0x00423D40`, `0x00424490` | `0x0041B420` → `FUN_00423d80` = `FUN_0041a5a0` | `+0x98`/`+0x96`, planches |
+| `0x004236F0`, `0x00424460` | `0x00419F40`/`0x0041B3F0` → `FUN_00423720` = `FUN_00419f70` | bloc `0x005714b0`, piste 0x17, script -1, `+0x98` 3 et 4 |
+| `0x00423240` | `0x00418370` (flash, tour) | genre `0x2f`, ancre 0, **X** décalé de `-0x64000` |
+| `0x004BEE40` (Agonisant) | `0x004D1F70` (Pourpre preux) | intégration réordonnée, mêmes termes ; tables de sauts identiques en relatif |
+
+Les corps appelés par les amorces ont été comparés dans `Blaze.c`, noms de fonctions normalisés :
+seules les adresses de données diffèrent.
+
+### Les corps modèles paramétrés
+
+Quatre corps écrits recevaient leurs constantes en dur. Ils prennent désormais la planche (et, selon
+le cas, les octets de rôle, la dispersion, le pas, la cadence) en paramètre ; leurs gestionnaires
+d'origine les appellent avec les anciennes valeurs, au mot près : `TickHeavySpark_00407800`,
+`TickWideSpray_0040F8E0`, `TickDriftingShard`, `TickProjectedShard`. `EnterAreaExitFlash` gagne un
+décalage en X, zéro par défaut. **Piège évité** : la dispersion en Y de la gerbe de la forêt n'est
+pas centrée (`% 0x46 - 0x1e`) ; la paramétrer par « moitié de la largeur » l'aurait faussée.
+
+### Les planches
+
+Douze planches relevées dans `Effects/LabyrinthParticles.cs`, chacune bornée par l'adresse connue
+suivante ; `check-descriptors.sh` les donne toutes justes. **La fumée violette et la gerbe à cinq
+phases partagent une seule planche**, `0x00550280` : la tour en avait deux (`0x0054fba8`,
+`0x0054fd08`), le Labyrinthe n'en a qu'une, et la gerbe y écrit la page de son second
+enregistrement (`DAT_0055028e`) que la fumée lit. Une seule allocation les porte. Les sept marges
+courtes des amorces reprennent les preuves de la tour (TickPurpleSmoke et TickFivePhaseBurst
+n'écrivent que des zéros dans `+0x40`) et sont scellées.
+
+Vérifications : `dotnet build` 0 erreur (38 avertissements) ; `check-descriptors.sh` : 57 marges
+prouvées sur 60, les trois restantes datent de la tour, aucune preuve périmée ; recensement et tri
+de la zone régénérés. **Rien n'a tourné en jeu.**
