@@ -22601,3 +22601,73 @@ de `0x0056b2c8`) n'est pas identifié ; `check-descriptors.sh` ne signale pas un
 
 Vérifications : `dotnet build` 0 erreur ; neuf relevés sous `Legacy/Raw/Blaze/` ; recensement et tri
 régénérés ; aucun des dix-huit n'était marqué testé.
+
+## 2026-09-17 (suite 9) — vieille tour, catégorie B, lot 4 : les quatre verbes de `0x0056aec8`
+
+Les quatre derniers corps de la catégorie B de `Zone4ParComplexite.md`, et **la catégorie est
+vide**. Ce ne sont pas des gestionnaires d'entité mais des **verbes de zone** : ils entrent par
+l'opcode 0 de l'interpréteur de script (`ScriptOpAreaVerb`), pas par `DispatchEntityHandler`. Ils
+rejoignent donc les 31 verbes déjà écrits dans `Screens/State03/WorldMapScript.cs`.
+
+**La zone 4 passe de 97 à 101 sur 176**, et la zone 6 de 26 à 27 — `0x00443C60` sert aussi dans son
+bloc de sous-zones 6 à 10. Total : 731 à transcrire, 373 écrits jamais appelés.
+
+### Ils vont par paires de créneau, pas par sujet
+
+La tour installe **deux bancs de verbes** selon la sous-zone, et les deux occupants d'un même
+créneau n'ont rien à voir l'un avec l'autre :
+
+| créneau | sous-zones 0, 1, 2, 4 | sous-zones 3, 7, 9 |
+|---:|---|---|
+| 11 | `0x00443D00` (catégorie D, 363 instr., **à écrire**) | `0x004442F0` |
+| 12 | `0x00443CB0` | `0x00444200` |
+| 14 | `0x00443C60` | la souche `0x00401FA0` |
+
+« Le verbe 12 » ne veut donc rien dire sans dire de quelle sous-zone. C'est la même leçon que celle
+des tables de sauts rechargées par sous-zone, vue cette fois sur la table des verbes.
+
+### Les quatre corps
+
+- **`0x00443C60`** (22 instr., absente de `Blaze.c`) — « le groupe est-il encore en transition ? ».
+  Elle rend 1 dès qu'un emplacement est actif, porte `0x10000000` et n'est pas porté
+  (`0x40000000` éteint), **ou** dès qu'un emplacement quelconque a un `+0x12` non nul. Le second
+  test porte sur les quatre fiches, actives ou non : le binaire y arrive par trois chemins, dont
+  celui de la fiche inactive. Ce sont les deux champs que `TickPartyMember` manie ensemble.
+- **`0x00443CB0`** (30 instr., dans `Blaze.c`) — pose l'effet `0x2c` par
+  `SpawnEffectNearCamera_00468110` sur tout membre actif, non mort, dont le mot de contact `+0x90`
+  porte `0x40` et dont le bit 0 du mot d'état est éteint (au sol).
+- **`0x004442F0`** (25 instr., absente de `Blaze.c`) — range les bits `0x10` et `0x20` du premier
+  octet de `0x005e9000` en un nombre de 0 à 3 dans `0x005e9062`.
+- **`0x00444200`** (62 instr., dans `Blaze.c`) — range le groupe en V derrière son premier
+  emplacement et le **fige**. Emplacement 1 : `Z -= 0x64000` ; 2 : `Z -= 0x32000`, `X -= 0x32000` ;
+  3 : `Z -= 0x32000`, `X += 0x32000`. Chaque fiche déplacée est reposée par
+  `FinalizeEntityPlacement2`, son cap `+0x32` mis à zéro, et son bit de gel `0x04000000` posé —
+  celui sur lequel `TickPartyMember` rend la main tout de suite. Le premier emplacement n'est pas
+  déplacé mais reçoit le cap et le gel comme les autres.
+
+### Le premier verbe dont le résultat de condition soit un reste de registre NON constant
+
+`0x00443CB0` ne finit pas par `xor eax,eax`. Au `ret`, `EAX` porte ce que le **dernier tour** de
+boucle y a laissé : le mot d'état de l'emplacement 3 s'il n'a pas appelé (`mov eax,[esi]` est en
+tête de tour), le retour de `FUN_00468110` s'il a appelé. Un emplacement actif portant
+`0x80000000`, le premier cas rend presque toujours une valeur non nulle — **rendre 0 aurait été un
+contresens, pas une simplification**. Les souches `0x00401FA0` et `0x0040A600` avaient déjà ce
+comportement, mais avec un reste *constant* (l'indice du verbe) ; ici il dépend de l'état du jeu.
+
+**`TODO(REVERSE)` dans le corps** : le cas « il a appelé » n'est reproduit qu'à seize bits près.
+`FUN_00468110` finit par `mov ax,cx`, qui ne touche que la moitié basse de `EAX` ; la moitié haute
+vient de `FUN_00545A10` (la distance) ou de `FUN_0047AC40` selon la branche prise, et
+`SpawnEffectNearCamera_00468110` rend un `ushort`. Établir si un script de la tour lit ce résultat
+avant de décider s'il faut modéliser le mot haut.
+
+### Un détail de `0x004442F0` qui se lit à l'envers
+
+**Les poids de ses deux bits sont inversés par rapport à l'ordre des bits** : `0x10`, le plus bas,
+pèse 2 ; `0x20` pèse 1. Le binaire ne calcule pas un décalage mais enchaîne quatre `test` qui posent
+la constante 1, 2 ou 3 — et il laisse en chemin un `jne` vers l'instruction suivante
+(`0x00444303`), un saut qui ne saute pas, comme `AreaVerb_004431F0` en porte un. Transcrire
+« `(octet >> 4) & 3` » aurait échangé les valeurs 1 et 2.
+
+Vérifications : `dotnet build` 0 erreur ; deux relevés neufs sous `Legacy/Raw/Blaze/AreaVerbs/`
+(`FUN_00443C60.asm`, `FUN_004442F0.asm`) ; recensement et tri régénérés ; aucun des quatre n'était
+marqué testé, donc rien à retirer de `handlers-exerces.tsv`.

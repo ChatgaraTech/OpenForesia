@@ -1874,6 +1874,15 @@ public static unsafe partial class Blaze
             // creneaux d'entite de zone — il ignore l'entite qu'on lui passe.
             0x004433B0 => AreaVerb_004433B0(),
 
+            // LES QUATRE VERBES SIMPLES DE LA VIEILLE TOUR (categorie B de Zone4ParComplexite.md).
+            // Ils vont par paires de creneau selon la sous-zone, pas par sujet : voir le bandeau de
+            // leurs corps. 0x00443CB0 est le premier verbe dont le resultat de condition soit un
+            // reste de registre NON constant.
+            0x00443C60 => AreaVerb_00443C60(),
+            0x00443CB0 => AreaVerb_00443CB0(),
+            0x004442F0 => AreaVerb_004442F0(),
+            0x00444200 => AreaVerb_00444200(),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
@@ -3257,6 +3266,225 @@ public static unsafe partial class Blaze
         }
 
         return 0;                                          // Ghidra: xor eax,eax ; ret
+    }
+
+    // =====================================================================
+    // LES QUATRE VERBES SIMPLES DE LA VIEILLE TOUR (2026-09-17)
+    //
+    // Categorie B de Zone4ParComplexite.md : quatre corps, 139 instructions en tout, aucune table
+    // de sauts, aucune appelee inconnue, aucun jumeau. Deux sont dans Blaze.c, deux ont demande le
+    // desassembleur (dumps sous Legacy/Raw/Blaze/AreaVerbs/).
+    //
+    // ILS VONT PAR PAIRES DE CRENEAU, ET LES DEUX OCCUPANTS D'UN CRENEAU N'ONT RIEN A VOIR L'UN
+    // AVEC L'AUTRE. La tour installe deux bancs de verbes selon la sous-zone :
+    //
+    //   creneau 11 : 0x00443D00 (sous-zones 0,1,2,4)  /  0x004442F0 (3,7,9)
+    //   creneau 12 : 0x00443CB0 (sous-zones 0,1,2,4)  /  0x00444200 (3,7,9)
+    //   creneau 14 : 0x00443C60 (sous-zones 0,1,2,4)  /  la souche 0x00401FA0
+    //
+    // Lire « le verbe 12 » sans dire de quelle sous-zone ne veut donc rien dire. 0x00443D00, le
+    // colocataire du creneau 11, est de categorie D (363 instructions) et reste a ecrire.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00443c60 @ 0x00443c60 — <b>« le groupe est-il encore en transition ? »</b>.
+    /// Vingt-deux instructions, <b>absente de <c>Blaze.c</c></b> ; dump conserve dans
+    /// <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00443C60.asm</c>. Table <c>0x0056aec8</c>, vieille tour,
+    /// creneau 14 des sous-zones 0, 1, 2 et 4.
+    ///
+    /// <para>Elle balaie les quatre fiches d'emplacement et rend <b>1</b> des que l'une des deux
+    /// conditions se presente :</para>
+    ///
+    /// <list type="number">
+    /// <item>la fiche est active (<c>0x80000000</c>), porte <c>0x10000000</c> et n'est <b>pas</b>
+    /// portee par une autre entite (<c>0x40000000</c> eteint) ;</item>
+    /// <item>son compte a rebours de transition <c>+0x12</c> n'est pas nul.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Le second test porte sur les quatre emplacements, actifs ou non</b>, et ce n'est pas une
+    /// simplification : le binaire y arrive par trois chemins, dont celui de la fiche inactive
+    /// (<c>test eax,80000000h ; je LAB_00443c8e</c>). Seul le troisieme <c>test</c> sort
+    /// directement.
+    /// </para>
+    /// <para>
+    /// Les deux champs sont ceux que <see cref="TickPartyMember"/> manie ensemble : tant que
+    /// <c>+0x12</c> tourne le membre est fige, et <c>0x10000000</c> est le temoin que la bascule a
+    /// deja ete prise en compte. Le script s'arrete donc tant que la reponse est « oui ».
+    /// </para>
+    /// <para>Elle ne lit ni l'entite ni l'argument.</para>
+    /// </summary>
+    /// <returns>1 si un emplacement est encore en transition, 0 sinon.</returns>
+    private static uint AreaVerb_00443C60()
+    {
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+
+            if ((flags & 0x80000000) != 0 && (flags & 0x10000000) != 0 && (flags & 0x40000000) == 0)
+                return 1;                                  // Ghidra: LAB_00443ca2
+
+            if (*(ushort*)(member + 0x12) != 0) return 1;  // Ghidra: LAB_00443c8e
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00443cb0 @ 0x00443cb0 — <b>« pose l'effet 0x2c sur tout membre au sol qui
+    /// touche »</b>. Trente instructions, dans <c>Blaze.c</c>. Table <c>0x0056aec8</c>, vieille
+    /// tour, creneau 12 des sous-zones 0, 1, 2 et 4.
+    ///
+    /// <para>
+    /// Quatre conditions, toutes sur la fiche d'emplacement : active (<c>0x80000000</c>) et ni
+    /// morte ni absente (<c>0x50000000</c> eteint), le <b>mot de contact</b> <c>+0x90</c> — celui
+    /// que <see cref="FinalizeEntityPlacement2"/> ecrit — portant le bit <c>0x40</c>, et le bit 0
+    /// du mot d'etat eteint, celui que la passe du sol pose quand le membre quitte son plancher.
+    /// La naissance passe par <see cref="SpawnEffectNearCamera_00468110"/>, donc <b>rien ne nait
+    /// au-dela de 1800 unites de la camera</b>.
+    /// </para>
+    /// <para>
+    /// <b>Son resultat de condition est un reste de registre</b>, comme celui des souches, et il
+    /// n'est pas anodin : le corps ne finit pas par un <c>xor eax,eax</c>. Au <c>ret</c>,
+    /// <c>EAX</c> porte ce que le <b>dernier tour</b> y a laisse — le mot d'etat de l'emplacement
+    /// 3 s'il n'a pas appele, le retour de <c>FUN_00468110</c> s'il a appele. Comme un emplacement
+    /// actif porte <c>0x80000000</c>, le premier cas rend presque toujours une valeur non nulle :
+    /// rendre 0 ici serait un contresens, pas une simplification.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE) : dans le cas « il a appele », le reste n'est reproduit qu'a seize bits pres.
+    /// <c>FUN_00468110</c> finit par <c>mov ax,cx</c>, qui ne touche que la moitie basse de
+    /// <c>EAX</c> ; la moitie haute vient de <c>FUN_00545A10</c> (la distance) ou de
+    /// <c>FUN_0047AC40</c> selon la branche prise. <see cref="SpawnEffectNearCamera_00468110"/>
+    /// rend un <c>ushort</c> et perd donc cette moitie. Etablir si un script de la tour lit ce
+    /// resultat avant de decider s'il faut modeliser le mot haut.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00443CB0()
+    {
+        // Ghidra: `mov eax,[esi]` est en TETE de tour, donc le reste vaut le mot d'etat du
+        // dernier emplacement traite quand il n'a pas appele.
+        uint leftover = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            leftover = flags;
+
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+            if ((*(uint*)(member + 0x90) & 0x40) == 0) continue;
+            if ((flags & 1) != 0) continue;
+
+            leftover = SpawnEffectNearCamera_00468110(member, 0x2c, 0, -1);   // Ghidra: FUN_00468110
+        }
+
+        return leftover;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004442f0 @ 0x004442f0 — <b>range deux drapeaux d'avancement en un nombre de 0 a
+    /// 3 dans la banque 2</b>. Vingt-cinq instructions, <b>absente de <c>Blaze.c</c></b> ; dump
+    /// conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_004442F0.asm</c>. Table <c>0x0056aec8</c>,
+    /// vieille tour, creneau 11 des sous-zones 3, 7 et 9.
+    ///
+    /// <para>
+    /// Les deux bits sont <c>0x10</c> et <c>0x20</c> du premier octet de <c>0x005e9000</c>, le banc
+    /// d'avancement du groupe ; le resultat part dans le <b>troisieme octet de la banque d'etat
+    /// 2</b> (<c>0x005e9062</c>), d'ou un script ulterieur le relira pour choisir une branche.
+    /// </para>
+    /// <para>
+    /// <b>Les poids sont inverses par rapport a l'ordre des bits</b>, et c'est la seule chose a
+    /// retenir de la fonction : <c>0x10</c>, le plus bas, pese <b>2</b> ; <c>0x20</c> pese
+    /// <b>1</b>. Le binaire ne calcule pas un decalage mais enchaine quatre <c>test</c> qui posent
+    /// la constante 1, 2 ou 3 — et il laisse en chemin un <c>jne</c> vers l'instruction suivante
+    /// (<c>0x00444303</c>), un saut qui ne saute pas, comme <see cref="AreaVerb_004431F0"/> en
+    /// porte un.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero : <c>xor eax,eax</c> suit l'ecriture.</returns>
+    private static uint AreaVerb_004442F0()
+    {
+        byte progress = *Mem.Arena(0x005e9000);          // Ghidra: `mov cl,[5E9000h]`
+
+        int value = 0;
+        if ((progress & 0x10) != 0) value |= 2;
+        if ((progress & 0x20) != 0) value |= 1;
+
+        Mem.s_StateBank2_005e9060[2] = (byte)value;      // Ghidra: DAT_005e9062
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00444200 @ 0x00444200 — <b>le verbe qui range le groupe en V derriere son
+    /// premier emplacement, et le fige</b>. Soixante-deux instructions, dans <c>Blaze.c</c>. Table
+    /// <c>0x0056aec8</c>, vieille tour, creneau 12 des sous-zones 3, 7 et 9.
+    ///
+    /// <para>
+    /// Pour chaque emplacement actif et ni mort ni absent, il <b>deplace la position d'un ecart
+    /// fixe</b>, la repose par <see cref="FinalizeEntityPlacement2"/>, met le cap <c>+0x32</c> a
+    /// zero et pose le bit de gel <c>0x04000000</c> — celui sur lequel
+    /// <see cref="TickPartyMember"/> rend la main tout de suite (<c>*slot &amp; 0x4000008</c>).
+    /// Apres ce verbe, le groupe ne bouge plus de lui-meme.
+    /// </para>
+    /// <para><b>Les ecarts, en unites de <c>0x1000</c>.</b> Le premier emplacement n'est pas
+    /// deplace ; les trois autres se rangent par rapport a la ou ils sont deja.</para>
+    ///
+    /// <list type="bullet">
+    /// <item>emplacement 1 : <c>Z -= 0x64000</c> (cent unites en arriere) ;</item>
+    /// <item>emplacement 2 : <c>Z -= 0x32000</c>, <c>X -= 0x32000</c> (cinquante en arriere, cinquante d'un cote) ;</item>
+    /// <item>emplacement 3 : <c>Z -= 0x32000</c>, <c>X += 0x32000</c> (l'autre cote).</item>
+    /// </list>
+    ///
+    /// <para>
+    /// Le binaire nomme ces cinq champs par leur adresse absolue — <c>DAT_005e9480</c>,
+    /// <c>DAT_005e951c</c>, <c>DAT_005e9514</c>, <c>DAT_005e95b8</c>, <c>DAT_005e95b0</c> — ce qui
+    /// cache qu'il s'agit simplement de <c>+0x24</c> et <c>+0x1c</c> des emplacements 1, 2 et 3.
+    /// Ils sont ecrits ici par emplacement et decalage, comme partout ailleurs.
+    /// </para>
+    /// <para>
+    /// <b>Le mot d'etat est relu apres l'appel</b> (<c>mov eax,[esi+5E93C0h]</c> juste avant le
+    /// <c>or</c>) : <see cref="FinalizeEntityPlacement2"/> ecrit dans la fiche, et la valeur lue en
+    /// tete de tour ne vaut donc plus. Conserve tel quel.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero : <c>xor eax,eax</c> entre les depilements.</returns>
+    private static uint AreaVerb_00444200()
+    {
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            if (i == 1)
+            {
+                *(int*)(member + 0x24) -= 0x64000;              // Ghidra: DAT_005e9480
+                FinalizeEntityPlacement2((uint*)member);        // Ghidra: FUN_00533940
+            }
+
+            if (i == 2)
+            {
+                *(int*)(member + 0x24) -= 0x32000;              // Ghidra: DAT_005e951c
+                *(int*)(member + 0x1c) -= 0x32000;              // Ghidra: DAT_005e9514
+                FinalizeEntityPlacement2((uint*)member);
+            }
+
+            if (i == 3)
+            {
+                *(int*)(member + 0x24) -= 0x32000;              // Ghidra: DAT_005e95b8
+                *(int*)(member + 0x1c) += 0x32000;              // Ghidra: DAT_005e95b0
+                FinalizeEntityPlacement2((uint*)member);
+            }
+
+            *(ushort*)(member + 0x32) = 0;                      // Ghidra: `mov [esi+5E93F2h],bp`
+            *(uint*)member |= 0x4000000;
+        }
+
+        return 0;
     }
 
     /// <summary>

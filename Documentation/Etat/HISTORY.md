@@ -4,6 +4,28 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 3)
+
+- feat : **les quatre verbes simples de la vieille tour** (table `0x0056aec8`, catégorie B de
+  `Zone4ParComplexite.md`) — « le groupe est-il encore en transition ? » (`0x00443C60`), l'effet
+  `0x2c` posé sur tout membre au sol qui touche (`0x00443CB0`), deux drapeaux d'avancement rangés
+  en un nombre de 0 à 3 dans la banque 2 (`0x004442F0`), et le rangement du groupe en V derrière
+  son premier emplacement, suivi du gel (`0x00444200`). Zone 4 : 97 → 101 sur 176, la catégorie B
+  est vide
+- doc : **les verbes de la tour vont par paires de créneau, pas par sujet** — deux bancs selon la
+  sous-zone, et les deux occupants d'un créneau n'ont rien à voir l'un avec l'autre : `0x00443D00`
+  et `0x004442F0` partagent le créneau 11, `0x00443CB0` et `0x00444200` le créneau 12. « Le verbe
+  12 » ne veut rien dire sans dire de quelle sous-zone
+- doc : **le premier verbe dont le résultat de condition soit un reste de registre NON constant** —
+  `0x00443CB0` ne finit pas par `xor eax,eax` : au `ret`, `EAX` porte le mot d'état de
+  l'emplacement 3, ou le retour de `FUN_00468110` si ce dernier tour a appelé. Un emplacement actif
+  portant `0x80000000`, rendre 0 aurait été un contresens. `TODO(REVERSE)` posé sur la moitié haute
+  du reste, que `mov ax,cx` laisse intacte et que le portage perd
+- doc : `0x004442F0` **inverse les poids** de ses deux bits — `0x10`, le plus bas, pèse 2 ;
+  `0x20` pèse 1. Ce n'est pas un décalage mais quatre `test` qui posent la constante
+
+---
+
 ## 2026-09-17 (suite 2)
 
 - feat : **les six decors de la montagne du dragon de feu** (`Handlers/FireMountain.cs`, nouveau) —

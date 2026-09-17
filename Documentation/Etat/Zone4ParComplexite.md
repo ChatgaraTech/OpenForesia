@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**176 gestionnaires, 97 implementes, 79 a ecrire.**
+**176 gestionnaires, 101 implementes, 75 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,6 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 4 | 4 | 139 |
 | **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 55 | 46 | 6439 |
 | **D — gros** | pas d'IA, > 250 instr. | 4 | 4 | 1548 |
 | **E — intelligence** | une routine de bete | 16 | 15 | 14235 |
@@ -29,15 +28,6 @@ aucune, puisque son corps est deja ecrit.
 
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
-
-## B — simple (4)
-
-| gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
-|---|---|---|---:|---:|---|---|---|
-| `0x00443C60` | 0,1,2,4 | 0056AEC8 | 22 | 0 | non |  |  |
-| `0x004442F0` | 3,7,9 | 0056AEC8 | 25 | 0 | non |  |  |
-| `0x00443CB0` | 0,1,2,4 | 0056AEC8 | 30 | 0 | oui |  |  |
-| `0x00444200` | 3,7,9 | 0056AEC8 | 62 | 0 | oui |  |  |
 
 ## C — moyen (55)
 
