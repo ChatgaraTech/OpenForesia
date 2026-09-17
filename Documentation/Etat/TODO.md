@@ -53,12 +53,12 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 58 / 160 |
+| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 68 / 160 |
 | 6 | Le château de l’immortel | 29 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 43 / 349 |
+| 10 | La grotte scellée | 44 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -86,9 +86,18 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **Le décor du Labyrinthe des morts** : 102 corps restants, tous B, C ou D — aucune bête. Le tri
-   est à jour dans `Zone5ParComplexite.md` : 56 simples pour 47 lectures, 35 moyens pour 33, 11 gros
-   pour 10. Fermer la zone 5 ne demande plus que du décor.
+4. **Le décor du Labyrinthe des morts** : 92 corps restants, tous B, C ou D — aucune bête. Le tri
+   est à jour dans `Zone5ParComplexite.md` : 46 simples pour 38 lectures, 35 moyens pour 33, 11 gros
+   pour 10. Fermer la zone 5 ne demande plus que du décor. **Le lot 1 (les dix plus simples) est
+   fait le 2026-09-17 (suite 17)**, et il a dégagé deux raccourcis pour la suite :
+   - **le bloc 5-8 de `0x0056b2c8` est le bloc 0-3 recopié à +0x2ff0** (neuf paires vérifiées) : les
+     31 particules restantes ne sont qu'une vingtaine de lectures ;
+   - **`0x0041C900` / `0x0041EDD0` / `0x004224F0` sont le même corps émis trois fois** (~390 instr.,
+     une table de sauts, neuf feuilles chacun) : le gros morceau de la zone est **une** lecture pour
+     trois corps, à prendre en dernier et d'un bloc.
+   - **attention aux six adresses de `0x0056aec8`** : ce ne sont pas des gestionnaires d'entité mais
+     des **verbes de script**, à brancher dans `ScriptOpAreaVerb` (`WorldMapScript.cs`). Trois sont
+     faits ; il en reste trois.
 4. ~~**La vieille tour**~~ — **complète le 2026-09-17** (176 / 176). Pour la prochaine zone, la
    méthode qui a payé : `census-zone-complexity.sh <zone>`, puis **comparer chaque corps restant à
    tous les corps déjà écrits** (diff LOOSE de `census-duplicates.sh`, cache régénéré) avant d'en

@@ -4,6 +4,30 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 11)
+
+- feat : **le lot 1 du Labyrinthe des morts hors intelligence** — les dix gestionnaires les plus
+  simples de la zone 5, 58 → 68 sur 160
+- feat : `Screens/State03/Handlers/Labyrinth.cs` — fichier neuf, le decor de la zone : l'echelle
+  reposee a chaque image, les deux decors qu'un drapeau de script rend visibles, la source sonore
+  toutes les vingt et une images, la hauteur qui flotte tant que le drapeau 250 tient, le
+  balancement a phase tiree au hasard, la chute de dix images
+- feat : trois verbes de script de plus dans `WorldMapScript.cs` — la lecture des quatre boutons de
+  face d'une manette (creneau 5, commun aux trois blocs de la zone) et le creneau 7, emis DEUX fois
+  par le compilateur, qui fait naitre l'effet 0x39 sur les membres qui passent quatre filtres
+- fix : `census-zone-complexity.sh` sortait en silence avec 1 quand la derniere amorce a ecrire de
+  la zone n'avait pas de jumeau ecrit — une derniere iteration finissant sur un test faux, sous
+  `set -e`
+- doc : **le bloc 5-8 de la table 0x0056b2c8 est le bloc 0-3 recopie a +0x2ff0** — neuf paires
+  verifiees, comptes d'instructions identiques : les 31 particules restantes ne sont qu'une
+  vingtaine de lectures
+- doc : **trois des onze gros gestionnaires de la zone sont le meme corps emis trois fois**
+  (0x0041C900 en 0-3, 0x0041EDD0 en 5-8, 0x004224F0 en 4-9) — ~390 instructions, une table de
+  sauts et neuf feuilles chacun
+- doc : **le verbe 0x00444620 rend le mot des boutons, pas la reponse qu'il range dans la banque** —
+  le binaire ne remet jamais EAX a zero, et le dernier registre ecrit est la lecture de la table
+  d'entree
+
 ## 2026-09-17 (suite 10)
 
 - feat : **les seize routines d'intelligence du Labyrinthe des morts, en dix lectures** — zone 5,

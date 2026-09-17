@@ -1887,6 +1887,13 @@ public static unsafe partial class Blaze
             // (categorie D de Zone4ParComplexite.md).
             0x00443D00 => AreaVerb_00443D00(),
 
+            // LES TROIS VERBES SIMPLES DU LABYRINTHE DES MORTS (categorie B de
+            // Zone5ParComplexite.md). Le creneau 5 est le meme dans les TROIS blocs de la zone ;
+            // le creneau 7 a deux corps STRICT identiques, un par groupe de sous-zones.
+            0x00444620 => AreaVerb_00444620(),
+            0x00444400 => AreaVerb_00444400(),
+            0x00444450 => AreaVerb_00444450(),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
@@ -3788,5 +3795,118 @@ public static unsafe partial class Blaze
         byte* text = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + s[1] * 4);
         BindMenuLabels(text, (uint)(nint)speaker, s_WorldMapDescriptor_005633b0, 0);
         return s + 2;
+    }
+
+    // =====================================================================
+    // LES TROIS VERBES SIMPLES DU LABYRINTHE DES MORTS — table 0x0056aec8, zone 5
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00444620</c> — <b>le verbe du creneau 5</b>, le meme dans les <b>trois</b> blocs
+    /// du labyrinthe (<c>0x00557ba8</c>, <c>0x00558228</c>, <c>0x005588a8</c>). 77 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; dump conserve dans
+    /// <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00444620.asm</c>.
+    ///
+    /// <para>
+    /// <b>Il lit les quatre boutons de face d'une manette.</b> L'octet 0 de la banque
+    /// <c>0x005e9060</c> designe la manette ; le verbe va chercher son <b>mot des boutons tenus</b>
+    /// — le mot 0 de son entree de <see cref="Input.s_InputStateBase_00604a20"/>, entrees de
+    /// <c>0x10</c> octets — et repose dans le <b>meme octet</b> quatre bits :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>bit 0</term><description><c>0x8000</c> de la manette — le carre</description></item>
+    ///   <item><term>bit 1</term><description><c>0x1000</c> — le triangle</description></item>
+    ///   <item><term>bit 2</term><description><c>0x2000</c> — le rond</description></item>
+    ///   <item><term>bit 3</term><description><c>0x4000</c> — la croix</description></item>
+    /// </list>
+    /// <para>
+    /// La disposition des bits est celle d'une manette PlayStation, relevee dans
+    /// <c>Engine/Input.cs</c> ; le mot 0 de la table d'entree est <b>actif haut</b> — un bit pose
+    /// veut dire « tenu » — parce que <c>UpdateButtonEdges</c> l'y range deja inverse.
+    /// </para>
+    /// <para>
+    /// <b>Le resultat de condition n'est pas ce qu'on croit.</b> Le binaire ne remet jamais EAX a
+    /// zero : le dernier registre ecrit est le <c>mov ax,[eax+604a20h]</c> du mot des boutons, et
+    /// l'octet haut d'EAX est nul parce que l'index tient sur douze bits. Le verbe rend donc le
+    /// <b>mot des boutons tenus lui-meme</b>, pas la reponse rangee dans la banque. C'est ecrit
+    /// tel quel ici.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00444620()
+    {
+        byte* bank = Mem.Arena(0x005e9060);
+
+        // Ghidra: `movzx ax,byte [5e9060h] ; movsx eax,ax ; shl eax,4` — l'index de manette est
+        // lu non signe puis multiplie par la taille d'une entree.
+        ushort held = *(ushort*)(Inp.s_InputStateBase_00604a20 + bank[0] * 0x10);
+
+        bank[0] = 0;
+        if ((held & 0x8000) != 0) bank[0] = 1;
+        if ((held & 0x1000) != 0) bank[0] |= 2;
+        if ((held & 0x2000) != 0) bank[0] |= 4;
+        if ((held & 0x4000) != 0) bank[0] |= 8;
+
+        return held;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00444400 @ 0x00444400 — <b>le verbe du creneau 7</b> du bloc
+    /// <c>0x00557ba8</c> (sous-zones 0 a 3). Decompilee dans <c>Blaze.c</c>, 30 instructions.
+    /// Corps partage avec <see cref="AreaVerb_00444450"/>.
+    /// </summary>
+    private static uint AreaVerb_00444400() => SpawnEffect39OnEligibleMembers();
+
+    /// <summary>
+    /// Ghidra: FUN_00444450 @ 0x00444450 — <b>le meme verbe, creneau 7 du bloc
+    /// <c>0x00558228</c></b> (sous-zones 5 a 8). Decompilee dans <c>Blaze.c</c> : le compilateur a
+    /// emis <b>deux fois le meme corps</b>, STRICT identique instruction pour instruction. Les deux
+    /// adresses partagent donc <see cref="SpawnEffect39OnEligibleMembers"/>.
+    /// </summary>
+    private static uint AreaVerb_00444450() => SpawnEffect39OnEligibleMembers();
+
+    /// <summary>
+    /// Le corps commun des deux verbes ci-dessus : il <b>parcourt les quatre emplacements du
+    /// groupe</b> (<c>0x005e93c0</c>, pas de <c>0x9c</c>) et fait naitre l'effet de sous-type
+    /// <c>0x39</c> sur chacun de ceux qui passent <b>quatre</b> filtres, tous sur le mot d'etat
+    /// sauf un :
+    ///
+    /// <list type="bullet">
+    ///   <item>bit <c>0x80000000</c> pose — l'emplacement est occupe ;</item>
+    ///   <item>bits <c>0x50000000</c> absents ;</item>
+    ///   <item>bit <c>0x200</c> de <c>+0x90</c> pose ;</item>
+    ///   <item>bit <c>0x1</c> absent.</item>
+    /// </list>
+    /// <para>
+    /// La naissance passe par <see cref="SpawnEffectNearCamera_00468110"/>, donc elle
+    /// <b>n'a pas lieu</b> pour un membre a plus de 2000 unites de la camera. Le binaire empile six
+    /// arguments la ou l'appelee n'en lit que quatre — meme constat que sur les autres sites.
+    /// </para>
+    /// <para>
+    /// <b>Le resultat de condition est un reste de registre.</b> La boucle ne met jamais EAX a
+    /// zero : a la sortie il contient soit le retour de la derniere naissance, soit le mot d'etat
+    /// du quatrieme emplacement quand celui-ci n'a pas passe les filtres. C'est suivi a
+    /// l'identique ici plutot que remplace par un zero de confort.
+    /// </para>
+    /// </summary>
+    private static uint SpawnEffect39OnEligibleMembers()
+    {
+        uint result = 0;
+        byte* slot = Mem.Arena(0x005e93c0);
+
+        for (int remaining = 4; remaining != 0; remaining--, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            result = flags;
+
+            if ((flags & 0x80000000) != 0
+                && (flags & 0x50000000) == 0
+                && (*(uint*)(slot + 0x90) & 0x200) != 0
+                && (flags & 1) == 0)
+            {
+                result = SpawnEffectNearCamera_00468110(slot, 0x39, 0, -1);   // Ghidra: FUN_00468110
+            }
+        }
+
+        return result;
     }
 }

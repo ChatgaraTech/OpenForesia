@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**160 gestionnaires, 58 implementes, 102 a ecrire.**
+**160 gestionnaires, 68 implementes, 92 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,7 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 56 | 47 | 2880 |
+| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 46 | 38 | 2685 |
 | **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 35 | 33 | 4642 |
 | **D — gros** | pas d'IA, > 250 instr. | 11 | 10 | 3782 |
 
@@ -29,20 +29,10 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## B — simple (56)
+## B — simple (46)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
-| `0x004610E0` | 5,6,7,8 | 0056ADC8 | 6 | 0 | non |  |  |
-| `0x00460240` | 0,1,2,3 | 0056ADC8 | 10 | 0 | non |  |  |
-| `0x00460A90` | 0,1,2,3 | 0056ADC8 | 13 | 0 | non |  |  |
-| `0x00444620` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | 18 | 0 | non |  |  |
-| `0x004603C0` | 0,1,2,3 | 0056ADC8 | 25 | 0 | oui |  |  |
-| `0x00460D10` | 0,1,2,3 | 0056ADC8 | 25 | 0 | non |  |  |
-| `0x00444400` | 0,1,2,3 | 0056AEC8 | 30 | 0 | oui | `0x00444450` |  |
-| `0x00444450` | 5,6,7,8 | 0056AEC8 | 30 | 0 | oui | `0x00444400` |  |
-| `0x00461BE0` | 5,6,7,8 | 0056ADC8 | 33 | 0 | oui |  |  |
-| `0x00461E00` | 5,6,7,8 | 0056ADC8 | 35 | 0 | oui |  |  |
 | `0x00483C50` | 4,9 | 0056B0C8 | 36 | 0 | oui |  |  |
 | `0x00483E90` | 4,9 | 0056B1C8 | 37 | 0 | non |  |  |
 | `0x00444340` | 0,1,2,3 | 0056AEC8 | 40 | 0 | non |  |  |

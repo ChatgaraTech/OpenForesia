@@ -112,7 +112,11 @@ awk -F'\t' 'NR==FNR{n[$1]=$2; next} $4=="non" && n[$1]<=15 {print $1}' "$B" "$WO
       c=$(callee_of "$a"); [ -n "$c" ] || continue
       f=$(fingerprint "$c")
       w=$(awk -F'\t' -v f="$f" '$1==f{print $2; exit}' "$WORK/written-trampolines.tsv")
-      [ -n "$w" ] && printf "%s\t%s\t%s\n" "$a" "$c" "$w"
+      # Le `|| true` n est pas decoratif : sous `set -e`, une derniere iteration qui finit sur un
+      # test FAUX fait sortir tout le script avec 1, sans un mot sur la sortie d erreur. Le cas
+      # s est produit le 2026-09-17, quand le lot 1 du labyrinthe a change le dernier gestionnaire
+      # a ecrire de la zone 5 pour un qui n a pas de jumeau ecrit.
+      { [ -n "$w" ] && printf "%s\t%s\t%s\n" "$a" "$c" "$w"; } || true
     done > "$WORK/trampoline-twins.tsv"
 
 # ---------------------------------------------------------------- 5. le classement

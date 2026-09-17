@@ -23339,3 +23339,111 @@ de particules.
 Le répertoire suit la convention des cinq autres zones (`Forest/`, `Mine/`, `OldTower/`,
 `FireMountain/`, `ImmortalCastle/`, `SealedCave/`) : une bête par fichier, le nom venant du
 croisement `especes.csv` × `modeles.csv`, jamais d'une supposition.
+
+---
+
+## 2026-09-17 (suite 17) — Labyrinthe des morts, lot 3 : les dix plus simples hors intelligence
+
+Les dix-neuf routines d'intelligence de la zone étant écrites (suite 16), ce qui reste de la
+zone 5 n'est plus de l'IA du tout. Le relevé par table le montre d'un coup :
+
+| table | restait | ce que c'est | où ça va |
+|---|---:|---|---|
+| `0056ADC8` | 39 | le décor de la sous-zone | `Handlers/` |
+| `0056B2C8` | 31 | les particules | `Effects/` |
+| `0056B0C8` | 14 | les pères d'effet | `Effects/`, `Combat/` |
+| `0056B1C8` | 12 | les projectiles | `Combat/` |
+| `0056AEC8` | 6 | **des verbes de script**, pas des entités | `WorldMapScript.cs` |
+
+La ligne `0056AEC8` est le piège de la zone : ces six adresses apparaissent dans
+`GestionnairesEntites.md` comme n'importe quel gestionnaire, mais elles ne sont **pas** appelées avec
+une entité. Ce sont les verbes que `ScriptOpAreaVerb` aiguille, et leur signature est
+`(entité, ushort)` → résultat de condition. Trois d'entre eux sont dans ce lot.
+
+### Le labyrinthe installe trois blocs par table
+
+Zone 5, sous-zones groupées `0-3`, `5-8`, `4+9`. Pour `0x0056adc8` : `0x00557aa8`, `0x00558128`,
+`0x005587a8`.
+
+### Le bloc 5-8 de `0x0056b2c8` est le bloc 0-3 recopié à +0x2ff0
+
+Neuf paires, décalage **constant**, comptes d'instructions identiques au chiffre près :
+
+```
+0x0041DA80 ↔ 0x00420A70   0x0041DBD0 ↔ 0x00420BC0   0x0041DD40 ↔ 0x00420D30
+0x0041DF60 ↔ 0x00420F50   0x0041E340 ↔ 0x00421330   0x0041E610 ↔ 0x00421600
+0x0041E700 ↔ 0x004216F0   0x0041E7F0 ↔ 0x004217E0   0x0041E9D0 ↔ 0x004219C0
+```
+
+Les 31 particules restantes de la zone ne sont donc qu'une vingtaine de **lectures**. Le bloc
+`4,9` (`0x00424xxx`–`0x00425xxx`) est la même famille mais **réordonnée** : pas de décalage
+constant, il faudra le lire pour lui-même.
+
+### Trois des onze gros gestionnaires sont le même corps émis trois fois
+
+`0x0041C900` (0-3), `0x0041EDD0` (5-8) et `0x004224F0` (4,9) portent la même signature : ~390
+instructions, **une** table de sauts, et **neuf** feuilles appelées chacun, contiguës et espacées
+de `0x40`. C'est le gros morceau de la zone, et c'est **une** lecture pour trois corps : à prendre
+d'un bloc, en dernier.
+
+### Le lot écrit
+
+Sept gestionnaires d'entité dans le fichier neuf `Screens/State03/Handlers/Labyrinth.cs` —
+aucun ne consulte le groupe, donc pas de `LabyrinthMecanismes.cs` :
+
+| adresse | créneau | ce qu'il fait |
+|---|---|---|
+| `0x004610E0` | 55 / `0x00558128` | repose l'échelle `0x10cc` et le bit `0x4000`, six instructions |
+| `0x00460240` | 53 / `0x00557aa8` | visible seulement si le drapeau **236** est posé |
+| `0x00460A90` | 36 / `0x00557aa8` | muet en sous-zone 1 tant que le drapeau **234** n'est pas posé |
+| `0x004603C0` | 54 / `0x00557aa8` | source sonore, son `0x17`, une fois toutes les **21** images |
+| `0x00460D10` | 21 / `0x00557aa8` | hauteur sinusoïdale tant que le drapeau **250** tient, sinon figée |
+| `0x00461BE0` | 8 / `0x00558128` | balancement vertical, **phase de départ tirée au hasard** |
+| `0x00461E00` | 10 / `0x00558128` | chute de dix images, sonnée au départ, puis extinction |
+
+Cinq des sept sont **absents de `Blaze.c`** ; les dumps sont sous `Legacy/Raw/Blaze/`.
+
+### Deux points qui ne se devinent pas
+
+**`0x00460D10` a deux régimes de hauteur, et le drapeau 250 les sépare.** Drapeau posé,
+`+0x20` suit `(sinus − 0xa000) × 7`, entre `-0x4d000` et `-0x3f000`, la phase avançant de `0x50`
+par image (82 images par tour). Drapeau retiré, la hauteur est **figée à `-0xaa000`** — bien plus
+bas — et la phase cesse d'avancer. Ce n'est pas un repos au milieu de l'oscillation : les deux
+plages ne se touchent même pas.
+
+**`0x00461BE0` tire sa phase de départ au hasard** (`rand() % 4000`, reste signé) et retient sa
+hauteur de placement **en cases entières** dans `+0x9a`. Deux exemplaires posés sur la même carte ne
+battent donc jamais ensemble. Amplitude (`+0x14`) et pas de phase (`+0x16`) viennent du relevé de
+placement, pas du code.
+
+### Le verbe `0x00444620` rend le mot des boutons, pas sa réponse
+
+Créneau 5, le même dans les **trois** blocs. Il lit l'octet 0 de la banque `0x005e9060` comme un
+**numéro de manette**, va chercher le mot des boutons tenus dans
+`Engine/Input.cs` → `s_InputStateBase_00604a20` (entrées de `0x10` octets, mot 0, **actif haut**),
+et repose dans le même octet quatre bits : `0x8000`→1 (carré), `0x1000`→2 (triangle),
+`0x2000`→4 (rond), `0x4000`→8 (croix).
+
+Mais **le binaire ne remet jamais EAX à zéro** : le dernier registre écrit est le
+`mov ax,[eax+604a20h]` de la lecture, et l'octet haut est nul parce que l'index tient sur douze
+bits. Le résultat de condition rendu au script est donc le **mot des boutons lui-même**, pas la
+réponse rangée dans la banque. C'est transcrit tel quel.
+
+Le créneau 7 (`0x00444400` en 0-3, `0x00444450` en 5-8) est le **même corps émis deux fois** par le
+compilateur, STRICT identique : il fait naître l'effet `0x39` sur chacun des quatre emplacements du
+groupe qui passe quatre filtres (`0x80000000` posé, `0x50000000` absent, bit `0x200` de `+0x90`
+posé, bit `0x1` absent), par `SpawnEffectNearCamera_00468110` — donc pas au-delà de 2000 unités de
+la caméra. Là aussi le résultat de condition est un **reste de registre** : soit le retour de la
+dernière naissance, soit le mot d'état du quatrième emplacement. Suivi à l'identique.
+
+### Un bug du recensement, découvert au passage
+
+`census-zone-complexity.sh` sortait **en silence** avec le code 1 — pas un mot sur la sortie
+d'erreur, document vide. La dernière boucle du script finit sur `[ -n "$w" ] && printf …` ; quand la
+dernière amorce à écrire de la zone n'a pas de jumeau écrit, le test est faux, la boucle rend 1, et
+`set -e` tue le script. Le lot 1 a changé la dernière amorce de la zone 5 pour `0x004443D0`, qui est
+dans ce cas. Corrigé par un `|| true` explicite, commenté sur place.
+
+### Où en est la zone
+
+**68 / 160.** Reste 92 : catégorie B 46 corps (38 lectures), C 35 (33), D 11 (10).

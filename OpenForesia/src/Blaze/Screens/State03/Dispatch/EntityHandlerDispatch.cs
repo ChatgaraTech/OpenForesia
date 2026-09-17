@@ -1370,6 +1370,16 @@ public static unsafe partial class Blaze
             // Ai/Labyrinth/Mummy.cs.
             case 0x004C0B60: TickSceneEntityAi_004C0B60(record); return;
 
+            // LE DECOR DU LABYRINTHE DES MORTS — table 0x0056adc8, lot 1 (les sept plus simples de
+            // la categorie B de Zone5ParComplexite.md). Handlers/Labyrinth.cs.
+            case 0x004610E0: EntityHandler_004610E0(record); return;   // l'echelle reposee a chaque image
+            case 0x00460240: EntityHandler_00460240(record); return;   // visible si le drapeau 236 est pose
+            case 0x00460A90: EntityHandler_00460A90(record); return;   // ce que la sous-zone 1 cache au depart
+            case 0x004603C0: EntityHandler_004603C0(record); return;   // la source sonore, une fois sur 21 images
+            case 0x00460D10: EntityHandler_00460D10(record); return;   // la hauteur qui flotte tant que le 250 tient
+            case 0x00461BE0: EntityHandler_00461BE0(record); return;   // le balancement a phase tiree au hasard
+            case 0x00461E00: EntityHandler_00461E00(record); return;   // la chute de dix images
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98
