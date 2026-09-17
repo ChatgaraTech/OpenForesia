@@ -22526,3 +22526,42 @@ cet instant, le message ne s'affiche jamais. Seul un passage en jeu le dira.
 Vérifications : `dotnet build` 0 erreur ; `GestionnairesEntites.md` et `Zone4ParComplexite.md`
 régénérés — la catégorie B tombe à **34 corps, 31 lectures** ; aucun des vingt-trois n'était marqué
 testé.
+
+## 2026-09-17 (suite 7) — vieille tour, catégorie B, lot 2 : les décors des sous-zones 0, 1, 2, 4 et 3, 7, 9
+
+Douze décors simples de la table `0x0056adc8`, dans `Handlers/OldTower.cs`. **La zone 4 passe de 67
+à 79 sur 176**, et le tout décor simple de la tour est écrit.
+
+| créneau | gestionnaire | ce que c'est |
+|---:|---|---|
+| 11 (3,7,9) | `0x0045EC10` | **l'objet qui racle du lot 1, masque `0x882`** — corps mis en commun (`TickScrapingPushable`) |
+| 16 | `0x0045B290` | le balancier qui cogne : deux demi-pas par image, frappe le groupe (`StrikePartyMembers_0045DA40`, 10 %) |
+| 25 | `0x0045B9E0` | monte, puis dérive d'avant en arrière — cosinus sur X, sinus sur Z (absent de `Blaze.c`) |
+| 27 | `0x0045BE00` | s'étire quand le bit `0x20` de `0x00571690` est levé, invisible sinon |
+| 30 | `0x0045C090` | cercle vertical de rayon 100 |
+| 44 | `0x0045AA20` | son à portée, muet sur le bit `0x08` de `0x005e9702` (absent de `Blaze.c`) |
+| 45 (3,7,9) | `0x0045FA80` | la dalle à poids : pose le bit `0x10` de `0x005e96f6` quand tout le groupe y tient |
+| 50 | `0x0045A9B0` | son global, muet quand les bits `0x10` et `0x20` de `0x005e9702` sont posés ensemble |
+| 53 | `0x0045ABC0` | **le mécanisme « bruit au loin » du lot 1, autre boîte de dialogue** — machine mise en commun (`TickFlaggedMechanism`) |
+| 59 | `0x0045A3B0` | la lumière aux quatre verrous (bits `0x10..0x80` de `0x005e9701`) qui allume son partenaire (absent de `Blaze.c`) |
+| 60 (0-4, 3,7,9) | `0x0045E4B0` | recopie le bit `0x2000` de son partenaire (absent de `Blaze.c`) |
+| 61 / 62 | `0x0045A310` | un son au hasard, hauteur et gain tirés |
+
+**Deux mises en commun que le diff LOOSE ne pouvait pas voir** : `0x0045EC10` ne diffère de
+`0x0045C7C0` que par une constante qui ne ressemble pas à une adresse, et `0x0045ABC0` partage la
+machine de `0x0045C6E0` jusqu'au test de sous-zone, puis ouvre une autre boîte.
+
+**La question du lot 1 s'éclaire** : `0x0045ABC0` est la même machine installée dans les sous-zones
+0, 1, 2 et 4. Le test « octet de sous-zone nul » y a un sens — la sous-zone 0 — et c'est donc depuis
+là, et seulement depuis là, qu'une de ces boîtes peut s'ouvrir.
+
+**Les « partenaires »** : `0x0045A3B0`, `0x0045E4B0` et `0x0045FA80` adressent l'enregistrement situé
+`+0x14` emplacements plus loin dans le même tableau d'entités (`e + (short)+0x14 * 0x9c`). Le placement
+lie donc deux entités par leur écart d'indice.
+
+**Sonde** : `0x0045AA20` était marqué testé alors qu'il n'était pas écrit — ce passage ne prouvait que
+le plantage. Sa ligne est retirée de `handlers-exerces.tsv`.
+
+Vérifications : `dotnet build` 0 erreur ; les quatre corps absents de `Blaze.c` relevés sous
+`Legacy/Raw/Blaze/` ; `GestionnairesEntites.md` et `Zone4ParComplexite.md` régénérés — la catégorie B
+tombe à **22 corps, 19 lectures**, tous dans les tables d'effets et `0x0056aec8`.

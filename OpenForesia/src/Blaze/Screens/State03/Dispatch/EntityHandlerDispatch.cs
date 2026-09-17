@@ -488,6 +488,20 @@ public static unsafe partial class Blaze
             case 0x0045C660:                                           // 55, la source d'effets
             case 0x0045EAB0:
                 EntityHandler_0045C660(record); return;
+
+            // Sous-zones 0, 1, 2, 4 et 3, 7, 9.
+            case 0x0045EC10: EntityHandler_0045EC10(record); return;   // 11, masque 0x882
+            case 0x0045B290: EntityHandler_0045B290(record); return;   // 16, le balancier qui cogne
+            case 0x0045B9E0: EntityHandler_0045B9E0(record); return;   // 25, monte puis derive
+            case 0x0045BE00: EntityHandler_0045BE00(record); return;   // 27, s'etire sur un bit
+            case 0x0045C090: EntityHandler_0045C090(record); return;   // 30, cercle vertical
+            case 0x0045AA20: EntityHandler_0045AA20(record); return;   // 44, son a portee
+            case 0x0045FA80: EntityHandler_0045FA80(record); return;   // 45, la dalle a poids
+            case 0x0045A9B0: EntityHandler_0045A9B0(record); return;   // 50, son global
+            case 0x0045ABC0: EntityHandler_0045ABC0(record); return;   // 53, la boite sur un membre
+            case 0x0045A3B0: EntityHandler_0045A3B0(record); return;   // 59, les quatre verrous
+            case 0x0045E4B0: EntityHandler_0045E4B0(record); return;   // 60, recopie le partenaire
+            case 0x0045A310: EntityHandler_0045A310(record); return;   // 61 et 62, son au hasard
             case 0x004746C0: EntityHandler_004746C0((uint*)record); return;
             case 0x004508B0: EntityHandler_004508B0((uint*)record); return;
             case 0x004502E0: EntityHandler_004502E0((uint*)record); return;

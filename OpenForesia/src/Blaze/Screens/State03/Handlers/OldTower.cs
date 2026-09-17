@@ -43,12 +43,26 @@ public static unsafe partial class Blaze
     /// remise a zero a la fin de chaque image : il ne bouge que tant qu'on le pousse.
     /// </para>
     /// </summary>
-    private static void EntityHandler_0045C7C0(byte* e)
+    private static void EntityHandler_0045C7C0(byte* e) => TickScrapingPushable(e, 0x800);
+
+    /// <summary>
+    /// Ghidra: FUN_0045ec10 @ 0x0045ec10 — le creneau <b>11</b> du bloc des sous-zones 3, 7 et 9.
+    /// Decompilee dans <c>Blaze.c</c>. <b>Le corps de <see cref="EntityHandler_0045C7C0"/> a une
+    /// constante pres</b> : le masque de refus passe a <see cref="MoveSceneEntity_00455B30"/> vaut
+    /// <c>0x882</c> au lieu de <c>0x800</c>. Le diff LOOSE ne les rapprochait pas, parce que la
+    /// constante ne ressemble pas a une adresse.
+    /// </summary>
+    private static void EntityHandler_0045EC10(byte* e) => TickScrapingPushable(e, 0x882);
+
+    /// <summary>Le corps partage par <see cref="EntityHandler_0045C7C0"/> et
+    /// <see cref="EntityHandler_0045EC10"/> ; <paramref name="mask"/> est le masque de refus du
+    /// deplacement.</summary>
+    private static void TickScrapingPushable(byte* e, uint mask)
     {
         if (*(short*)(e + 0x10) == 0) *(short*)(e + 0x98) = 0;
 
         // Ghidra: `cmp ax,1` — seul le mot bas du retour compte.
-        if ((short)MoveSceneEntity_00455B30(e, 0x800) == 1) *(uint*)e &= 0x7fffffff;
+        if ((short)MoveSceneEntity_00455B30(e, mask) == 1) *(uint*)e &= 0x7fffffff;
 
         int vx = *(int*)(e + 0x50);
         if (vx < 0) vx = -vx;
@@ -637,22 +651,82 @@ public static unsafe partial class Blaze
     /// <c>0x00551720</c>, « 遠くで音がした。 » (« on a entendu un bruit au loin »).
     /// </para>
     /// <para>
-    /// <b>Un detail qui interroge, transcrit tel quel.</b> <c>DAT_005de52c</c> est l'octet que le
-    /// chargement de zone (<c>Resources.cs</c>) lit comme <b>numero de sous-zone</b>. Or ce corps
-    /// n'est installe que dans les sous-zones 3, 5 a 10 : si l'octet a bien ce sens au moment ou le
-    /// corps tourne, le message ne s'affiche jamais depuis ces blocs. Ce que vaut l'octet a cet
-    /// instant n'est pas etabli.
+    /// <b>Un detail qui s'eclaire par son jumeau.</b> <c>DAT_005de52c</c> est l'octet que le
+    /// chargement de zone (<c>Resources.cs</c>) lit comme <b>numero de sous-zone</b>, et ce corps
+    /// n'est installe que dans les sous-zones 3 et 5 a 10 : depuis ces blocs, le message ne s'affiche
+    /// donc jamais. <see cref="EntityHandler_0045ABC0"/>, la meme machine pour les sous-zones 0, 1, 2
+    /// et 4, est le seul a pouvoir l'ouvrir — dans la sous-zone 0. Le son, lui, part partout.
     /// </para>
     /// </summary>
     private static void EntityHandler_0045C6E0(byte* e)
     {
-        if (!ScriptFlagSet(*(short*)(e + 0x14))) return;
+        if (!TickFlaggedMechanism(e)) return;
+
+        // Ghidra: `push 551720h` — le flux d'etiquettes noye dans les parametres d'entite.
+        BindMenuLabels((byte*)Mem.EntityParam(0x00551720), 0, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
+        *(uint*)Mem.Arena(0x005e99c8) = 0x40;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0045abc0 @ 0x0045abc0 — le creneau <b>53</b> du bloc des sous-zones 0, 1, 2 et
+    /// 4. Decompilee dans <c>Blaze.c</c>, 99 instructions.
+    ///
+    /// <para>
+    /// <b>Le mecanisme de <see cref="EntityHandler_0045C6E0"/>, avec une autre fin.</b> La machine
+    /// est la meme au dernier octet (<see cref="TickFlaggedMechanism"/>) ; seule la boite de dialogue
+    /// differe. Ici elle prend l'etiquette <c>+0x24</c> de la table <c>+0x70</c> du repertoire de
+    /// zone, sur <b>un membre du groupe</b> : celui que designe l'octet <c>0x005de538</c> s'il est
+    /// present et disponible (<c>0x80000000</c>, sans <c>0x50010000</c>), sinon le premier qui l'est.
+    /// Et elle ne pose pas <c>0x40</c> en <c>0x005e99c8</c>.
+    /// </para>
+    /// <para>
+    /// <b>Si aucun membre n'est disponible</b>, la recherche garde le numero de <c>0x005de538</c> :
+    /// la boite s'ouvre sur ce membre quand meme. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045ABC0(byte* e)
+    {
+        if (!TickFlaggedMechanism(e)) return;
+
+        byte* slots = Inp.s_SlotFlags_005e93c0;
+
+        static bool Available(byte* slot)
+            => (*(uint*)slot & 0x80000000) != 0 && (*(uint*)slot & 0x50010000) == 0;
+
+        // Ghidra: `mov cl,[5DE538h]` — l'octet seul, etendu sans signe.
+        short member = (byte)Mem.s_Unknown_005de538;
+
+        if (!Available(slots + member * 0x9c))
+        {
+            // Ghidra: LAB_0045acb6 — la boucle s'arrete au premier trouve en poussant son compteur
+            // a 0x63.
+            for (short i = 0; i <= 3; i++)
+            {
+                if (!Available(slots + i * 0x9c)) continue;
+
+                member = i;
+                break;
+            }
+        }
+
+        byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + 0x24);
+        BindMenuLabels(labels, slots + member * 0x9c, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
+    }
+
+    /// <summary>
+    /// La machine commune a <see cref="EntityHandler_0045C6E0"/> et
+    /// <see cref="EntityHandler_0045ABC0"/>, instruction pour instruction jusqu'au test de
+    /// <c>0x005de52c</c> : elle rend <c>true</c> quand la boite de dialogue doit s'ouvrir.
+    /// </summary>
+    private static bool TickFlaggedMechanism(byte* e)
+    {
+        if (!ScriptFlagSet(*(short*)(e + 0x14))) return false;
 
         short phase = *(short*)(e + 0x10);
-        if (phase == 2) return;
+        if (phase == 2) return false;
 
         if (phase == 0) *(short*)(e + 0x12) = 0;
-        if (phase != 1) return;
+        if (phase != 1) return false;
 
         *(short*)(e + 0x34) += 0x20;
         (*(short*)(e + 0x12))++;
@@ -663,18 +737,13 @@ public static unsafe partial class Blaze
             TryPlaySoundNearEntity((uint*)e, ZoneSound(0x17), 0x800, 0x1000, 0, 0);   // Ghidra: FUN_00468080
         }
 
-        // Ghidra: LAB_0045c783
-        if (*(short*)(e + 0x12) <= 0x20) return;
+        if (*(short*)(e + 0x12) <= 0x20) return false;
 
         *(short*)(e + 0x10) = 2;
 
         // Ghidra: `mov al,[5DE52Ch] ; test al,al` — l'octet que Resources.cs emploie comme numero
-        // de SOUS-ZONE pour choisir les tables de sauts. Voir le resume.
-        if (s_Unknown_005de52c != 0) return;
-
-        // Ghidra: `push 551720h` — le flux d'etiquettes noye dans les parametres d'entite.
-        BindMenuLabels((byte*)Mem.EntityParam(0x00551720), 0, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
-        *(uint*)Mem.Arena(0x005e99c8) = 0x40;
+        // de SOUS-ZONE pour choisir les tables de sauts. Voir le resume de 0x0045C6E0.
+        return s_Unknown_005de52c == 0;
     }
 
     /// <summary>
@@ -708,5 +777,516 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x1c) = x;
         *(int*)(e + 0x20) = y;
         *(int*)(e + 0x24) = z;
+    }
+
+    // =====================================================================
+    // LES SONS D'AMBIANCE DES SOUS-ZONES 0, 1, 2 ET 4
+    //
+    // Deux d'entre eux se taisent selon des bits de la banque d'etat 0 (0x005e96e0) : l'octet 0x22
+    // (0x005e9702). Ce que ces bits signalent n'est pas etabli ; le nom des corps dit ce qu'ils font.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0045a9b0 @ 0x0045a9b0 — creneau <b>50</b> du bloc <c>0x00556728</c>. Decompilee
+    /// dans <c>Blaze.c</c>, 31 instructions.
+    ///
+    /// <para>
+    /// Un son d'ambiance <b>global</b> (<c>Audio.PlaySoundEffect</c> direct, voix <c>0x12</c>,
+    /// gain <c>0x800</c>) toutes les dix images — <b>sauf</b> si les bits <c>0x10</c> et <c>0x20</c>
+    /// de l'octet <c>0x005e9702</c> sont poses ensemble.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045A9B0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))++;
+        if (*(short*)(e + 0x12) != 10) return;
+
+        byte bank = Mem.s_StateBank0_005e96e0[0x22];                            // Ghidra: DAT_005e9702
+        if ((bank & 0x10) == 0 || (bank & 0x20) == 0)
+        {
+            Aud.PlaySoundEffect(ZoneSound(0x12), 0x400, 0x800, 0x800);         // Ghidra: FUN_0053cea0
+        }
+
+        *(short*)(e + 0x12) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0045aa20</c> — creneau <b>44</b> du bloc <c>0x00556728</c>. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 30 instructions.
+    ///
+    /// <para>
+    /// Un son a portee de camera (voix <c>0x19</c>, hauteur <c>0x300</c>) toutes les douze images.
+    /// <b>Il ne fait rien du tout</b> — pas meme sa premiere image — tant que le bit <c>0x08</c> de
+    /// l'octet <c>0x005e9702</c> est pose.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045AA20(byte* e)
+    {
+        if ((Mem.s_StateBank0_005e96e0[0x22] & 8) != 0) return;                // Ghidra: DAT_005e9702
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))++;
+        if (*(short*)(e + 0x12) != 0x0c) return;
+
+        TryPlaySoundNearEntity((uint*)e, ZoneSound(0x19), 0x300, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+        *(short*)(e + 0x12) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0045a310 @ 0x0045a310 — creneau <b>61</b> du bloc <c>0x00556728</c> et <b>62</b> du
+    /// bloc <c>0x00557428</c> : un seul corps pour sept sous-zones. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Un son au hasard.</b> Le premier tour pose <c>0x6000</c> sur le mot d'etat. Ensuite un
+    /// compteur monte d'un par image ; passe 30, une chance sur soixante par image de sonner, et au
+    /// plus tard a 51. Le son est global (voix <c>0x30</c>), a une hauteur tiree entre 500 et 699
+    /// et un gain tire entre <c>0x9c4</c> et <c>0x1193</c> — deux tirages, dans cet ordre.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045A310(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(uint*)e |= 0x6000;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))++;
+
+        if (((short)(CrtRand() % 0x3c) == 1 && *(short*)(e + 0x12) > 0x1e) || *(short*)(e + 0x12) > 0x32)
+        {
+            *(short*)(e + 0x12) = 0;
+
+            int pitch = (short)(CrtRand() % 200 + 500);
+            int gain = (short)(CrtRand() % 2000 + 0x9c4);
+            Aud.PlaySoundEffect(ZoneSound(0x30), pitch, gain, gain);           // Ghidra: FUN_0053cea0
+        }
+    }
+
+    // =====================================================================
+    // LES DECORS QUI BOUGENT, SOUS-ZONES 0, 1, 2 ET 4
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0045c090 @ 0x0045c090 — creneau <b>30</b> du bloc <c>0x00556728</c>. Decompilee
+    /// dans <c>Blaze.c</c>, 41 instructions.
+    ///
+    /// <para>
+    /// <b>Un cercle vertical de rayon 100</b> : sinus sur X, cosinus sur la hauteur, pas
+    /// <c>0x28</c>. <b>L'avance precede le calcul</b>, a l'inverse des tourniquets du bloc voisin, et
+    /// la vitesse est remise a zero en tete de chaque image.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045C090(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);                                        // Ghidra: FUN_00460fc0
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x14) = (short)(*(int*)(e + 0x1c) >> 0xc);
+            *(short*)(e + 0x16) = (short)(*(int*)(e + 0x20) >> 0xc);
+        }
+
+        *(short*)(e + 0x12) += 0x28;
+        if (*(short*)(e + 0x12) > 0x1000) *(short*)(e + 0x12) -= 0x1000;
+
+        int sin = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12));        // Ghidra: Ordinal_451
+        *(int*)(e + 0x1c) = *(short*)(e + 0x14) * 0x1000 + sin * 100;
+
+        int cos = Winsys3d.GetCosTableEntry(*(short*)(e + 0x12));             // Ghidra: Ordinal_450
+        *(int*)(e + 0x20) = *(short*)(e + 0x16) * 0x1000 + cos * 100;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0045b290 @ 0x0045b290 — creneau <b>16</b> du bloc <c>0x00556728</c>. Decompilee
+    /// dans <c>Blaze.c</c>, 98 instructions.
+    ///
+    /// <para>
+    /// <b>Un balancier qui cogne.</b> Sa vitesse angulaire <c>+0x12</c> part a ±32 (sens tire a pile
+    /// ou face, <c>+0x14</c> garde ±1) et change d'un par demi-pas ; le tangage <c>+0x34</c> gagne
+    /// <c>(v / 2 + v) / 2</c>, soit les trois quarts de la vitesse. <b>Le pas est fait deux fois par
+    /// image</b>, a l'identique — le compilateur a deroule la boucle. Quand la vitesse atteint ±32,
+    /// l'acceleration s'inverse et le choc sonne (voix <c>0x1a</c>).
+    /// </para>
+    /// <para>
+    /// <b>Il frappe le groupe</b> a chaque image, a tous les etats : <see cref="StrikePartyMembers_0045DA40"/>
+    /// avec 10 %, selecteur 0, sans parametre d'effet ni verrou particulier. C'est un piege.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045B290(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+
+            // Ghidra: `cdq ; xor ; sub ; and eax,1 ; xor ; sub` — le reste signe de rand() / 2, puis
+            // `lea eax,[eax+eax-1]` : -1 ou +1.
+            int sign = CrtRand() % 2 * 2 - 1;
+            *(short*)(e + 0x14) = (short)sign;
+            *(short*)(e + 0x12) = (short)(-sign << 5);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            SwingKnockingPendulum(e);
+            SwingKnockingPendulum(e);                                           // Ghidra: LAB_0045b339, le meme pas
+        }
+
+        // Ghidra: LAB_0045b399
+        StrikePartyMembers_0045DA40(e, 10, 0, 0, 0);
+    }
+
+    /// <summary>Ghidra: <c>0x0045b2da..0x0045b336</c> et <c>0x0045b339..0x0045b396</c> — <b>un
+    /// demi-pas du balancier</b>, emis deux fois a l'identique.</summary>
+    private static void SwingKnockingPendulum(byte* e)
+    {
+        short speed = *(short*)(e + 0x12);
+        *(short*)(e + 0x34) += (short)((speed / 2 + speed) / 2);
+
+        short push = *(short*)(e + 0x14);
+        speed = (short)(speed + push);
+        *(short*)(e + 0x12) = speed;
+
+        // Ghidra: `cmp cx,20h ; jge` puis `cmp cx,0FFE0h ; jg` — le choc a ±0x20.
+        if (speed < 0x20 && speed > -0x20) return;
+
+        *(short*)(e + 0x14) = (short)-push;
+        TryPlaySoundNearEntity((uint*)e, ZoneSound(0x1a), 0x400, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0045be00 @ 0x0045be00 — creneau <b>27</b> du bloc <c>0x00556728</c>. Decompilee
+    /// dans <c>Blaze.c</c>, 72 instructions.
+    ///
+    /// <para>
+    /// <b>Un decor qui s'etire quand un bit d'etat est leve</b> — le bit <c>0x20</c> du dword
+    /// <c>0x00571690</c>, dans l'arene d'etat d'entite. Tant qu'il est absent, l'echelle verticale
+    /// <c>+0x2a</c> reste a zero : le decor est invisible. Des qu'il est pose : l'etat 100 passe a 4,
+    /// puis aussitot a 1 avec un son (voix <c>0x22</c>) si l'horloge <c>+0x9a</c> a depasse 20 ;
+    /// l'echelle monte de 400 par image jusqu'a <c>0x2000</c>, redescend de 100 jusqu'a
+    /// <c>0x1000</c>, tient vingt images, et l'etat se fige a 99.
+    /// </para>
+    /// <para>
+    /// L'horloge <c>+0x9a</c> tourne a chaque image et revient a 30 passe 300. Le cap <c>+0x32</c> est
+    /// ramene sous <c>0x1000</c> sans que ce corps ne l'avance.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045BE00(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x9a) = 0;
+            *(short*)(e + 0x10) = 100;
+        }
+
+        (*(short*)(e + 0x9a))++;
+        if (*(short*)(e + 0x9a) > 300) *(short*)(e + 0x9a) = 0x1e;
+
+        if ((*Mem.EntityState(0x00571690) & 0x20) == 0)                          // Ghidra: DAT_00571690
+        {
+            *(short*)(e + 0x2a) = 0;
+            return;
+        }
+
+        if (*(short*)(e + 0x32) > 0xfff) *(short*)(e + 0x32) -= 0x1000;
+
+        if (*(short*)(e + 0x10) == 100)
+        {
+            *(short*)(e + 0x10) = 4;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 4)
+        {
+            (*(short*)(e + 0x12))++;
+            if (*(short*)(e + 0x12) > 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x12) = 0;
+
+                if (*(short*)(e + 0x9a) > 0x14)
+                {
+                    TryPlaySoundNearEntity((uint*)e, ZoneSound(0x22), 0x400, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+                }
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x2a) += 400;
+            if (*(short*)(e + 0x2a) > 0x1fff) *(short*)(e + 0x10) = 2;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x2a) -= 100;
+            if (*(short*)(e + 0x2a) < 0x1001)
+            {
+                (*(short*)(e + 0x12))++;
+                *(short*)(e + 0x2a) = 0x1000;
+                *(short*)(e + 0x10) = 3;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            (*(short*)(e + 0x12))++;
+            if (*(short*)(e + 0x12) == 0x14) *(short*)(e + 0x10) = 99;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0045b9e0</c> — creneau <b>25</b> du bloc <c>0x00556728</c>. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 86 instructions, <c>Legacy/Raw/Blaze/FUN_0045B9E0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le meme bit d'etat que <see cref="EntityHandler_0045BE00"/></b> (<c>0x20</c> de
+    /// <c>0x00571690</c>). Absent, l'entite porte <c>0x2000</c> et ne bouge pas. Pose, elle retire
+    /// <c>0x2000</c> et vit :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>naissance</term><description>son cap de placement est garde en <c>+0x16</c> ;
+    ///     le cap <c>+0x32</c> tourne de <c>0x10</c> par image, a tous les etats.</description></item>
+    ///   <item><term>etat 1</term><description>elle monte de <c>0x6000</c> par image jusqu'a
+    ///     <c>0xc8000</c>, puis passe a 2 avec un rayon <c>+0x9a = 8</c>.</description></item>
+    ///   <item><term>etat 2</term><description>elle derive dans son cap de depart —
+    ///     <b>cosinus sur X, sinus sur Z</b>, l'inverse de l'usage — d'autant que le rayon, et monte de
+    ///     <c>(rayon &amp; ~1) &lt;&lt; 11</c>. Apres 45 images, le rayon change de signe, le compteur
+    ///     repart a -45 et l'etat passe a 3.</description></item>
+    ///   <item><term>etat 3</term><description>quarante et une images de pause, puis retour a 2 : elle
+    ///     derive dans l'autre sens, et redescend.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le test des etats 1 et 2 porte sur l'etat lu avant l'avance du cap</b> (<c>mov ax,[esi+10h]</c>
+    /// puis <c>cmp ax</c>) ; celui de l'etat 3 le relit.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045B9E0(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);                                        // Ghidra: FUN_00460fc0
+
+        uint flags = *(uint*)e | 0x2000;
+        *(uint*)e = flags;
+
+        if ((*Mem.EntityState(0x00571690) & 0x20) == 0) return;                  // Ghidra: `mov cl,[571690h]`
+
+        *(uint*)e = flags & 0xffffdfff;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x16) = *(short*)(e + 0x32);
+        }
+
+        // Ghidra: LAB_0045ba27
+        short phase = *(short*)(e + 0x10);
+        *(short*)(e + 0x32) = (short)((*(short*)(e + 0x32) + 0x10) & 0xfff);
+
+        if (phase == 1)
+        {
+            int y = *(int*)(e + 0x20) + 0x6000;
+            *(int*)(e + 0x20) = y;
+
+            if (y <= 0xc8000) return;
+
+            *(int*)(e + 0x20) = 0xc8000;
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x9a) = 8;
+            return;
+        }
+
+        // Ghidra: LAB_0045ba77
+        if (phase == 2)
+        {
+            int course = *(short*)(e + 0x16);
+            short radius = *(short*)(e + 0x9a);
+
+            *(int*)(e + 0x1c) += Winsys3d.GetCosTableEntry(course) * radius;        // Ghidra: 0x00545a16
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(course) * radius;   // Ghidra: 0x00545a1c
+            *(int*)(e + 0x20) += (radius & ~1) << 0xb;
+
+            (*(short*)(e + 0x12))++;
+            if (*(short*)(e + 0x12) >= 0x2d)
+            {
+                *(short*)(e + 0x9a) = (short)-radius;
+                *(short*)(e + 0x12) = -0x2d;
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x14) = 0;
+            }
+        }
+
+        // Ghidra: LAB_0045baec
+        if (*(short*)(e + 0x10) != 3) return;
+
+        (*(short*)(e + 0x14))++;
+        if (*(short*)(e + 0x14) > 0x28) *(short*)(e + 0x10) = 2;
+    }
+
+    // =====================================================================
+    // LES DECORS QUI ECLAIRENT UN VOISIN
+    //
+    // Deux corps adressent un AUTRE enregistrement du meme tableau d'entites : celui qui est
+    // +0x14 emplacements plus loin (`e + (short)+0x14 * 0x9c`). Le placement range donc en +0x14 la
+    // distance a un partenaire, et le decor lit ou ecrit le mot d'etat de ce partenaire.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x0045a3b0</c> — creneau <b>59</b> du bloc <c>0x00556728</c>. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 84 instructions, <c>Legacy/Raw/Blaze/FUN_0045A3B0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Une lumiere qui compte quatre verrous.</b> Elle bourdonne toutes les soixante images (son
+    /// <c>0x2d</c> — un identifiant direct, pas une voix de zone), tourne de <c>0x80</c> par image, et
+    /// sa teinte tend vers une cible par huitiemes. La cible est <c>0x40</c> par bit ABSENT parmi
+    /// <c>0x10</c>, <c>0x20</c>, <c>0x40</c>, <c>0x80</c> de l'octet <c>0x005e9701</c>, et <c>0xff</c>
+    /// au lieu de <c>0x100</c> quand les quatre manquent. <b>Quand les quatre sont poses</b>, la cible
+    /// tombe a zero et le partenaire <c>+0x14</c> recoit le bit <c>0x2000</c>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045A3B0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0xff;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if (*(short*)(e + 0x98) == 0) TryPlaySoundNearEntity((uint*)e, 0x2d, 0x80, 0x1800, 0, 0);   // Ghidra: FUN_00468080
+
+        // Ghidra: LAB_0045a3f5
+        (*(short*)(e + 0x98))++;
+        if (*(short*)(e + 0x98) >= 0x3c) *(short*)(e + 0x98) = 0;
+
+        // Ghidra: LAB_0045a40f
+        byte bank = Mem.s_StateBank0_005e96e0[0x21];                            // Ghidra: DAT_005e9701
+        short missing = 0;
+        if ((bank & 0x10) == 0) missing = 1;
+        if ((bank & 0x20) == 0) missing++;
+        if ((bank & 0x40) == 0) missing++;
+        if ((bank & 0x80) == 0) missing++;
+
+        if (missing == 0)
+        {
+            byte* partner = e + *(short*)(e + 0x14) * 0x9c;
+            *(uint*)partner |= 0x2000;
+        }
+
+        // Ghidra: LAB_0045a44f — `shl eax,6` puis `cmp ax,100h`.
+        short target = (short)(missing << 6);
+        *(short*)(e + 0x12) = target;
+        if (target == 0x100) *(short*)(e + 0x12) = 0xff;
+
+        // Ghidra: LAB_0045a462
+        int goal = *(short*)(e + 0x12);
+        *(short*)(e + 0x32) += 0x80;
+
+        for (int channel = 0x38; channel <= 0x3a; channel++)
+        {
+            byte current = e[channel];
+            e[channel] = (byte)(current + ((goal - current) >> 3));
+        }
+
+        if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0045e4b0</c> — creneau <b>60</b> des blocs <c>0x00556728</c> et <c>0x00557428</c>.
+    /// <b>Absente de <c>Blaze.c</c></b> ; 15 instructions, <c>Legacy/Raw/Blaze/FUN_0045E4B0.asm</c>.
+    /// <b>Il recopie le bit <c>0x2000</c> de son partenaire</b> <c>+0x14</c> sur lui-meme, pose ou
+    /// efface. C'est la moitie qui ecoute de <see cref="EntityHandler_0045A3B0"/>.
+    /// </summary>
+    private static void EntityHandler_0045E4B0(byte* e)
+    {
+        byte* partner = e + *(short*)(e + 0x14) * 0x9c;
+
+        if ((*(uint*)partner & 0x2000) != 0) *(uint*)e |= 0x2000;
+        else *(uint*)e &= 0xffffdfff;
+    }
+
+    // =====================================================================
+    // LA DALLE A POIDS
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0045fa80 @ 0x0045fa80 — creneau <b>45</b> du bloc <c>0x00557428</c> (sous-zones 3,
+    /// 7 et 9). Decompilee dans <c>Blaze.c</c>, 88 instructions.
+    ///
+    /// <para>
+    /// <b>Une dalle qui s'abaisse quand tout le groupe y monte.</b> Elle suit son partenaire
+    /// <c>+0x14</c> a <c>0x64000</c> sous lui. Si aucun membre ne lui est rattache
+    /// (<see cref="CountPartyMembersMatching"/>, bit <c>0x20</c>, sans <c>0x40000000</c>) et que sa
+    /// hauteur n'est pas <c>0xfa0000</c>, elle efface les bits <c>0x30</c> de l'octet
+    /// <c>0x005e96f6</c> et remonte le partenaire a <c>0x64000</c>.
+    /// </para>
+    /// <para>
+    /// <b>Si tous les membres actifs y sont rattaches</b>, elle les recompte a la distance : moins de
+    /// 100 unites du partenaire, hauteur decalee de 100. S'ils y sont tous encore, le bit <c>0x10</c>
+    /// de l'octet <c>0x005e96f6</c> est pose. Le compte de distance est un dword compare sur son mot
+    /// bas (<c>cmp [esp+14h],ax</c>).
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0045FA80(byte* e)
+    {
+        byte* partner = e + *(short*)(e + 0x14) * 0x9c;
+        *(int*)(e + 0x20) = *(int*)(partner + 0x20) - 0x64000;
+
+        if (*(short*)(e + 0x10) == 0) *(short*)(e + 0x10) = 1;
+
+        short riders = (short)CountPartyMembersMatching(e, 0x20, 0x40000000);   // Ghidra: FUN_00535000
+
+        if (riders == 0 && *(int*)(e + 0x20) != 0xfa0000)
+        {
+            Mem.s_StateBank0_005e96e0[0x16] &= 0xcf;                            // Ghidra: DAT_005e96f6
+            *(int*)(e + *(short*)(e + 0x14) * 0x9c + 0x20) = 0x64000;
+        }
+
+        // Ghidra: LAB_0045fae9
+        if (riders != (short)ActivePartySlotCount_00466D70()) return;
+
+        int near = 0;
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            byte* anchor = e + *(short*)(e + 0x14) * 0x9c;
+            int dx = (*(int*)(slot + 0x1c) >> 0xc) - (*(int*)(anchor + 0x1c) >> 0xc);
+            int dy = (*(int*)(slot + 0x20) >> 0xc) - (*(int*)(anchor + 0x20) >> 0xc) + 100;
+            int dz = (*(int*)(slot + 0x24) >> 0xc) - (*(int*)(anchor + 0x24) >> 0xc);
+
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) < 100) near++;
+        }
+
+        if ((short)near == (short)ActivePartySlotCount_00466D70())
+        {
+            Mem.s_StateBank0_005e96e0[0x16] |= 0x10;
+        }
     }
 }

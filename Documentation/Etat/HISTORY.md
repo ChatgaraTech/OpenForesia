@@ -44,6 +44,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   autres blocs. Zone 4 : 44 -> 67 sur 176
 - doc : `0x0045C6E0` n'ouvre « un bruit, au loin » que si l'octet de sous-zone `0x005de52c` est nul,
   alors qu'il n'est installe que hors de la sous-zone 0 — a verifier en jeu
+- feat : **la vieille tour, categorie B lot 2 — douze decors des sous-zones 0, 1, 2, 4 et 3, 7, 9** :
+  tout le decor simple de la tour est ecrit. Zone 4 : 67 -> 79 sur 176
+- doc : deux corps mis en commun que le diff LOOSE ne voyait pas (`TickScrapingPushable`, masque
+  `0x800` / `0x882` ; `TickFlaggedMechanism`, deux boites de dialogue) ; le jumeau des sous-zones
+  0-4 explique pourquoi le message n'est ouvrable que depuis la sous-zone 0
+- fix : `handlers-exerces.tsv` — la ligne de `0x0045AA20` retiree, elle ne prouvait que le plantage
 
 ## 2026-09-17 (suite)
 

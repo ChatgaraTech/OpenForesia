@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**176 gestionnaires, 67 implementes, 109 a ecrire.**
+**176 gestionnaires, 79 implementes, 97 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,7 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 34 | 31 | 2064 |
+| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 22 | 19 | 1320 |
 | **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 55 | 46 | 6439 |
 | **D — gros** | pas d'IA, > 250 instr. | 4 | 4 | 1548 |
 | **E — intelligence** | une routine de bete | 16 | 15 | 14235 |
@@ -30,44 +30,32 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## B — simple (34)
+## B — simple (22)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
-| `0x0045E4B0` | 0,1,2,3,4,7,9 | 0056ADC8 | 15 | 0 | non |  |  |
 | `0x00418370` | 5,6,8,10 | 0056B0C8 | 19 | 0 | non | `0x00418640` |  |
 | `0x00418640` | 5,6,8,10 | 0056B0C8 | 19 | 0 | non | `0x00418370` |  |
 | `0x00443C60` | 0,1,2,4 | 0056AEC8 | 22 | 0 | non |  |  |
 | `0x004442F0` | 3,7,9 | 0056AEC8 | 25 | 0 | non |  |  |
 | `0x00443CB0` | 0,1,2,4 | 0056AEC8 | 30 | 0 | oui |  |  |
-| `0x0045AA20` | 0,1,2,4 | 0056ADC8 | 30 | 0 | non |  |  |
-| `0x0045A9B0` | 0,1,2,4 | 0056ADC8 | 31 | 0 | oui |  |  |
-| `0x0045C090` | 0,1,2,4 | 0056ADC8 | 41 | 0 | oui |  |  |
-| `0x0045A310` | 0,1,2,3,4,7,9 | 0056ADC8 | 49 | 0 | oui |  |  |
 | `0x0041BF00` | 3,7,9 | 0056B1C8 | 50 | 0 | non |  |  |
-| `0x0045EC10` | 3,7,9 | 0056ADC8 | 51 | 0 | oui |  |  |
 | `0x0041B220` | 3,7,9 | 0056B2C8 | 60 | 0 | oui |  |  |
 | `0x00444200` | 3,7,9 | 0056AEC8 | 62 | 0 | oui |  |  |
 | `0x00418290` | 0,1,2,4 | 0056B2C8 | 66 | 0 | oui | `0x00419E60` |  |
 | `0x00419E60` | 5,6,8,10 | 0056B2C8 | 66 | 0 | oui | `0x00418290` |  |
-| `0x0045BE00` | 0,1,2,4 | 0056ADC8 | 72 | 0 | oui |  |  |
 | `0x0041B2F0` | 3,7,9 | 0056B2C8 | 73 | 0 | oui |  |  |
 | `0x00416DE0` | 0,1,2,4 | 0056B2C8 | 81 | 0 | oui |  |  |
 | `0x00483930` | 3,7,9 | 0056B0C8 | 82 | 0 | non | (+1 ailleurs) |  |
-| `0x0045A3B0` | 0,1,2,4 | 0056ADC8 | 84 | 0 | non |  |  |
-| `0x0045B9E0` | 0,1,2,4 | 0056ADC8 | 86 | 0 | non |  |  |
 | `0x00417000` | 0,1,2,4 | 0056B2C8 | 87 | 0 | non |  |  |
 | `0x00416EE0` | 0,1,2,4 | 0056B2C8 | 88 | 0 | oui |  |  |
-| `0x0045FA80` | 3,7,9 | 0056ADC8 | 88 | 0 | oui |  |  |
 | `0x0041B9F0` | 3,7,9 | 0056B2C8 | 92 | 0 | oui |  |  |
 | `0x00484F80` | 3,7,9 | 0056B0C8 | 92 | 0 | non |  |  |
 | `0x00419D30` | 5,6,8,10 | 0056B2C8 | 97 | 0 | non |  |  |
 | `0x00483A30` | 3,7,9 | 0056B1C8 | 97 | 0 | non |  |  |
 | `0x0041BFA0` | 3,7,9 | 0056B2C8 | 98 | 0 | non |  |  |
-| `0x0045B290` | 0,1,2,4 | 0056ADC8 | 98 | 0 | oui |  |  |
 | `0x00417650` | 0,1,2,4 | 0056B2C8 | 99 | 0 | oui | `0x00419260` |  |
 | `0x00419260` | 5,6,8,10 | 0056B2C8 | 99 | 0 | oui | `0x00417650` |  |
-| `0x0045ABC0` | 0,1,2,4 | 0056ADC8 | 99 | 0 | oui |  |  |
 
 ## C — moyen (55)
 

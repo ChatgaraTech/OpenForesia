@@ -35,8 +35,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **327** |
-| implémentés, jamais appelés | **339** |
-| à transcrire | **764** |
+| implémentés, jamais appelés | **351** |
+| à transcrire | **753** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -45,7 +45,7 @@ socle commun, et il est entier.
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
-| 4 | La vieille tour | 67 / 176 |
+| 4 | La vieille tour | 79 / 176 |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
 | 6 | Le château de l’immortel | 26 / 170 |
 | 7 | Les ruines souterraines | 18 / 35 |
@@ -76,9 +76,9 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (18 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **La vieille tour (67 / 176), en cours, par complexité** — `Zone4ParComplexite.md` (régénérer
-   avec `sh OpenForesia.Tools/census-zone-complexity.sh 4`). La catégorie A et les décors B des
-   sous-zones 5, 6, 8, 10 sont écrits ; restent **B, 34 simples** (31 lectures), puis C (55), D (4),
+4. **La vieille tour (79 / 176), en cours, par complexité** — `Zone4ParComplexite.md` (régénérer
+   avec `sh OpenForesia.Tools/census-zone-complexity.sh 4`). La catégorie A et tous les décors B
+   sont écrits ; restent **B, 22 simples** (19 lectures, effets et `0x0056aec8`), puis C (55), D (4),
    et les 16 routines d'intelligence en dernier.
 5. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
@@ -88,7 +88,7 @@ deux noms au 2026-09-17, donc rien ne casse — mais `MemoryLayoutTests` ne le d
 naturel est une seule arene `0x00571270..0x00571a38` (voir `REVERSE_STATUS.md`, 2026-09-17 suite 4),
 a mener comme changement delibere.
 
-**La dette d’épreuve, elle, grandit** : 339 corps écrits n’ont jamais tourné, et **la mine y entre
+**La dette d’épreuve, elle, grandit** : 351 corps écrits n’ont jamais tourné, et **la mine y entre
 entière** — ses 157 créneaux sont implémentés et pas un seul n’a été vu passer. Quatre ensembles
 sont complets, et seuls 12 créneaux de l’auberge et 37 de la forêt ont été exercés. Une séance de
 test sur l’auberge ou sur la mine se lirait désormais comme une mesure, pas comme une chasse au
