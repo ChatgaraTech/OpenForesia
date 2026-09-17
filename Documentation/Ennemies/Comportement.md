@@ -56,7 +56,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | **1** | **La mine abandonnée** | **23** | **23** | **23 — complète** |
 | **2** | **La montagne du dragon de feu** | **2** | **1** | **1 — complète** |
 | **3** | **La forêt** | **23** | **22** | **22 — complète** |
-| 4 | La vieille tour | 22 | 10 | 0 |
+| **4** | **La vieille tour** | **22** | **22** | **22 — complète** |
 | 5 | Le Labyrinthe des morts | 19 | 13 | 0 |
 | 6 | Le château de l'immortel | 21 | 9 | 0 |
 | 7 | Les ruines souterraines | 6 | 5 | 0 |
@@ -1021,3 +1021,44 @@ avertissement du même jour : **une routine s'identifie par son adresse, pas par
 Sa queue ressemble à `SettleSceneEntityOnGroundAndWalls` à trois écarts près, et c'est pourquoi elle
 est écrite en ligne (`SettleCaveGremlin_004F3B71`) : **avant de réutiliser une feuille de charpente,
 comparer le placement sauvegardé et la sortie en l'air**, pas seulement le masque.
+
+## La vieille tour complète : seize routines, onze lectures (2026-09-17)
+
+Les vingt-deux gestionnaires de `0x0056ad48` de la zone 4 sont écrits. Les seize derniers ont été
+**triés par parenté avant d'être lus** — diff LOOSE contre tous les corps déjà écrits, puis entre eux —
+et le calque de chacun vient de ce tri, pas du nom de la bête :
+
+| routine | fichier | calque | copies |
+|---|---|---|---|
+| `0x004A8510` Belle verte | — | la Belle bleue `0x0048B530`, copie sémantique | `0x004DEA40` |
+| `0x004AAA80` Crapouille | — | `0x004ACC20`, copie sémantique | `0x004CD260` |
+| `0x004AF560` Chevalier noir | `OldTower/BlackKnight.cs` | le Pourpre preux | `0x004B5AF0` Platinum |
+| `0x004AE820` Sorcier | `OldTower/Sorcerer.cs` | la Salamandre + la montée du Gremlin | `0x004B4DB0` |
+| `0x004A9150` Garde golem | `OldTower/GuardGolem.cs` | aucun — pique, plongeon, recul, sentinelle | `0x004B3650`, `0x004AB940` |
+| `0x004B1660` Sabre volant | `OldTower/FlyingSaber.cs` | le Garde golem | — |
+| `0x004B4570` Sylphide | `OldTower/Sylphide.cs` | le Behemoth allégé | — |
+| `0x004B7540` Wybarn | `OldTower/Wybarn.cs` | le vol de la Coccinelle, les gestes du Behemoth | — |
+| `0x004B6B90` Ténébreux | `OldTower/Tenebrous.cs` | le Wybarn | `0x00500E10` |
+| `0x004B7E20` Enchanteresse | `OldTower/Enchantress.cs` | le Ténébreux + l'incantation du Behemoth | — |
+| `0x004ADAE0` Rampant | `OldTower/Crawler.cs` | le Pourpre preux + le sort de la Salamandre | — |
+| `0x004B0600` Golem-squelette | `OldTower/SkeletonGolem.cs` | le Pourpre preux sans parade | — |
+
+**Deux familles nouvelles** en sortent, et elles serviront ailleurs :
+
+* **Les volantes « à gestes de Behemoth »** (Wybarn, Ténébreux, Enchanteresse) : le vol de la
+  Coccinelle — plafond cale sur la proie, onde sinusoïdale — et des gestes aiguillés par la posture,
+  chacun sa petite machine sur `+0x10`. La constante de l'onde change d'une espèce à l'autre
+  (`0x3200 << 6`, `0x4B00 << 6`, `0x4100 << 5`).
+* **Les planeuses à pique** (Garde golem, Sabre volant) : elles montent de quelques unités par image,
+  passé 200 unités au-dessus de leur plancher arment le geste et fondent sur la proie, puis planent
+  à nouveau au-dessus du plus haut des deux planchers.
+
+Trois pièges à retenir pour la suite :
+
+* **Le Chevalier noir est le Pourpre preux sous 408 lignes de diff** — registres permutés et pile
+  renumérotée. Les huit vrais écarts (poussée, fractions d'attaque, charge refusée à la variante 0...)
+  se lisent en suivant les emplacements de pile des deux côtés.
+* **Le Sabre volant écrase sa variante `+0x16` par sa phase d'ondulation** dès la première image : ses
+  deux lectures de « variante » après la naissance lisent la phase.
+* **La replanification du Golem-squelette se relance elle-même** quand la bête recule déjà et que le
+  tirage voudrait la faire approcher : une boucle du binaire, écrite en `while`.

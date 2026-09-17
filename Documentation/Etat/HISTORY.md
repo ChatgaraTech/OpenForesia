@@ -4,6 +4,31 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 7)
+
+- feat : **la vieille tour est complète — zone 4, 176 sur 176**. Les 4 corps de la catégorie D et
+  les 16 routines d'intelligence, plus trois copies hors zone (château, ruines souterraines, grotte)
+- feat : `Handlers/OldTower.cs` — les deux wagonnets de la tour (`0x0045C870`, `0x0045ECC0`) et le
+  maître de salle qui rend la garde invulnérable (`0x0045C2E0`, défenses à 30 000)
+- feat : `WorldMapScript.cs` — le verbe minuteur `0x00443D00`, qui retourne les vues des sous-zones
+  0 à 3 et se désarme au bout de 1 200 appels
+- feat : `Ai/OldTower/` — dix fichiers neufs : Chevalier noir (+ Platinum), Sorcier (×2), Garde
+  golem (+ deux Armures volantes), Sylphide, Wybarn, Ténébreux (+ sa copie de la grotte),
+  Enchanteresse, Rampant, Sabre volant, Golem-squelette
+- feat : la Belle verte `0x004A8510` et la Crapouille `0x004AAA80` branchées sur la Belle bleue et
+  la Crapouille déjà écrites — copies sémantiques à l'ordre des registres près
+- doc : **`0x00514020` n'était pas une appelée inconnue** : c'est l'enveloppe de l'opcode 8 du script
+  (`ScriptOpEnterSubArea`), appelée avec des instructions bâties sur la pile
+- doc : **seize routines pour onze lectures** — le diff contre les corps déjà écrits a désigné cinq
+  groupes avant toute transcription ; le Chevalier noir est le Pourpre preux sous 408 lignes de
+  registres renumérotés
+- doc : **le Sabre volant recycle sa variante `+0x16` en phase d'ondulation**, et **le
+  Golem-squelette a une replanification qui se relance elle-même** — deux pièges transcrits tels quels
+- doc : un `bodies.tsv` de `census-duplicates.sh` resté dans `/tmp` peut être périmé : le régénérer
+  avant de comparer deux corps
+
+---
+
 ## 2026-09-17 (suite 6)
 
 - feat : **les 16 derniers corps de la catégorie C de la vieille tour — la catégorie est VIDE**.

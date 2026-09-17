@@ -1883,6 +1883,10 @@ public static unsafe partial class Blaze
             0x004442F0 => AreaVerb_004442F0(),
             0x00444200 => AreaVerb_00444200(),
 
+            // Le colocataire du creneau 11 : le minuteur qui retourne les vues des sous-zones 0 a 3
+            // (categorie D de Zone4ParComplexite.md).
+            0x00443D00 => AreaVerb_00443D00(),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
@@ -3485,6 +3489,126 @@ public static unsafe partial class Blaze
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00443d00</c> — <b>le minuteur qui retourne les vues de quatre sous-zones</b>.
+    /// 363 instructions, <b>absente de <c>Blaze.c</c></b> ; dump conserve dans
+    /// <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00443D00.asm</c>. Table <c>0x0056aec8</c>, vieille tour,
+    /// creneau 11 des sous-zones 0, 1, 2 et 4 — le colocataire de <see cref="AreaVerb_004442F0"/>.
+    ///
+    /// <para>
+    /// <b>La taille ment</b> : le corps est vingt fois la meme sequence. Quatre instructions de six
+    /// octets sont baties sur la pile, <c>{0, 3, s, 1, 0, v}</c> pour les sous-zones <c>s</c> = 0 a
+    /// 3, et passees a <c>FUN_00514020</c> — l'enveloppe du gestionnaire de l'opcode 8,
+    /// <see cref="ScriptOpEnterSubArea"/>. Chacune pose l'octet <c>+1</c> de la fiche de sous-zone —
+    /// son <b>indice de vue</b> — a <c>v</c>, et bascule la vue sur-le-champ si la sous-zone est la
+    /// courante. Le verbe ne fait qu'alterner les <c>v</c>.
+    /// </para>
+    /// <para><b>Les deux bits <c>0x10</c> et <c>0x20</c> de <c>0x005e9702</c> choisissent :</b></para>
+    /// <list type="table">
+    ///   <item><term>les deux</term><description>vue 5, et <b>pas de decompte</b> ;</description></item>
+    ///   <item><term><c>0x10</c> seul</term><description>vue 3 — puis vue 7 si l'on est dans la
+    ///     sous-zone 0, camera en <c>Z &gt; 0</c> et en <c>X &gt; 2000</c> ;</description></item>
+    ///   <item><term><c>0x20</c> seul</term><description>vue 4 — puis vue 6, meme lieu mais
+    ///     <c>X &lt; -2000</c> ;</description></item>
+    ///   <item><term>aucun</term><description>vue 0 — puis vue 2 a l'est, vue 1 a l'ouest, dans
+    ///     la sous-zone 0 et en <c>Z &gt; 0</c>.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Un seul bit pose arme le decompte</b> : <c>0x005e9703</c> compte les appels jusqu'a 200,
+    /// puis <c>0x005e9704</c> compte les centaines de deux. A la sixieme, les deux bits tombent, les
+    /// quatre vues reviennent a 0, et le verbe rend <b>1</b> — le seul cas ou il rend autre chose que
+    /// zero. <c>0x005e9704</c> n'est jamais remis a zero ici : c'est a qui pose les bits de le faire.
+    /// </para>
+    /// <para>
+    /// <b>Le mode est tenu dans <c>CX</c></b>, et le chemin des deux bits l'initialise depuis le mot
+    /// de resultat <b>non initialise</b> (<c>mov ecx,[esp+4]</c>). Ce reste n'est jamais lu : les
+    /// quatre cas s'excluent, et chacun reecrit <c>CX</c> avant la comparaison. Les relectures de
+    /// <c>0x005e9702</c> entre deux cas sont reproduites.
+    /// </para>
+    /// <para>Elle ne lit ni l'entite ni l'argument.</para>
+    /// </summary>
+    /// <returns>1 quand le decompte s'acheve, 0 sinon.</returns>
+    private static uint AreaVerb_00443D00()
+    {
+        // Ghidra: [esp+8], [esp+10h], [esp+18h], [esp+20h] — les quatre instructions ; [esp+4] le
+        // resultat, jamais relu.
+        byte* enter = stackalloc byte[4 * 6];
+        for (int area = 0; area < 4; area++)
+        {
+            byte* s = enter + area * 6;
+            s[0] = 0; s[1] = 3; s[2] = (byte)area; s[3] = 1; s[4] = 0; s[5] = 0;
+        }
+
+        uint* result = stackalloc uint[1];
+        byte* bank = Mem.s_StateBank0_005e96e0;
+
+        void SetFourViews(byte view)
+        {
+            for (int area = 0; area < 4; area++) enter[area * 6 + 5] = view;
+            for (int area = 0; area < 4; area++) ScriptOpEnterSubArea(enter + area * 6, result);   // Ghidra: FUN_00514020
+        }
+
+        bool InFirstAreaNorth()
+            => (byte)*Mem.Camera(0x005de058) == 0 && (*Mem.Camera(0x005de070) & unchecked((int)0xfffff000)) > 0;
+
+        int CameraXCell() => *Mem.Camera(0x005de068) & unchecked((int)0xfffff000);
+
+        byte flags = bank[0x22];                                // Ghidra: DAT_005e9702
+        short mode;
+
+        if ((flags & 0x10) != 0 && (flags & 0x20) != 0)
+        {
+            SetFourViews(5);
+            flags = bank[0x22];
+            mode = 2;
+        }
+        else
+        {
+            mode = 0;   // Ghidra: `mov ecx,[esp+4]`, reste de pile — reecrit plus bas dans tous les cas
+        }
+
+        if ((flags & 0x10) != 0 && (flags & 0x20) == 0)
+        {
+            SetFourViews(3);
+            if (InFirstAreaNorth() && CameraXCell() > 0x7d0000) SetFourViews(7);
+            flags = bank[0x22];
+            mode = 1;
+        }
+
+        if ((flags & 0x10) == 0 && (flags & 0x20) != 0)
+        {
+            SetFourViews(4);
+            if (InFirstAreaNorth() && CameraXCell() < -0x7d0000) SetFourViews(6);
+            flags = bank[0x22];
+            mode = 1;
+        }
+
+        if ((flags & 0x30) == 0)
+        {
+            SetFourViews(0);
+            if (InFirstAreaNorth())
+            {
+                if (CameraXCell() > 0x7d0000) SetFourViews(2);
+                if (CameraXCell() < -0x7d0000) SetFourViews(1);   // Ghidra: X relu apres l'appel
+            }
+            flags = bank[0x22];
+            mode = 0;
+        }
+
+        if (mode != 1) return 0;
+
+        bank[0x23]++;                                           // Ghidra: DAT_005e9703
+        if (bank[0x23] != 200) return 0;
+
+        bank[0x23] = 0;
+        bank[0x24]++;                                           // Ghidra: DAT_005e9704
+        if (bank[0x24] != 6) return 0;
+
+        bank[0x22] = (byte)(flags & 0xef & 0xdf);
+        SetFourViews(0);
+        return 1;
     }
 
     /// <summary>

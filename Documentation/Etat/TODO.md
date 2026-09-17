@@ -1,7 +1,7 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-17** (trois séances ce jour-là : la fin
-de la mine, puis les deux premiers lots de la zone 2 et le Dragon rouge). L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-17** (la journée a fermé la mine, la montagne du
+dragon de feu et la vieille tour). L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -13,18 +13,20 @@ déplacement.
 
 ---
 
-# CINQ ENSEMBLES COMPLETS — LA MINE ET LA MONTAGNE EN SONT (2026-09-17)
+# SIX ENSEMBLES COMPLETS — LA VIEILLE TOUR EN EST (2026-09-17)
 
 Les trois tables gravées dans `.data` — `0x00551c30`, `0x00551f30`, `0x00552230`, **274 sur 274** —,
 la **zone 0, l’auberge, 48 sur 48**, la **forêt (zone 3, 136 sur 136)** bouclée le 2026-09-02, et
 depuis le 2026-09-17 la **mine (zone 1, 157 sur 157)** et la **montagne du dragon de feu (zone 2,
-42 sur 42)** : cinq ensembles entièrement implémentés. Le détail est dans `REVERSE_STATUS.md`, les
-sections du 2026-09-15 et du 2026-09-17.
+42 sur 42)**, puis la **vieille tour (zone 4, 176 sur 176)** : six ensembles entièrement
+implémentés. Le détail est dans `REVERSE_STATUS.md`, les sections du 2026-09-15 et du 2026-09-17.
 
 La mine s’est fermée sur sept routines d’intelligence, dont **une n’a demandé aucune ligne** :
 l’Ours gris `0x0048DB30` est le Grizzly, 660 instructions identiques sur 660. La montagne s’est fermée
 sur le Dragon rouge et sur ses deux scènes — l’envol du dragon fait naître la scène muette —, au prix
-d’une décision de plan mémoire : `ViewParams` étendue à `0x1b0`.
+d’une décision de plan mémoire : `ViewParams` étendue à `0x1b0`. **La vieille tour s’est fermée sur
+seize routines d’intelligence pour onze lectures** : le diff contre les corps déjà écrits a désigné
+les parentés avant toute transcription (voir `REVERSE_STATUS.md`, 2026-09-17 suite 13).
 
 Les tables statiques ne sont pas une zone : **ce qui est écrit là vaut dans les onze**. C'est le
 socle commun, et il est entier.
@@ -35,8 +37,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **428** |
-| à transcrire | **676** |
+| implémentés, jamais appelés | **451** |
+| à transcrire | **653** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -45,13 +47,13 @@ socle commun, et il est entier.
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
-| 4 | La vieille tour | 156 / 176 |
+| 4 | **La vieille tour** | **176 / 176** |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
-| 6 | Le château de l’immortel | 27 / 170 |
-| 7 | Les ruines souterraines | 18 / 35 |
+| 6 | Le château de l’immortel | 28 / 170 |
+| 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 40 / 349 |
+| 10 | La grotte scellée | 41 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -74,23 +76,17 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
-3. **La zone 7 (18 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
+3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **La vieille tour (156 / 176) — les catégories A, B et C sont VIDES** (`Zone4ParComplexite.md`,
-   régénérer avec `sh OpenForesia.Tools/census-zone-complexity.sh 4`). Quatre lots le 2026-09-17 :
-   les décors et les effets, les 4 verbes de `0x0056aec8`, les 8 formes à jumeaux, puis les
-   38 corps de C. Il ne reste que :
-
-   | catégorie | corps | lectures | instructions |
-   |---|---:|---:|---|
-   | **D — gros** | 4 | 4 | 1 548 |
-   | **E — intelligence** | 16 | 15 | 14 235 |
-
-   La D est le prochain pas raisonnable : `0x0045C2E0` (267, appelée inconnue `0x00514020`),
-   `0x00443D00` (363, même appelée — c'est le colocataire du créneau 11 de `0x0056aec8`),
-   `0x0045ECC0` (458) et `0x0045C870` (460), les deux derniers dans `Blaze.c`.
-   **L'appelée `0x00514020` bloque les deux premiers** : la lire avant de lancer le lot.
-5. Le reste. La grotte scellée (349) est le dernier gros morceau.
+4. ~~**La vieille tour**~~ — **complète le 2026-09-17** (176 / 176). Pour la prochaine zone, la
+   méthode qui a payé : `census-zone-complexity.sh <zone>`, puis **comparer chaque corps restant à
+   tous les corps déjà écrits** (diff LOOSE de `census-duplicates.sh`, cache régénéré) avant d'en
+   lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
+   enveloppe.
+5. **La zone 6, le château (28 / 170)**, ou **la zone 5, le Labyrinthe (23 / 160)** : les parentés de
+   la tour y ont déjà servi — la Crapouille, le Pourpre preux et la Belle bleue ont leurs copies
+   dans ces zones. Un tri par complexité suivi du diff contre les corps écrits dira le vrai coût.
+6. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et
 `s_EntityState_00571500` se recouvrent sur `0x00571500..0x00571667`. Aucune adresse n'est vue par les
@@ -98,9 +94,9 @@ deux noms au 2026-09-17, donc rien ne casse — mais `MemoryLayoutTests` ne le d
 naturel est une seule arene `0x00571270..0x00571a38` (voir `REVERSE_STATUS.md`, 2026-09-17 suite 4),
 a mener comme changement delibere.
 
-**La dette d’épreuve, elle, grandit** : 369 corps écrits n’ont jamais tourné, et **la mine y entre
-entière** — ses 157 créneaux sont implémentés et pas un seul n’a été vu passer. Quatre ensembles
-sont complets, et seuls 12 créneaux de l’auberge et 37 de la forêt ont été exercés. Une séance de
+**La dette d’épreuve, elle, grandit** : 451 corps écrits n’ont jamais tourné, et **la mine et la
+vieille tour y entrent presque entières** — 157 créneaux pour l’une, 176 pour l’autre, et 2 seulement
+vus passer dans la tour. Six ensembles sont complets. Une séance de
 test sur l’auberge ou sur la mine se lirait désormais comme une mesure, pas comme une chasse au
 plantage.
 

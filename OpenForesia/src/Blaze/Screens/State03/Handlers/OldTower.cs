@@ -3035,6 +3035,152 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: <c>0x0045c2e0</c> — creneau <b>9</b> du bloc <c>0x00556da8</c>, sous-zones 5, 6, 8 et
+    /// 10 : <b>le maitre de salle qui rend la garde invulnerable</b>. <b>Absente de
+    /// <c>Blaze.c</c></b> ; dump sous <c>Legacy/Raw/Blaze/OldTower/FUN_0045C2E0.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickGuardroomMaster_0045E860"/> instruction pour instruction, plus trois
+    /// gestes</b> (le <c>diff</c> des deux relevés normalises ne rend que ceux-la) ; la queue — le
+    /// retrait, la respiration, le declencheur <c>+0x14</c> — est la meme, sons compris.
+    /// </para>
+    /// <para>
+    /// <b>1. Il bascule deux sous-zones.</b> Deux mini-scripts de six octets sont batis sur la pile,
+    /// <c>{0, 3, 0, 1, 0, v}</c> et <c>{0, 3, 1, 1, 0, v}</c>, et passes a <c>FUN_00514020</c> — une
+    /// enveloppe du <b>gestionnaire de l'opcode 8</b> de l'interpreteur
+    /// (<see cref="ScriptOpEnterSubArea"/>, <c>FUN_00515610</c>), le meme procede que
+    /// <see cref="TickGroundContact"/> avec l'opcode 10. Ils posent l'octet <c>+1</c> — l'indice de
+    /// vue — des fiches des sous-zones <b>0 et 1</b> de la zone courante a <c>v</c> : <b>1</b> tant
+    /// qu'un garde de genre 4 veille, <b>0</b> quand l'un d'eux est fige. Si l'une des deux est la
+    /// sous-zone courante, la vue bascule sur-le-champ. Les deux octets <c>v</c> sont reecrits a
+    /// chaque passage ; le mot de resultat n'est jamais relu.
+    /// </para>
+    /// <para>
+    /// <b>2. Tant qu'un garde veille, toutes les autres entites de scene sont invulnerables</b> :
+    /// leur bloc de statistiques prend <b>30 000</b> en <c>+0x32</c> et en <c>+0x3a</c> — la
+    /// defense magique que lit <see cref="ResolveSpellHit_0053A2B0"/> —, et le bit <c>2</c> de leur
+    /// <c>+0x3b</c> se pose en plus du <c>0x2000</c> du maitre ordinaire.
+    /// </para>
+    /// <para>
+    /// <b>3. Sinon, les deux valeurs reviennent de la fiche de modele</b> (<c>+0x32</c> et
+    /// <c>+0x3a</c> du troisieme bloc de <see cref="ResolveEntityBlocks"/>) et le bit <c>2</c>
+    /// tombe. La restauration a lieu <b>a chaque image</b> ou aucun garde ne veille, pas seulement a
+    /// la bascule.
+    /// </para>
+    /// </summary>
+    private static void TickWardingGuardroomMaster_0045C2E0(byte* e)
+    {
+        // Ghidra: [esp+0x20] et [esp+0x28] — les deux instructions, [esp+0x10] le resultat.
+        byte* enterArea0 = stackalloc byte[6];
+        byte* enterArea1 = stackalloc byte[6];
+        enterArea0[0] = 0; enterArea0[1] = 3; enterArea0[2] = 0; enterArea0[3] = 1; enterArea0[4] = 0; enterArea0[5] = 0;
+        enterArea1[0] = 0; enterArea1[1] = 3; enterArea1[2] = 1; enterArea1[3] = 1; enterArea1[4] = 0; enterArea1[5] = 0;
+        uint result;
+
+        int waiting = -1;
+        byte* scene = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, scene += 0x9c)
+        {
+            uint flags = *(uint*)scene;
+
+            if ((flags & 0x80000000) != 0 && scene[0x0c] == 4 && (flags & 0x40000000) == 0)
+            {
+                *(uint*)scene = flags | 0x4000;
+                enterArea0[5] = 1;
+                enterArea1[5] = 1;
+                ScriptOpEnterSubArea(enterArea0, &result);                     // Ghidra: FUN_00514020
+                ScriptOpEnterSubArea(enterArea1, &result);                     // Ghidra: FUN_00514020
+                SetSceneBackdrop(0xfa, 100, 100, 2);
+                waiting = i;
+            }
+
+            flags = *(uint*)scene;
+            if ((flags & 0x80000000) != 0 && scene[0x0c] == 4 && (flags & 0x40000000) != 0)
+            {
+                enterArea0[5] = 0;
+                enterArea1[5] = 0;
+                ScriptOpEnterSubArea(enterArea0, &result);                     // Ghidra: FUN_00514020
+                ScriptOpEnterSubArea(enterArea1, &result);                     // Ghidra: FUN_00514020
+                SetSceneBackdrop(0x78, 0x78, 0x78, 2);
+                if (*(short*)(e + 0x16) == 0) *(short*)(e + 0x16) = 1;
+            }
+        }
+
+        scene = Mem.Entity(0x005ecaa0);
+        for (int i = 0; i < 0x20; i++, scene += 0x9c)
+        {
+            uint flags = *(uint*)scene;
+            if ((flags & 0x80000000) == 0 || scene[0x0c] == 4 || (flags & 0x40000000) != 0) continue;
+
+            // Ghidra: FUN_00538980 — le binaire prete l'emplacement de son propre argument comme
+            // premiere sortie ; `edi` garde l'entite, rien n'est perdu.
+            ResolveEntityBlocks(scene, out byte* stats, out _, out byte* model);
+
+            if (waiting != -1)
+            {
+                *(short*)(stats + 0x32) = 30000;
+                *(short*)(stats + 0x3a) = 30000;
+                scene[0x3b] |= 2;
+                *(uint*)scene |= 0x2000;
+            }
+            else
+            {
+                *(short*)(stats + 0x32) = *(short*)(model + 0x32);
+                *(short*)(stats + 0x3a) = *(short*)(model + 0x3a);
+                scene[0x3b] &= 0xfd;
+                *(uint*)scene &= 0xffffdfff;
+            }
+        }
+
+        if (*(short*)(e + 0x16) == 1)
+        {
+            if ((e[0x28] & 1) == 0)
+            {
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x2f], 0x400, 0x1800, 0, 0);
+                *(uint*)e |= 0x4000;
+            }
+            else
+            {
+                *(uint*)e &= 0xffffbfff;
+            }
+
+            SpawnEffectNearCamera_00468110(e, 0x36, 0, -1);                  // Ghidra: FUN_00468110
+
+            *(short*)(e + 0x28) -= 0xc9;
+            *(short*)(e + 0x2c) -= 0xc9;
+
+            if (*(short*)(e + 0x28) < 0)
+            {
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(uint*)e |= 0x4000;
+                *(short*)(e + 0x16) = 2;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        *(short*)(e + 0x32) += 0x44;
+        if (*(short*)(e + 0x32) > 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+        int lift = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32));      // Ghidra: 0x00545a1c
+        *(int*)(e + 0x20) += lift << (e[0x12] & 0x1f);
+
+        if (*(short*)(e + 0x14) == 0) return;
+
+        for (int i = 0; i < 3; i++) SpawnEffectNearCamera_00468110(e, 0x36, 0, -1);
+        TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x2a], 0x400, 0x1000, 0, 0);
+        *(short*)(e + 0x14) = 0;
+    }
+
+    /// <summary>
     /// Ghidra: <c>0x0045d750</c> — <b>le pendule qui fauche</b>, sous-zones 5, 6, 8 et 10.
     /// <b>Absente de <c>Blaze.c</c></b> ; dump sous
     /// <c>Legacy/Raw/Blaze/OldTower/FUN_0045D750.asm</c>. Le plus gros decor du lot.
@@ -3524,5 +3670,191 @@ public static unsafe partial class Blaze
         }
 
         return chosen;
+    }
+
+    // =====================================================================
+    // CRENEAU 14 — LES DEUX WAGONNETS DE LA TOUR (2026-09-17)
+    //
+    // 0x0045C870 (bloc 0x00556da8, sous-zones 5, 6, 8, 10) et 0x0045ECC0 (bloc 0x00557428,
+    // sous-zones 3, 7, 9) sont LE WAGONNET DE LA MINE (`MineMecanismes.cs`, 0x004538C0) retouche.
+    // Les deux sont decompilees dans Blaze.c et ne different entre elles que par la tenue de leurs
+    // echelles ; relevés Legacy/Raw/Blaze/OldTower/FUN_0045C870.asm et FUN_0045ECC0.asm.
+    //
+    // Ce que la tour change au wagonnet de la mine, sur les deux :
+    //
+    //   - IL SONNE : le son 0x2b de la zone au depart (hauteur 0x180), le son 0x2c a l'arrivee
+    //     (hauteur 0x300), par FUN_00468080 ;
+    //   - +0x98 MARQUE LE FREINAGE : pose a 1 des que la distance +0x14 est depassee, rendu a 0 a
+    //     l'arret et a la naissance ;
+    //   - LA HAUTEUR 600 NE GELE PLUS RIEN : le test `+0x20 & 0xfffff000 == 0x258000` de la mine a
+    //     disparu des deux branches de detachement ;
+    //   - IL S'INTERROMPT DES QU'UN MEMBRE MANQUE AU CONTACT, y compris quand plus AUCUN ne l'est :
+    //     la mine exigeait qu'il en reste au moins un (`blocked != 0`). Sauter du wagonnet en
+    //     marche le fait donc disparaitre, ce que la mine ne faisait pas.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0045c870 @ 0x0045c870 — creneau <b>14</b> du bloc <c>0x00556da8</c>, sous-zones
+    /// 5, 6, 8 et 10. <b>Le wagonnet qui regrandit a l'arret</b> : ses echelles ne reviennent pas
+    /// vers <c>0x1000</c> a chaque image, mais de 200 par image <b>seulement pendant qu'il attend
+    /// son groupe</b>, avant de se poser a l'extremite la plus proche. Voir
+    /// <see cref="TickTowerRailCart"/>.
+    /// </summary>
+    private static void EntityHandler_0045C870(byte* e) => TickTowerRailCart(e, easesScalesEachFrame: false);
+
+    /// <summary>
+    /// Ghidra: FUN_0045ecc0 @ 0x0045ecc0 — creneau <b>14</b> du bloc <c>0x00557428</c>, sous-zones
+    /// 3, 7 et 9. <b>Le wagonnet qui regrandit toujours</b> : ses echelles reviennent vers
+    /// <c>0x1000</c> par huitiemes a chaque image, hors disparition, comme celles de la mine. Voir
+    /// <see cref="TickTowerRailCart"/>.
+    /// </summary>
+    private static void EntityHandler_0045ECC0(byte* e) => TickTowerRailCart(e, easesScalesEachFrame: true);
+
+    /// <summary>
+    /// Le corps commun de <see cref="EntityHandler_0045C870"/> et <see cref="EntityHandler_0045ECC0"/>.
+    /// La charpente est celle de <see cref="TickRailCart"/> — naissance qui joue la course d'avance,
+    /// repli sur l'extremite la plus proche de la camera tant que le groupe n'est pas au complet a
+    /// bord, aller (etat 1) et retour (etat 3), arrivees 4 et 5, disparitions 6 et 7 — et ses trois
+    /// feuilles <see cref="RailCartStep"/>, <see cref="RailCartSnapToAnchor"/> et
+    /// <see cref="RailCartFade"/> s'appliquent telles quelles.
+    /// </summary>
+    /// <param name="easesScalesEachFrame">Vrai pour <c>0x0045ECC0</c> : le retour des echelles par
+    /// huitiemes en tete de corps. Faux pour <c>0x0045C870</c> : la croissance de 200 dans les deux
+    /// branches de detachement, a la place. Aucun des deux corps ne fait les deux.</param>
+    private static void TickTowerRailCart(byte* e, bool easesScalesEachFrame)
+    {
+        short state = *(short*)(e + 0x10);
+
+        if (easesScalesEachFrame && state != 6 && state != 7)
+        {
+            *(short*)(e + 0x28) += (short)((0x1000 - *(short*)(e + 0x28)) >> 3);
+            *(short*)(e + 0x2a) += (short)((0x1000 - *(short*)(e + 0x2a)) >> 3);
+            *(short*)(e + 0x2c) += (short)((0x1000 - *(short*)(e + 0x2c)) >> 3);
+        }
+
+        if (state == 0)
+        {
+            int homeX = *(int*)(e + 0x1c);
+            int homeY = *(int*)(e + 0x20);
+            int homeZ = *(int*)(e + 0x24);
+
+            *(short*)(e + 0x98) = 0;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+            *(int*)(e + 0x44) = homeX >> 0xc;
+            *(int*)(e + 0x48) = homeY >> 0xc;
+            *(int*)(e + 0x4c) = homeZ >> 0xc;
+
+            do
+            {
+                if (RailCartStep(e, true, true)) *(short*)(e + 0x10) = 8;
+            }
+            while (*(short*)(e + 0x10) == 0);
+
+            *(int*)(e + 0x48) = *(int*)(e + 0x1c) >> 0xc;
+            *(short*)(e + 0x9a) = (short)(*(int*)(e + 0x24) >> 0xc);
+
+            *(int*)(e + 0x1c) = homeX;
+            *(int*)(e + 0x20) = homeY;
+            *(int*)(e + 0x24) = homeZ;
+        }
+
+        int aboard = CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+
+        if (ActivePartySlotCount_00466D70() != aboard && *(short*)(e + 0x10) == 8)
+        {
+            if (!easesScalesEachFrame) GrowTowerRailCartScales(e);
+            RailCartSnapToAnchor(e, true);
+            return;
+        }
+
+        if (ActivePartySlotCount_00466D70() != aboard && *(short*)(e + 0x10) == 2)
+        {
+            if (!easesScalesEachFrame) GrowTowerRailCartScales(e);
+            RailCartSnapToAnchor(e, false);
+            return;
+        }
+
+        if (ActivePartySlotCount_00466D70() == aboard && *(short*)(e + 0x10) == 8)
+        {
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2b), 0x180, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        if (*(short*)(e + 0x10) == 1) TowerRailCartLeg(e, forward: true, arrived: 4, interrupted: 6);
+
+        if (ActivePartySlotCount_00466D70() == aboard && *(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x10) = 3;
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x12) = 0;
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2b), 0x180, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        if (*(short*)(e + 0x10) == 3) TowerRailCartLeg(e, forward: false, arrived: 5, interrupted: 7);
+
+        if (*(short*)(e + 0x10) == 4 && aboard == 0) *(short*)(e + 0x10) = 2;
+        if (*(short*)(e + 0x10) == 5 && aboard == 0) *(short*)(e + 0x10) = 8;
+
+        if (*(short*)(e + 0x10) == 6 && *(int*)(e + 0x5c) == 0) RailCartFade(e, 8);
+        if (*(short*)(e + 0x10) == 7 && *(int*)(e + 0x5c) == 0) RailCartFade(e, 2);
+    }
+
+    /// <summary>
+    /// Une image de course du wagonnet de la tour. Le pas est <see cref="RailCartStep"/> au test
+    /// d'arret exact (<c>cmp eax,-1 ; jne</c>) ; ce qui s'y ajoute est le drapeau de freinage
+    /// <c>+0x98</c> et le son d'arrivee.
+    ///
+    /// <para>Le binaire pose le drapeau <b>entre</b> la comparaison de distance et la decrementation
+    /// du compteur ; le poser apres le pas est equivalent, rien de ce que le pas ecrit ensuite ne le
+    /// lit.</para>
+    /// </summary>
+    private static void TowerRailCartLeg(byte* e, bool forward, short arrived, short interrupted)
+    {
+        bool finished = RailCartStep(e, forward, false);
+
+        if (*(short*)(e + 0x12) > *(short*)(e + 0x14) && *(short*)(e + 0x98) == 0)
+        {
+            *(short*)(e + 0x98) = 1;
+        }
+
+        if (finished)
+        {
+            *(short*)(e + 0x10) = arrived;
+            *(short*)(e + 0x98) = 0;
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2c), 0x300, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        int inContact = CountPartyMembersMatching(e, 0x20, 0x40000000);   // Ghidra: FUN_00535000
+        if (ActivePartySlotCount_00466D70() != inContact)
+        {
+            *(short*)(e + 0x10) = interrupted;
+            *(int*)(e + 0x5c) = 0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0045c980</c> et <c>0x0045ca7a</c> — la croissance de
+    /// <see cref="EntityHandler_0045C870"/> pendant qu'il attend : <c>+0x28</c> sous <c>0x1000</c>
+    /// prend 200, ses deux voisines aussi, et les trois sont calees a <c>0x1000</c> si la premiere
+    /// le depasse. Comparaisons sur seize bits signes.
+    /// </summary>
+    private static void GrowTowerRailCartScales(byte* e)
+    {
+        short scale = *(short*)(e + 0x28);
+        if (scale >= 0x1000) return;
+
+        scale += 200;
+        *(short*)(e + 0x2a) += 200;
+        *(short*)(e + 0x2c) += 200;
+        *(short*)(e + 0x28) = scale;
+
+        if (scale <= 0x1000) return;
+
+        *(short*)(e + 0x28) = 0x1000;
+        *(short*)(e + 0x2a) = 0x1000;
+        *(short*)(e + 0x2c) = 0x1000;
     }
 }

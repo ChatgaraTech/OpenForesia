@@ -181,6 +181,12 @@ public static unsafe partial class Blaze
             case 0x0048B530:
             case 0x004BC530:
             case 0x004BE200:
+            // La Belle verte de la vieille tour (sous-zones 0, 1, 2, 4) et sa copie stricte des ruines
+            // souterraines : le meme corps a l'ordre des registres pres (le calcul de +0x54 permute
+            // deux operandes), chercheur de proie recopie (0x004A8150, conforme a FUN_004A1020),
+            // table de sauts identique en relatif. Verifie le 2026-09-17.
+            case 0x004A8510:
+            case 0x004DEA40:
                 TickSceneEntityAi_0048B530(record); return;
 
             // LA SALAMANDRE — sous-type 12 de la mine (sous-zone 6), et sa copie de la montagne du
@@ -1217,11 +1223,69 @@ public static unsafe partial class Blaze
             case 0x004EB530:
                 TickSceneEntityAi_004D1F70(record); return;
 
+            // LE CHEVALIER NOIR (vieille tour, sous-zones 5, 6, 8, 10) ET LE PLATINUM (3, 7, 9) — le Pourpre
+            // preux retouche : poussee 0x7000, coups speciaux au quart, charge refusee a la variante 0.
+            // Ai/OldTower/BlackKnight.cs.
+            case 0x004AF560:
+            case 0x004B5AF0:
+                TickSceneEntityAi_004AF560(record); return;
+
+            // LE SORCIER (vieille tour, sous-zones 5, 6, 8, 10) et sa copie des sous-zones 3, 7, 9 — la
+            // charpente de la Salamandre, ses propres sorts et un plongeon. Ai/OldTower/Sorcerer.cs.
+            case 0x004AE820:
+            case 0x004B4DB0:
+                TickSceneEntityAi_004AE820(record); return;
+
+            // LE GARDE GOLEM (vieille tour, sous-zones 0, 1, 2, 4) ET LES DEUX ARMURES VOLANTES (3, 7, 9 et
+            // 5, 6, 8, 10) — trois corps, une routine. Ai/OldTower/GuardGolem.cs.
+            case 0x004A9150:
+            case 0x004B3650:
+            case 0x004AB940:
+                TickSceneEntityAi_004A9150(record); return;
+
+            // LA SYLPHIDE (vieille tour, sous-zones 3, 7, 9) — la charpente du Behemoth allegee : deux gestes,
+            // six sorts. Ai/OldTower/Sylphide.cs.
+            case 0x004B4570: TickSceneEntityAi_004B4570(record); return;
+
+            // LE WYBARN (vieille tour, sous-zones 3, 7, 9) — le vol de la Coccinelle, trois gestes de
+            // Behemoth : morsure empoisonnee, prise, souffle. Ai/OldTower/Wybarn.cs.
+            case 0x004B7540: TickSceneEntityAi_004B7540(record); return;
+
+            // LE TENEBREUX (vieille tour, sous-zones 3, 7, 9) et sa copie de la grotte scellee (11, 12) — le
+            // grand frere du Wybarn : ruee, serre qui s eleve, souffle choisi par la variante.
+            // Ai/OldTower/Tenebrous.cs.
+            case 0x004B6B90:
+            case 0x00500E10:
+                TickSceneEntityAi_004B6B90(record); return;
+
+            // L ENCHANTERESSE (vieille tour, sous-zones 3, 7, 9) — le vol du Tenebreux, une ruee qui touche a
+            // chaque image et l incantation du Behemoth sur neuf tirages. Ai/OldTower/Enchantress.cs.
+            case 0x004B7E20: TickSceneEntityAi_004B7E20(record); return;
+
+            // LE RAMPANT (vieille tour, sous-zones 5, 6, 8, 10) — la charpente du Pourpre preux, un coup, un
+            // bond et le sort de la Salamandre. Ai/OldTower/Crawler.cs.
+            case 0x004ADAE0: TickSceneEntityAi_004ADAE0(record); return;
+
+            // LE SABRE VOLANT (vieille tour, sous-zones 5, 6, 8, 10) — le cousin du Garde golem : pique,
+            // plongeon, vol plane dont la phase ecrase la variante. Ai/OldTower/FlyingSaber.cs.
+            case 0x004B1660: TickSceneEntityAi_004B1660(record); return;
+
+            // LE GOLEM-SQUELETTE ET LE GROS DUR (vieille tour, sous-zones 5, 6, 8, 10) — la charpente du
+            // Pourpre preux sans parade : coup, frappe qui altere, charge, recul, et une replanification
+            // qui se relance. Ai/OldTower/SkeletonGolem.cs.
+            case 0x004B0600: TickSceneEntityAi_004B0600(record); return;
+
             // LA CRAPOUILLE (vieille tour), LA GARGOUILLE (chateau) ET LE CRAPAUD (ruines
             // souterraines) — trois especes, trois copies conformes, une seule routine.
             case 0x004ACC20:
             case 0x004CE120:
             case 0x004DB610:
+            // Une seconde Crapouille de la vieille tour (sous-zones 0, 1, 2, 4) et sa copie stricte du
+            // chateau : deux comparaisons `100 - x` contre `(y >> 1) + 10` dont les registres sont
+            // echanges, rien d'autre ; chercheur de proie 0x004A8150, table de sauts identique en
+            // relatif. Verifie le 2026-09-17.
+            case 0x004AAA80:
+            case 0x004CD260:
                 TickSceneEntityAi_004ACC20(record); return;
 
             // LE GREMLIN DE LA GROTTE SCELLEE — un terrestre qui n'a rien du Gremlin de la vieille
@@ -1598,6 +1662,9 @@ public static unsafe partial class Blaze
             case 0x0045D750: TickScythePendulum_0045D750(record); return;     // le pendule
             case 0x0045BB10: TickCameraLift_0045BB10(record); return;         // la plateforme-camera
             case 0x0045F7E0: TickSaggingWalkway_0045F7E0(record); return;     // la passerelle
+            case 0x0045C870: EntityHandler_0045C870(record); return;          // le wagonnet qui regrandit a l arret
+            case 0x0045ECC0: EntityHandler_0045ECC0(record); return;          // le wagonnet qui regrandit toujours
+            case 0x0045C2E0: TickWardingGuardroomMaster_0045C2E0(record); return; // le maitre qui rend la garde invulnerable
 
             // Cutscene/OldTowerScenes.cs — les trois fins de scene de 0x0056b0c8.
             case 0x0041BB20: EntityHandler_0041BB20(record); return;          // la sortie breve

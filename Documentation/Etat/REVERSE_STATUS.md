@@ -23015,3 +23015,114 @@ Identifier ce géniteur avant de sceller.
 Vérifications : `dotnet build` 0 erreur ; `check-descriptors.sh` sans preuve périmée ; quatorze
 relevés neufs sous `Legacy/Raw/Blaze/OldTower/` (trente en tout) ; recensement et tri régénérés ;
 aucun des seize n'était marqué testé.
+
+## 2026-09-17 (suite 13) — vieille tour : la zone 4 est complète (176 / 176)
+
+Les **vingt derniers corps** — les 4 de la catégorie D et les 16 routines d'intelligence — plus
+**trois copies hors zone** trouvées en chemin. Zone 4 : **156 → 176 sur 176**. Château 27 → 28,
+ruines souterraines 18 → 19, grotte scellée 40 → 41. Total : 653 à transcrire, 451 écrits jamais
+appelés. Aucun des corps neufs n'était marqué testé.
+
+### D'abord trier par parenté, pas par taille
+
+Avant d'écrire une ligne, chaque corps a été comparé (diff LOOSE de `census-duplicates.sh`) à
+**tous les corps déjà écrits** et **aux dix-neuf autres**. Ce tri a changé le travail :
+
+| trouvé | diff | conséquence |
+|---|---:|---|
+| `0x004A8510` (Belle verte) ≈ `0x0048B530` (Belle bleue, mine) | 22 lignes | copie sémantique : `+0x54` calculé avec deux opérandes permutés |
+| `0x004AAA80` (Crapouille) ≈ `0x004ACC20` | 24 lignes | copie sémantique : deux comparaisons aux registres échangés |
+| `0x004A9150` = `0x004B3650` ≈ `0x004AB940` | 0 / 28 | une routine pour trois corps (Garde golem, deux Armures volantes) |
+| `0x004AF560` ≈ `0x004B5AF0` | 34 | une routine (Chevalier noir, Platinum) |
+| `0x004AE820` ≈ `0x004B4DB0` | 24 | une routine (Sorcier) |
+| `0x0045C870` ≈ `0x0045ECC0` | 56 | le wagonnet de la tour, deux tenues d'échelle |
+| `0x004A8510` = `0x004DEA40`, `0x004AAA80` = `0x004CD260`, `0x004B6B90` ≈ `0x00500E10` | 0 / 0 / données | trois copies hors zone branchées d'office |
+
+Chaque paire « copie » a été vérifiée au-delà du diff : **tables de sauts relues et comparées en
+décalage relatif**, données adressées (tables de sorts, sondes, scripts sonores) relues octet par
+octet, chercheurs de proie confirmés conformes à `FUN_004A1020`. Seize routines se ramenaient ainsi
+à **onze lectures**.
+
+**Piège rencontré** : le cache `/tmp/census-duplicates/bodies.tsv` d'une séance précédente montrait
+`0x004538C0` ≠ `0x00455570`, alors que `Blaze.c` et le binaire les donnent identiques. Relancer
+`census-duplicates.sh` (45 s, désassemblage en cache) a remis les corps d'aplomb. **Un
+`bodies.tsv` hérité ne se croit pas : on le régénère avant de comparer.**
+
+### La catégorie D : l'appelée « inconnue » n'en était pas une
+
+**`0x00514020` est une enveloppe de l'opcode 8 de l'interpréteur** (`FUN_00515610`,
+`ScriptOpEnterSubArea`), comme `FUN_00513FE0` l'est de l'opcode 10. Les deux corps qu'elle
+« bloquait » bâtissent des instructions de six octets sur la pile et appellent le gestionnaire
+directement.
+
+- **`0x0045C2E0` (créneau 9, sous-zones 5-6-8-10) est `TickGuardroomMaster_0045E860` plus trois
+  gestes** : il pose l'indice de vue des sous-zones 0 et 1 (valeur 1 tant qu'un garde de genre 4
+  veille, 0 quand l'un est figé), et **rend toutes les autres entités de scène invulnérables** —
+  défense physique `+0x32` et magique `+0x3a` du bloc de statistiques à **30 000**, bit 2 de
+  `+0x3b` — tant qu'un garde veille ; sinon il les recopie de la fiche de modèle, **à chaque image**.
+- **`0x00443D00` (verbe, créneau 11 de `0x0056aec8`) est un minuteur** : selon les bits `0x10`/`0x20`
+  de `0x005e9702`, il écrit la vue 5, 3 (puis 7), 4 (puis 6) ou 0 (puis 2 ou 1) dans les fiches des
+  sous-zones 0 à 3, les secondes valeurs selon la caméra au-delà de ±2000 en X dans la sous-zone 0.
+  Un seul bit posé arme un décompte de 6 × 200 appels (`0x005e9703`, `0x005e9704`) ; à son terme les
+  bits tombent et le verbe rend 1. **Le mode est tenu dans `CX`, initialisé sur un chemin depuis le
+  mot de résultat non initialisé** ; les quatre cas s'excluent et le réécrivent tous, le reste n'est
+  jamais lu.
+- **`0x0045C870` et `0x0045ECC0` sont le wagonnet de la mine retouché** : sons de départ (`0x2b`) et
+  d'arrivée (`0x2c`), drapeau de freinage `+0x98`, plus de gel à la hauteur 600, et **interruption
+  dès qu'un membre manque au contact, y compris quand plus aucun ne l'est** — la mine exigeait qu'il
+  en reste un. Le premier ne regrandit qu'à l'arrêt (+200 par image), le second à chaque image par
+  huitièmes. Les trois feuilles de `MineMecanismes.cs` s'appliquent telles quelles.
+
+### Les onze lectures d'intelligence
+
+Toutes sous `Ai/OldTower/`, un fichier par routine (règle du répertoire) :
+
+- **`BlackKnight.cs`** (`0x004AF560`, `0x004B5AF0`) — le Pourpre preux : diff de 408 lignes presque
+  entièrement registres et emplacements de pile renumérotés. **Ce qui reste** : poussée 0x7000,
+  combo et charge **au quart** de l'attaque, le coup rend le rebours et non la posture 0, étincelle
+  `0xBA` au second coup du combo, un seul effet en posture 10, et **une variante 0 refuse de
+  charger**. Replanification et parade appelées telles quelles.
+- **`Sorcerer.cs`** (`0x004AE820`, `0x004B4DB0`) — la Salamandre avec ses propres sorts (Ténèbres,
+  Flèches magiques, Mur de flammes / Coup de jus, Assaut magique, Éclair, Ventilo, Satanas), la
+  montée et le refus de hauteur du Gremlin, et un **plongeon** (posture 0x0b) à la place de la
+  morsure et du crachat.
+- **`GuardGolem.cs`** (trois corps) — volante sans parent écrit. **Sa variante 2 est une sentinelle**
+  : elle suit le premier enregistrement de `0x005FA5E0` au lieu de sa proie, sans hardiesse, avec sa
+  propre lecture de situation (trois règles de vitesse sur six) et un masque de heurt `0x8882`. Pique,
+  plongeon, **recul** (posture 14) ; la variante 1 frappe par la sonde B et projette.
+- **`Sylphide.cs`** — la charpente du Behemoth allégée : gravité `0x6000`, pas de bruit de pas,
+  deux gestes (le coup, **le bond qui frappe en l'air** en retenant l'animation à l'image 14),
+  six sorts, un seul tirage par replanification.
+- **`Wybarn.cs`** — **le vol de la Coccinelle sur les trois gestes du Behemoth** : morsure qui pose
+  l'effet de piège 7 sur un tirage, prise qui projette, souffle `0xC0 + catalogue[0x0c]` depuis
+  l'ancre 0 du modèle (qui **réécrit `+0x48`, l'altitude de vol**). Battements sonores.
+- **`Tenebrous.cs`** (`0x004B6B90`, `0x00500E10`) — le grand frère du Wybarn : ruée, **serre qui
+  s'élève** (bit `0x400` qui suspend le vol) et pose piège 7 ou altération 7, souffle choisi **par la
+  variante**, trois scripts de sons différés relevés.
+- **`Enchantress.cs`** — le vol du Ténébreux, **une ruée qui frappe à chaque image sans bit de
+  prise**, et l'incantation du Behemoth sur neuf tirages pondérés.
+- **`Crawler.cs`** — le Pourpre preux avec le sort de la Salamandre ; louvoie en virant de huit fois
+  sa hardiesse.
+- **`FlyingSaber.cs`** — le cousin du Garde golem. **`+0x16` y devient la phase d'ondulation dès la
+  première image** : la variante n'est lue qu'à la naissance, et le test « variante 0 » de la fin du
+  pique lit la phase. Transcrit comme il s'exécute.
+- **`SkeletonGolem.cs`** — le Pourpre preux sans parade, cinq gestes dont **une frappe qui altère à
+  chaque image** (`0x004B1620`, écrite ici : filtre `FUN_004A2C30` puis `FUN_0053B810`) et le recul.
+  **Sa replanification boucle** : trois branches sautent à `LAB_004b13db`, qui relance tout le
+  troisième temps quand le rebours est nul — il l'est toujours à cet endroit. Transcrit en `while`.
+
+### Ce que la séance a appris
+
+- **Le diff contre les corps écrits est le premier outil, pas le dernier.** Un diff de 400 lignes
+  sur 1 200 instructions peut n'être que registres et pile renumérotée : c'est le Chevalier noir.
+  Lire les écarts de près coûte une fraction d'une transcription.
+- **Une copie sémantique n'est pas une copie stricte** : l'ordre des opérandes d'une somme, deux
+  registres échangés dans une comparaison. Il faut dérouler les deux calculs avant de brancher.
+- **Un champ de configuration peut être recyclé en état** (`+0x16` du Sabre volant) : lire le
+  champ « par son nom » dans une autre branche est un contresens.
+- **Une « appelée inconnue » du tri peut être une enveloppe d'une fonction déjà écrite** : lire son
+  corps avant de reporter un lot.
+
+Vérifications : `dotnet build` 0 erreur (38 avertissements, comme avant) ; quatorze relevés neufs
+sous `Legacy/Raw/Blaze/OldTower/` et `Legacy/Raw/Blaze/AreaVerbs/` ; recensement et tri de la zone
+régénérés ; aucun des corps neufs n'était marqué testé. **Rien n'a tourné en jeu.**
