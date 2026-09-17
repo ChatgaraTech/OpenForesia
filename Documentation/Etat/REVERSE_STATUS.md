@@ -22565,3 +22565,39 @@ le plantage. Sa ligne est retirée de `handlers-exerces.tsv`.
 Vérifications : `dotnet build` 0 erreur ; les quatre corps absents de `Blaze.c` relevés sous
 `Legacy/Raw/Blaze/` ; `GestionnairesEntites.md` et `Zone4ParComplexite.md` régénérés — la catégorie B
 tombe à **22 corps, 19 lectures**, tous dans les tables d'effets et `0x0056aec8`.
+
+## 2026-09-17 (suite 8) — vieille tour, catégorie B, lot 3 : les dix-huit effets simples
+
+Les effets simples des tables `0x0056b0c8`, `0x0056b1c8` et `0x0056b2c8` des trois blocs. **La zone 4
+passe de 79 à 97 sur 176** ; la catégorie B n'a plus que les quatre corps de `0x0056aec8`.
+
+| où | gestionnaires | ce que c'est |
+|---|---|---|
+| `Effects/OldTowerParticles.cs` | `0x00416DE0` `0x00416EE0` `0x00417000` | scintillement, poussière qui retombe, bouffée qui s'étale |
+| idem | `0x00418290` / `0x00419E60` | l'étincelle qui jaillit en accélérant — un corps, deux planches (`TickRisingSpark_00418290`) |
+| idem | `0x00417650` / `0x00419260` | la lueur attirée vers un point, une image — un corps, deux planches (`TickHomingGlint_00417650`) |
+| idem | `0x00419D30` `0x0041B220` `0x0041B2F0` `0x0041B9F0` `0x0041BFA0` `0x0041BF00` | éclat projeté, goutte, deux spirales, hélice, onde |
+| `Effects/AreaExitFlash.cs` | `0x00418370` `0x00418640` | deux amorces du flash de sortie de zone : genre `0x3b`, ancres 0 et 2, **Z décalé de `0x64000`** — les amorces à ancre sont mises en commun (`EnterAreaExitFlash`) |
+| `Effects/MiscMarkers.cs` | `0x00483930` `0x00484F80` | deux émetteurs à lanceur, charpente du père du trio de la montagne |
+| `Combat/Projectiles.cs` | `0x00483A30` | la bulle empoisonnée : effet d'état 7 une fois par victime, aucun dégât direct |
+
+**Sept planches neuves**, bornées par le balayage : `0x0054fa38` (3), `0x0054fa50` (1), `0x0054fb88` (4),
+`0x0054fbb8` (4), `0x0054fbd8` (3), `0x0054fd50` (1), `0x0054fde0` (4). Deux marges d'un enregistrement,
+prouvées et scellées — **50 / 50**.
+
+**Deux corps écrivent dans une planche** : l'octet 5 (la page) de `0x0054fa50` et de `0x0054fa58` passe à
+2 à chaque naissance de `0x00417000` et de `0x00416EE0`. La seconde est la plage bulle + grain du lot A :
+après le passage de la poussière, **la bulle de la tour se dessine sur une autre page**. Les écritures
+passent par les mêmes allocations que les lectures.
+
+**`0x00484F80` choisit sa planche au sort parmi cinq**, construites sur la pile : trois enregistrements
+de `0x00551b00` et deux de `0x00551ba0`. **`0x00483930` met en file le script de sons pris au milieu de
+celui de l'explosion** (`0x00552660`, enregistrement 5) ; son jumeau de la grotte scellée `0x00484AB0`
+ne diffère que par le script, `0x005526e0`, et n'est pas branché.
+
+**Question ouverte** (`TODO(REVERSE)` dans le corps) : `0x00417650` prend son indice d'image dans l'octet
+`+0x16` que son lanceur a laissé, sur une planche de trois enregistrements. Le lanceur (sous-type `0xf8`
+de `0x0056b2c8`) n'est pas identifié ; `check-descriptors.sh` ne signale pas une marge de 3.
+
+Vérifications : `dotnet build` 0 erreur ; neuf relevés sous `Legacy/Raw/Blaze/` ; recensement et tri
+régénérés ; aucun des dix-huit n'était marqué testé.

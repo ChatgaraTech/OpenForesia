@@ -50,6 +50,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   `0x800` / `0x882` ; `TickFlaggedMechanism`, deux boites de dialogue) ; le jumeau des sous-zones
   0-4 explique pourquoi le message n'est ouvrable que depuis la sous-zone 0
 - fix : `handlers-exerces.tsv` — la ligne de `0x0045AA20` retiree, elle ne prouvait que le plantage
+- feat : **la vieille tour, categorie B lot 3 — dix-huit effets simples** : treize particules
+  (`OldTowerParticles.cs`), deux amorces du flash de sortie de zone, deux emetteurs a lanceur et la
+  bulle empoisonnee. Zone 4 : 79 -> 97 sur 176
+- doc : sept planches de la tour bornees par balayage ; deux corps ecrivent la page d'une planche,
+  dont celle de la bulle ; deux marges d'un enregistrement prouvees et scellees (50 / 50)
 
 ## 2026-09-17 (suite)
 

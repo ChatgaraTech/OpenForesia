@@ -681,4 +681,160 @@ public static unsafe partial class Blaze
         *(uint*)(e + 0x38) = tint;
         if (tint == 0) *(uint*)e = 0;
     }
+
+    // =====================================================================
+    // DEUX EMETTEURS DE LA VIEILLE TOUR — tables de sous-zone, sous-zones 3, 7 et 9 (2026-09-17)
+    //
+    //   0x00483930   creneau 31 de 0x0056b0c8   huit images, un enfant 0xc0 + n toutes les deux
+    //   0x00484F80   creneau 29 de 0x0056b0c8   vingt images, un enfant 0xc0 + m a chaque image
+    //
+    // La meme charpente que le pere du trio : l'entite se range son lanceur +0x6c en +0x70 et
+    // +0x74, nie ses decalages +0x44/+0x4c, et se replace chaque image sur le lanceur par ses
+    // angles. L'enfant de 0x00483930 est vraisemblablement 0x00483A30 (creneau 31 de 0x0056b1c8,
+    // Combat/Projectiles.cs) ; la valeur de l'octet du repertoire qui le designe n'est pas
+    // verifiable hors du CD.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00483930</c> — <b>l'emetteur a huit images</b>, creneau 31 de la table
+    /// <c>0x0056b0c8</c>, sous-zones 3, 7 et 9 de la vieille tour. Absente de <c>Blaze.c</c> ; 82
+    /// instructions, <c>Legacy/Raw/Blaze/FUN_00483930.asm</c>.
+    ///
+    /// <para>
+    /// <b>Sa naissance</b> : cap tourne d'un quart de tour (<c>+0x400</c> sur douze bits), lanceur
+    /// range en <c>+0x70</c>/<c>+0x74</c>, genre <c>7</c>, echelle nulle,
+    /// teinte <c>0xf0f0f0</c>, tangage <c>0x380</c>, gravite nulle, decalages nies, masque de
+    /// victimes <c>+0x09</c> remis a zero, et le script de sons differes <c>0x00552660</c> mis en
+    /// file — <b>l'enregistrement 5 du script de l'explosion</b>, pris au milieu.
+    /// </para>
+    /// <para>
+    /// <b>Une image sur deux</b> (<c>test byte [esi+10h],1</c>), il se replace sur son lanceur, pose sa
+    /// vitesse dans le cap du lanceur a un tangage de <c>0xf80</c> et une portee de 100, et fait
+    /// naitre par <see cref="SpawnCastEntity_0047AAE0"/> l'enfant <c>0xc0 + octet 0x0b</c> du
+    /// repertoire <c>+0xd0</c>. A la huitieme image l'emplacement est vide (<c>*e = 0</c>).
+    /// </para>
+    /// <para>
+    /// Son jumeau de la grotte scellee, <c>0x00484AB0</c>, ne differe que par le script,
+    /// <c>0x005526e0</c> ; il n'est pas branche.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00483930(byte* e)
+        => TickSpawningEmitter_00483930(e, ExplosionSoundScript() + 0x28);   // Ghidra: `push 552660h`
+
+    /// <summary>Le corps de <see cref="EntityHandler_00483930"/>, parametre par le script de sons
+    /// que sa naissance met en file.</summary>
+    private static void TickSpawningEmitter_00483930(byte* e, byte* soundScript)
+    {
+        int* offset = stackalloc int[3];
+        byte* caster = *(byte**)(e + 0x6c);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x32) += 0x400;
+            *(byte**)(e + 0x74) = caster;
+            *(byte**)(e + 0x70) = caster;
+            *(short*)(e + 0x36) = 4;
+            e[0x04] = 7;
+            *(int*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(uint*)(e + 0x38) = 0xf0f0f0;
+            *(short*)(e + 0x9a) = 0;
+            *(short*)(e + 0x34) = 0x380;
+            *(int*)(e + 0x44) = -*(int*)(e + 0x44);
+            *(int*)(e + 0x4c) = -*(int*)(e + 0x4c);
+            e[0x09] = 0;
+
+            Aud.QueueDelayedSoundScript(soundScript, (int*)(e + 0x1c));   // Ghidra: FUN_0053dbe0
+        }
+
+        // Ghidra: LAB_0048399a
+        if ((e[0x10] & 1) != 0)
+        {
+            RotateVectorByAngles_00536090((short*)(caster + 0x30), (int*)(e + 0x44), offset);
+
+            *(int*)(e + 0x1c) = *(int*)(caster + 0x1c) + offset[0];
+            *(int*)(e + 0x20) = *(int*)(caster + 0x20) + offset[1];
+            *(int*)(e + 0x24) = *(int*)(caster + 0x24) + offset[2];
+
+            SetVectorFromAngles_00532AD0((int*)(e + 0x50), *(short*)(caster + 0x32), 0xf80, 0x64);
+
+            byte* directory = *(byte**)(s_Unknown_005e97cc + 0xd0);
+            SpawnCastEntity_0047AAE0(e, (byte)((*(byte**)directory)[0x0b] + 0xc0), 0, 2);
+        }
+
+        // Ghidra: LAB_00483a17
+        (*(short*)(e + 0x10))++;
+        if (*(short*)(e + 0x10) >= 8) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00484f80</c> — <b>l'emetteur a vingt images</b>, creneau 29 de la table
+    /// <c>0x0056b0c8</c>, sous-zones 3, 7 et 9. Absente de <c>Blaze.c</c> ; 92 instructions,
+    /// <c>Legacy/Raw/Blaze/FUN_00484F80.asm</c>.
+    ///
+    /// <para>
+    /// <b>Sa naissance</b> : lanceur range en <c>+0x70</c>/<c>+0x74</c>, cap decale de <c>+0x9a</c>,
+    /// genre <c>0x1e</c>, echelles <c>0x400</c>/<c>0x800</c>/<c>0x400</c>, teinte <c>0xf0f0f0</c>,
+    /// decalages nies.
+    /// </para>
+    /// <para>
+    /// <b>A chaque image</b> il se replace sur son lanceur, pose sa vitesse dans le cap du lanceur
+    /// plus <c>+0x9a</c>, au tangage <c>+0x34</c> et a la portee <c>+0x5c</c> — puis met son
+    /// tangage a zero le temps de faire naitre, par <see cref="SpawnStatusEffectEntity_0047AC40"/>,
+    /// l'enfant <c>0xc0 + octet 0x0c</c> du repertoire <c>+0xd4</c> sur <b>l'une de cinq planches
+    /// tirees au sort</b> : <c>0x00551b10</c>, <c>0x00551b18</c>, <c>0x00551b20</c> (trois
+    /// enregistrements de <see cref="s_Descriptors_00551B00"/>), <c>0x00551bb8</c> et
+    /// <c>0x00551ba8</c> (de <see cref="s_Descriptors_00551BA0"/>). La table des cinq adresses est
+    /// construite sur la pile a chaque image. A la vingtieme image l'emplacement est vide.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00484F80(byte* e)
+    {
+        byte** plates = stackalloc byte*[5];
+        plates[0] = Descriptors00551B00() + 0x10;   // Ghidra: 0x00551b10
+        plates[1] = Descriptors00551B00() + 0x18;   // Ghidra: 0x00551b18
+        plates[2] = Descriptors00551B00() + 0x20;   // Ghidra: 0x00551b20
+        plates[3] = Descriptors00551BA0() + 0x18;   // Ghidra: 0x00551bb8
+        plates[4] = Descriptors00551BA0() + 0x08;   // Ghidra: 0x00551ba8
+
+        int* offset = stackalloc int[3];
+        byte* caster = *(byte**)(e + 0x6c);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x74) = caster;
+            *(int*)(e + 0x44) = -*(int*)(e + 0x44);
+            *(int*)(e + 0x4c) = -*(int*)(e + 0x4c);
+            *(short*)(e + 0x32) += *(short*)(e + 0x9a);
+            *(byte**)(e + 0x70) = caster;
+            *(short*)(e + 0x36) = 4;
+            e[0x04] = 0x1e;
+            *(uint*)(e + 0x28) = 0x08000400;
+            *(short*)(e + 0x2c) = 0x400;
+            *(uint*)(e + 0x38) = 0xf0f0f0;
+        }
+
+        // Ghidra: LAB_00484ffb
+        RotateVectorByAngles_00536090((short*)(caster + 0x30), (int*)(e + 0x44), offset);
+
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c) + offset[0];
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20) + offset[1];
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24) + offset[2];
+
+        SetVectorFromAngles_00532AD0(
+            (int*)(e + 0x50), *(short*)(caster + 0x32) + *(short*)(e + 0x9a),
+            *(short*)(e + 0x34), *(int*)(e + 0x5c));
+
+        short pitch = *(short*)(e + 0x34);
+        *(short*)(e + 0x34) = 0;
+
+        byte* region = *(byte**)(s_Unknown_005e97cc + 0xd4);
+        byte child = (byte)((*(byte**)region)[0x0c] + 0xc0);
+        byte* plate = plates[CrtRand() % 5];                                   // Ghidra: `mov edx,[esp+edx*4+24h]`
+        SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), plate, child, 0, 1);
+
+        (*(short*)(e + 0x10))++;
+        *(short*)(e + 0x34) = pitch;
+        if (*(short*)(e + 0x10) >= 0x14) *(uint*)e = 0;
+    }
 }

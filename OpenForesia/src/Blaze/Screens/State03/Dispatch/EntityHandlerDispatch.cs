@@ -1486,6 +1486,35 @@ public static unsafe partial class Blaze
             case 0x00419F40: EntityHandler_00419F40(record); return;
             case 0x0041B3F0: EntityHandler_0041B3F0(record); return;
 
+            // ====================================================================================
+            // LA VIEILLE TOUR, categorie B — les effets simples (lot 3).
+            // ====================================================================================
+
+            // Effects/OldTowerParticles.cs
+            case 0x00416DE0: EntityHandler_00416DE0(record); return;   // le scintillement
+            case 0x00416EE0: EntityHandler_00416EE0(record); return;   // la poussiere, reecrit la page
+            case 0x00417000: EntityHandler_00417000(record); return;   // la bouffee
+            case 0x00418290: EntityHandler_00418290(record); return;   // l'etincelle, 0-1-2-4
+            case 0x00419E60: EntityHandler_00419E60(record); return;   // l'etincelle, 5-6-8-10
+            case 0x00417650: EntityHandler_00417650(record); return;   // la lueur attiree, 0-1-2-4
+            case 0x00419260: EntityHandler_00419260(record); return;   // la lueur attiree, 5-6-8-10
+            case 0x00419D30: EntityHandler_00419D30(record); return;   // l'eclat projete
+            case 0x0041B220: EntityHandler_0041B220(record); return;   // la goutte
+            case 0x0041B2F0: EntityHandler_0041B2F0(record); return;   // la spirale qui monte
+            case 0x0041B9F0: EntityHandler_0041B9F0(record); return;   // l'helice
+            case 0x0041BFA0: EntityHandler_0041BFA0(record); return;   // la spirale qui s'ouvre
+            case 0x0041BF00: EntityHandler_0041BF00(record); return;   // l'onde
+
+            // Effects/AreaExitFlash.cs — les deux amorces du flash, ancres 0 et 2, Z + 0x64000.
+            case 0x00418370: EntityHandler_00418370(record); return;
+            case 0x00418640: EntityHandler_00418640(record); return;
+
+            // Effects/MiscMarkers.cs et Combat/Projectiles.cs — les emetteurs a lanceur et la bulle
+            // empoisonnee.
+            case 0x00483930: EntityHandler_00483930(record); return;
+            case 0x00484F80: EntityHandler_00484F80(record); return;
+            case 0x00483A30: EntityHandler_00483A30(record); return;
+
             case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
             case 0x0040B900: EntityHandler_0040B900(record); return;
             case 0x0040C820: EntityHandler_0040C820(record); return;

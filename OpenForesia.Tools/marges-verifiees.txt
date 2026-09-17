@@ -77,3 +77,7 @@ EntityHandler_0041A560 | 0x0054FE80 | +0x00 | EntityHandler_0041A560,TickFivePha
 EntityHandler_0041B420 | 0x0054FE80 | +0x08 | EntityHandler_0041B420,TickFivePhaseBurst | 3065c5fdce76 | idem, second enregistrement
 EntityHandler_0041A560/TickFivePhaseBurst | 0x0054FD08 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | role 3 : pose atlas + 8 et 0
 EntityHandler_0041B420/TickFivePhaseBurst | 0x0054FD08 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | idem
+
+# ---- la vieille tour, categorie B lot 3 (2026-09-17)
+EntityHandler_00417000 | 0x0054FA50 | +0x00 | EntityHandler_00417000,BrightenEntityTint_00404DE0 | 468d5b384cb2 | pose 0 a la naissance, ne l'ecrit plus ; BrightenEntityTint_00404DE0 ne touche pas +0x40 (releve FUN_00417000.asm)
+EntityHandler_0041B2F0 | 0x0054FD50 | +0x00 | EntityHandler_0041B2F0 | e0f6d3ecd2a2 | pose 0 a la naissance (Blaze.c FUN_0041b2f0), ne l'ecrit plus

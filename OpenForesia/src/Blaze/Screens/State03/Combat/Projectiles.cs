@@ -1163,4 +1163,79 @@ public static unsafe partial class Blaze
             *(short*)(member + 0x96) = 0x3c;
         }
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x00483a30</c> — <b>la bulle empoisonnee</b>, creneau 31 de la table d'effets
+    /// <c>0x0056b1c8</c>, sous-zones 3, 7 et 9 de la vieille tour. Absente de <c>Blaze.c</c> ; 97
+    /// instructions, <c>Legacy/Raw/Blaze/FUN_00483A30.asm</c>. Vraisemblablement l'enfant de
+    /// <see cref="EntityHandler_00483930"/>, qui fait naitre un <c>0xc0 + n</c> dans cette table.
+    ///
+    /// <para>
+    /// <b>Elle grossit, derive, et empoisonne une fois chaque victime.</b> Son echelle rejoint
+    /// <c>0x2000</c> par huitiemes, recopiee sur les trois axes. Elle avance de sa vitesse, freinee
+    /// d'un huitieme et d'un deux-cent-cinquante-sixieme par image — la vitesse que son pere lui a
+    /// posee. Chaque image elle sonde devant elle (<see cref="ProbeMeleeTarget_00474CA0"/>, gabarit
+    /// <c>{-0x400, -0x1e, 0x64, 0x32, 0, 0x3c}</c>) ; une victime qu'elle n'a pas encore touchee
+    /// recoit <b>l'effet d'etat 7</b> au compte du lanceur <c>+0x74</c>
+    /// (<see cref="ApplyStatusEffect_0053B810"/>), le bit <c>0x40</c> et 8 en <c>+0x96</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le masque de victimes est l'octet <c>+0x09</c></b> : un bit par numero d'emplacement
+    /// (<c>victime + 0x08</c>), pose au premier coup. <b>Elle n'inflige aucun degat direct</b> — pas de
+    /// <see cref="ResolveMeleeHit_00539B80"/>. Sa teinte perd <c>0x101010</c> par image, et
+    /// l'emplacement est vide quand elle vaut exactement zero.
+    /// </para>
+    /// <para>
+    /// <b>Le gabarit se lit sur la pile</b> : son premier mot est ecrit a trois registres sauvegardes
+    /// (<c>[esp+0Ch]</c>), les cinq autres apres deux <c>push</c> de plus (<c>[esp+16h]</c> a
+    /// <c>[esp+1Eh]</c>) — tous designent la meme zone.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00483A30(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = -0x400;
+
+        int scale = *(short*)(e + 0x28);
+        scale += (0x2000 - scale) >> 3;
+        *(short*)(e + 0x2c) = (short)scale;
+        *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
+
+        int vx = *(int*)(e + 0x50);
+        int vy = *(int*)(e + 0x54);
+        int vz = *(int*)(e + 0x58);
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x24) += vz;
+        *(int*)(e + 0x20) += vy;
+
+        probe[1] = -0x1e;
+        probe[2] = 0x64;
+        probe[3] = 0x32;
+        probe[4] = 0;
+        probe[5] = 0x3c;
+
+        *(int*)(e + 0x50) = vx - (vx >> 8) - (vx >> 3);
+        *(int*)(e + 0x54) = vy - (vy >> 3) - (vy >> 8);
+        *(int*)(e + 0x58) = vz - (vz >> 8) - (vz >> 3);
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);                    // Ghidra: FUN_00474ca0
+
+        // Ghidra: `mov cl,[edi+8] ; shl edx,cl ; test al,dl` — une victime deja marquee est epargnee.
+        if (victim != null && (e[0x09] & (byte)(1 << victim[0x08])) == 0)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            caster[0x07] = 7;
+            ApplyStatusEffect_0053B810((uint*)caster, (uint*)victim, 0);
+
+            e[0x09] |= (byte)(1 << victim[0x08]);
+            *(uint*)victim |= 0x40;
+            *(short*)(victim + 0x96) = 8;
+        }
+
+        // Ghidra: LAB_00483b31 — `add eax,0FFEFEFF0h` puis `jne`.
+        uint tint = *(uint*)(e + 0x38) + 0xffefeff0;
+        *(uint*)(e + 0x38) = tint;
+        if (tint == 0) *(uint*)e = 0;
+    }
 }

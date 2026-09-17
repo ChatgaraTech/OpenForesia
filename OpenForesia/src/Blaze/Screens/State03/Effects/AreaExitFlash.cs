@@ -116,13 +116,38 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_004060C0(byte* e)
-    {
-        byte* anchor = Mem.Entity(0x005fa5e0) + 6 * 0x9c;
+        => EnterAreaExitFlash(e, 0x39, 6, 0);
 
-        *(int*)(e + 0x5c) = 0x39;
+    /// <summary>
+    /// Ghidra: <c>0x00418370</c> et <c>0x00418640</c> — <b>les deux amorces de la vieille tour</b>,
+    /// creneaux 46 et 47 de la table <c>0x0056b0c8</c>, sous-zones 5, 6, 8 et 10. Absentes de
+    /// <c>Blaze.c</c> ; dix-neuf instructions chacune.
+    ///
+    /// <para>
+    /// <b>La forme de <see cref="EntityHandler_004060C0"/>, avec un ajout</b> : le genre vaut
+    /// <c>0x3b</c>, l'ancre est l'enregistrement <b>0</b> (<c>0x005fa5fc - 0x1c</c>) pour la
+    /// premiere et <b>2</b> (<c>0x005fa734 - 0x1c = 0x005fa5e0 + 2 × 0x9c</c>) pour la seconde, et
+    /// <b>Z est decale de <c>0x64000</c></b> (<c>add ecx,64000h</c>) — le flash se joue 100 unites
+    /// plus loin que l'ancre. C'est la seule amorce de la famille a deplacer son point.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00418370(byte* e) => EnterAreaExitFlash(e, 0x3b, 0, 0x64000);
+
+    /// <summary>Ghidra: <c>0x00418640</c> — la seconde amorce de la tour, ancre 2. Voir
+    /// <see cref="EntityHandler_00418370"/>.</summary>
+    private static void EntityHandler_00418640(byte* e) => EnterAreaExitFlash(e, 0x3b, 2, 0x64000);
+
+    /// <summary>Le corps commun des amorces a ancre : le genre en <c>+0x5c</c>, la pose de
+    /// l'enregistrement <paramref name="anchorIndex"/> de <c>0x005fa5e0</c> (position, Z decale de
+    /// <paramref name="zShift"/>, puis les trois angles), et le flash.</summary>
+    private static void EnterAreaExitFlash(byte* e, int kind, int anchorIndex, int zShift)
+    {
+        byte* anchor = Mem.Entity(0x005fa5e0) + anchorIndex * 0x9c;
+
+        *(int*)(e + 0x5c) = kind;
         *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
         *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
-        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24) + zShift;
         *(short*)(e + 0x30) = *(short*)(anchor + 0x30);
         *(short*)(e + 0x32) = *(short*)(anchor + 0x32);
         *(short*)(e + 0x34) = *(short*)(anchor + 0x34);
