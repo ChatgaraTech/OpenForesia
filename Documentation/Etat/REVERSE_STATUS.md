@@ -22123,3 +22123,103 @@ comme il s'exécute, avec la note.
 **Rien.** `GestionnairesEntites.md` donne la mine à **157 / 157 implémentés**, la deuxième zone
 complète après la forêt et l'auberge. Les 157 restent à **0 testé** : c'est une dette entière, et
 seule une séance de jeu la lèvera.
+
+## 2026-09-17 (suite) — zone 2, premier lot : huit particules de la montagne du dragon de feu
+
+Demandé : enchaîner sur la zone 2 par lots de dix, et signaler si un morceau devient gros. La zone
+portait **20 gestionnaires à écrire sur 42** ; le mesurage préalable les a rangés, et il a valu la
+peine d'être fait avant d'écrire une ligne.
+
+| lot | combien | ce que ça coûte |
+|---|---|---|
+| jumeaux de corps déjà écrits | 2 | un renvoi et un relevé de planche |
+| décompilés dans `Blaze.c` | 10 | 20 à 232 lignes de C chacun |
+| au désassembleur, petits | 7 | 240 à 848 octets |
+| **le Dragon rouge `0x00499140`** | 1 | **841 instructions, aucun jumeau** |
+
+**Huit sont écrits**, dans `Effects/FireMountainParticles.cs` : `0x0040CDA0`, `0x0040D560`,
+`0x0040DDE0`, `0x0040E6F0`, `0x0040E860`, `0x0040EA00`, `0x0040EAF0`, `0x0040EBE0`. La zone passe de
+**22 à 30 sur 42**.
+
+### Deux jumeaux, et ils ne se valent pas
+
+`0x0040CDA0` est **`0x00409E40` au bit près** — 89 instructions identiques sur 89, immediates
+comprises. Le diff STRICT ne rend pas une seule ligne : ni adresse de planche, ni table de sauts.
+C'est un renvoi pur, sans donnée à relever.
+
+`0x0040EA00` est `0x004070F0` (le grain de la mine) à **une immédiate près** :
+`mov dword [esi+3Ch],54F6B8h` au lieu de `54F1E8h`. Mais, contrairement au cas de l'Ours gris de la
+mine, **les deux planches n'ont pas les mêmes octets**. Le corps est partagé, la donnée non — et la
+seconde a dû être relevée et bornée pour elle-même. La leçon du 2026-09-16 tient donc dans les deux
+sens : une immédiate de planche oblige à lire la donnée, et la réponse peut être « ce n'est pas la
+même ».
+
+### La planche de `0x0054f680` fait sept enregistrements, pas quatre
+
+C'est la trouvaille du lot, et elle vient d'une méthode nouvelle : au lieu de deviner les bornes
+d'après la forme des enregistrements, **le binaire entier a été balayé pour chaque adresse
+candidate**, à la recherche de l'immédiate quatre octets. Le résultat est sans appel.
+
+| adresse | références dans le binaire | verdict |
+|---|---|---|
+| `0x0054f630` | 3, toutes dans `0x0040DDE0` | base |
+| `0x0054f640` | 1 | base |
+| `0x0054f658` | 1 | base |
+| `0x0054f660` | 1 | base |
+| `0x0054f680` | 2 | base |
+| **`0x0054f6a0`** | **0** | **pas une base** |
+| `0x0054f6b8` | 1 | base |
+
+La forme change nettement à `0x0054f6a0` — les tuiles passent de `0x20 x 0x20` page 02 à
+`0x18 x 0x18` page 01 —, ce qui invitait à couper là. **Personne ne l'installe** : la plage de
+`0x0054f680` court donc jusqu'à `0x0054f6b8` et compte sept enregistrements. Couper sur le
+changement de forme aurait rendu la plage trop courte, et `CLAUDE.md` dit ce que cela produit — du
+tas non initialisé, sans erreur de compilation ni exception.
+
+**Le balayage devrait devenir le réflexe** devant une région de planches : il est exact, il coûte
+quelques secondes, et il répond à la seule question qui compte — qui installe quoi.
+
+### Les deux marges courtes sont prouvées et scellées
+
+`check-descriptors.sh` relit les six planches dans le binaire et confirme les six longueurs. Il
+signale deux marges courtes, et les deux se prouvent :
+
+- `EntityHandler_0040DDE0` sur `0x0054F630`, marge 2 : les variantes 0, 1 et 4 posent `+0x40 = 0` à
+  la naissance et ne le rebougent jamais. La variante 2, qui fait tourner `+0x40`, installe
+  l'**autre** planche — `0x0054F640`, trois enregistrements pour trois valeurs.
+- `EntityHandler_0040EAF0` sur `0x0054F658`, marge 1 : il n'écrit jamais `+0x40`, mais son sous-type
+  est lu dans `0x0056b2c8`, que seul le pool `0x005f2d40` atteint ; l'unique allocateur de ce pool
+  est `FUN_0047ac40`, qui met `+0x40` à zéro. **C'est mot pour mot la preuve de
+  `EntityHandler_004079E0`**, déjà scellée le 2026-09-16 : la même table donne la même garantie.
+
+Les deux sont dans `marges-verifiees.txt`, scellées sur les corps dont elles dépendent.
+
+### Ce qui a été mis de côté, et pourquoi
+
+**Deux des dix prévus ne sont pas des particules : ce sont des SCÈNES CINÉMA.** `0x0040D930` et
+`0x0040E3A0` désarment les créneaux d'équipe, attendent que le groupe se pose, prennent la caméra,
+fondent l'écran et imposent une pose aux quatre membres. Elles forment une paire — la seconde écrit
+l'indice d'acteur en `0x00571418`, la première le relit — et elles travaillent sur
+l'enregistrement **`0x005713f0`**.
+
+Or `Cutscene/MineScenes.cs` signale déjà cet enregistrement, et pas pour rien : il **chevauche une
+frontière d'allocation**. `0x005713c0..0x005713ff` est couvert par `s_ViewParams_00571270`, dont la
+borne `0x00571400` est la fin du contenu de `.data` dans le fichier et non une frontière entre deux
+structures ; `0x005713f0..0x0057141f` tombe donc à cheval, avec un trou de `0x00571400` à
+`0x0057141f` qu'aucune allocation C# ne couvre. Le fichier le notait ainsi : « aucun code transcrit
+ne l'emploie aujourd'hui ». **Ces deux scènes sont le premier code qui l'emploie.**
+
+Les écrire demande donc deux choses qui ne sont pas de la transcription : un fichier
+`Cutscene/FireMountainScenes.cs`, et une décision de plan mémoire sur le trou — exactement la classe
+de défaut que `MemoryLayoutTests.cs` surveille. Laissées en attente, signalées ici et en tête de
+`FireMountainParticles.cs`.
+
+### Ce qui reste en zone 2
+
+**Douze**, dont onze petits : les six décors de la table `0x0056adc8`
+(`0x004560A0`, `0x00456110`, `0x00456180`, `0x00456270`, `0x00456310`, `0x00456590`, à ranger dans
+`Handlers/FireMountain.cs`), les trois `0x004830F0` / `0x00483260` / `0x00483360` (qui rejoignent
+`Effects/MiscMarkers.cs`, où sont déjà leurs voisins), et les deux scènes ci-dessus. Puis le
+**Dragon rouge `0x00499140`**, le boss à 8 000 PV : 841 instructions, table de sauts à
+`0x00499c14`, aucun jumeau — un corps de la taille du Troll, qui mérite sa séance et un répertoire
+`Ai/FireMountain/`.

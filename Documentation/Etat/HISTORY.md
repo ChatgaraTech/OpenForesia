@@ -4,6 +4,22 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite)
+
+- feat : **huit particules de la montagne du dragon de feu** (`Effects/FireMountainParticles.cs`) —
+  zone 2 : 22 -> 30 sur 42
+- feat : la braise `0x0040DDE0`, quatre variantes sans rapport dans un seul corps ; les deux
+  bouffees `0x0040E6F0` / `0x0040E860`, qui brulent le groupe ; l'etincelle `0x0040EBE0`, la seule
+  particule du depot qui garde un point de reference
+- doc : **la planche `0x0054f680` fait sept enregistrements, pas quatre** — la forme change au
+  cinquieme, mais un balayage du binaire entier ne trouve aucune reference a `0x0054f6a0` : personne
+  ne l'installe, donc la plage continue
+- doc : deux marges courtes prouvees et scellees dans `marges-verifiees.txt` (`0x0054F630`,
+  `0x0054F658`)
+- doc : **`0x0040D930` et `0x0040E3A0` mises de cote** — ce sont deux scenes cinema, pas des
+  particules, et elles emploient l'enregistrement `0x005713f0` que `MineScenes.cs` signale comme
+  chevauchant une frontiere d'allocation. Il leur faut un fichier et une decision de plan memoire
+
 ## 2026-09-17
 
 - feat : **la mine est complete — 157 / 157 gestionnaires implementes**, deuxieme zone entiere

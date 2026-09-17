@@ -1031,6 +1031,35 @@ public static unsafe partial class Blaze
             // combo enchaine plus tot, et il bondit de pres la ou l'Ogre chargeait.
             case 0x004889A0: TickSceneEntityAi_004889A0(record); return;
 
+            // ====================================================================================
+            // LES PARTICULES DE LA MONTAGNE DU DRAGON DE FEU — zone 2, Effects/FireMountainParticles.cs
+            // ====================================================================================
+
+            // Le flash bleu, emis une seconde fois par le compilateur : 89 instructions identiques
+            // sur 89 a celles de 0x00409E40, immediates comprises.
+            case 0x0040CDA0: EntityHandler_0040CDA0(record); return;
+
+            // La trainee de feu qui se recolle sur son porteur et meurt avec lui.
+            case 0x0040D560: EntityHandler_0040D560(record); return;
+
+            // La braise, quatre variantes sans rapport dans un seul corps : deux spirales, une
+            // etincelle droite, et la gerbe qui pond trente et une filles a la naissance.
+            case 0x0040DDE0: EntityHandler_0040DDE0(record); return;
+
+            // Les deux bouffees, meme planche et meme animation : l'une monte sur place, l'autre
+            // part dans son cap. Toutes deux brulent le groupe a 0x28 unites.
+            case 0x0040E6F0: EntityHandler_0040E6F0(record); return;
+            case 0x0040E860: EntityHandler_0040E860(record); return;
+
+            // Le grain de la mine (0x004070F0) lisant une autre planche, 0x0054F6B8.
+            case 0x0040EA00: EntityHandler_0040EA00(record); return;
+
+            // L'escarbille, dont la montee s'essouffle d'un cran toutes les deux images.
+            case 0x0040EAF0: EntityHandler_0040EAF0(record); return;
+
+            // L'etincelle qui garde une ancre et meurt de s'en etre eloignee de 0x78.
+            case 0x0040EBE0: EntityHandler_0040EBE0(record); return;
+
             // Le sous-type 16 du bloc C — LE MECHANT OURS, la plus riche de la famille : TROIS
             // gestes au lieu de deux, une attaque a distance, une prise qui projette, et le seul
             // pas du depot qui secoue la camera.

@@ -1,6 +1,7 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-17**. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-17** (deux séances ce jour-là : la fin
+de la mine, puis le premier lot de la zone 2). L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -31,8 +32,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **327** |
-| implémentés, jamais appelés | **280** |
-| à transcrire | **823** |
+| implémentés, jamais appelés | **288** |
+| à transcrire | **815** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -40,7 +41,7 @@ socle commun, et il est entier.
 | 0 | **L'auberge** | **48 / 48** |
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
-| 2 | La montagne du dragon de feu | 22 / 42 |
+| 2 | La montagne du dragon de feu | 30 / 42 |
 | 4 | La vieille tour | 28 / 176 |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
 | 6 | Le château de l’immortel | 26 / 170 |
@@ -70,7 +71,11 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
-3. **La zone 2 (22 / 42) et la zone 7 (18 / 35)**, les deux plus petites de celles qui restent.
+3. **La zone 2 (30 / 42) et la zone 7 (18 / 35)**, les deux plus petites de celles qui restent.
+   La zone 2 n'a plus que **douze** gestionnaires, dont onze petits : six decors pour
+   `Handlers/FireMountain.cs`, trois marqueurs pour `Effects/MiscMarkers.cs`, et deux scenes cinema
+   qui attendent une decision de plan memoire. Puis le **Dragon rouge `0x00499140`**, 841
+   instructions, qui merite sa seance et un repertoire `Ai/FireMountain/`.
 4. Le reste. La grotte scellée (349) et la vieille tour (176) sont les deux gros morceaux.
 
 **La dette d’épreuve, elle, grandit** : 280 corps écrits n’ont jamais tourné, et **la mine y entre

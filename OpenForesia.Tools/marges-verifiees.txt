@@ -64,3 +64,7 @@ EntityHandler_0040B900/TickFivePhaseBurst | 0x0054F450 | +0x08 | TickFivePhaseBu
 EntityHandler_0040C910 | 0x0054F568 | +0x00 | EntityHandler_0040C910 | 1c05c35685ac | pose 0 a la naissance, ne l'ecrit plus (Blaze.c FUN_0040c910)
 EntityHandler_0040BE50 | 0x0054F4D0 | +0x18 | EntityHandler_0040BE50 | efe24ee3341c | pose 0 a la naissance, ne l'ecrit plus
 EntityHandler_004380C0 | 0x00550F30 | +0x00 | EntityHandler_004380C0,TickOpeningSpiral_0040BCA0 | 79ea488e9a93 | pose 0 ; le corps ne fait que remettre +0x40 a 0 quand il atteint 3, sans jamais l'avancer (animates=false)
+
+# Verifiees le 2026-09-17 — montagne du dragon de feu.
+EntityHandler_0040DDE0 | 0x0054F630 | +0x00 | EntityHandler_0040DDE0 | bd12efd1ae16 | pose +0x40 = 0 a la naissance des variantes 0, 1 et 4, les seules qui installent cette planche, et ne le rebouge jamais ; la variante 2, qui fait tourner +0x40, installe l'AUTRE planche (0x0054F640, trois enregistrements pour trois valeurs)
+EntityHandler_0040EAF0 | 0x0054F658 | +0x00 | EntityHandler_0040EAF0,SpawnStatusEffectEntity_0047AC40 | e534e0a55a5c | n'ecrit jamais +0x40 ; sous-type lu a 0x56b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40, qui le met a 0 — meme preuve que EntityHandler_004079E0
