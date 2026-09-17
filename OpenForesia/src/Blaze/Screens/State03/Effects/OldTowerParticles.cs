@@ -2138,4 +2138,345 @@ public static unsafe partial class Blaze
         // Ghidra: `mov dword [esi],7FFFFFFFh` — une AFFECTATION, pas un masque.
         if (*(short*)(e + 0x14) < 1) *(uint*)e = 0x7fffffff;
     }
+
+    // =====================================================================
+    // LES TROIS DE 0x0056b0c8 ET 0x0056b1c8 QUI NE SONT PAS DES SCENES (2026-09-17)
+    //
+    //   0x00416A80  0056B0C8, sous-zones 0, 1, 2, 4  — le halo qui suit son porteur
+    //   0x0041BC90  0056B1C8, sous-zones 3, 7, 9     — la masse qui tombe
+    //   0x0041AFA0  0056B1C8, sous-zones 3, 7, 9     — la traine a trois temps
+    //
+    // Les trois sont dans Effects/ et non dans Combat/ : aucun ne touche a un bloc de combat. La
+    // masse secoue la camera et fait naitre, mais c'est le sous-type qu'elle engendre qui frappe,
+    // pas elle.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00416a80</c> — <b>le halo qui suit son porteur et seme de part et d'autre</b>,
+    /// sous-zones 0, 1, 2 et 4, table <c>0x0056b0c8</c>. <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_00416A80.asm</c>.
+    ///
+    /// <para>
+    /// <b>Il se recale sur son porteur a chaque image</b> : le champ <c>+0x6c</c> — celui que le
+    /// verbe <c>0x00442D90</c> ecrit, « pour le compte de qui ce decor joue-t-il son script ? » —
+    /// lui donne position et cap, la hauteur relevee de <b>200 unites</b>. Sans porteur, il garde
+    /// les siens.
+    /// </para>
+    /// <para>
+    /// <b>Il sonne deux fois.</b> A la naissance, <c>0x1f</c> a la hauteur <c>0x6fd</c> ; ensuite
+    /// <c>0x23</c> une image sur cinq — et le compteur part a <c>0xffff</c> pour que le second ne
+    /// parte pas des la premiere image.
+    /// </para>
+    /// <para>
+    /// <b>Les deux semis sont montes en sonde.</b> Il se transporte a <b>120 unites</b> dans la
+    /// direction de son cap, <b>40 unites plus bas</b>, fait naitre le sous-type <c>0xED</c>
+    /// <i>si le porteur a <c>+0x9a</c> a zero</i> ; puis tourne d'un demi-tour (<c>0x800</c>), se
+    /// transporte de nouveau, et fait naitre le meme <i>si le porteur a <c>+0x9a</c> a un</i>. Deux
+    /// cotes, deux conditions exclusives : le porteur choisit de quel cote le halo seme.
+    /// </para>
+    /// <para>Position, hauteur, profondeur et cap sont remis a leur valeur d'entree a la fin, et le
+    /// halo meurt quand son compte <c>+0x16</c>, parti de 30, passe sous zero.</para>
+    /// </summary>
+    private static void TickHolderHalo_00416A80(byte* e)
+    {
+        byte* holder = *(byte**)(e + 0x6c);
+
+        if (holder != null)
+        {
+            *(int*)(e + 0x1c) = *(int*)(holder + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(holder + 0x20) + 0xc8000;
+            *(int*)(e + 0x24) = *(int*)(holder + 0x24);
+            *(short*)(e + 0x32) = *(short*)(holder + 0x32);
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0x1e;
+            *(short*)(e + 0x98) = unchecked((short)0xffff);
+            TryPlaySoundNearEntity((uint*)e, 0x1f, 0x6fd, 0x1000, 0, 0);     // Ghidra: FUN_00468080
+        }
+
+        if (*(short*)(e + 0x98) == 0)
+            TryPlaySoundNearEntity((uint*)e, 0x23, 0x1000, 0x1000, 0, 0);
+
+        (*(short*)(e + 0x98))++;
+        if (*(short*)(e + 0x98) == 5) *(short*)(e + 0x98) = 0;
+
+        // Les quatre valeurs d'entree, rendues a la fin.
+        short keptCourse = *(short*)(e + 0x32);
+        int keptX = *(int*)(e + 0x1c);
+        int keptY = *(int*)(e + 0x20);
+        int keptZ = *(int*)(e + 0x24);
+
+        StepHaloProbe_00416A80(e);
+        if (holder != null && *(short*)(holder + 0x9a) == 0)
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xed, 0, -1);
+
+        *(short*)(e + 0x32) += 0x800;
+        *(int*)(e + 0x1c) = keptX;
+        *(int*)(e + 0x24) = keptZ;
+
+        StepHaloProbe_00416A80(e);
+        if (holder != null && *(short*)(holder + 0x9a) == 1)
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xed, 0, -1);
+
+        *(short*)(e + 0x32) = keptCourse;
+        *(int*)(e + 0x1c) = keptX;
+        *(int*)(e + 0x20) = keptY;
+        *(int*)(e + 0x24) = keptZ;
+
+        (*(short*)(e + 0x16))--;
+        if (*(short*)(e + 0x16) < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Un des deux pas de sonde de <see cref="TickHolderHalo_00416A80"/> : 120 unites au
+    /// cap courant et 40 unites plus bas. Le binaire ecrit ce bloc deux fois ; le facteur 120 y est
+    /// <c>lea ×3</c>, <c>lea ×5</c>, <c>shl 3</c>.</summary>
+    private static void StepHaloProbe_00416A80(byte* e)
+    {
+        short course = *(short*)(e + 0x32);
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * 120;   // Ghidra: 0x00545a1c
+        *(int*)(e + 0x20) -= 0xa000;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * 120;        // Ghidra: 0x00545a16
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0041bc90</c> — <b>la masse qui tombe</b>, sous-zones 3, 7 et 9, table
+    /// <c>0x0056b1c8</c>. <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_0041BC90.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle nait 1000 unites au-dessus de son sol</b> (<c>+0x64 + 0x3e8000</c>) et tombe en
+    /// accelerant : la vitesse <c>+0x12</c> gagne 10 par image. Son cap tourne de <c>0xfa</c> par
+    /// image pendant la chute, et son echelle est enorme — <c>0x1770</c> en largeur, <c>0x1b58</c>
+    /// sur les deux autres.
+    /// </para>
+    /// <para>
+    /// <b>Elle prend son appartenance dans <c>+0x14</c></b> et la range dans <c>+0x04</c>, l'octet
+    /// que <see cref="SpawnCastEntity_0047AAE0"/> recopie : c'est ce qui decide qui la masse blesse.
+    /// Et <b>c'est cette meme valeur qui choisit l'impact</b> : seule une masse de genre
+    /// <c>0x39</c> sonne (deux fois <c>0x2e</c>, a deux hauteurs) et fait naitre deux <c>0xC3</c>
+    /// avec les variantes 7 et 1. Les autres arrivent en silence.
+    /// </para>
+    /// <para>
+    /// A l'arrivee — 20 unites au-dessus du sol —, trois <c>0xF9</c> naissent dans tous les cas et le
+    /// bit <c>0x4000</c> est pose. Puis vient la secousse : <c>+0x14</c> part de 20 et
+    /// <b>alterne de signe en decroissant</b> (<c>if (v >= 0) v-- else v++ ; v = -v</c>), publiee a
+    /// chaque image ; a zero la masse passe au dernier etat, ou son cap suit un sinus amorti
+    /// jusqu'a ce que la phase atteigne <c>0x2ee0</c>.
+    /// </para>
+    /// </summary>
+    private static void TickFallingMass_0041BC90(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[4] = e[0x14];
+            *(short*)(e + 0x10) = 1;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = 0x1770;
+            *(short*)(e + 0x2a) = 0x1b58;
+            *(short*)(e + 0x2c) = 0x1b58;
+            *(int*)(e + 0x20) = *(int*)(e + 0x64) + 0x3e8000;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x32) = 0;
+            *(short*)(e + 0x34) = 0xc00;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short speed = *(short*)(e + 0x12);
+            int height = *(int*)(e + 0x20);
+
+            *(short*)(e + 0x32) += 0xfa;
+            *(short*)(e + 0x12) = (short)(speed + 10);
+
+            int floor = *(int*)(e + 0x64) + 0x14000;
+            height -= speed << 0xc;
+            *(int*)(e + 0x20) = height;
+
+            if (height < floor)
+            {
+                *(int*)(e + 0x20) = floor;
+
+                byte kind = e[4];
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x14) = 0x14;
+
+                if (kind == 0x39)
+                {
+                    Aud.PlaySoundEffect(0x2e, 0x200, 0x1000, 0x1000);
+                    Aud.PlaySoundEffect(0x2e, 0x32a, 0x1000, 0x1000);
+
+                    short keptVariant = *(short*)(e + 0x14);
+                    *(short*)(e + 0x14) = 7;
+                    SpawnCastEntity_0047AAE0(e, 0xc3, 0, -1);        // Ghidra: FUN_0047aae0
+                    *(short*)(e + 0x14) = 1;
+                    SpawnCastEntity_0047AAE0(e, 0xc3, 0, -1);
+                    *(short*)(e + 0x14) = keptVariant;
+                }
+
+                *(uint*)e |= 0x4000;
+                for (int i = 0; i < 3; i++)
+                    SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xf9, 0, -1);
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            short jolt = *(short*)(e + 0x14);
+            jolt = jolt >= 0 ? (short)(jolt - 1) : (short)(jolt + 1);
+            *(short*)(e + 0x14) = jolt;
+
+            jolt = (short)-jolt;
+            *(short*)(e + 0x14) = jolt;
+
+            TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, jolt, 0x3e7, 0, 0);   // FUN_0041be60
+
+            if (*(short*)(e + 0x14) == 0)
+            {
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        int wobble = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12));    // Ghidra: 0x00545a1c
+        *(short*)(e + 0x12) += 0x100;
+        *(short*)(e + 0x32) = (short)(wobble >> 4);
+
+        if (*(short*)(e + 0x12) >= 0x2ee0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0041afa0</c> — <b>la traine a trois temps</b>, sous-zones 3, 7 et 9, table
+    /// <c>0x0056b1c8</c>. <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_0041AFA0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Deux naissances, choisies par le <c>+0x16</c> que le lanceur a laisse.</b> A <c>0x28</c>
+    /// exactement, la traine prend une echelle fixe de <c>0x1770</c>, un rayon <b>nul</b> et une
+    /// phase nulle : elle reste sur son ancre. Autrement elle prend une echelle tiree entre
+    /// <c>0x400</c> et <c>0x7ff</c>, une phase et un rayon (40 a 139) tires — et tourne.
+    /// </para>
+    /// <para>
+    /// <b>Les trois temps.</b> Pendant 60 images elle tourne a rayon constant, sa largeur
+    /// <c>+0x2a</c> s'ouvrant de <c>0x400</c> par image jusqu'a <c>0x7530</c>, et seme le sous-type
+    /// <c>0xFC</c> une image sur vingt. Puis son rayon <b>se referme de 5 par image</b> pendant que
+    /// le cap avance de <c>0x80</c> ; rayon negatif, elle passe au troisieme temps.
+    /// </para>
+    /// <para>
+    /// Le troisieme est la retombee : l'echelle perd 100 par image, bornee a <b>90</b> ; la
+    /// 70e image joue <c>0x0f</c> ; au-dela, la traine monte de <c>0x96000</c> par image et seme le
+    /// sous-type <c>0xFB</c> une image sur trois — <b>mais seulement si le compte d'entites
+    /// <c>0x005f7ce0</c> est sous 100</b>, la seule garde de ce genre dans toute la zone. Elle meurt
+    /// a la 90e image.
+    /// </para>
+    /// </summary>
+    private static void TickThreeBeatTrail_0041AFA0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            e[4] = 0;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+
+            int spread = CrtRand() % 0x400;                                  // Ghidra: FUN_00547140
+
+            if (*(short*)(e + 0x16) != 0x28)
+            {
+                short scale = (short)(spread + 0x400);
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x28) = scale;
+                *(short*)(e + 0x2c) = scale;
+
+                *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);
+                *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);
+                *(short*)(e + 0x14) = (short)(CrtRand() % 0x64 + 0x28);
+            }
+            else
+            {
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x28) = 0x1770;
+                *(short*)(e + 0x2c) = 0x1770;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);
+            }
+
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x16))++;
+
+            if ((short)(CrtRand() % 0x14) == 1)
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xfc, 0, -1);
+
+            if (*(short*)(e + 0x16) >= 0x3c)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x16) = 0;
+            }
+
+            *(short*)(e + 0x2a) += 0x400;
+            if (*(short*)(e + 0x2a) > 0x7530) *(short*)(e + 0x2a) = 0x7530;
+
+            short phase = *(short*)(e + 0x12);
+            short radius = *(short*)(e + 0x14);
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(phase) * radius + *(int*)(e + 0x50);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(phase) * radius + *(int*)(e + 0x58);
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            short phase = *(short*)(e + 0x12);
+            (*(short*)(e + 0x16))++;
+            *(short*)(e + 0x32) += 0x80;
+
+            if (phase >= 0x1000) *(short*)(e + 0x12) = (short)(phase - 0x1000);
+
+            phase = *(short*)(e + 0x12);
+            short radius = *(short*)(e + 0x14);
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(phase) * radius + *(int*)(e + 0x50);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(phase) * radius + *(int*)(e + 0x58);
+
+            short closing = (short)(radius - 5);
+            *(short*)(e + 0x14) = closing;
+            if (closing < 0) *(short*)(e + 0x10) = 3;
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        (*(short*)(e + 0x16))++;
+        short age = *(short*)(e + 0x16);
+
+        *(short*)(e + 0x28) -= 100;
+        *(short*)(e + 0x2c) -= 100;
+        if (*(short*)(e + 0x28) < 0x5a)
+        {
+            *(short*)(e + 0x28) = 0x5a;
+            *(short*)(e + 0x2c) = 0x5a;
+        }
+
+        if (age == 0x46) Aud.PlaySoundEffect(0x0f, 0x1e9, 0x800, 0x800);
+
+        if (*(short*)(e + 0x16) > 0x46)
+        {
+            *(int*)(e + 0x20) += 0x96000;
+
+            // Ghidra: `cmp byte [5F7CE0h],64h ; jae` — la seule garde de ce genre de la zone.
+            if ((short)(CrtRand() % 3) == 0 && *Mem.Entity(0x005f7ce0) < 0x64)
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xfb, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) > 0x5a) *(uint*)e &= 0x7fffffff;
+    }
 }

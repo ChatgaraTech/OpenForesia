@@ -22926,3 +22926,92 @@ bandeau de `CLAUDE.md` décrit.
 Vérifications : `dotnet build` 0 erreur ; `check-descriptors.sh` sans preuve périmée ; douze relevés
 neufs sous `Legacy/Raw/Blaze/OldTower/` ; recensement et tri régénérés ; aucun des vingt-deux
 n'était marqué testé.
+
+## 2026-09-17 (suite 12) — vieille tour : la catégorie C est vide
+
+Les **16 corps restants**, et avec eux les catégories A, B et C de la zone 4. Elle passe de **140 à
+156 sur 176** ; il ne reste que **D (4 corps, 1 548 instructions)** et les **16 routines
+d'intelligence (14 235)**. Total : 676 à transcrire, 428 écrits jamais appelés.
+
+### Une correction de méthode qui touche quatre sites
+
+**`FUN_005037b0` n'a pas d'argument.** C'est une enveloppe de huit instructions qui monte deux
+pointeurs de pile et appelle `FUN_005037e0` ; le paramètre que Ghidra lui prête est fantôme, et
+`Handlers/Common.cs` le dit déjà dans le commentaire de `CameraModeApply_005037E0`. Le premier jet
+de `0x0041BB20` lui passait `2` — parce que le `push ebp` voisin, qui vaut bien 2, appartient en
+réalité à l'appel de `RunEntityScript` qui suit. Corrigé sur les quatre sites neufs, et
+`EndTowerScene` a perdu le paramètre qui portait l'erreur.
+
+### Les dix décors de `0x0056adc8`
+
+- **`0x0045E300` range sa position dans SIX OCTETS de la banque 0.** Même idée que
+  `TickPushableBlock_0045AE90` — la position survit au créneau — mais là où son cousin indexe trois
+  tables de `.data` par un numéro, celui-ci écrit deux octets par axe en `0x005e9706`..`0x005e970b`,
+  gardés par le bit 1 de `0x005e9705`. Il n'y a donc **qu'un seul bloc de ce genre par sous-zone**.
+  La reconstitution passe par `(haut << 8 | bas) << 16 >> 4` : le mot signé remis en unités de
+  `0x1000`, ce qui replierait un bloc au-delà de ±32 unités de mille.
+- **`0x0045BB10` détourne la caméra.** Le temps de la montée, les trois pointeurs `0x005edebc`
+  (position), `0x005e9ae0` (angles) et `0x005eca94` (cible) sont rebranchés sur son propre bloc
+  `0x00571680` / `0x00571668` / `0x00571670`. Le retour reconstitue l'écart `0x00564658` par rapport
+  à `0x005de088` — **le chemin du verbe de scénette `0x00504200`, écrit à l'envers** — puis rappelle
+  `FUN_005037b0` et `UnfreezeAllEntities`. Son compteur d'âge déborde à 2000 et repart à **30**, pas
+  à zéro : le seuil de 80 images reste franchi pour toujours.
+- **`0x0045A4D0` lit ses quatre verrous à l'envers** : le compte part de zéro et s'incrémente pour
+  chaque bit *absent* de `0x005e9701`. Zéro veut donc dire « les quatre sont posés », et c'est ce
+  qui bloque le plateau. Son compte à rebours descend jusqu'à **-2999**, un plancher explicite.
+- **`0x0045D750` est le seul décor de la zone qui frappe par position calculée** : passé
+  1000 unités sous sa butée, il se transporte à 150 unités d'un cap décalé de `-0x400` et applique
+  `ApplyPercentDamage_005397B0` genre 9 à tout membre à moins de 50 unités — en écrivant son propre
+  `+0x32` une fois par membre pour servir de sonde, puis en le remettant.
+- **`0x0045F7E0` inline `ActivePartySlot_00472770` avec un autre repli** : la fonction nommée rend
+  l'indice 4 quand aucun membre ne convient, celle-ci rend le chef. La différence est réelle, donc
+  les deux coexistent — `SpeakingMemberSlot_0045F7E0` est écrite à côté plutôt qu'appelée.
+- **`0x0045B030` porte deux boucles identiques instruction pour instruction** sous un test
+  `+0x14 == 0` : du code dupliqué par le compilateur, sans différence à conserver. Écrit une fois,
+  noté.
+- `0x0045DD00` / `0x0045FD40` partagent leur corps : **toute la différence est un octet**, le
+  sous-type engendré (`0x39` contre `0x38`). Le recensement ne les voit pas comme jumeaux parce que
+  ce n'est pas une adresse ; c'en est un.
+- `0x0045B540` mémorise dans le bit 2 de `0x005e96f4` que ses deux bouquets d'éclats sont déjà
+  partis ; aux fois suivantes, les bits 0 et 1 de `0x005e96fe` choisissent lequel sort.
+- `0x0045E860` est **l'interrupteur d'une salle entière** : il commute le bit `0x2000` de toutes les
+  entités de scène d'un autre genre selon qu'une entité de genre 4 attend ou non.
+
+### Les trois fins de scène — `Cutscene/OldTowerScenes.cs`
+
+Même famille que celles de la mine (`EntityHandler_0040B940`) : le tampon nul monté sur la pile, le
+balayage des `0x20` entités de scène, la fonte de la musique. **Mais ce ne sont pas des copies** —
+le diff contre la mine rend 240 à 323 lignes. Elles partagent ici trois auxiliaires
+(`SweepSceneTargets_OldTower`, `SetSceneBackdrop`, `EndTowerScene`) et divergent sur tout le reste :
+
+- `0x0041BB20` est la seule à finir par le script du **chef** et non du membre gardé dans
+  `0x005714a8` ;
+- `0x0041AC80` part d'un compteur à **-50**, ce qu'aucune autre scène ne fait : ses seuils se
+  lisent depuis un zéro décalé de cinquante images ;
+- `0x0041B460` joue **une gamme de cinq notes en boucle** hors de tout état, fait clignoter le fond
+  en **mode 1** — le seul emploi de ce mode dans la zone — et tire un `rand & 3` qu'elle range sur
+  la pile sans jamais le relire.
+
+Les deux premières portent **le même défaut de 1998 que la mine** : sans cible, le clip d'animation
+est un mot de pile jamais écrit, lu dès la première image paire. Le pointeur est laissé nul.
+
+### Les trois de `0x0056b0c8` / `0x0056b1c8` qui ne sont pas des scènes
+
+- **`0x00416A80` sème de part et d'autre selon ce que son porteur décide** : deux pas de sonde à
+  120 unités, l'un sous `porteur[+0x9a] == 0`, l'autre sous `== 1`. Il se recale sur son porteur
+  (`+0x6c`, le champ que le verbe `0x00442D90` écrit) à chaque image.
+- **`0x0041BC90` prend son appartenance dans `+0x14` et la range dans `+0x04`**, et c'est cette même
+  valeur qui décide si l'impact sonne : seule une masse de genre `0x39` joue et fait naître ses deux
+  `0xC3`. Les autres arrivent en silence.
+- **`0x0041AFA0` porte la seule garde de saturation de la zone** : elle ne sème son `0xFB` que si le
+  compte d'entités `0x005f7ce0` est sous 100.
+
+### Ce qui reste ouvert
+
+Les **trois marges courtes** du lot précédent sont inchangées : `0x0054FA50` et `0x0054FBF0`
+appartiennent à `TickTwinSparkle_00417B10`, qui n'écrit jamais `+0x40` et l'hérite de son géniteur.
+Identifier ce géniteur avant de sceller.
+
+Vérifications : `dotnet build` 0 erreur ; `check-descriptors.sh` sans preuve périmée ; quatorze
+relevés neufs sous `Legacy/Raw/Blaze/OldTower/` (trente en tout) ; recensement et tri régénérés ;
+aucun des seize n'était marqué testé.

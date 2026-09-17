@@ -1582,6 +1582,34 @@ public static unsafe partial class Blaze
             case 0x0045B7E0: TickSinkingPillar_0045B7E0(record); return;      // le pilier
             case 0x0045FBA0: TickFreezingVeil_0045FBA0(record); return;       // le voile qui fige
 
+            // ====================================================================================
+            // LA VIEILLE TOUR, categorie C — LE SOLDE (lot 3). Avec ces seize, la categorie C de la
+            // zone 4 est vide : il n'y reste que D (4) et les seize routines d'intelligence.
+            // ====================================================================================
+
+            // Handlers/OldTower.cs — les dix de 0x0056adc8.
+            case 0x0045A4D0: TickLatchPlate_0045A4D0(record); return;         // le plateau a verrou
+            case 0x0045B540: TickCollapsingWall_0045B540(record); return;     // le mur qui se derobe
+            case 0x0045E300: TickBytePushableBlock_0045E300(record); return;  // le bloc a six octets
+            case 0x0045DD00: EntityHandler_0045DD00(record); return;          // la bouche, 5-6-8-10
+            case 0x0045FD40: EntityHandler_0045FD40(record); return;          // la meme, 3-7-9
+            case 0x0045B030: TickGuardedSteamVent_0045B030(record); return;   // la bouche a portee
+            case 0x0045E860: TickGuardroomMaster_0045E860(record); return;    // le maitre de salle
+            case 0x0045D750: TickScythePendulum_0045D750(record); return;     // le pendule
+            case 0x0045BB10: TickCameraLift_0045BB10(record); return;         // la plateforme-camera
+            case 0x0045F7E0: TickSaggingWalkway_0045F7E0(record); return;     // la passerelle
+
+            // Cutscene/OldTowerScenes.cs — les trois fins de scene de 0x0056b0c8.
+            case 0x0041BB20: EntityHandler_0041BB20(record); return;          // la sortie breve
+            case 0x0041AC80: EntityHandler_0041AC80(record); return;          // l'enlevement
+            case 0x0041B460: EntityHandler_0041B460(record); return;          // la chute
+
+            // Effects/OldTowerParticles.cs — les trois de 0x0056b0c8 / 0x0056b1c8 qui ne sont pas
+            // des scenes.
+            case 0x00416A80: TickHolderHalo_00416A80(record); return;         // le halo du porteur
+            case 0x0041BC90: TickFallingMass_0041BC90(record); return;        // la masse qui tombe
+            case 0x0041AFA0: TickThreeBeatTrail_0041AFA0(record); return;     // la traine
+
             case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
             case 0x0040B900: EntityHandler_0040B900(record); return;
             case 0x0040C820: EntityHandler_0040C820(record); return;

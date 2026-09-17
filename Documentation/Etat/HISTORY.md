@@ -4,6 +4,35 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 6)
+
+- feat : **les 16 derniers corps de la catégorie C de la vieille tour — la catégorie est VIDE**.
+  Zone 4 : 140 → 156 sur 176 ; il ne reste que D (4 corps) et les 16 routines d'intelligence
+- feat : `Handlers/OldTower.cs` — dix décors de `0x0056adc8` : le plateau à verrou, le mur qui se
+  dérobe, **le bloc poussé dont la position tient dans six octets de la banque 0**, les deux bouches
+  à vapeur, la bouche à portée, le maître de la salle des gardes, **le pendule qui fauche**,
+  **la plateforme qui détourne la caméra** et la passerelle qui plie
+- feat : `Cutscene/OldTowerScenes.cs` — les trois fins de scène (`0x0041BB20`, `0x0041AC80`,
+  `0x0041B460`) : même famille que celles de la mine, mais pas des copies — le diff en rend 240 à 323
+- feat : `Effects/OldTowerParticles.cs` — le halo qui suit son porteur, la masse qui tombe et la
+  traîne à trois temps
+- doc : **`FUN_005037b0` n'a PAS d'argument** — c'est une enveloppe qui appelle `FUN_005037e0` avec
+  deux pointeurs de pile. Le paramètre que Ghidra lui prête est fantôme, et le `2` lu à côté d'un de
+  ses sites appartenait à l'appel suivant. Corrigé dans les quatre sites neufs
+- doc : **le bloc `0x0045E300` range sa position dans six octets de la banque 0**
+  (`0x005e9706`..`0x005e970b`), deux par axe, reconstitués par `(haut << 8 | bas) << 16 >> 4` — le
+  mot signé remis en unités de `0x1000`. Un seul bloc de ce genre par sous-zone, là où `0x0045AE90`
+  en indexe plusieurs dans `.data`
+- doc : **`0x0045BB10` détourne les trois pointeurs de caméra vers un bloc à elle** (`0x00571680`,
+  `0x00571668`, `0x00571670`) et les rend en reconstituant l'écart `0x00564658` — le chemin du verbe
+  de scénette `0x00504200`, écrit à l'envers
+- doc : **`0x0045A4D0` lit ses quatre verrous à l'envers** : le compte s'incrémente pour chaque bit
+  *absent*, donc zéro veut dire « les quatre sont posés »
+- doc : **`0x0045F7E0` inline `ActivePartySlot_00472770` avec un autre repli** — la fonction nommée
+  rend l'indice 4 quand le balayage échoue, celle-ci rend le chef. Les deux coexistent
+
+---
+
 ## 2026-09-17 (suite 5)
 
 - feat : **22 des 38 corps restants de la catégorie C de la vieille tour** — 18 formes. Zone 4 :
