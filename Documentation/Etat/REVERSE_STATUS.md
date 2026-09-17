@@ -22298,3 +22298,74 @@ il en a un. La file des sons différés est transcrite **sans trou de `0x0055253
 **Trois.** Les deux scènes cinéma, qui attendent toujours la décision sur le trou
 `0x00571400..0x0057141f` de l'enregistrement `0x005713f0`, et le **Dragon rouge `0x00499140`**,
 841 instructions, table de sauts `0x00499c14`, aucun jumeau.
+
+## 2026-09-17 (suite 3) — le Dragon rouge `0x00499140`
+
+Demandé : enchaîner sur le boss de la zone 2 dans la même séance. **Écrit**, dans
+`Ai/FireMountain/RedDragon.cs` — nouveau répertoire, proposé en fin de lot 2 et validé. La zone 2 passe
+à **40 / 42** ; ne restent que les deux scènes cinéma.
+
+**841 instructions, aucun jumeau**, trois tables de sauts contiguës :
+
+| table | entrées | aiguille sur | cibles |
+|---|---:|---|---|
+| `0x00499DAC` | 5 | `+0x42`, bit de geste posé | `0x004991D3` `0x00499391` `0x00499488` `0x00499620` `0x00499698` |
+| `0x00499DC0` | 4 | `+0x10`, bit `0x804` posé | `0x0049978F` `0x004997A6` `0x004997FB` `0x0049984B` |
+| `0x00499DD0` | 4 | `+0x42`, posture tenue | `0x004998C6` `0x00499C26` `0x00499C92` `0x00499D09` |
+
+La note du 2026-09-17 (suite) situait « la table de sauts à `0x00499c14` » : c'était une erreur,
+`0x00499c12` est une étiquette de code (`LAB_00499c12`, le rebours de la posture 0).
+
+### La pile, relue une fois pour toutes
+
+Après les quatre sauvegardes, les locaux sont à `[esp+10h]`. `FUN_00538980` reçoit
+`(e, L20, L24, L0)` — statistiques, espèce, modèle ; `FUN_00535f20` reçoit
+`(e, L18, L4, [esp+3Ch], L14, L1C)` — hardiesse, distance, **cap rangé dans l'emplacement de
+l'argument**, vitesse, traits. Le replan réécrit la distance en `L4` et le cap en `[esp+3Ch]`. Les
+trois mots `L8..L10` servent de sauvegarde de position pendant la projection.
+
+### Ce qu'il fait
+
+- **Geste 0, le coup qui projette** (anim. 3) : cône `0x40` jusqu'à l'image 5, à-coup `0x1c000` à
+  l'image 8, porte une fois dès l'image 11, à demi-dégâts, gabarit `0x00552930`, puis projette.
+- **Geste 1, le coup sans verrou** (anim. 9) : cône jusqu'à 8, à-coup à 11, **frappe à chaque image**
+  dès 12, pleins dégâts, gabarit `0x0055293c`, pas de projection.
+- **Geste 2, le bond** (anim. 4) : `0x50000` en avant, `0x64000` en haut ; à la retombée, porte une
+  fois dès l'image 18 (gabarit `0x00552948`) sans condition de vitesse verticale. **Ne remet jamais
+  `+0x5c` à zéro.**
+- **Geste 3, le premier souffle** (anim. 5) : celui du Jeune dragon, `0x4e20` au lieu de `0x3a98`,
+  sans cri.
+- **Geste 4, le souffle de la gueule** (anim. 8) : son 2 à l'image 7 ; à la **fin** de l'animation,
+  la rangée 0 d'attaches dans `+0x44/48/4c` (jamais rendue), naissance `0xc0 + octet 0x13` de `+0xcc`
+  avec `3` en dernier argument, rebours 40.
+- **L'incantation** : le bloc du Behemoth, sort à l'**image 19** de l'animation 7, table
+  `0x00552958` = Superman (2,14), Boule de feu (0,20), Météores (0,27). Armée par le replan avec
+  `+0x18 = 6`, `+0x10 = 3` et **`|= 0x1000804`** — le bit `0x1000000` est posé, pas effacé.
+- **Postures** : celles du Troll, approche `0x14000`, marche `0x10000` avec cône `0x60`, pas `0x45`
+  aux images 15 et 34 de l'animation 1.
+- **Replan** : contact sous **`0x1f4`** (la posture d'attente garde `0x12c`). Près : `< 0x32` un coup
+  (impair projette, pair sans verrou), `< 0x4b` approche à `0xc8`, sinon marcher autour. Loin :
+  `< 0x1e` un second tirage à trois (bond, souffle, souffle de la gueule), `< 0x32` approche,
+  `< 0x46` incantation, `< 0x5a` marcher autour, sinon repos. Le cône du contact est testé en `jg`,
+  celui de la distance en `jge`. **Marcher autour** tire un cap à l'opposé (`+0x800`) dans une
+  fourchette de `(hardiesse + 0x80) × 16`.
+
+### Deux réemplois, et un déménagement
+
+- Le bloc de projection est **celui du Troll** (`ThrowTrollVictim_0049684C`) : mêmes écritures, à
+  l'ordre des registres près. Appelé tel quel plutôt que recopié.
+- `ModelAnchorRow_00535770` avait été laissée auprès du Jeune dragon « jusqu'à ce qu'un second appelant
+  établisse son rang ». Le dragon rouge est ce second appelant : elle a rejoint
+  `Ai/SceneEntityAiCommon.cs`.
+
+### Vérifications
+
+- `dotnet build` : 0 erreur.
+- `GestionnairesEntites.md` régénéré : `0x00499140` à `implemente=oui, teste=non` ; il n'était pas
+  marqué testé, rien à retirer de `handlers-exerces.tsv`.
+- `Comportement.md` : la ligne de la zone 2 recalculée — ses deux gestionnaires d'IA sont écrits.
+
+### Ce qui reste en zone 2
+
+**Les deux scènes cinéma** `0x0040D930` et `0x0040E3A0`, et elles seules. Elles attendent la décision
+de plan mémoire sur `0x00571400..0x0057141f` (voir la section « suite » du même jour).

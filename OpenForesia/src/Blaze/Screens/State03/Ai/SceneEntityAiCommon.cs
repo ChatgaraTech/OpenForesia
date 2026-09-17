@@ -694,4 +694,26 @@ public static unsafe partial class Blaze
         0x0003, 0x0008, 0x0200,   // 0x00552984 — espece 2
         0x0008, 0x0200, 0x0101,   // 0x0055298a — espece 3
     ];
+
+    /// <summary>
+    /// Ghidra: FUN_00535770 @ 0x00535770 — <b>une rangee du tableau d'attaches du bloc de
+    /// modele</b>. Le corps original calcule
+    /// <c>modeles + 0x40 + (rangee + espece[4] * 0xc) * 8</c>, ce qui est exactement
+    /// <c>modele + 0x40 + rangee * 8</c> : le bloc de modele fait <c>0x60</c> octets et
+    /// <c>0xc * 8</c> vaut <c>0x60</c>. Douze rangees de huit octets par modele, dont les trois
+    /// premiers mots sont un <b>point d'attache</b> en coordonnees de modele.
+    ///
+    /// <para>
+    /// <b>Aucun appelant dans <c>Blaze.c</c></b> : la fonction n'est atteinte que par des corps que
+    /// Ghidra n'a pas decompiles. Le Jeune dragon (<c>Ai/Mine/YoungDragon.cs</c>) l'a reclamee le
+    /// premier et elle vivait aupres de lui ; le Dragon rouge (<c>Ai/FireMountain/RedDragon.cs</c>)
+    /// en est le second appelant, et elle a rejoint ici les aides communes des routines
+    /// d'intelligence le 2026-09-17.
+    /// </para>
+    /// </summary>
+    private static short* ModelAnchorRow_00535770(byte* e, int row)
+    {
+        ResolveEntityBlocks(e, out _, out _, out byte* model);
+        return (short*)(model + 0x40 + row * 8);
+    }
 }

@@ -15,6 +15,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 - doc : les scripts de sons differes `0x00552600` et `0x00552610` releves ; le premier attendait un
   consommateur depuis le 2026-08-31, la file est transcrite sans trou jusqu'a `0x0055268f`
 - doc : aucun des neuf n'a de jumeau (diff STRICT et LOOSE relances avant d'ecrire)
+- feat : **le Dragon rouge** `0x00499140` (`Ai/FireMountain/RedDragon.cs`, nouveau repertoire), 8 000 PV —
+  deux coups dissemblables, un bond, deux souffles, et l'incantation du Behemoth sur Superman, Boule de
+  feu et Meteores. Zone 2 : 39 -> 40 sur 42, il ne reste que les deux scenes cinema
+- doc : `ModelAnchorRow_00535770` rejoint `SceneEntityAiCommon.cs` — le Dragon rouge est son second
+  appelant ; le projete du Troll est reemploye tel quel
 
 ## 2026-09-17 (suite)
 

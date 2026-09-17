@@ -1,7 +1,7 @@
 ﻿# TODO
 
 Point d’entrée entre deux sessions. Mis à jour le **2026-09-17** (trois séances ce jour-là : la fin
-de la mine, puis les deux premiers lots de la zone 2). L'historique détaillé est dans
+de la mine, puis les deux premiers lots de la zone 2 et le Dragon rouge). L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -32,8 +32,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **327** |
-| implémentés, jamais appelés | **297** |
-| à transcrire | **806** |
+| implémentés, jamais appelés | **298** |
+| à transcrire | **805** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -41,7 +41,7 @@ socle commun, et il est entier.
 | 0 | **L'auberge** | **48 / 48** |
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
-| 2 | La montagne du dragon de feu | 39 / 42 |
+| 2 | La montagne du dragon de feu | 40 / 42 |
 | 4 | La vieille tour | 28 / 176 |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
 | 6 | Le château de l’immortel | 26 / 170 |
@@ -71,15 +71,15 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
-3. **La zone 2 (39 / 42) et la zone 7 (18 / 35)**, les deux plus petites de celles qui restent.
-   La zone 2 n'a plus que **trois** gestionnaires. Les six decors et le trio des tables de
-   sous-zone sont ecrits depuis le 2026-09-17 (`Handlers/FireMountain.cs`, `Effects/MiscMarkers.cs`).
-   Restent deux scenes cinema (`0x0040D930`, `0x0040E3A0`) qui attendent une **decision de plan
-   memoire** sur le trou `0x00571400..0x0057141f`, et le **Dragon rouge `0x00499140`**, 841
-   instructions, qui merite sa seance et un repertoire `Ai/FireMountain/`.
+3. **La zone 2 (40 / 42) et la zone 7 (18 / 35)**, les deux plus petites de celles qui restent.
+   La zone 2 n'a plus que **deux** gestionnaires : les deux scenes cinema (`0x0040D930`,
+   `0x0040E3A0`), qui attendent une **decision de plan memoire** sur le trou
+   `0x00571400..0x0057141f`. Tout le reste est ecrit depuis le 2026-09-17 — les six decors
+   (`Handlers/FireMountain.cs`), le trio des tables de sous-zone (`Effects/MiscMarkers.cs`) et le
+   **Dragon rouge** (`Ai/FireMountain/RedDragon.cs`).
 4. Le reste. La grotte scellée (349) et la vieille tour (176) sont les deux gros morceaux.
 
-**La dette d’épreuve, elle, grandit** : 297 corps écrits n’ont jamais tourné, et **la mine y entre
+**La dette d’épreuve, elle, grandit** : 298 corps écrits n’ont jamais tourné, et **la mine y entre
 entière** — ses 157 créneaux sont implémentés et pas un seul n’a été vu passer. Quatre ensembles
 sont complets, et seuls 12 créneaux de l’auberge et 37 de la forêt ont été exercés. Une séance de
 test sur l’auberge ou sur la mine se lirait désormais comme une mesure, pas comme une chasse au

@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **327** |
-| implementes, jamais appeles | **297** |
-| a transcrire | **806** |
+| implementes, jamais appeles | **298** |
+| a transcrire | **805** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -64,7 +64,7 @@ et n'est pas un comportement.
 | — | **tables statiques** (partout) | 274 | 274 | 219 |
 | 0 | L'auberge | 48 | 48 | 16 |
 | 1 | La mine abandonnee | 157 | 157 | 0 |
-| 2 | La montagne du dragon de feu | 42 | 39 | 0 |
+| 2 | La montagne du dragon de feu | 42 | 40 | 0 |
 | 3 | La foret | 136 | 136 | 90 |
 | 4 | La vieille tour | 176 | 28 | 3 |
 | 5 | Le Labyrinthe des morts | 160 | 23 | 0 |
@@ -585,13 +585,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 2 — La montagne du dragon de feu
 
-42 gestionnaires, 39 implementes, 0 testes.
+42 gestionnaires, 40 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
 | `0x0040D930` | 0 | 0056B0C8 | **non** | **non** |
 | `0x0040E3A0` | 0 | 0056B0C8 | **non** | **non** |
-| `0x00499140` | 0 | 0056AD48 | **non** | **non** |
 | `0x0040CDA0` | 0 | 0056B0C8 | oui | **non** |
 | `0x0040CEA0` | 0 | 0056B1C8 | oui | **non** |
 | `0x0040D560` | 0 | 0056B0C8 | oui | **non** |
@@ -630,6 +629,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00483260` | 0 | 0056B1C8 | oui | **non** |
 | `0x00483360` | 0 | 0056B2C8 | oui | **non** |
 | `0x00497EF0` | 0 | 0056AD48 | oui | **non** |
+| `0x00499140` | 0 | 0056AD48 | oui | **non** |
 | `0x005413E0` | 0 | 0056AFC8 | oui | **non** |
 
 ## Zone 3 — La foret

@@ -54,7 +54,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 |---|---|---|---|---|
 | **0** | **L'auberge** | **2** | **1** | **1 — complète** |
 | **1** | **La mine abandonnée** | **23** | **23** | **23 — complète** |
-| 2 | La montagne du dragon de feu | 2 | 1 | 0 |
+| **2** | **La montagne du dragon de feu** | **2** | **1** | **1 — complète** |
 | **3** | **La forêt** | **23** | **22** | **22 — complète** |
 | 4 | La vieille tour | 22 | 10 | 0 |
 | 5 | Le Labyrinthe des morts | 19 | 13 | 0 |
@@ -67,9 +67,12 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 Les totaux par zone dépassent 166 : **plusieurs zones partagent des gestionnaires**, et une même
 zone réutilise le même bloc sur plusieurs sous-zones.
 
-**La ligne de la mine a été recalculée le 2026-09-17** depuis `GestionnairesEntites.md` : ses vingt-trois
-gestionnaires de la table `0x0056ad48` sont tous des routines d'intelligence, et tous sont écrits. La
-valeur « 17 » qu'elle portait datait du 2026-09-15 et était fausse. **Les autres lignes n'ont pas été
+**Les lignes de la mine et de la montagne ont été recalculées le 2026-09-17** depuis
+`GestionnairesEntites.md`. La mine : ses vingt-trois gestionnaires de la table `0x0056ad48` sont tous
+des routines d'intelligence, et tous sont écrits ; la valeur « 17 » qu'elle portait datait du
+2026-09-15 et était fausse. La montagne : ses deux gestionnaires de `0x0056ad48` sont le Dragon rouge
+`0x00499140` (`Ai/FireMountain/RedDragon.cs`) et `0x00497EF0`, la copie de la Salamandre de la mine ;
+les deux sont écrits. **Les autres lignes n'ont pas été
 recalculées** et gardent leurs valeurs du 2026-09-15 ; en cas de doute, c'est `GestionnairesEntites.md`,
 qui est généré, qui fait foi.
 

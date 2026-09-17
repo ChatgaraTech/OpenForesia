@@ -1012,6 +1012,11 @@ public static unsafe partial class Blaze
             // sur un bond, et IL SE REGENERE de 8 points de vie une image sur vingt, sans condition.
             case 0x004965B0: TickSceneEntityAi_004965B0(record); return;
 
+            // Le sous-type 1 de la montagne du dragon de feu — LE DRAGON ROUGE, 8 000 PV. Cinq gestes
+            // (deux coups dissemblables, un bond, deux souffles) et l'incantation du Behemoth sur
+            // trois sorts : Superman, Boule de feu, Meteores. Ai/FireMountain/RedDragon.cs.
+            case 0x00499140: TickSceneEntityAi_00499140(record); return;
+
             // Le sous-type 5 du bloc C de la mine — LE SCORPION, charpente du Varan : placement
             // annule au heurt, treize postures, +0x12 comme phase. Deux armes — la pince, et le
             // dard qui tire son effet d'etat AU SORT, un tiers l'effet 7 et deux tiers le piege.
