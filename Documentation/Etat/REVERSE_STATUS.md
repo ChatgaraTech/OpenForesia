@@ -22026,3 +22026,100 @@ pas de phase dans les deux binaires.
 
 Sept routines, sans jumeau écrit : `0x004889A0` Chef-Goblin, `0x0048DB30` Ours gris (sous-zones 6 à 8 — un autre corps que le Grizzly de `0x00493C70`), `0x00491650` Mille-patte,
 `0x004921A0` Scorpion, `0x004944E0` Jeune dragon, `0x004965B0` Troll, `0x00497370` Araignée.
+
+## 2026-09-17 — les sept dernières IA de la mine : la zone 1 est complète (157 / 157)
+
+Demandé : les sept gestionnaires que `GestionnairesEntites.md` laissait à `implemente=non` côté
+mine. Six corps neufs ont été écrits, le septième n'en demandait pas.
+
+| adresse | créature | fichier | ce que le corps a coûté |
+|---|---|---|---|
+| `0x0048DB30` | Ours gris | — (renvoi) | **rien** : c'est le Grizzly, prouvé |
+| `0x004944E0` | Jeune dragon | `Ai/Mine/YoungDragon.cs` | 652 instructions |
+| `0x004965B0` | Troll | `Ai/Mine/Troll.cs` | 1 082 |
+| `0x004921A0` | Scorpion | `Ai/Mine/Scorpion.cs` | 1 011 |
+| `0x00497370` | Araignée | `Ai/Mine/Spider.cs` | 883, lues par différence |
+| `0x00491650` | Mille-patte | `Ai/Mine/Centipede.cs` | 838, lues par différence |
+| `0x004889A0` | Chef-Goblin | `Ai/Mine/GoblinChief.cs` | 1 152, lues par différence |
+
+Les noms viennent tous du croisement `especes.csv` × `modeles.csv` (zone 1, colonne `ia` contre
+l'indice du corps dans le bloc `0x0056ad48` de la sous-zone), jamais d'une supposition.
+
+### L'Ours gris est le Grizzly, et la preuve est complète
+
+Le crible de quasi-copies passé sur les 445 relevés du dépôt range `0x0048DB30` dans la famille
+`{0x00493C70, 0x0049B840, 0x004A4270}`. Le diff STRICT donne **660 instructions identiques sur
+660**, à **trois immédiates** près :
+
+- `push 0x00552898` au lieu de `push 0x00552960` — le gabarit de la griffe ;
+- `push 0x005528a4` au lieu de `push 0x0055296c` — le gabarit du bond ;
+- `jmp dword [ecx*4 + 0x0048e390]` au lieu de `0x0049c0a0` — la table de sauts des quatre postures.
+
+**Et le second temps de la preuve confirme les trois.** Les vingt-quatre octets de `0x00552898`
+sont ceux de `0x00552960` (`0000 1e00 4600 9600 00ff 5000 | 0000 1e00 3200 9600 0000 5000`), et les
+quatre entrées de `0x0048e390` sont aux mêmes décalages de corps que celles de `0x0049c0a0`
+(`0x693`, `0x6cc`, `0x72f`, `0x7b7`). Le dispatcheur renvoie donc `0x0048DB30` sur
+`TickSceneEntityAi_0049B840`, comme il le faisait déjà pour `0x00493C70` et `0x004A4270`.
+
+### Ce que les six corps neufs apportent
+
+- **Le Jeune dragon souffle deux fois, et aucun des deux souffles n'est un coup.** Les postures 1
+  et 2 ne consultent jamais de gabarit de portée : elles font naître une entité dont le sous-type
+  est lu dans le répertoire de zone (`+0xcc`), l'octet `0x0e` pour l'une, `0x0d` pour l'autre. Et le
+  second **part de sa gueule** : à l'image 28 il lit la rangée 0 du tableau d'attaches de son bloc
+  de modèle (`FUN_00535770`, soit `modèle + 0x40 + rangée * 8`) et la pose dans `+0x44/+0x48/+0x4c`,
+  les trois décalages que la naissance recopie. Aucun autre corps du dépôt n'a de bouche. Sa gravité
+  `0x7fff` est la plus forte écrite par une routine d'intelligence, et **il ne lit pas une seule
+  fois sa hardiesse** — ses quatre cônes sont des constantes.
+- **Le Troll se soigne.** Avant toute autre chose, et sans aucune garde — ni vitesse du monde, ni
+  drapeaux, ni distance —, il ajoute 8 points de vie à `statistiques + 0x4c` une image sur vingt
+  (l'horloge `0x005f2cf0`), plafonnés à `+0x48`. **C'est la seule régénération écrite dans une
+  routine d'IA du dépôt**, et sur ses 850 points de vie elle pèse. Il a aussi cinq gestes, le
+  record, et **sa charge s'enchaîne toute seule sur un bond** : à la fin de l'animation 5 elle
+  repose `+0x18 = 3`, `+0x42 = 0`, `+0x10 = 2` au lieu de fermer le geste. Pendant la charge il
+  frappe à chaque image sans verrou — le seul geste du dépôt qui ne lise jamais le bit `0x20`. Ses
+  deux bonds, eux, ne portent **qu'en montant** (`+0x54 > 0`).
+- **Le Scorpion, l'Araignée et le Mille-patte sont les trois variantes de la charpente du Varan**
+  dans la mine : placement sauvegardé puis annulé au heurt, intégration écrite en ligne, treize (ou
+  douze) postures aiguillées par `+0x42` avec `+0x12` pour phase, distance à **trois** dimensions au
+  premier temps et à deux à la replanification.
+  - Le **Scorpion** a deux armes, et son dard **tire son effet d'état au sort** — un tiers l'effet 7
+    (`0x0053b3c0`), deux tiers l'effet de piège (`0x0053c420`). Aucun autre corps ne fait cela. Et
+    plus il est timide, plus il pique plutôt que de pincer : le seuil est `(timide >> 1) + 0x0a`.
+  - L'**Araignée** est le même texte à six différences de fond près (179 lignes de diff, dont la
+    moitié est un cadre de pile réagencé) : une seule arme, douze postures, un poison sur quinze.
+  - Le **Mille-patte** **ne mord qu'en l'air**. Son geste tourne jusqu'à l'image 8 puis bondit, et
+    c'est le bond qui pose le bit de geste — un `or eax,3` qui allume « en l'air » et « en geste »
+    ensemble. Le prélude, lui, **efface** le bit de geste à chaque image passée au sol. La sonde de
+    morsure ne peut donc voir personne tant qu'il rampe.
+- **Le Chef-Goblin est le corps de l'Ogre** — 156 lignes de diff sur 1 152 —, et les sept écarts se
+  tiennent : sa seconde sonde est à plat et courte (`{0,0,0x50,0x64,0,0x64}` contre
+  `{0,-0x64,0xc8,0x64,0,0xc8}`), **sa charge ne quitte pas le sol** et s'amortit d'un
+  trente-deuxième par image jusqu'à tomber sous `0xa000` — la seule charge amortie du dépôt —, elle
+  projette **dans son propre cap** au lieu de repousser à l'opposé, son combo enchaîne à l'image 10
+  de l'animation 5, son effet en a deux (`0x36` variante 1, `0x4b` variante 0 : exactement ceux du
+  Pourpre preux), il vire deux fois plus sec, et **ses deux armes ont échangé de plage** — le bond
+  au contact, la charge à mi-distance.
+
+### Deux trouvailles de méthode
+
+- **Le crible par empreinte de préfixe est bien plus rapide que le diff complet.** Hacher les 250
+  premières mnémoniques de chaque relevé et grouper par hachage range les 445 dumps du dépôt en
+  familles en quelques secondes, là où un diff deux à deux n'avait pas fini en deux minutes. C'est
+  ce crible qui a rendu l'Ours gris sans une ligne écrite.
+- **Une différence de registre n'est pas une différence de comportement, et il faut le vérifier
+  deux fois.** La moitié du diff Araignée/Scorpion et les deux tiers du diff Chef-Goblin/Ogre sont
+  des allocations de registre et des cases de pile permutées. Le tri se fait en lisant ce que les
+  immédiates désignent, pas en comptant les lignes.
+
+### Un `neg` mort, transcrit tel quel
+
+La posture 5 du Mille-patte calcule `and eax,0xfff` puis `jge` puis `neg eax`. Le masque ne peut
+pas rendre un négatif, donc le saut est toujours pris et le `neg` n'est jamais exécuté. Transcrit
+comme il s'exécute, avec la note.
+
+### Ce qui reste en zone 1
+
+**Rien.** `GestionnairesEntites.md` donne la mine à **157 / 157 implémentés**, la deuxième zone
+complète après la forêt et l'auberge. Les 157 restent à **0 testé** : c'est une dette entière, et
+seule une séance de jeu la lèvera.

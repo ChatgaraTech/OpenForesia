@@ -53,7 +53,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | zone | lieu | gestionnaires | dont IA | IA écrites |
 |---|---|---|---|---|
 | **0** | **L'auberge** | **2** | **1** | **1 — complète** |
-| 1 | La mine abandonnée | 23 | 17 | 16 |
+| **1** | **La mine abandonnée** | **23** | **23** | **23 — complète** |
 | 2 | La montagne du dragon de feu | 2 | 1 | 0 |
 | **3** | **La forêt** | **23** | **22** | **22 — complète** |
 | 4 | La vieille tour | 22 | 10 | 0 |
@@ -66,6 +66,12 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 
 Les totaux par zone dépassent 166 : **plusieurs zones partagent des gestionnaires**, et une même
 zone réutilise le même bloc sur plusieurs sous-zones.
+
+**La ligne de la mine a été recalculée le 2026-09-17** depuis `GestionnairesEntites.md` : ses vingt-trois
+gestionnaires de la table `0x0056ad48` sont tous des routines d'intelligence, et tous sont écrits. La
+valeur « 17 » qu'elle portait datait du 2026-09-15 et était fausse. **Les autres lignes n'ont pas été
+recalculées** et gardent leurs valeurs du 2026-09-15 ; en cas de doute, c'est `GestionnairesEntites.md`,
+qui est généré, qui fait foi.
 
 ---
 

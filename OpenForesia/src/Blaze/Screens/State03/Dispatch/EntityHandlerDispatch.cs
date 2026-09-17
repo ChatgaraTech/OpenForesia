@@ -988,13 +988,48 @@ public static unsafe partial class Blaze
             // rebours. Ses deux gabarits de portee sont dans .data (0x00552960, 0x0055296c).
             // Et sa copie de la mine, sous-zones 3, 4 et 9 : le gabarit du bond est lu a 0x005528cc,
             // dont les douze octets sont ceux de 0x0055296c.
+            // Et sa copie de la mine, sous-zones 6 a 8 : l'OURS GRIS du bestiaire. 660 instructions
+            // identiques sur 660, a trois immediates pres — ses deux gabarits, 0x00552898 et
+            // 0x005528a4, dont les 24 octets sont ceux de 0x00552960, et sa table de sauts
+            // 0x0048e390, dont les quatre entrees sont aux memes decalages que 0x0049c0a0.
             case 0x00493C70:
+            case 0x0048DB30:
             case 0x0049B840: TickSceneEntityAi_0049B840(record); return;
 
             // Le sous-type 4 du bloc C — LE MEME GRIZZLY, emis une seconde fois par le compilateur.
             // 705 lignes d'assembleur identiques sur 705, a deux immediates pres : les adresses des
             // deux gabarits, 0x005529e8 et 0x005529f4, dont les 24 octets sont ceux de 0x00552960.
             case 0x004A4270: TickSceneEntityAi_004A4270(record); return;
+
+            // Le sous-type 13 du bloc C de la mine — LE JEUNE DRAGON, 700 PV. Trois gestes, dont
+            // DEUX SOUFFLES qui ne touchent personne : ils font naitre une entite dont le sous-type
+            // est lu dans le repertoire de zone, et celui de la posture 2 part de sa gueule (la
+            // rangee 0 du tableau d'attaches du modele). Gravite 0x7fff, la plus forte du depot.
+            case 0x004944E0: TickSceneEntityAi_004944E0(record); return;
+
+            // Le sous-type 16 du bloc C de la mine — LE TROLL, 850 PV, le plus gros du depot. CINQ
+            // gestes (bond, massue, charge, bond empoisonne, souffle), sa charge s'enchaine seule
+            // sur un bond, et IL SE REGENERE de 8 points de vie une image sur vingt, sans condition.
+            case 0x004965B0: TickSceneEntityAi_004965B0(record); return;
+
+            // Le sous-type 5 du bloc C de la mine — LE SCORPION, charpente du Varan : placement
+            // annule au heurt, treize postures, +0x12 comme phase. Deux armes — la pince, et le
+            // dard qui tire son effet d'etat AU SORT, un tiers l'effet 7 et deux tiers le piege.
+            case 0x004921A0: TickSceneEntityAi_004921A0(record); return;
+
+            // Le sous-type 17 du bloc C de la mine — L'ARAIGNEE, le Scorpion en plus simple : une
+            // seule arme, douze postures au lieu de treize, et un poison sur quinze morsures.
+            case 0x00497370: TickSceneEntityAi_00497370(record); return;
+
+            // Le sous-type 4 du bloc C de la mine — LE MILLE-PATTE, la troisieme variante de la
+            // charpente. IL NE MORD QU'EN L'AIR : son geste bondit, et le prelude efface le bit de
+            // geste a chaque image passee au sol.
+            case 0x00491650: TickSceneEntityAi_00491650(record); return;
+
+            // Le sous-type 2 du bloc A de la mine — LE CHEF-GOBLIN, le corps de l'Ogre a sept
+            // ecarts pres : sa charge reste au sol et s'amortit, elle projette dans son cap, son
+            // combo enchaine plus tot, et il bondit de pres la ou l'Ogre chargeait.
+            case 0x004889A0: TickSceneEntityAi_004889A0(record); return;
 
             // Le sous-type 16 du bloc C — LE MECHANT OURS, la plus riche de la famille : TROIS
             // gestes au lieu de deux, une attaque a distance, une prise qui projette, et le seul

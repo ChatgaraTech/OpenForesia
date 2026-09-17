@@ -4,6 +4,25 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17
+
+- feat : **la mine est complete — 157 / 157 gestionnaires implementes**, deuxieme zone entiere
+  apres la foret et l'auberge ; les sept dernieres routines d'IA sont ecrites
+- feat : **le Jeune dragon** (`0x004944E0`) : deux souffles qui ne touchent personne, dont l'un part
+  de sa gueule — la rangee 0 du tableau d'attaches de son modele
+- feat : **le Troll** (`0x004965B0`) : cinq gestes, une charge qui s'enchaine seule sur un bond, et
+  **la seule regeneration ecrite dans une IA du depot** — 8 PV une image sur vingt, sans condition
+- feat : **le Scorpion** (`0x004921A0`) : deux armes, et un dard qui tire son effet d'etat au sort
+- feat : **l'Araignee** (`0x00497370`) : le Scorpion a six differences pres, une seule arme
+- feat : **le Mille-patte** (`0x00491650`) : il ne mord qu'en l'air — le prelude efface le bit de
+  geste a chaque image passee au sol
+- feat : **le Chef-Goblin** (`0x004889A0`) : le corps de l'Ogre a sept ecarts pres, dont la seule
+  charge amortie du depot
+- fix : **l'Ours gris** (`0x0048DB30`) n'avait pas de corps a ecrire : c'est le Grizzly, 660
+  instructions identiques sur 660, a deux gabarits et une table de sauts pres — tous trois verifies
+- doc : `FUN_00535770` nommee et transcrite (`ModelAnchorRow_00535770`) : une rangee du tableau
+  d'attaches du bloc de modele, sans aucun appelant dans `Blaze.c`
+
 ## 2026-09-16 (suite 26)
 
 - feat : **`Ai/Mine/` ouvert — quatre creatures, douze corps**. Mine : 144 -> 150 sur 157 ; les

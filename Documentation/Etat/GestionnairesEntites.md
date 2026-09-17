@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **327** |
-| implementes, jamais appeles | **273** |
-| a transcrire | **830** |
+| implementes, jamais appeles | **280** |
+| a transcrire | **823** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -63,7 +63,7 @@ et n'est pas un comportement.
 |---|---|---|---|---|
 | — | **tables statiques** (partout) | 274 | 274 | 219 |
 | 0 | L'auberge | 48 | 48 | 16 |
-| 1 | La mine abandonnee | 157 | 150 | 0 |
+| 1 | La mine abandonnee | 157 | 157 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 22 | 0 |
 | 3 | La foret | 136 | 136 | 90 |
 | 4 | La vieille tour | 176 | 28 | 3 |
@@ -421,17 +421,10 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 1 — La mine abandonnee
 
-157 gestionnaires, 150 implementes, 0 testes.
+157 gestionnaires, 157 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x004889A0` | 0,1,2 | 0056AD48 | **non** | **non** |
-| `0x0048DB30` | 5,6,7,8 | 0056AD48 | **non** | **non** |
-| `0x00491650` | 3,4,9 | 0056AD48 | **non** | **non** |
-| `0x004921A0` | 3,4,9 | 0056AD48 | **non** | **non** |
-| `0x004944E0` | 3,4,9 | 0056AD48 | **non** | **non** |
-| `0x004965B0` | 3,4,9 | 0056AD48 | **non** | **non** |
-| `0x00497370` | 3,4,9 | 0056AD48 | **non** | **non** |
 | `0x004060C0` | 0,1,2 | 0056B0C8 | oui | **non** |
 | `0x00406120` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406570` | 0,1,2 | 0056B2C8 | oui | **non** |
@@ -567,20 +560,27 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00483B50` | 3,4,9 | 0056B0C8 | oui | **non** |
 | `0x004879F0` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x00488210` | 0,1,2 | 0056AD48 | oui | **non** |
+| `0x004889A0` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x00489CA0` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x0048AD80` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x0048B530` | 5,6,7,8 | 0056AD48 | oui | **non** |
 | `0x0048C530` | 5,6,7,8 | 0056AD48 | oui | **non** |
 | `0x0048CBB0` | 5,6,7,8 | 0056AD48 | oui | **non** |
 | `0x0048D300` | 5,6,7,8 | 0056AD48 | oui | **non** |
+| `0x0048DB30` | 5,6,7,8 | 0056AD48 | oui | **non** |
 | `0x0048E3A0` | 5,6,7,8 | 0056AD48 | oui | **non** |
 | `0x0048F230` | 5,6,7,8 | 0056AD48 | oui | **non** |
 | `0x004901B0` | 3,4,9 | 0056AD48 | oui | **non** |
+| `0x00491650` | 3,4,9 | 0056AD48 | oui | **non** |
+| `0x004921A0` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x00492E40` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x004935F0` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x00493C70` | 3,4,9 | 0056AD48 | oui | **non** |
+| `0x004944E0` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x00494D10` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x00495C90` | 3,4,9 | 0056AD48 | oui | **non** |
+| `0x004965B0` | 3,4,9 | 0056AD48 | oui | **non** |
+| `0x00497370` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x005413E0` | 0,1,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | **non** |
 
 ## Zone 2 — La montagne du dragon de feu
