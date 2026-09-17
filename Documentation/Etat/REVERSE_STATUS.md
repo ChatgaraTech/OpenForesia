@@ -22811,3 +22811,118 @@ distinctes du binaire, et les fusionner ferait perdre la borne de chacune.
 Vérifications : `dotnet build` 0 erreur ; `check-descriptors.sh` propre ; quatre relevés neufs sous
 `Legacy/Raw/Blaze/OldTower/` ; recensement et tri régénérés ; aucun des dix-sept n'était marqué
 testé, donc rien à retirer de `handlers-exerces.tsv`.
+
+## 2026-09-17 (suite 11) — vieille tour, catégorie C, lot 2 : 22 corps sur 38
+
+**Lot partiel, et c'est dit d'emblée** : 22 des 38 corps restants de la catégorie C, soit 18 formes
+sur 33. La zone 4 passe de **118 à 140 sur 176** ; il reste **16 corps, 2 681 instructions**, et ce
+sont les plus lourds. La liste exacte est dans `TODO.md`, point 4.
+
+### La mesure d'abord — et une leçon de méthode
+
+Le tableau des jumeaux de `Zone4ParComplexite.md` a été re-vérifié avant d'écrire, et le premier
+essai a échoué d'une façon qui vaut d'être notée : **désassembler chaque adresse sur une fenêtre
+fixe et comparer fait apparaître des différences massives qui n'existent pas**, parce que la fenêtre
+déborde sur la fonction suivante. `0x00417F80` et `0x00419B90`, réputés jumeaux, sortaient à 336 et
+322 instructions divergentes — alors qu'ils font 131 chacun et ne diffèrent que par leur planche.
+
+**La borne d'un corps est la première adresse connue qui le suit**, celle que `census-duplicates.sh`
+calcule dans `spans.tsv`, et la comparaison ne vaut qu'après troncature à la dernière instruction
+`ret`. Avec les bonnes bornes, quatre paires inter-blocs de plus se révèlent des quasi-copies :
+
+| formes | toute la différence |
+|---|---|
+| `0x00417CA0` / `0x004198B0` | planche, rayon (`0x96`+`0xAA` contre `0xC8`+`0xFA`) et **axe long** |
+| `0x00417B10` / `0x00419720` | planche seule |
+| `0x00417770` / `0x00419380` | planche, plus un réordonnancement du compilateur |
+| `0x00417420` / `0x00419030` | planche, et l'octet `+0x0a` (5 contre `0xA`) |
+
+**Et `0x00417CA0` est un quasi-jumeau de `0x00417E10`**, écrit au lot précédent : quatre lignes de
+différence sur 111 instructions, dont l'échange de l'axe long de l'ellipse — le terme qui prend le
+rayon entier et le **cap** au lieu de la phase va dans la hauteur pour l'un, dans la profondeur pour
+l'autre. Le corps existant a donc été généralisé avec trois paramètres qui **nomment** la
+différence, plutôt que recopié.
+
+### Les neuf formes de `0x0056b2c8` — `Effects/OldTowerParticles.cs`
+
+- **`0x00417B10` : une entité qui dessine deux points.** Avant même de regarder son état, elle
+  échange sa position avec une seconde rangée en `+0x44`/`+0x48`/`+0x4c`. Une image sur deux pour
+  chacune : un seul créneau d'entité pour deux scintillements, et c'est pourquoi les deux positions
+  sont tirées séparément à la naissance. Ses tirages sont des **coordonnées absolues**, pas des
+  écarts — le scintillement est placé dans le décor, pas autour de son lanceur.
+- **`0x00417770`** calcule sa cadence d'image à la naissance, et par le plus petit de deux termes :
+  `(vitesse + 20) / 4` ou `rayon / 4`. Le binaire compare **les sommes**, pas les quotients. Et dès
+  que l'image atteint 2, le bit `0x4000` suit la parité de la vitesse : elle clignote en mourant.
+- **`0x00417420`** recule de son invocateur en deux temps au même cap, puis est **téléporté** :
+  l'ancre reçoit `(0x898000, 0x1a4000, 0)`, trois coordonnées en dur — un point précis de la carte,
+  le même dans les deux blocs.
+- **`0x0041B7C0` porte deux naissances dans un seul corps**, choisies par le `+0x14` du lanceur. La
+  variante 0 écrit ensuite son propre `+0x14` (20..39), ce qui fait que le test de la variante 1 qui
+  la suit ne peut plus être vrai : **les deux branches s'excluent bien qu'elles se suivent sans
+  `else`**. Sa teinte se décolore de 3 par canal, et **si le rouge passe sous zéro les trois sont
+  mis à zéro d'un coup**.
+- `0x00418120`, `0x0041C0E0` et `0x00416920` meurent sur leur **teinte**, pas sur un compteur.
+  `0x00416920` tire son image au sort à chaque tour — le seul corps du fichier sans cadence.
+- **`0x00418AF0` ne meurt pas par un masque mais par une affectation** : `*param_1 = 0x7fffffff`
+  écrase le mot d'état entier. Transcrit tel quel.
+
+### Les deux qui frappent — `Combat/Projectiles.cs`
+
+Même test d'appartenance que le feu follet du lot 1 : ils écrivent dans un bloc de combat.
+
+- **`0x00416C40` se pose sur le terrain à la naissance** (`TryPlaceEntity`, masque `0x8000`), ce
+  qu'aucune autre particule de la tour ne fait : c'est une nappe au sol. Elle s'élargit en
+  descendant et brûle à chaque image, **hors de tout état**, avec le paramètre d'effet 3 — le seul
+  corps de la zone à le passer non nul.
+- **`0x004850C0` n'a pas d'état** : `+0x10` est son âge, de 0 à 7, et le corps entier se déroule à
+  chaque image. Son échelle est écrite **en un seul dword** (`mov [esi+28h],edx`), les deux mots
+  d'un coup, depuis une valeur qui croît en `âge²`. Sa teinte se décolore par un **add de dword**
+  (`+0xffe7e7e8`), donc avec retenue d'un canal sur l'autre — conservé.
+
+### Les sept décors de `0x0056adc8` — `Handlers/OldTower.cs`
+
+- **`0x0045AE90` garde sa place hors de son créneau.** Sa position n'est pas dans son
+  enregistrement mais dans **trois tables de `.data`** — `0x00551660`, `0x00551680`, `0x005516a0` —
+  indexées par son numéro `+0x14` et exprimées en unités entières : il les lit en tête, travaille en
+  `0x1000`, et les réécrit en queue. C'est ainsi qu'un bloc poussé retrouve sa place après un
+  rechargement de sous-zone. Aucun autre décor transcrit ne fait cela.
+- **`0x0045AA90` ne fait rien si son numéro de drapeau dépasse 255** : tout le corps est sous
+  `numéro / 8 < 0x20`, la borne de la banque 0. Son sens de pivot bascule entre 0 et -1 par l'idiome
+  `(x != 0) - 1`, et il **pose ou efface** son drapeau selon ce sens.
+- **`0x0045B7E0` vérifie d'abord qu'il n'a pas déjà servi** : drapeau posé et état 0 le font sauter
+  à l'état 99 et se placer 475 unités plus bas, là où il avait fini. C'est un mécanisme à usage
+  unique qui survit au rechargement.
+- **`0x0045FBA0` fige le groupe** en posant le bit 3 du mot d'état des quatre membres — celui sur
+  lequel `TickPartyMember` rend la main tout de suite. Les quatre créneaux sont écrits **par leur
+  adresse en dur**, sans tenir compte de la taille réelle du groupe. Et sa hauteur est celle d'une
+  autre entité, relue à chaque image par un simple décalage de créneau.
+- `0x0045BF20` respire d'une amplitude que sa fiche fixe **en puissance de deux** (`+0x12` sert de
+  décalage). `0x0045AD20` reprend le mécanisme de sonde du souffleur, en plus court. `0x0045B3B0`
+  joue **deux fois le même son** à deux hauteurs et deux gains : c'est ce qui donne l'impact double.
+
+### La quatrième sœur
+
+`FUN_0045C000` est la **quatrième** de la famille `FUN_00468110` / `TryPlaySoundNearEntity` /
+`TryPublishCameraEffectNearEntity` : même calcul de distance à la caméra, même rayon de 1800, même
+signature perdue par Ghidra (quatre paramètres, et c'est `param_2` qui reçoit le `+ 0xC0`). Elle
+diffère par la naissance seule — `FUN_0047a9d0` au lieu de `FUN_0047ac40`, donc l'enfant hérite de
+`+0x40` au lieu de le recevoir à zéro.
+
+### Les planches, et trois marges à prouver
+
+Quatorze planches neuves. **`s_Descriptors_0054FE00` est déclarée d'un seul tenant sur douze
+enregistrements** : le binaire y voit deux plages (`0x0054fe00`, cinq tuiles, et `0x0054fe28`,
+sept), mais `0x0041B7C0` mène `+0x40` jusqu'à **6** pour les deux — la première déborde donc de deux
+enregistrements sur la seconde. Les deux plages étant contiguës dans `.data`, le jeu affiche les
+deux premières tuiles de `0x0054fe28` ; deux tableaux séparés donneraient de la mémoire non
+initialisée.
+
+`check-descriptors.sh` signale **trois marges courtes neuves**, toutes d'un enregistrement :
+`0x0054FBF8` est sûre (`TickSlantedPuff_00418AF0` met `+0x40` à zéro), mais `0x0054FA50` et
+`0x0054FBF0` appartiennent à `TickTwinSparkle_00417B10`, **qui n'écrit jamais `+0x40`** et l'hérite
+donc de son géniteur. Identifier ce géniteur avant de sceller — c'est exactement le cas que le
+bandeau de `CLAUDE.md` décrit.
+
+Vérifications : `dotnet build` 0 erreur ; `check-descriptors.sh` sans preuve périmée ; douze relevés
+neufs sous `Legacy/Raw/Blaze/OldTower/` ; recensement et tri régénérés ; aucun des vingt-deux
+n'était marqué testé.

@@ -1004,12 +1004,12 @@ public static unsafe partial class Blaze
     /// <b>Absente de <c>Blaze.c</c></b> ; dump conserve dans
     /// <c>Legacy/Raw/Blaze/OldTower/FUN_00417E10.asm</c>.</summary>
     private static void EntityHandler_00417E10(byte* e)
-        => TickTighteningSpiral_00417E10(e, Descriptors0054FA58());           // Ghidra: &DAT_0054fa58
+        => TickTighteningSpiral_00417E10(e, Descriptors0054FA58(), 0xc8, 0xfa, false);  // &DAT_0054fa58
 
     /// <summary>Ghidra: <c>0x00419a20</c> — le meme corps pour les sous-zones 5, 6, 8 et 10 ; le
     /// diff ne rend que <c>mov dword [esi+3Ch],54FC00h</c>.</summary>
     private static void EntityHandler_00419A20(byte* e)
-        => TickTighteningSpiral_00417E10(e, Descriptors0054FC00());           // Ghidra: &DAT_0054fc00
+        => TickTighteningSpiral_00417E10(e, Descriptors0054FC00(), 0xc8, 0xfa, false);  // &DAT_0054fc00
 
     /// <summary>
     /// Le corps de <see cref="EntityHandler_00417E10"/> et <see cref="EntityHandler_00419A20"/> :
@@ -1047,7 +1047,8 @@ public static unsafe partial class Blaze
     /// <c>+0x12</c> qu'apres. Les trois axes voient donc le meme rayon.
     /// </para>
     /// </summary>
-    private static void TickTighteningSpiral_00417E10(byte* e, byte* plate)
+    private static void TickTighteningSpiral_00417E10(
+        byte* e, byte* plate, int radiusSpan, int radiusBase, bool majorAxisVertical)
     {
         if (*(short*)(e + 0x10) == 0)
         {
@@ -1058,12 +1059,12 @@ public static unsafe partial class Blaze
             e[0x0a] = 9;
             e[0x0b] = 0;
 
-            int radius = CrtRand() % 0xc8;                    // Ghidra: FUN_00547140
+            int radius = CrtRand() % radiusSpan;              // Ghidra: FUN_00547140
             *(short*)(e + 0x14) = 0x0a;
             *(int*)(e + 0x54) = *(int*)(e + 0x20);
             *(int*)(e + 0x58) = *(int*)(e + 0x24);
             e[0x40] = 0;
-            *(short*)(e + 0x12) = (short)(radius + 0xfa);
+            *(short*)(e + 0x12) = (short)(radius + radiusBase);
             *(int*)(e + 0x50) = *(int*)(e + 0x1c);
 
             *(short*)(e + 0x16) = (short)(CrtRand() % 0x1000);
@@ -1082,10 +1083,24 @@ public static unsafe partial class Blaze
 
         *(int*)(e + 0x1c) =
             (int)Winsys3d.GetSinTableEntry(phase) * (radiusNow >> 2) + *(int*)(e + 0x50);
-        *(int*)(e + 0x24) =
-            Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * radiusNow + *(int*)(e + 0x58);
-        *(int*)(e + 0x20) =
-            Winsys3d.GetCosTableEntry(phase) * (radiusNow >> 2) + *(int*)(e + 0x54);
+
+        // L'axe long — le seul a prendre le rayon entier et le CAP au lieu de la phase — est le Z
+        // pour 0x00417E10 et le Y pour 0x00417CA0. Le binaire n'echange rien d'autre : les deux
+        // instructions qui different sont `mov ecx,[esi+58h]` / `[esi+54h]` et les deux `mov`
+        // d'ecriture. Voir le bandeau de TickTighteningSpiral_00417CA0.
+        int major = Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * radiusNow;
+        int minor = Winsys3d.GetCosTableEntry(phase) * (radiusNow >> 2);
+
+        if (majorAxisVertical)
+        {
+            *(int*)(e + 0x20) = major + *(int*)(e + 0x54);
+            *(int*)(e + 0x24) = minor + *(int*)(e + 0x58);
+        }
+        else
+        {
+            *(int*)(e + 0x24) = major + *(int*)(e + 0x58);
+            *(int*)(e + 0x20) = minor + *(int*)(e + 0x54);
+        }
 
         short countdown = *(short*)(e + 0x14);
         *(short*)(e + 0x14) = (short)(countdown + 1);
@@ -1210,5 +1225,917 @@ public static unsafe partial class Blaze
                 if (frame == 4) *(uint*)e &= 0x7fffffff;
             }
         }
+    }
+
+    // =====================================================================
+    // LA CATEGORIE C DE LA TABLE 0x0056b2c8 (2026-09-17, lot 2)
+    //
+    // Neuf formes pour treize creneaux. Quatre paires inter-blocs sont des QUASI-copies : le
+    // desassemblage tronque au dernier `ret` ne rend que la planche et, pour deux d'entre elles, une
+    // constante. Elles sont donc partagees, avec la difference NOMMEE en parametre.
+    //
+    //   0x00417CA0 / 0x004198B0  planche + rayon (0x96+0xAA contre 0xC8+0xFA) + AXE LONG
+    //   0x00417B10 / 0x00419720  planche seule
+    //   0x00417770 / 0x00419380  planche seule (plus un reordonnancement du compilateur)
+    //   0x00417420 / 0x00419030  planche + l'octet +0x0a (5 contre 0xA)
+    //
+    // Les cinq autres n'existent que dans un bloc.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fa80</c> — quatre tuiles <c>0x20 x 0x20</c> en rangee, page
+    /// <c>0x03</c>, role 1, atlas <c>0x18</c>. Bornee par <c>0x0054faa0</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FA80 =
+    [
+        0x00, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fa80  <- 0x00417770
+        0x20, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fa88
+        0x40, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fa90
+        0x60, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fa98
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fc28</c> — la copie de <see cref="s_Descriptors_0054FA80"/>
+    /// pour les sous-zones 5, 6, 8 et 10, memes octets. Bornee par <c>0x0054fc48</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FC28 =
+    [
+        0x00, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc28  <- 0x00419380
+        0x20, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc30
+        0x40, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc38
+        0x60, 0x00, 0x20, 0x20, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc40
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054faa0</c> — quatre tuiles <c>0x1f x 0x1f</c> de la seconde
+    /// rangee, page <c>0x03</c>, atlas <c>0x18</c>. Bornee par <c>0x0054fac0</c>, la planche du feu
+    /// follet.</summary>
+    private static readonly byte[] s_Descriptors_0054FAA0 =
+    [
+        0x00, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054faa0  <- 0x00417420
+        0x20, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054faa8
+        0x40, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054fab0
+        0x60, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054fab8
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fc48</c> — la copie de <see cref="s_Descriptors_0054FAA0"/>
+    /// pour les sous-zones 5, 6, 8 et 10. Bornee par <c>0x0054fc68</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FC48 =
+    [
+        0x00, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc48  <- 0x00419030
+        0x20, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc50
+        0x40, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc58
+        0x60, 0x20, 0x1f, 0x1f, 0x01, 0x03, 0x18, 0x00,   // 0x0054fc60
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fb60</c> — quatre tuiles <c>0x1f x 0x1f</c> de la page
+    /// <c>0x02</c>, atlas <c>0x18</c>. Bornee par <c>0x0054fb80</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FB60 =
+    [
+        0x80, 0x00, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fb60  <- 0x00418120
+        0xa0, 0x00, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fb68
+        0xc0, 0x00, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fb70
+        0xe0, 0x00, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fb78
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fbf0</c> — <b>une seule tuile</b> : la suivante,
+    /// <c>0x0054fbf8</c>, appartient a <see cref="s_Descriptors_0054FBF8"/> et ne differe que par sa
+    /// page. Le corps qui l'installe laisse <c>+0x40</c> a zero.</summary>
+    private static readonly byte[] s_Descriptors_0054FBF0 =
+    [
+        0x18, 0x00, 0x18, 0x18, 0x01, 0x03, 0x10, 0x00,   // 0x0054fbf0  <- 0x00419720
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fbf8</c> — une seule tuile, page <c>0x02</c>. Bornee par
+    /// <c>0x0054fc00</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FBF8 =
+    [
+        0x18, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x0054fbf8  <- 0x00418AF0
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fd80</c> — quatre tuiles <c>0x20 x 0x20</c>, page
+    /// <c>0x02</c>, atlas <c>0x18</c>. Bornee par <c>0x0054fda0</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FD80 =
+    [
+        0x00, 0x00, 0x20, 0x20, 0x01, 0x02, 0x18, 0x00,   // 0x0054fd80  <- 0x0041C0E0
+        0x20, 0x00, 0x20, 0x20, 0x01, 0x02, 0x18, 0x00,   // 0x0054fd88
+        0x40, 0x00, 0x20, 0x20, 0x01, 0x02, 0x18, 0x00,   // 0x0054fd90
+        0x60, 0x00, 0x20, 0x20, 0x01, 0x02, 0x18, 0x00,   // 0x0054fd98
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054fe00</c> — <b>douze enregistrements d'un seul tenant</b>, et c'est une
+    /// decision, pas une commodite.
+    ///
+    /// <para>
+    /// Le binaire y voit deux planches : <c>0x0054fe00</c> (cinq tuiles <c>0x2f x 0x2f</c>) et
+    /// <c>0x0054fe28</c> (sept tuiles <c>0x1f x 0x1f</c>). Mais
+    /// <see cref="TickTwoFacedPlume_0041B7C0"/> mene <c>+0x40</c> de 0 a <b>6</b> pour les deux, si
+    /// bien que la premiere <b>deborde de deux enregistrements sur la seconde</b>. Les deux plages
+    /// etant contigues dans <c>.data</c>, le jeu affiche alors les deux premieres tuiles de
+    /// <c>0x0054fe28</c> — c'est ce que fait le binaire, et le declarer en deux tableaux separes
+    /// produirait de la memoire non initialisee. Une seule allocation, deux vues.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054FE00 =
+    [
+        0x00, 0x00, 0x2f, 0x2f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe00  <- 0x0041B7C0, variante 1
+        0x30, 0x00, 0x2f, 0x2f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe08
+        0x60, 0x00, 0x2f, 0x2f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe10
+        0x90, 0x00, 0x2f, 0x2f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe18
+        0xc0, 0x00, 0x2f, 0x2f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe20
+        0x00, 0x50, 0x1f, 0x1f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe28  <- 0x0041B7C0, variante 0
+        0x20, 0x50, 0x1f, 0x1f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe30
+        0x40, 0x50, 0x1f, 0x1f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe38
+        0x60, 0x50, 0x1f, 0x1f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe40
+        0x80, 0x50, 0x1f, 0x1f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe48
+        0xa0, 0x50, 0x1f, 0x1f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe50
+        0xc0, 0x50, 0x1f, 0x1f, 0x01, 0x02, 0x08, 0x00,   // 0x0054fe58
+    ];
+
+    private static byte* s_Descriptors0054FA80Storage;
+    private static byte* s_Descriptors0054FAA0Storage;
+    private static byte* s_Descriptors0054FB60Storage;
+    private static byte* s_Descriptors0054FBF0Storage;
+    private static byte* s_Descriptors0054FBF8Storage;
+    private static byte* s_Descriptors0054FC28Storage;
+    private static byte* s_Descriptors0054FC48Storage;
+    private static byte* s_Descriptors0054FD80Storage;
+    private static byte* s_Descriptors0054FE00Storage;
+
+    private static byte* Descriptors0054FA80()
+        => NativeCopy(s_Descriptors_0054FA80, ref s_Descriptors0054FA80Storage);
+
+    private static byte* Descriptors0054FAA0()
+        => NativeCopy(s_Descriptors_0054FAA0, ref s_Descriptors0054FAA0Storage);
+
+    private static byte* Descriptors0054FB60()
+        => NativeCopy(s_Descriptors_0054FB60, ref s_Descriptors0054FB60Storage);
+
+    private static byte* Descriptors0054FBF0()
+        => NativeCopy(s_Descriptors_0054FBF0, ref s_Descriptors0054FBF0Storage);
+
+    private static byte* Descriptors0054FBF8()
+        => NativeCopy(s_Descriptors_0054FBF8, ref s_Descriptors0054FBF8Storage);
+
+    private static byte* Descriptors0054FC28()
+        => NativeCopy(s_Descriptors_0054FC28, ref s_Descriptors0054FC28Storage);
+
+    private static byte* Descriptors0054FC48()
+        => NativeCopy(s_Descriptors_0054FC48, ref s_Descriptors0054FC48Storage);
+
+    private static byte* Descriptors0054FD80()
+        => NativeCopy(s_Descriptors_0054FD80, ref s_Descriptors0054FD80Storage);
+
+    private static byte* Descriptors0054FE00()
+        => NativeCopy(s_Descriptors_0054FE00, ref s_Descriptors0054FE00Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fe28</c> — la seconde vue de
+    /// <see cref="s_Descriptors_0054FE00"/>, a <c>+0x28</c>. Voir son bandeau pour pourquoi les deux
+    /// vivent dans une seule allocation.</summary>
+    private static byte* Descriptors0054FE28() => Descriptors0054FE00() + 0x28;
+
+    // ---------------------------------------------------------------- les quatre quasi-copies
+
+    /// <summary>Ghidra: <c>0x00417ca0</c> — la spirale DRESSEE des sous-zones 0, 1, 2 et 4.
+    /// <b>Absente de <c>Blaze.c</c></b>. Corps commun avec
+    /// <see cref="TickTighteningSpiral_00417E10"/>.</summary>
+    private static void EntityHandler_00417CA0(byte* e)
+        => TickTighteningSpiral_00417E10(e, Descriptors0054FA58(), 0x96, 0xaa, true);
+
+    /// <summary>Ghidra: <c>0x004198b0</c> — la meme, sous-zones 5, 6, 8 et 10.</summary>
+    private static void EntityHandler_004198B0(byte* e)
+        => TickTighteningSpiral_00417E10(e, Descriptors0054FC00(), 0x96, 0xaa, true);
+
+    /// <summary>Ghidra: FUN_00417b10 @ 0x00417b10 — le scintillement lointain des sous-zones 0, 1,
+    /// 2 et 4. Decompilee dans <c>Blaze.c</c>.</summary>
+    private static void EntityHandler_00417B10(byte* e)
+        => TickTwinSparkle_00417B10(e, Descriptors0054FA50());               // Ghidra: &DAT_0054fa50
+
+    /// <summary>Ghidra: FUN_00419720 @ 0x00419720 — la meme, sous-zones 5, 6, 8 et 10 ; le diff ne
+    /// rend que <c>mov dword [esi+3Ch],54FBF0h</c>.</summary>
+    private static void EntityHandler_00419720(byte* e)
+        => TickTwinSparkle_00417B10(e, Descriptors0054FBF0());               // Ghidra: &DAT_0054fbf0
+
+    /// <summary>
+    /// Le corps des deux : <b>une entite qui dessine DEUX points</b>, une image sur deux chacun.
+    ///
+    /// <para>
+    /// C'est tout l'interet de la fonction, et elle le fait avant meme de regarder son etat :
+    /// <b>elle echange sa position avec une seconde rangee en <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c></b>.
+    /// Le dessin d'une image porte donc sur l'une, celui de la suivante sur l'autre — un seul creneau
+    /// d'entite pour deux scintillements, et c'est pourquoi les deux positions sont tirees separement
+    /// a la naissance.
+    /// </para>
+    /// <para>
+    /// Les tirages sont larges et <b>ne sont pas centres</b> : X dans <c>[-3100, -2301]</c>,
+    /// Y dans <c>[-200, 999]</c>, Z dans <c>[-2000, 1999]</c> pour la premiere, et Z dans
+    /// <c>[-2000, 1500]</c> pour la seconde. Ce sont des coordonnees absolues, pas des ecarts : le
+    /// scintillement est place dans le decor, pas autour de son lanceur.
+    /// </para>
+    /// <para>
+    /// Ensuite il monte de <c>+0x12</c> unites par image — la valeur est <b>soustraite</b> —, derive
+    /// en Z de <c>0x11ffb</c> plus un bruit, et <b>le bit <c>0x4000</c> s'allume et s'eteint selon
+    /// que le Z sort de la plage <c>[-0x320000, 0x578000]</c></b>. Il meurt quand sa hauteur passe
+    /// sous <c>-0x190000</c>.
+    /// </para>
+    /// <para>
+    /// <b>Les deux derives ne sont pas mises a l'echelle</b> (<c>rand % 10 - 5</c> ajoute tel quel a
+    /// <c>+0x1c</c>, sans <c>&lt;&lt; 0xc</c>), contrairement a tout le reste du fichier. Transcrit
+    /// tel quel : a cette echelle c'est un bruit sous l'unite, ce qui est peut-etre l'intention.
+    /// </para>
+    /// </summary>
+    private static void TickTwinSparkle_00417B10(byte* e, byte* plate)
+    {
+        // L'echange, en tete et sans condition.
+        int x = *(int*)(e + 0x1c);
+        int y = *(int*)(e + 0x20);
+        int z = *(int*)(e + 0x24);
+
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+        *(int*)(e + 0x44) = x;
+        *(int*)(e + 0x20) = *(int*)(e + 0x48);
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+        *(int*)(e + 0x48) = y;
+        *(int*)(e + 0x4c) = z;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+
+            *(int*)(e + 0x1c) = (CrtRand() % 800 - 0xc1c) * 0x1000;
+            *(int*)(e + 0x20) = (CrtRand() % 0x4b0 - 200) * 0x1000;
+            *(int*)(e + 0x24) = (CrtRand() % 4000 - 2000) * 0x1000;
+            *(int*)(e + 0x44) = (CrtRand() % 800 - 0xc1c) * 0x1000;
+            *(int*)(e + 0x48) = (CrtRand() % 0x4b0 - 200) * 0x1000;
+
+            int far = CrtRand();
+            *(short*)(e + 0x28) = 0x400;
+            *(short*)(e + 0x2a) = 0x400;
+            *(int*)(e + 0x4c) = (far % 0xdac - 2000) * 0x1000;
+
+            int rise = CrtRand();
+            *(short*)(e + 0x14) = 0;
+            e[0x0b] = 0;
+            e[0x0a] = 9;
+            *(short*)(e + 0x12) = (short)(rise % 0x1e + 10);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int depth = *(int*)(e + 0x24);
+            *(uint*)e = depth < -0x320000 || depth > 0x578000
+                ? *(uint*)e | 0x4000
+                : *(uint*)e & 0xffffbfff;
+
+            *(int*)(e + 0x20) += *(short*)(e + 0x12) * -0x1000;
+            *(int*)(e + 0x1c) += CrtRand() % 10 - 5;
+
+            int drift = CrtRand();
+            int height = *(int*)(e + 0x20);
+            *(int*)(e + 0x24) += drift % 10 + 0x11ffb;
+
+            if (height < -0x190000) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x00417770</c> — l'orbite clignotante des sous-zones 0, 1, 2 et 4.
+    /// <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_00417770.asm</c>.</summary>
+    private static void EntityHandler_00417770(byte* e)
+        => TickBlinkingOrbit_00417770(e, Descriptors0054FA80());             // Ghidra: &DAT_0054fa80
+
+    /// <summary>Ghidra: <c>0x00419380</c> — la meme, sous-zones 5, 6, 8 et 10. Le diff rend la
+    /// planche et un <b>reordonnancement du compilateur</b> sur le calcul de <c>+0x98</c> : les
+    /// memes cinq instructions, dans un autre ordre, pour le meme resultat.</summary>
+    private static void EntityHandler_00419380(byte* e)
+        => TickBlinkingOrbit_00417770(e, Descriptors0054FC28());             // Ghidra: &DAT_0054fc28
+
+    /// <summary>
+    /// Le corps des deux : <b>une lueur qui attend, puis monte en tournant et clignote en
+    /// mourant</b>.
+    ///
+    /// <para>
+    /// Elle nait 50 unites plus haut, opaque (<c>0x4000</c>), avec une phase <c>+0x12</c> et une
+    /// echelle tirees, un rayon <c>+0x16</c> de 15 a 22, une vitesse <c>+0x14</c> de 10 a 20 et une
+    /// attente <c>+0x9a</c> de 0 a 9 images.
+    /// </para>
+    /// <para>
+    /// <b>Sa cadence d'image est calculee a la naissance</b>, et par le plus petit des deux termes :
+    /// <c>+0x98</c> vaut <c>(vitesse + 20) / 4</c> si celui-ci est inferieur au rayon, sinon
+    /// <c>rayon / 4</c>. Le binaire choisit par un <c>cmp</c> entre la somme et le rayon, pas entre
+    /// les quotients — transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// L'etat 2 fait monter la lueur de <c>+0x14</c> unites par image, la vitesse decroissant d'une
+    /// par image jusqu'a passer sous <c>-20</c>, ou elle meurt ; la position tourne autour de sa
+    /// propre position precedente (les deux termes sont <b>ajoutes</b>, pas recalcules depuis une
+    /// ancre). <b>Et des que l'image atteint 2, le bit <c>0x4000</c> suit la parite de la
+    /// vitesse</b> : la lueur clignote une image sur deux en finissant.
+    /// </para>
+    /// <para>
+    /// Le test <c>di &lt; 0</c> sur le rayon ne peut jamais etre vrai — le rayon est tire entre 15 et
+    /// 22 et n'est jamais reecrit — mais il est conserve : c'est le binaire qui le porte.
+    /// </para>
+    /// </summary>
+    private static void TickBlinkingOrbit_00417770(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            e[0x0a] = 1;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);
+            e[0x40] = 0;
+
+            short scale = (short)(CrtRand() % 0x400 + 0x708);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0x0b + 0x0a);
+            *(short*)(e + 0x16) = (short)(CrtRand() % 8 + 0x0f);
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 10);
+
+            *(int*)(e + 0x5c) = 0;
+
+            int reach = *(short*)(e + 0x14) + 0x14;
+            short radius = *(short*)(e + 0x16);
+            *(short*)(e + 0x98) = reach < radius ? (short)(reach >> 2) : (short)(radius >> 2);
+
+            *(int*)(e + 0x20) += 0x32000;
+            *(uint*)e |= 0x4000;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int waited = *(int*)(e + 0x5c) + 1;
+            *(int*)(e + 0x5c) = waited;
+
+            if (*(short*)(e + 0x9a) <= waited)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(uint*)e &= 0xffffbfff;
+                *(int*)(e + 0x5c) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        byte frame = e[0x40];
+        short speed = (short)(*(short*)(e + 0x14) - 1);
+        *(short*)(e + 0x14) = speed;
+
+        if (frame >= 2)
+        {
+            // Ghidra: `test al,1 ; or ch,40h` / `and ch,0BFh` — la parite de la vitesse.
+            *(uint*)e = (speed & 1) == 0 ? *(uint*)e | 0x4000 : *(uint*)e & 0xffffbfff;
+        }
+
+        *(int*)(e + 0x20) += speed * 0x1000;
+
+        short phase = *(short*)(e + 0x12);
+        short radiusNow = *(short*)(e + 0x16);
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(phase) * radiusNow;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(phase) * radiusNow;
+
+        if (radiusNow < 0 || *(short*)(e + 0x14) < -0x14) *(uint*)e &= 0x7fffffff;
+
+        int ticks = *(int*)(e + 0x5c) + 1;
+        *(int*)(e + 0x5c) = ticks;
+
+        if (ticks >= *(short*)(e + 0x98))
+        {
+            *(int*)(e + 0x5c) = 0;
+            byte next = (byte)(e[0x40] + 1);
+            e[0x40] = next;
+            if (next >= 4) e[0x40] = 3;
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x00417420</c> — le feu follet invoque des sous-zones 0, 1, 2 et 4.
+    /// <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_00417420.asm</c>.</summary>
+    private static void EntityHandler_00417420(byte* e)
+        => TickSummonedWisp_00417420(e, Descriptors0054FAA0(), 5);           // Ghidra: &DAT_0054faa0
+
+    /// <summary>Ghidra: <c>0x00419030</c> — la meme, sous-zones 5, 6, 8 et 10 ; le diff rend la
+    /// planche et <c>mov byte [esi+0Ah],0Ah</c> au lieu de <c>5</c>.</summary>
+    private static void EntityHandler_00419030(byte* e)
+        => TickSummonedWisp_00417420(e, Descriptors0054FC48(), 0x0a);        // Ghidra: &DAT_0054fc48
+
+    /// <summary>
+    /// Le corps des deux : <b>une lueur qui recule de son invocateur, puis rejoint un point fixe du
+    /// decor et y tourne en s'eteignant</b>.
+    ///
+    /// <para>
+    /// <b>Le recul est en deux temps et au meme cap.</b> A la naissance elle saute de
+    /// <b>80 unites de table</b> en arriere du cap <c>+0x32</c> et de 80 unites en hauteur ; puis,
+    /// dix images durant, elle recule encore de <b>15</b> par image. Le binaire ecrit les deux par
+    /// des chaines <c>neg ; shl ; sub ; shl</c> — d'ou les facteurs, qui ne sont pas des constantes
+    /// lisibles.
+    /// </para>
+    /// <para>
+    /// <b>Puis elle est teleportee</b> : l'ancre <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> recoit
+    /// <c>(0x898000, 0x1a4000, 0)</c>, trois coordonnees <b>en dur</b> — un point precis de la carte,
+    /// le meme dans les deux blocs. A partir de la, position X et Z sont <b>recalculees</b> a
+    /// 150 unites de table autour de ce point, sur une phase <c>+0x14</c> qui avance de
+    /// <c>+0x16</c> (50 a 149) par image, pendant que la hauteur monte de <c>0x8000</c>.
+    /// </para>
+    /// <para>
+    /// Apres 28 images de tour, l'echelle perd <c>0xa0</c> par image et la lueur disparait quand elle
+    /// atteint zero. L'image de la planche avance toutes les trois images et boucle sur quatre, et
+    /// les trois axes prennent un brouillage de ±10 unites <b>a chaque image et dans tous les
+    /// etats</b> — le bloc est apres les trois <c>if</c>.
+    /// </para>
+    /// </summary>
+    private static void TickSummonedWisp_00417420(byte* e, byte* plate, byte role)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            e[0x40] = 0;
+
+            short course = *(short*)(e + 0x32);
+
+            // Ghidra: `neg ecx ; shl ecx,2 ; sub ecx,eax ; shl ecx,4` — soit -80 fois la table.
+            int sin = (int)Winsys3d.GetSinTableEntry(course);
+            *(int*)(e + 0x1c) += ((-sin << 2) - sin) << 4;
+
+            int cos = Winsys3d.GetCosTableEntry(course);
+            *(int*)(e + 0x24) += ((-cos << 2) - cos) << 4;
+
+            *(int*)(e + 0x20) += 0x50000;
+            *(short*)(e + 0x28) = 0x800;
+            *(short*)(e + 0x2a) = 0x800;
+            *(short*)(e + 0x12) = 0;
+            e[0x0a] = role;
+            e[0x0b] = 0;
+            *(short*)(e + 0x9a) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short course = *(short*)(e + 0x32);
+
+            // Ghidra: `shl ecx,4 ; sub ecx,eax ; neg ecx` — soit -15 fois la table.
+            int sin = (int)Winsys3d.GetSinTableEntry(course);
+            *(int*)(e + 0x1c) += -((sin << 4) - sin);
+
+            int cos = Winsys3d.GetCosTableEntry(course);
+            *(int*)(e + 0x24) += -((cos << 4) - cos);
+
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x12) >= 10)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+                *(int*)(e + 0x50) = 0x898000;
+                *(int*)(e + 0x54) = 0x1a4000;
+                *(int*)(e + 0x58) = 0;
+                *(short*)(e + 0x14) = (short)(CrtRand() % 0x1000);
+                *(short*)(e + 0x16) = (short)(CrtRand() % 0x64 + 0x32);
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            short phase = *(short*)(e + 0x14);
+
+            // Ghidra: trois `lea` puis `lea edx,[ecx+eax*2]` — 3, 15, 75, puis le doublement : 150.
+            *(int*)(e + 0x1c) = *(int*)(e + 0x50) + (int)Winsys3d.GetSinTableEntry(phase) * 150;
+            *(int*)(e + 0x24) = *(int*)(e + 0x58) + Winsys3d.GetCosTableEntry(phase) * 150;
+
+            *(short*)(e + 0x14) += *(short*)(e + 0x16);
+            *(int*)(e + 0x20) += 0x8000;
+
+            if (*(short*)(e + 0x14) >= 0x1000) *(short*)(e + 0x14) -= 0x1000;
+
+            (*(short*)(e + 0x12))++;
+            if (*(short*)(e + 0x12) >= 0x1c)
+            {
+                *(short*)(e + 0x28) -= 0xa0;
+                *(short*)(e + 0x2a) -= 0xa0;
+                if (*(short*)(e + 0x28) <= 0) *(uint*)e &= 0x7fffffff;
+            }
+        }
+
+        (*(short*)(e + 0x9a))++;
+        if (*(short*)(e + 0x9a) >= 3)
+        {
+            *(short*)(e + 0x9a) = 0;
+            byte next = (byte)(e[0x40] + 1);
+            e[0x40] = next;
+            if (next == 4) e[0x40] = 0;
+        }
+
+        *(int*)(e + 0x1c) += (CrtRand() % 0x14 - 0x0a) * 0x1000;
+        *(int*)(e + 0x20) += (CrtRand() % 0x14 - 0x0a) * 0x1000;
+        *(int*)(e + 0x24) += (CrtRand() % 0x14 - 0x0a) * 0x1000;
+    }
+
+    // ---------------------------------------------------------------- les cinq formes uniques
+
+    /// <summary>
+    /// Ghidra: <c>0x00418120</c> — <b>la braise qui attend, monte et s'eteint</b>, sous-zones 0, 1, 2
+    /// et 4. <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_00418120.asm</c>.
+    ///
+    /// <para>
+    /// Trois etats nets. A la naissance : une echelle tiree entre <c>0xbb8</c> et <c>0xfb7</c>, un
+    /// brouillage de ±100 unites sur X et Z, une attente <c>+0x12</c> de 0 a 5 images, une vitesse
+    /// de montee <c>+0x14</c> de 12 a 21, un <b>assombrissement</b> <c>+0x16</c> de -3 a -12 par
+    /// image, une teinte de depart a <c>0x80</c> sur les trois canaux, et une cadence d'image
+    /// <c>+0x5c</c> de 2 a 4.
+    /// </para>
+    /// <para>
+    /// L'etat 1 est l'attente, opaque (<c>0x4000</c>) ; l'etat 2 monte de <c>+0x14</c> unites par
+    /// image, la vitesse perdant une unite par image, en assombrissant la teinte de <c>+0x16</c>.
+    /// <b>C'est la teinte qui la tue</b>, pas le compteur : la braise disparait quand son canal rouge
+    /// atteint zero.
+    /// </para>
+    /// </summary>
+    private static void TickDimmingEmber_00418120(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054FB60();                     // Ghidra: &DAT_0054fb60
+            e[0x40] = 0;
+
+            short scale = (short)(CrtRand() % 0x400 + 0xbb8);
+            e[0x0a] = 7;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            int wait = CrtRand() % 6;
+            *(uint*)e |= 0x4000;
+            *(short*)(e + 0x12) = (short)wait;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0xc8 - 0x64) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0xc8 - 0x64) * 0x1000;
+
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0x0a + 0x0c);
+            *(short*)(e + 0x16) = (short)(-3 - CrtRand() % 0x0a);
+
+            e[0x38] = 0x80;
+            e[0x39] = 0x80;
+            e[0x3a] = 0x80;
+
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x5c) = CrtRand() % 3 + 2;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))--;
+            if (*(short*)(e + 0x12) <= 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(uint*)e &= 0xffffbfff;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        short speed = *(short*)(e + 0x14);
+        *(int*)(e + 0x20) += speed * 0x1000;
+        *(short*)(e + 0x14) = (short)(speed - 1);
+
+        short fade = *(short*)(e + 0x16);
+        BrightenEntityTint_00404DE0(e, fade, fade, fade);                    // Ghidra: FUN_00404de0
+
+        (*(short*)(e + 0x9a))++;
+        if (*(short*)(e + 0x9a) >= *(int*)(e + 0x5c))
+        {
+            *(short*)(e + 0x9a) = 0;
+            byte next = (byte)(e[0x40] + 1);
+            e[0x40] = next;
+            if (next == 4) e[0x40] = 0;
+        }
+
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0041c0e0</c> — <b>la volute qui s'ouvre en montant</b>, sous-zones 3, 7 et 9.
+    /// <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_0041C0E0.asm</c>.
+    ///
+    /// <para>
+    /// Elle nait jusqu'a 80 unites <b>plus bas</b> que son point, fige la son ancre, et tourne autour
+    /// d'elle sur une phase <c>+0x12</c> tiree — mais <b>le rayon est <c>+0x9a</c>, qui grandit de
+    /// <c>+0x14</c> a chaque image</b> : la spirale s'ouvre au lieu de se fermer.
+    /// </para>
+    /// <para>
+    /// La montee <c>+0x16</c> part de 5 a 24 et perd une unite par image, <b>bornee a -20</b> : la
+    /// volute monte, s'arrete, puis redescend a vitesse constante. Elle s'assombrit de 10 par image
+    /// et meurt sur sa teinte, comme <see cref="TickDimmingEmber_00418120"/>.
+    /// </para>
+    /// <para>
+    /// <b>Le pas de croissance se lit sur l'ancien <c>+0x5c</c></b> (<c>lea ecx,[edi+4]</c> et
+    /// <c>sar edi,1</c> avant que <c>+0x5c</c> ne soit remis a zero) : <c>rand % (v + 4) + v / 2</c>,
+    /// ou <c>v</c> est ce que le lanceur y avait laisse. C'est le seul champ que ce corps herite.
+    /// </para>
+    /// <para>L'image avance <b>deux images sur quatre</b> — le binaire teste le bit 1 du compteur, pas
+    /// un modulo — et se bloque a 3.</para>
+    /// </summary>
+    private static void TickOpeningVolute_0041C0E0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054FD80();                     // Ghidra: &DAT_0054fd80
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            e[0x40] = 0;
+
+            int drop = *(int*)(e + 0x20) - ((CrtRand() % 0x50) << 0xc);
+            *(int*)(e + 0x20) = drop;
+            *(int*)(e + 0x54) = drop;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);
+
+            // Ghidra: `mov edi,[esi+5Ch]` AVANT la remise a zero — le pas vient du lanceur.
+            int seed = *(int*)(e + 0x5c);
+            *(short*)(e + 0x14) = (short)(CrtRand() % (seed + 4) + (seed >> 1));
+
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x28) = 0x800;
+            *(short*)(e + 0x2a) = 0x800;
+            *(short*)(e + 0x16) = (short)(CrtRand() % 0x14 + 5);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short phase = *(short*)(e + 0x12);
+        short radius = *(short*)(e + 0x9a);
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(phase) * radius + *(int*)(e + 0x50);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(phase) * radius + *(int*)(e + 0x58);
+
+        short rise = *(short*)(e + 0x16);
+        *(int*)(e + 0x20) += rise * 0x1000;
+        rise--;
+        *(short*)(e + 0x16) = rise;
+        if (rise < -0x14) *(short*)(e + 0x16) = -0x14;
+
+        *(short*)(e + 0x9a) = (short)(*(short*)(e + 0x14) + radius);
+        BrightenEntityTint_00404DE0(e, -10, -10, -10);                       // Ghidra: FUN_00404de0
+
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+
+        int ticks = *(int*)(e + 0x5c) + 1;
+        *(int*)(e + 0x5c) = ticks;
+
+        // Ghidra: `test al,2 ; jne` — l'octet bas du compteur, donc deux images sur quatre.
+        if ((ticks & 2) != 0) return;
+
+        byte next = (byte)(e[0x40] + 1);
+        e[0x40] = next;
+        if (next >= 4) e[0x40] = 3;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00416920 @ 0x00416920 — <b>l'eclat qui derive en ligne droite</b>, sous-zones 0,
+    /// 1, 2 et 4. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// Le plus simple du lot. A la naissance il se disperse de ±25 unites a l'horizontale, monte de
+    /// 60 a 79, prend une echelle de <c>0xc00</c> a <c>0x13ff</c>, une teinte de <c>0x5a</c> sur les
+    /// trois canaux, et <b>trois vitesses constantes</b> rangees dans <c>+0x50</c>, <c>+0x54</c> et
+    /// <c>+0x58</c> : -2 a 1 en X et Z, 1 a 3 en hauteur. Il vit de 5 a 9 images, s'assombrit de 10
+    /// par image, et <b>tire son image au sort a chaque tour</b> (<c>+0x40 = rand &amp; 3</c>) — le
+    /// seul corps du fichier qui ne suit pas une cadence.
+    /// </para>
+    /// <para>Son role de dessin est <c>0xfb</c> en <c>+0x0b</c>, une valeur qu'aucun autre corps de la
+    /// tour ne pose.</para>
+    /// </summary>
+    private static void TickDriftingShard_00416920(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054FB88();                     // Ghidra: &DAT_0054fb88
+            e[0x40] = 0;
+            e[0x0a] = 7;
+            e[0x0b] = 0xfb;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x14 + 0x3c) * 0x1000;
+
+            int scaleDraw = CrtRand();
+            *(short*)(e + 0x10) = 1;
+            short scale = (short)((scaleDraw & 0x7ff) + 0xc00);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            *(int*)(e + 0x50) = (CrtRand() & 3) - 2;
+            *(int*)(e + 0x58) = (CrtRand() & 3) - 2;
+
+            int rise = CrtRand();
+            e[0x38] = 0x5a;
+            e[0x39] = 0x5a;
+            e[0x3a] = 0x5a;
+            *(int*)(e + 0x54) = rise % 3 + 1;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 5 + 5);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(int*)(e + 0x1c) += *(int*)(e + 0x50) * 0x1000;
+        *(int*)(e + 0x20) += *(int*)(e + 0x54) * 0x1000;
+        *(int*)(e + 0x24) += *(int*)(e + 0x58) * 0x1000;
+
+        BrightenEntityTint_00404DE0(e, -10, -10, -10);                       // Ghidra: FUN_00404de0
+
+        int frameDraw = CrtRand();
+        (*(short*)(e + 0x12))--;
+        e[0x40] = (byte)(frameDraw & 3);
+
+        if (*(short*)(e + 0x12) < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0041b7c0</c> — <b>le panache a deux visages</b>, sous-zones 3, 7 et 9.
+    /// <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_0041B7C0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Deux naissances dans un seul corps</b>, choisies par le <c>+0x14</c> que le lanceur a
+    /// laisse. La variante <b>0</b> prend la planche <c>0x0054fe28</c>, une echelle a partir de
+    /// <c>0x1000</c>, une duree de vie de 20 a 39 images, et <b>descend</b> de 20 a 39 unites ; la
+    /// variante <b>1</b> prend <c>0x0054fe00</c>, une echelle a partir de <c>0xc00</c>, une duree de
+    /// vie fixe de <b>14</b> images, et <b>monte</b> de 0 a 119 unites.
+    /// </para>
+    /// <para>
+    /// La variante 0 ecrit ensuite son propre <c>+0x14</c> (20..39, le rayon de rotation), ce qui
+    /// fait que le test de la variante 1 qui la suit ne peut plus etre vrai : <b>les deux branches
+    /// s'excluent</b> bien qu'elles se suivent sans <c>else</c>.
+    /// </para>
+    /// <para>
+    /// Ensuite les deux font la meme chose : la teinte perd 3 par canal et par image — <b>et si le
+    /// canal rouge passe sous zero, les trois sont mis a zero d'un coup</b>, pas seulement le
+    /// rouge —, la phase avance de <c>0x40</c>, la position tourne a <c>+0x14</c> autour de l'ancre,
+    /// la hauteur monte de <c>0xa000</c>, l'image avance une image sur deux et boucle sur
+    /// <b>sept</b>, et le panache meurt quand son compte <c>+0x5c</c> atteint zero.
+    /// </para>
+    /// <para>
+    /// <b>Sept images sur une planche de cinq</b> pour la variante 1 : voir
+    /// <see cref="s_Descriptors_0054FE00"/>, ou les deux plages sont declarees d'un seul tenant pour
+    /// que le debordement lise ce que le binaire lit.
+    /// </para>
+    /// </summary>
+    private static void TickTwoFacedPlume_0041B7C0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+
+            if (*(short*)(e + 0x14) == 0)
+            {
+                *(byte**)(e + 0x3c) = Descriptors0054FE28();                 // Ghidra: &DAT_0054fe28
+                e[0x40] = 0;
+                e[0x0a] = 1;
+                e[0x0b] = 0;
+
+                short scale = (short)(CrtRand() % 0x200 + 0x1000);
+                *(short*)(e + 0x28) = scale;
+                *(short*)(e + 0x2a) = scale;
+
+                *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);
+
+                int life = CrtRand();
+                e[0x38] = 0x60;
+                e[0x39] = 0x60;
+                e[0x3a] = 0x60;
+                *(short*)(e + 0x14) = (short)(life % 0x1e + 0x1e);
+
+                *(int*)(e + 0x5c) = CrtRand() % 0x14 + 0x14;
+                *(int*)(e + 0x20) += -0x14000 - ((CrtRand() % 0x14) << 0xc);
+            }
+
+            if (*(short*)(e + 0x14) == 1)
+            {
+                *(byte**)(e + 0x3c) = Descriptors0054FE00();                 // Ghidra: &DAT_0054fe00
+                e[0x40] = 0;
+                e[0x0a] = 1;
+                e[0x0b] = 0;
+
+                short scale = (short)(CrtRand() % 0x200 + 0xc00);
+                *(short*)(e + 0x28) = scale;
+                *(short*)(e + 0x2a) = scale;
+
+                *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);
+
+                int life = CrtRand();
+                e[0x38] = 0x60;
+                e[0x39] = 0x60;
+                e[0x3a] = 0x60;
+                *(int*)(e + 0x5c) = 0x0e;
+                *(short*)(e + 0x14) = (short)(life % 0x1e + 0x1e);
+
+                *(int*)(e + 0x20) += (CrtRand() % 0x78) << 0xc;
+            }
+
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(short*)(e + 0x16) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        // Ghidra: `movzx` sur les trois canaux, `sub …,3`, puis un SEUL `test ax,ax ; jge`.
+        short r = (short)(e[0x38] - 3);
+        short g = (short)(e[0x39] - 3);
+        short b = (short)(e[0x3a] - 3);
+        if (r < 0) { r = 0; g = 0; b = 0; }
+
+        *(short*)(e + 0x12) += 0x40;
+        e[0x38] = (byte)r;
+        e[0x39] = (byte)g;
+        e[0x3a] = (byte)b;
+
+        if (*(short*)(e + 0x12) >= 0x1000) *(short*)(e + 0x12) -= 0x1000;
+
+        short phase = *(short*)(e + 0x12);
+        short radius = *(short*)(e + 0x14);
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(phase) * radius + *(int*)(e + 0x50);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(phase) * radius + *(int*)(e + 0x58);
+        *(int*)(e + 0x20) += 0xa000;
+
+        (*(short*)(e + 0x16))++;
+        if (*(short*)(e + 0x16) == 2)
+        {
+            *(short*)(e + 0x16) = 0;
+            byte next = (byte)(e[0x40] + 1);
+            e[0x40] = next;
+            if (next == 7) e[0x40] = 0;
+        }
+
+        int life2 = *(int*)(e + 0x5c) - 1;
+        *(int*)(e + 0x5c) = life2;
+        if (life2 <= 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00418af0 @ 0x00418af0 — <b>la bouffee qui part de biais et s'eteint</b>,
+    /// sous-zones 5, 6, 8 et 10. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// Elle nait dispersee de ±30 unites, jusqu'a 19 plus haut, avec une echelle de 800 a 1799, un
+    /// <b>cap devie de ±400</b> autour de celui qu'elle a recu, une vitesse <c>+0x14</c> de 8 a 15 et
+    /// une montee <c>+0x16</c> de 1 a 3. Ensuite elle avance au cap, monte, et <b>perd deux unites de
+    /// vitesse par image</b> en s'assombrissant de 30 : elle disparait au bout de quatre a sept
+    /// images.
+    /// </para>
+    /// <para>
+    /// <b>Sa mort n'est pas un masque mais une affectation</b> : <c>*param_1 = 0x7fffffff</c> ecrase
+    /// le mot d'etat entier au lieu d'en effacer le bit de vie. Tous les autres bits partent avec.
+    /// Transcrit tel quel — c'est ce que le binaire ecrit.
+    /// </para>
+    /// </summary>
+    private static void TickSlantedPuff_00418AF0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054FBF8();                     // Ghidra: &DAT_0054fbf8
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+
+            short scale = (short)(CrtRand() % 1000 + 800);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            *(short*)(e + 0x32) += (short)(CrtRand() % 800 - 400);
+            *(short*)(e + 0x14) = (short)((CrtRand() & 7) + 8);
+            *(short*)(e + 0x16) = (short)(CrtRand() % 3 + 1);
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x3c - 0x1e) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x3c - 0x1e) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x14) * 0x1000;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short course = *(short*)(e + 0x32);
+        short speed = *(short*)(e + 0x14);
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * speed;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * speed;
+        *(int*)(e + 0x20) += *(short*)(e + 0x16) * 0x1000;
+
+        *(short*)(e + 0x14) = (short)(speed - 2);
+        BrightenEntityTint_00404DE0(e, -30, -30, -30);                       // Ghidra: FUN_00404de0
+
+        // Ghidra: `mov dword [esi],7FFFFFFFh` — une AFFECTATION, pas un masque.
+        if (*(short*)(e + 0x14) < 1) *(uint*)e = 0x7fffffff;
     }
 }

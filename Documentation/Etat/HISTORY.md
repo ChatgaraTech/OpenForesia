@@ -4,6 +4,41 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 5)
+
+- feat : **22 des 38 corps restants de la catégorie C de la vieille tour** — 18 formes. Zone 4 :
+  118 → 140 sur 176 ; il reste 16 corps, les plus lourds (2 681 instructions), listés dans `TODO.md`
+- feat : `Effects/OldTowerParticles.cs` — neuf formes de la table `0x0056b2c8` : la spirale dressée,
+  le **scintillement double** (une entité, deux points, une image sur deux chacun), l'orbite
+  clignotante, le feu follet invoqué, la braise, la volute qui s'ouvre, l'éclat en ligne droite, le
+  panache à deux visages et la bouffée de biais
+- feat : `Combat/Projectiles.cs` — la nappe qui descend en brûlant (`0x00416C40`) et le projectile
+  qui grossit en tombant et frappe (`0x004850C0`)
+- feat : `Handlers/OldTower.cs` — sept décors de `0x0056adc8` : le brasier qui bat, la trappe qui
+  bascule et secoue la tour, les deux jets de braise, **le bloc poussé dont la position vit dans
+  `.data`**, le piston, le pilier qui s'enfonce et le voile qui fige le groupe
+- feat : `SpawnInheritedEffectNearCamera_0045C000` — la **quatrième sœur** de `FUN_00468110` : même
+  rayon de 1800, même signature perdue par Ghidra, mais elle fait naître par `FUN_0047a9d0`
+- doc : **la borne d'un corps est la première adresse connue qui le suit** — comparer deux jumeaux
+  sur une fenêtre fixe fait apparaître des différences massives qui n'existent pas, parce que la
+  fenêtre déborde sur la fonction suivante. `spans.tsv` de `census-duplicates.sh` porte les vraies
+  bornes ; la comparaison ne vaut qu'après troncature au dernier `ret`
+- doc : **quatre paires inter-blocs de plus sont des quasi-copies** — planche seule, ou planche plus
+  une constante. `0x00417CA0`/`0x00417E10` échangent en outre **l'axe long de leur ellipse** : le
+  terme qui prend le rayon entier va dans la hauteur pour l'un, dans la profondeur pour l'autre
+- doc : **le bloc poussé garde sa place hors de son créneau** — `0x0045AE90` lit et réécrit sa
+  position dans trois tables de `.data` (`0x00551660`, `0x00551680`, `0x005516a0`) indexées par son
+  numéro. La table survit au rechargement de la sous-zone ; le créneau non
+- doc : `s_Descriptors_0054FE00` est **déclarée d'un seul tenant sur douze enregistrements** parce
+  que `0x0041B7C0` mène `+0x40` jusqu'à 6 sur une planche qui n'en a que cinq : le débordement lit
+  les deux premières tuiles de `0x0054fe28`, contiguë dans le binaire
+- doc : **trois marges courtes neuves restent à prouver** — `0x0054FA50`, `0x0054FBF0` et
+  `0x0054FBF8` n'ont qu'un enregistrement. La troisième est sûre (le corps met `+0x40` à zéro) ; les
+  deux premières appartiennent à `TickTwinSparkle_00417B10`, qui **n'écrit jamais `+0x40`** et
+  l'hérite donc de son géniteur — identifier le géniteur avant de sceller
+
+---
+
 ## 2026-09-17 (suite 4)
 
 - feat : **les huit formes à jumeaux de la catégorie C de la vieille tour** — 17 créneaux pour

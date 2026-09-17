@@ -35,8 +35,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **390** |
-| à transcrire | **714** |
+| implémentés, jamais appelés | **412** |
+| à transcrire | **692** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -45,13 +45,13 @@ socle commun, et il est entier.
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
-| 4 | La vieille tour | 118 / 176 |
+| 4 | La vieille tour | 140 / 176 |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
 | 6 | Le château de l’immortel | 27 / 170 |
 | 7 | Les ruines souterraines | 18 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 38 / 349 |
+| 10 | La grotte scellée | 40 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -76,13 +76,27 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (18 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **La vieille tour (118 / 176), en cours, par complexité** — `Zone4ParComplexite.md` (régénérer
+4. **La vieille tour (140 / 176), en cours, par complexité** — `Zone4ParComplexite.md` (régénérer
    avec `sh OpenForesia.Tools/census-zone-complexity.sh 4`). Sont écrits : la catégorie A, les
-   décors, les effets, **la catégorie B en entier** (les 4 verbes de `0x0056aec8`) et **tous les
-   jumeaux de la catégorie C** (7 paires et 1 triplet, 17 corps en 8 lectures) — les deux lots du
-   2026-09-17. Il reste **C (38 corps, et plus un seul jumeau : 38 lectures)**, D (4) et les
-   16 routines d'intelligence en dernier. Le rendement de la zone est donc épuisé : à partir d'ici,
-   un corps coûte une lecture.
+   décors, les effets, **la catégorie B en entier**, **tous les jumeaux de la catégorie C** et
+   **22 des 38 corps de la catégorie C** — trois lots le 2026-09-17.
+
+   **Il reste 16 corps de C, et ce sont les plus lourds** (2 681 instructions, 15 formes : la paire
+   `0x0045DD00`/`0x0045FD40` ne diffère que par le sous-type engendré, `0x39` contre `0x38`) :
+
+   | table | à écrire |
+   |---|---|
+   | `0056ADC8` | `0x0045A4D0` `0x0045B540` `0x0045E300` `0x0045DD00`+`0x0045FD40` `0x0045B030` `0x0045BB10` `0x0045E860` `0x0045F7E0` `0x0045D750` |
+   | `0056B0C8` | `0x0041BB20` `0x00416A80` `0x0041AC80` `0x0041B460` |
+   | `0056B1C8` | `0x0041BC90` `0x0041AFA0` |
+
+   Les deux de `Blaze.c` (`0x0045BB10`, `0x0045F7E0`) sont **les deux délicats du lot** : le premier
+   détourne la caméra en réaffectant `DAT_005eca94`, `DAT_005e9ae0` et `DAT_005edebc` vers le bloc
+   `0x00571668`, le second ouvre une boîte de dialogue sur un membre choisi et se sert de lui-même
+   comme sonde sur les 32 entités de scène. Les six de `0056B0C8`/`0056B1C8` n'ont pas encore été
+   lues du tout.
+
+   Ensuite D (4) et les 16 routines d'intelligence.
 5. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et

@@ -1475,4 +1475,256 @@ public static unsafe partial class Blaze
         DamagePartyNearPoint_00418F50(
             *(int*)(e + 0x1c), *(int*)(e + 0x20), *(int*)(e + 0x24), 0x32, 5, 0);
     }
+
+    // =====================================================================
+    // LES DEUX CORPS DE LA CATEGORIE C QUI FRAPPENT (2026-09-17, lot 2)
+    //
+    // Meme test d'appartenance que le feu follet : ils ecrivent dans un bloc de combat, donc ils
+    // sont ici et non dans Effects/OldTowerParticles.cs. 0x00416C40 blesse le groupe autour de lui,
+    // 0x004850C0 cherche une victime et lui applique une frappe au corps a corps.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fae0</c> — quatre tuiles <c>0x20 x 0x20</c>, page <c>0x02</c>.
+    /// Memes octets que <c>s_Descriptors_0054FDE0</c> (<c>Effects/OldTowerParticles.cs</c>) ; bornee
+    /// par <c>0x0054fb00</c>. Le corps mene <c>+0x40</c> de 1 a 3 : marge 0 sur les quatre.</summary>
+    private static readonly byte[] s_Descriptors_0054FAE0 =
+    [
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054fae0  <- 0x00416C40
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054fae8
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054faf0
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054faf8
+    ];
+
+    private static byte* s_Descriptors0054FAE0Storage;
+
+    private static byte* Descriptors0054FAE0()
+        => NativeCopy(s_Descriptors_0054FAE0, ref s_Descriptors0054FAE0Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x00416c40</c> — <b>la nappe qui descend en tournant et brule ce qu'elle
+    /// traverse</b>, sous-zones 0, 1, 2 et 4. <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_00416C40.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle se pose sur le terrain a la naissance</b> (<see cref="TryPlaceEntity"/> avec le masque
+    /// <c>0x8000</c>, puis <see cref="FinalizeEntityPlacement2"/>), ce qu'aucune autre particule de
+    /// la tour ne fait : c'est une nappe au sol, pas un effet en l'air. Elle fige son ancre, garde sa
+    /// hauteur de depart dans <c>+0x60</c> <b>et</b> <c>+0x64</c>, et arme les quatre mots
+    /// <c>+0x82</c>, <c>+0x86</c>, <c>+0x8a</c>, <c>+0x8e</c> a <c>0xa000</c> — le gabarit de
+    /// collision.
+    /// </para>
+    /// <para>
+    /// Ensuite, a chaque image : la position tourne a <c>+0x12</c> autour de l'ancre, la hauteur perd
+    /// <c>0x2000</c>, l'echelle gagne <c>0x64</c> sur les deux axes, la teinte perd 3, et le rayon
+    /// <c>+0x12</c> gagne <c>0x14</c> — <b>elle s'elargit en descendant</b>. Deux choses l'arretent :
+    /// un contact <c>0x8802</c> dans <c>+0x90</c>, ou la retombee sous sa hauteur de depart.
+    /// </para>
+    /// <para>
+    /// <b>Et elle brule a chaque image</b>, hors de tout etat : 3 % des points de vie maximum dans un
+    /// rayon de 50 unites, avec le parametre d'effet 3 — le seul corps de la tour a le passer non
+    /// nul. La hauteur qu'elle donne au balayage est celle <b>d'apres</b> la descente.
+    /// </para>
+    /// <para>Son image part de 1 a 3 (et non de 0) et reboucle sur 1 : le premier enregistrement de la
+    /// planche n'est jamais montre.</para>
+    /// </summary>
+    private static void TickDescendingBurnMat_00416C40(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054FAE0();                     // Ghidra: &DAT_0054fae0
+
+            int frameDraw = CrtRand() % 3;                                   // Ghidra: FUN_00547140
+            e[0x0a] = 1;
+
+            e[0x38] = 0xa0;
+            e[0x39] = 0xa0;
+            e[0x3a] = 0xa0;
+            *(short*)(e + 0x28) = 0x1f4;
+            *(short*)(e + 0x2a) = 0x1f4;
+
+            int height = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            e[0x0b] = 0;
+            *(int*)(e + 0x54) = height;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x14) = 5;
+
+            *(ushort*)(e + 0x82) = 0xa000;
+            *(ushort*)(e + 0x86) = 0xa000;
+            *(ushort*)(e + 0x8a) = 0xa000;
+            *(ushort*)(e + 0x8e) = 0xa000;
+
+            *(int*)(e + 0x64) = height;
+            *(int*)(e + 0x60) = height;
+
+            e[0x40] = (byte)(frameDraw + 1);
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+            TryPlaceEntity(*(byte**)Mem.Entity(0x005f7bc0), (uint*)e, 0x8000);   // Ghidra: FUN_005330d0
+            FinalizeEntityPlacement2((uint*)e);                                  // Ghidra: FUN_00533940
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short course = *(short*)(e + 0x32);
+            short radius = *(short*)(e + 0x12);
+
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(course) * radius + *(int*)(e + 0x50);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(course) * radius + *(int*)(e + 0x58);
+
+            *(short*)(e + 0x28) += 0x64;
+            *(short*)(e + 0x2a) += 0x64;
+            *(int*)(e + 0x20) -= 0x2000;
+
+            BrightenEntityTint_00404DE0(e, -3, -3, -3);                      // Ghidra: FUN_00404de0
+            FinalizeEntityPlacement2((uint*)e);                              // Ghidra: FUN_00533940
+
+            if ((*(uint*)(e + 0x90) & 0x8802) != 0) *(short*)(e + 0x10) = 2;
+
+            int height = *(int*)(e + 0x20);
+            if (*(int*)(e + 0x60) >= height) *(short*)(e + 0x10) = 2;
+
+            (*(short*)(e + 0x14))--;
+            *(short*)(e + 0x12) += 0x14;
+
+            if (*(short*)(e + 0x14) <= 0)
+            {
+                *(short*)(e + 0x14) = 5;
+                byte next = (byte)(e[0x40] + 1);
+                e[0x40] = next;
+                if (next == 4) e[0x40] = 1;
+            }
+
+            // Ghidra: FUN_00418f50 — huit arguments empiles, six lus. La hauteur passee est celle
+            // d'apres la descente, pas celle du debut du tour.
+            DamagePartyNearPoint_00418F50(*(int*)(e + 0x1c), height, *(int*)(e + 0x24), 0x32, 3, 3);
+        }
+
+        if (*(short*)(e + 0x10) == 2) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004850c0</c> — <b>le projectile qui grossit en tombant et frappe qui il
+    /// touche</b>, sous-zones 3, 7 et 9. <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_004850C0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Il n'a pas d'etat au sens habituel</b> : <c>+0x10</c> est son <b>age</b>, de 0 a 7, et le
+    /// corps entier se deroule a chaque image. Zero vaut naissance — il y fige son ancre de vol dans
+    /// <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>.
+    /// </para>
+    /// <para>
+    /// <b>Son echelle est ecrite en un seul dword</b> (<c>mov [esi+28h],edx</c>), les deux mots d'un
+    /// coup : <c>+0x28</c> recoit <c>t × 3</c> et <c>+0x2a</c> recoit <c>t &gt;&gt; 14</c>, ou
+    /// <c>t = (rand &amp; 0x3ff) + ((age² + 8) &lt;&lt; 7)</c>. La meme valeur, decalee de 7 bits de
+    /// plus, est ajoutee a la hauteur : <b>il monte et grossit en meme temps, et de plus en plus
+    /// vite</b>.
+    /// </para>
+    /// <para>
+    /// L'ancre avance de la vitesse <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>, la position s'y recale, et
+    /// <see cref="FinalizeEntityPlacement2"/> tranche : le sol <c>+0x64</c> force
+    /// <c>+0x90</c> a <c>0x800</c>, et un contact <c>0x8802</c> <b>eteint l'entite d'un coup</b>
+    /// (<c>mov dword [esi],0</c> — le mot d'etat entier, pas un masque).
+    /// </para>
+    /// <para>
+    /// <b>La frappe.</b> <see cref="SweepOpposingSideForMeleeHit_00474C70"/> cherche une victime dans
+    /// une boite <c>(0, 0, 0x3c, 0xc8, 0, 0x78)</c> montee sur la pile. S'il en trouve une mais que
+    /// <c>0x005de0b8</c> est nul, le projectile s'eteint sans rien faire ; sinon
+    /// <see cref="ResolveMeleeHit_00539B80"/> applique les degats depuis l'attaquant range en
+    /// <c>+0x74</c>, la victime prend le bit <c>0x40</c> et un clignotement de <c>0x10</c>, et
+    /// <see cref="SpawnCastEntity_0047AAE0"/> fait naitre le sous-type <c>0x72</c> — l'impact.
+    /// </para>
+    /// <para>
+    /// <b>Deux details du binaire.</b> L'octet <c>+0x04</c> est mis a <c>0x1b</c> le temps de la
+    /// naissance puis restaure : c'est ainsi que l'impact herite de la bonne appartenance. Et la
+    /// teinte se decolore par un <b>add de dword</b> (<c>+0xffe7e7e8</c>), donc avec retenue d'un
+    /// canal sur l'autre — conserve tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickGrowingBolt_004850C0(byte* e)
+    {
+        // Ghidra: six mots montes sur la pile avant tout, la boite de recherche.
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0;
+        probe[2] = 0x3c;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x78;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+        }
+
+        int age = *(short*)(e + 0x10);
+        int swell = (CrtRand() & 0x3ff) + ((age * age + 8) << 7);            // Ghidra: FUN_00547140
+
+        // Ghidra: `lea edx,[eax+eax*2] ; shl ecx,12h ; or edx,ecx ; mov [esi+28h],edx` — une seule
+        // ecriture de 32 bits sur les deux mots d'echelle.
+        *(uint*)(e + 0x28) = (uint)(swell * 3) | (uint)(swell << 18);
+
+        int anchorX = *(int*)(e + 0x44) + *(int*)(e + 0x50);
+        int anchorY = *(int*)(e + 0x48) + *(int*)(e + 0x54);
+        int anchorZ = *(int*)(e + 0x4c) + *(int*)(e + 0x58);
+
+        *(int*)(e + 0x44) = anchorX;
+        *(int*)(e + 0x48) = anchorY;
+        *(int*)(e + 0x4c) = anchorZ;
+
+        int height = (swell << 7) + anchorY;
+        *(int*)(e + 0x1c) = anchorX;
+        *(int*)(e + 0x20) = height;
+        *(int*)(e + 0x24) = anchorZ;
+
+        FinalizeEntityPlacement2((uint*)e);                                  // Ghidra: FUN_00533940
+
+        int ceiling = *(int*)(e + 0x64);
+        *(int*)(e + 0x20) = height;
+        if (height <= ceiling)
+        {
+            *(int*)(e + 0x20) = ceiling;
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(uint*)e = 0;                                                   // Ghidra: LAB_00485204
+            return;
+        }
+
+        byte* victim = SweepOpposingSideForMeleeHit_00474C70(e, probe);      // Ghidra: FUN_00474c70
+
+        if (victim != null)
+        {
+            if (*Mem.Camera(0x005de0b8) == 0)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);    // Ghidra: FUN_00539b80
+
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+
+            byte side = e[4];
+            e[4] = 0x1b;
+            *(byte**)(e + 0x78) = victim;
+            SpawnCastEntity_0047AAE0(e, 0x72, 0, 1);                         // Ghidra: FUN_0047aae0
+            e[4] = side;
+        }
+
+        // Ghidra: `add edx,0FFE7E7E8h` sur le DWORD +0x38 — les trois canaux d'un coup, retenue
+        // comprise.
+        *(uint*)(e + 0x38) += 0xffe7e7e8;
+
+        (*(short*)(e + 0x10))++;
+        if (*(short*)(e + 0x10) < 8) return;
+
+        *(uint*)e = 0;
+    }
 }

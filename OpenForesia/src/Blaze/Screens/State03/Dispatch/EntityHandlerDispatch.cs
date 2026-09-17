@@ -1545,6 +1545,43 @@ public static unsafe partial class Blaze
             case 0x00418C40: EntityHandler_00418C40(record); return;   // 5-6-8-10
             case 0x0041C250: EntityHandler_0041C250(record); return;   // 3-7-9
 
+            // ====================================================================================
+            // LA VIEILLE TOUR, categorie C — les particules de 0x0056b2c8 (lot 2).
+            //
+            // Les quatre premieres paires partagent leur corps : le diff inter-blocs ne rend que la
+            // planche, et pour deux d'entre elles une constante, passee en parametre. Les cinq
+            // corps uniques sont appeles par leur nom de role — le `case` porte l'adresse, qui est
+            // ce que le recensement lit.
+            // ====================================================================================
+
+            // Effects/OldTowerParticles.cs
+            case 0x00417CA0: EntityHandler_00417CA0(record); return;   // la spirale dressee, 0-1-2-4
+            case 0x004198B0: EntityHandler_004198B0(record); return;   // la meme, 5-6-8-10
+            case 0x00417B10: EntityHandler_00417B10(record); return;   // le scintillement double, 0-1-2-4
+            case 0x00419720: EntityHandler_00419720(record); return;   // le meme, 5-6-8-10
+            case 0x00417770: EntityHandler_00417770(record); return;   // l'orbite clignotante, 0-1-2-4
+            case 0x00419380: EntityHandler_00419380(record); return;   // la meme, 5-6-8-10
+            case 0x00417420: EntityHandler_00417420(record); return;   // le follet invoque, 0-1-2-4
+            case 0x00419030: EntityHandler_00419030(record); return;   // le meme, 5-6-8-10
+            case 0x00418120: TickDimmingEmber_00418120(record); return;   // la braise
+            case 0x0041C0E0: TickOpeningVolute_0041C0E0(record); return;  // la volute qui s'ouvre
+            case 0x00416920: TickDriftingShard_00416920(record); return;  // l'eclat en ligne droite
+            case 0x0041B7C0: TickTwoFacedPlume_0041B7C0(record); return;  // le panache a deux visages
+            case 0x00418AF0: TickSlantedPuff_00418AF0(record); return;    // la bouffee de biais
+
+            // Combat/Projectiles.cs — les deux qui frappent.
+            case 0x00416C40: TickDescendingBurnMat_00416C40(record); return;
+            case 0x004850C0: TickGrowingBolt_004850C0(record); return;
+
+            // Handlers/OldTower.cs — les sept decors de 0x0056adc8 decompiles dans Blaze.c.
+            case 0x0045BF20: TickBreathingBrazier_0045BF20(record); return;   // le brasier qui bat
+            case 0x0045AA90: TickTiltingHatch_0045AA90(record); return;       // la trappe qui bascule
+            case 0x0045AD20: TickTwinEmberJets_0045AD20(record); return;      // les deux jets
+            case 0x0045AE90: TickPushableBlock_0045AE90(record); return;      // le bloc pousse
+            case 0x0045B3B0: TickSlammingPiston_0045B3B0(record); return;     // le piston
+            case 0x0045B7E0: TickSinkingPillar_0045B7E0(record); return;      // le pilier
+            case 0x0045FBA0: TickFreezingVeil_0045FBA0(record); return;       // le voile qui fige
+
             case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
             case 0x0040B900: EntityHandler_0040B900(record); return;
             case 0x0040C820: EntityHandler_0040C820(record); return;
