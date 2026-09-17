@@ -35,8 +35,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **373** |
-| à transcrire | **731** |
+| implémentés, jamais appelés | **390** |
+| à transcrire | **714** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -45,7 +45,7 @@ socle commun, et il est entier.
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
-| 4 | La vieille tour | 101 / 176 |
+| 4 | La vieille tour | 118 / 176 |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
 | 6 | Le château de l’immortel | 27 / 170 |
 | 7 | Les ruines souterraines | 18 / 35 |
@@ -76,11 +76,13 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (18 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **La vieille tour (101 / 176), en cours, par complexité** — `Zone4ParComplexite.md` (régénérer
-   avec `sh OpenForesia.Tools/census-zone-complexity.sh 4`). La catégorie A, les décors, les effets
-   et **la catégorie B en entier** (les 4 verbes de `0x0056aec8`, faits le 2026-09-17) sont écrits ;
-   restent **C (55 corps, 46 lectures)**, D (4) et les 16 routines d'intelligence en dernier.
-   La catégorie C se prend par jumeaux : ses 55 corps ne font que **46 lectures**, neuf de gagnées.
+4. **La vieille tour (118 / 176), en cours, par complexité** — `Zone4ParComplexite.md` (régénérer
+   avec `sh OpenForesia.Tools/census-zone-complexity.sh 4`). Sont écrits : la catégorie A, les
+   décors, les effets, **la catégorie B en entier** (les 4 verbes de `0x0056aec8`) et **tous les
+   jumeaux de la catégorie C** (7 paires et 1 triplet, 17 corps en 8 lectures) — les deux lots du
+   2026-09-17. Il reste **C (38 corps, et plus un seul jumeau : 38 lectures)**, D (4) et les
+   16 routines d'intelligence en dernier. Le rendement de la zone est donc épuisé : à partir d'ici,
+   un corps coûte une lecture.
 5. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et

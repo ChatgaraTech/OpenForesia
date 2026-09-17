@@ -1515,6 +1515,36 @@ public static unsafe partial class Blaze
             case 0x00484F80: EntityHandler_00484F80(record); return;
             case 0x00483A30: EntityHandler_00483A30(record); return;
 
+            // ====================================================================================
+            // LA VIEILLE TOUR, categorie C — LES HUIT FORMES A JUMEAUX (lot 4).
+            //
+            // Dix-sept creneaux pour huit corps. Les paires et le triplet sont marques ; deux paires
+            // n'ont meme pas de parametre, leurs octets etant les memes a l'adresse pres.
+            // ====================================================================================
+
+            // Handlers/OldTower.cs — table 0x0056adc8.
+            case 0x0045DF60: EntityHandler_0045DF60(record); return;   // le pivot sonore, 5-6-8-10
+            case 0x0045FFA0: EntityHandler_0045FFA0(record); return;   // le meme, 3-7-9
+            case 0x0045E040: EntityHandler_0045E040(record); return;   // le pivot silencieux, 5-6-8-10
+            case 0x00460080: EntityHandler_00460080(record); return;   // le meme, 3-7-9
+            case 0x0045E100: EntityHandler_0045E100(record); return;   // l'attente du verrou, 5-6-8-10
+            case 0x00460140: EntityHandler_00460140(record); return;   // le meme, 3-7-9
+            case 0x0045CF70: EntityHandler_0045CF70(record); return;   // le souffleur, 5-6-8-10
+            case 0x0045F3B0: EntityHandler_0045F3B0(record); return;   // le meme, 3-7-9
+            case 0x0045A630: EntityHandler_0045A630(record); return;   // la balance, 0-1-2-4
+            case 0x0045E4E0: EntityHandler_0045E4E0(record); return;   // la meme, 3-7-9
+
+            // Effects/OldTowerParticles.cs — table 0x0056b2c8.
+            case 0x00417E10: EntityHandler_00417E10(record); return;   // la spirale, 0-1-2-4
+            case 0x00419A20: EntityHandler_00419A20(record); return;   // la meme, 5-6-8-10
+            case 0x00417F80: EntityHandler_00417F80(record); return;   // l'eclaboussure, 0-1-2-4
+            case 0x00419B90: EntityHandler_00419B90(record); return;   // la meme, 5-6-8-10
+
+            // Combat/Projectiles.cs — le feu follet, un par bloc, et il brule.
+            case 0x00417110: EntityHandler_00417110(record); return;   // 0-1-2-4
+            case 0x00418C40: EntityHandler_00418C40(record); return;   // 5-6-8-10
+            case 0x0041C250: EntityHandler_0041C250(record); return;   // 3-7-9
+
             case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
             case 0x0040B900: EntityHandler_0040B900(record); return;
             case 0x0040C820: EntityHandler_0040C820(record); return;

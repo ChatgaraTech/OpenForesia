@@ -1289,4 +1289,497 @@ public static unsafe partial class Blaze
             Mem.s_StateBank0_005e96e0[0x16] |= 0x10;
         }
     }
+
+    // =====================================================================
+    // LES CINQ FORMES A JUMEAUX DE LA TABLE 0x0056adc8 (2026-09-17)
+    //
+    // Categorie C de Zone4ParComplexite.md, prise PAR FORME et non par zone : dix creneaux pour
+    // cinq lectures. Le compilateur a emis chaque corps une fois par bloc de sous-zones, et le
+    // desassemblage tronque a la derniere instruction `ret` ne rend, d'un jumeau a l'autre, que ce
+    // qui est dit ci-dessous.
+    //
+    //   0x0045DF60 / 0x0045FFA0   59 instr.  banc de verrous 0x005716E0 / 0x00571730
+    //   0x0045E040 / 0x00460080   47         idem
+    //   0x0045E100 / 0x00460140   56         idem
+    //   0x0045CF70 / 0x0045F3B0  176         AUCUNE difference : le meme corps, deux fois
+    //   0x0045A630 / 0x0045E4E0  239         AUCUNE difference : le meme corps, deux fois
+    //
+    // LES DEUX DERNIERES PAIRES N'ONT PAS DE PARAMETRE. Leurs octets ne different que par les
+    // deplacements relatifs des `call` et des `jmp`, qui resolvent vers les memes cibles absolues —
+    // le meme cas que `LAB_00474320` / `FUN_00450700`. Un seul corps, deux enveloppes nues.
+    //
+    // LE BANC DE VERROUS. `0x005716E0` (sous-zones 5, 6, 8, 10) et `0x00571730` (3, 7, 9) sont un
+    // meme octet de cinq bits, un par mecanisme. 0x0045DF60 et 0x0045E040 le POSENT en pivotant ;
+    // 0x0045E100 l'ATTEND, puis l'EFFACE. Les trois lisent leur numero de mecanisme dans `+0x14`,
+    // de 1 a 5 — hors de cette plage, ils ne touchent a rien.
+    // =====================================================================
+
+    /// <summary>Ghidra: FUN_0045df60 @ 0x0045df60 — le pivot sonore des sous-zones 5, 6, 8 et 10.
+    /// Decompilee dans <c>Blaze.c</c>. Corps : <see cref="TickTowerHinge_0045DF60"/>.</summary>
+    private static void EntityHandler_0045DF60(byte* e)
+        => TickTowerHinge_0045DF60(e, Mem.EntityStateBytes(0x005716e0));
+
+    /// <summary>Ghidra: FUN_0045ffa0 @ 0x0045ffa0 — le meme corps pour les sous-zones 3, 7 et 9 ;
+    /// le diff ne rend que l'adresse du banc de verrous, <c>0x00571730</c>.</summary>
+    private static void EntityHandler_0045FFA0(byte* e)
+        => TickTowerHinge_0045DF60(e, Mem.EntityStateBytes(0x00571730));
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0045DF60"/> et <see cref="EntityHandler_0045FFA0"/> :
+    /// <b>un pivot de quarante images qui annonce son ouverture</b>.
+    ///
+    /// <para>
+    /// A la premiere image il joue <c>sons[0x2e]</c>, arme une vitesse de <b>15</b> en
+    /// <c>+0x54</c>, pose le bit <c>0x2000</c> et <b>allume son bit du banc de verrous</b> selon son
+    /// numero <c>+0x14</c> (1 a 5 ; hors plage, rien n'est pose). Puis, a chaque image, la vitesse
+    /// gagne un huitieme d'elle-meme pendant les douze premieres et en perd un huitieme ensuite —
+    /// la meme courbe que le tourniquet de la foret (<c>TurnstileSpin</c>), sur d'autres champs — et
+    /// le cap <c>+0x32</c> <b>avance</b> d'autant. A la quarantieme image il pose
+    /// <c>0x40002000</c> et <b>ne fait pas avancer le cap</b> : le binaire rend la main avant.
+    /// </para>
+    /// <para>
+    /// Le bit <c>0x40000000</c> en tete est une sortie seche : une fois pose par la derniere image,
+    /// le corps ne fait plus rien. C'est le meme verrou que le tourniquet.
+    /// </para>
+    /// <para>
+    /// <b>Son frere silencieux est <see cref="TickTowerHingeSilent_0045E040"/></b>, qui tourne dans
+    /// l'autre sens et ne joue rien : les deux battants d'une meme ouverture, un seul son pour la
+    /// paire. Les deux corps sont ecrits separement parce que le desassembleur les separe —
+    /// partager avec un parametre de signe effacerait le son.
+    /// </para>
+    /// </summary>
+    private static void TickTowerHinge_0045DF60(byte* e, byte* latches)
+    {
+        if ((*(uint*)e & 0x40000000) != 0) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // Ghidra: FUN_00468080, sons[0x2e] — le son est joue AVANT la pose des drapeaux.
+            TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x2e], 0x800, 0x1800, 0, 0);
+
+            *(uint*)e |= 0x2000;
+            *(int*)(e + 0x54) = 0x0f;
+            SetTowerLatch(latches, *(short*)(e + 0x14));
+        }
+
+        int speed = *(int*)(e + 0x54);
+        *(int*)(e + 0x54) = *(short*)(e + 0x10) <= 0x0c ? (speed >> 3) + speed : speed - (speed >> 3);
+
+        short frame = (short)(*(short*)(e + 0x10) + 1);
+        *(short*)(e + 0x10) = frame;
+
+        if (frame == 0x28)
+        {
+            *(uint*)e |= 0x40002000;
+            return;
+        }
+
+        *(short*)(e + 0x32) += (short)*(int*)(e + 0x54);
+    }
+
+    /// <summary>Ghidra: <c>0x0045e040</c> — le pivot silencieux des sous-zones 5, 6, 8 et 10.
+    /// <b>Absente de <c>Blaze.c</c></b> ; relevee au desassembleur, dump conserve dans
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_0045E040.asm</c>.</summary>
+    private static void EntityHandler_0045E040(byte* e)
+        => TickTowerHingeSilent_0045E040(e, Mem.EntityStateBytes(0x005716e0));
+
+    /// <summary>Ghidra: <c>0x00460080</c> — le meme corps pour les sous-zones 3, 7 et 9 ; le diff ne
+    /// rend que l'adresse du banc de verrous.</summary>
+    private static void EntityHandler_00460080(byte* e)
+        => TickTowerHingeSilent_0045E040(e, Mem.EntityStateBytes(0x00571730));
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0045E040"/> et <see cref="EntityHandler_00460080"/> :
+    /// <b>le second battant</b>. Meme armement, meme courbe, meme verrou final que
+    /// <see cref="TickTowerHinge_0045DF60"/>, a deux differences pres et elles sont toute la
+    /// fonction :
+    ///
+    /// <list type="bullet">
+    /// <item>il ne joue <b>aucun son</b> — une paire de battants ne sonne qu'une fois ;</item>
+    /// <item>le cap <c>+0x32</c> <b>recule</b> (<c>sub [eax+32h],cx</c>) au lieu d'avancer.</item>
+    /// </list>
+    /// </summary>
+    private static void TickTowerHingeSilent_0045E040(byte* e, byte* latches)
+    {
+        if ((*(uint*)e & 0x40000000) != 0) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x2000;
+            *(int*)(e + 0x54) = 0x0f;
+            SetTowerLatch(latches, *(short*)(e + 0x14));
+        }
+
+        int speed = *(int*)(e + 0x54);
+        *(int*)(e + 0x54) = *(short*)(e + 0x10) <= 0x0c ? (speed >> 3) + speed : speed - (speed >> 3);
+
+        short frame = (short)(*(short*)(e + 0x10) + 1);
+        *(short*)(e + 0x10) = frame;
+
+        if (frame == 0x28)
+        {
+            *(uint*)e |= 0x40002000;
+            return;
+        }
+
+        *(short*)(e + 0x32) -= (short)*(int*)(e + 0x54);
+    }
+
+    /// <summary>
+    /// La table de sauts des deux pivots : le numero de mecanisme <paramref name="slot"/> allume son
+    /// bit du banc de verrous. Le binaire ecrit <c>dec ecx ; cmp ecx,4 ; ja</c> puis cinq
+    /// <c>or byte […],2^n</c> — un indice hors de 1..5 ne touche a rien.
+    /// </summary>
+    private static void SetTowerLatch(byte* latches, short slot)
+    {
+        switch (slot)
+        {
+            case 1: latches[0] |= 0x01; break;
+            case 2: latches[0] |= 0x02; break;
+            case 3: latches[0] |= 0x04; break;
+            case 4: latches[0] |= 0x08; break;
+            case 5: latches[0] |= 0x10; break;
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0045e100</c> — ce qui attend le verrou, sous-zones 5, 6, 8 et 10.
+    /// <b>Absente de <c>Blaze.c</c></b> ; dump conserve dans
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_0045E100.asm</c>.</summary>
+    private static void EntityHandler_0045E100(byte* e)
+        => TickTowerLatchedGrowth_0045E100(e, Mem.EntityStateBytes(0x005716e0));
+
+    /// <summary>Ghidra: <c>0x00460140</c> — le meme corps pour les sous-zones 3, 7 et 9.</summary>
+    private static void EntityHandler_00460140(byte* e)
+        => TickTowerLatchedGrowth_0045E100(e, Mem.EntityStateBytes(0x00571730));
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0045E100"/> et <see cref="EntityHandler_00460140"/> :
+    /// <b>le consommateur du banc de verrous</b>, et le troisieme cote du mecanisme.
+    ///
+    /// <para>
+    /// A la premiere image il met son echelle <c>+0x28</c> a zero et copie sa vitesse de croissance
+    /// de <c>+0x16</c> — une valeur que sa fiche de placement porte — dans <c>+0x12</c>. Ensuite, a
+    /// chaque image, <b>il ne fait rien tant que son bit n'est pas allume</b> : la cascade des cinq
+    /// <c>cmp cx,N ; test dl,2^(N-1) ; je</c> rend la main des que le bit manque.
+    /// </para>
+    /// <para>
+    /// Le bit pose, l'echelle monte de <c>+0x12</c> par image jusqu'a <c>0x1000</c>, ou elle est
+    /// bornee ; le corps passe alors a l'etat 2, pose <c>0x40000000</c> et <b>efface son bit</b> —
+    /// la croissance n'a donc lieu qu'une fois, et le verrou est rendu.
+    /// </para>
+    /// <para>
+    /// <b>Le banc est lu une seule fois</b>, en tete (<c>mov dl,[5716E0h]</c>), avant les cinq
+    /// comparaisons. Et il est <b>pose a l'octet</b> par les pivots mais <b>efface au mot</b> ici
+    /// (<c>and word […],0FFFEh</c>) : les deux largeurs sont conservees telles quelles.
+    /// </para>
+    /// </summary>
+    private static void TickTowerLatchedGrowth_0045E100(byte* e, byte* latches)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = *(short*)(e + 0x16);
+        }
+
+        short slot = *(short*)(e + 0x14);
+        byte latched = latches[0];
+
+        if (slot == 1 && (latched & 0x01) == 0) return;
+        if (slot == 2 && (latched & 0x02) == 0) return;
+        if (slot == 3 && (latched & 0x04) == 0) return;
+        if (slot == 4 && (latched & 0x08) == 0) return;
+        if (slot == 5 && (latched & 0x10) == 0) return;
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x28) += *(short*)(e + 0x12);
+        if (*(short*)(e + 0x28) < 0x1000) return;
+
+        *(short*)(e + 0x28) = 0x1000;
+        *(uint*)e |= 0x40000000;
+        *(short*)(e + 0x10) = 2;
+
+        // Ghidra: seconde table de sauts, `and word […]` — un mot, la ou la pose est un octet.
+        ushort* word = (ushort*)latches;
+        switch (slot)
+        {
+            case 1: *word &= 0xfffe; break;
+            case 2: *word &= 0xfffd; break;
+            case 3: *word &= 0xfffb; break;
+            case 4: *word &= 0xfff7; break;
+            case 5: *word &= 0xffef; break;
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0045cf70</c> — le souffleur des sous-zones 5, 6, 8 et 10.
+    /// <b>Absente de <c>Blaze.c</c></b> ; dump conserve dans
+    /// <c>Legacy/Raw/Blaze/OldTower/FUN_0045CF70.asm</c>.</summary>
+    private static void EntityHandler_0045CF70(byte* e) => TickTowerBlower_0045CF70(e);
+
+    /// <summary>Ghidra: <c>0x0045f3b0</c> — <b>le meme corps, sans une seule difference</b>, pour
+    /// les sous-zones 3, 7 et 9. Les 569 octets ne different que par les deplacements relatifs des
+    /// <c>call</c>, qui resolvent vers les memes cibles.</summary>
+    private static void EntityHandler_0045F3B0(byte* e) => TickTowerBlower_0045CF70(e);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0045CF70"/> et <see cref="EntityHandler_0045F3B0"/> :
+    /// <b>un decor qui oscille et souffle deux bouffees de quatre effets</b>.
+    ///
+    /// <para>
+    /// <b>Il se sert de lui-meme comme point d'emission</b>, et c'est la seule difficulte de la
+    /// fonction : pour chaque bouffee il met de cote sa position (<c>+0x1c</c>, <c>+0x20</c>,
+    /// <c>+0x24</c>), son ancre (<c>+0x50</c>, <c>+0x54</c>, <c>+0x58</c>) et son cap
+    /// (<c>+0x32</c>), se transporte a <b>120 unites</b> dans la direction voulue et <b>200 unites
+    /// plus haut</b>, fait naitre quatre fois le sous-type <c>0x39</c>, puis remet les sept valeurs.
+    /// Les deux directions sont <c>cap + 0x80</c> et <c>cap + 0x880</c>.
+    /// </para>
+    /// <para>
+    /// <b>Les quatre naissances d'une bouffee ne different que par <c>+0x14</c></b>, mis a 0, 1, 2
+    /// puis 3 juste avant chaque appel et restaure apres, avec <c>+0x16</c> force a 10 :
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> recopie l'entite entiere, c'est ainsi que
+    /// l'enfant recoit sa variante. Meme mecanique que <c>SpawnSummonChildren</c> dans la foret.
+    /// </para>
+    /// <para>
+    /// <b>Quand il souffle.</b> Le compteur <c>+0x14</c> avance d'une image par tour ; la bouffee
+    /// part quand il atteint <b>trois fois</b> la periode <c>+0x16</c>, ou bien — une chance sur
+    /// cinquante par image — des qu'il depasse 10. Une periode nulle interdit tout.
+    /// </para>
+    /// <para>
+    /// <b>Et il oscille toujours</b>, bouffee ou non : le cap avance de <c>0x44</c> par image et
+    /// repasse par zero au-dela de <c>0x1000</c>, et la hauteur recoit le sinus de ce cap
+    /// <b>decale de <c>+0x12</c></b> — l'octet bas, pas le mot —, c'est-a-dire une amplitude que sa
+    /// fiche de placement fixe en puissance de deux.
+    /// </para>
+    /// </summary>
+    private static void TickTowerBlower_0045CF70(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);                       // Ghidra: FUN_00460fc0
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = *(short*)(e + 0x14);
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x14) = 0;
+        }
+
+        (*(short*)(e + 0x14))++;
+
+        short draw = (short)(CrtRand() % 0x32);                // Ghidra: FUN_00547140
+        short period = *(short*)(e + 0x16);
+        short elapsed = *(short*)(e + 0x14);
+
+        bool due = elapsed >= period * 3 || (draw == 0 && elapsed > 10);
+
+        if (due && period != 0)
+        {
+            int keptX = *(int*)(e + 0x1c);
+            int keptY = *(int*)(e + 0x20);
+            int keptZ = *(int*)(e + 0x24);
+            int keptAnchorX = *(int*)(e + 0x50);
+            int keptAnchorY = *(int*)(e + 0x54);
+            int keptAnchorZ = *(int*)(e + 0x58);
+            short keptCourse = *(short*)(e + 0x32);
+
+            *(short*)(e + 0x14) = 0;
+
+            *(short*)(e + 0x32) = (short)(keptCourse + 0x80);
+            BlowAwayFromSelf_0045CF70(e);
+
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x20) = keptY;
+            *(int*)(e + 0x24) = keptZ;
+            *(int*)(e + 0x50) = keptAnchorX;
+            *(int*)(e + 0x54) = keptAnchorY;
+            *(int*)(e + 0x58) = keptAnchorZ;
+
+            *(short*)(e + 0x32) = (short)(keptCourse + 0x880);
+            BlowAwayFromSelf_0045CF70(e);
+
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x20) = keptY;
+            *(int*)(e + 0x24) = keptZ;
+            *(int*)(e + 0x50) = keptAnchorX;
+            *(int*)(e + 0x54) = keptAnchorY;
+            *(int*)(e + 0x58) = keptAnchorZ;
+            *(short*)(e + 0x32) = keptCourse;
+        }
+
+        // Ghidra: LAB_0045d172 — l'oscillation, atteinte par tous les chemins.
+        short course = (short)(*(short*)(e + 0x32) + 0x44);
+        *(short*)(e + 0x32) = course;
+        if (course > 0x1000) *(short*)(e + 0x32) = (short)(course - 0x1000);
+
+        *(int*)(e + 0x20) +=
+            (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) << e[0x12];   // Ghidra: 0x00545a1c
+    }
+
+    /// <summary>
+    /// Une bouffee de <see cref="TickTowerBlower_0045CF70"/> : le deplacement de 120 unites dans la
+    /// direction du cap courant, la montee de 200, et les quatre naissances. Le binaire ecrit ce
+    /// bloc <b>deux fois</b>, a l'identique ; le facteur 120 y est <c>lea ×3</c>, <c>lea ×5</c>,
+    /// <c>shl 3</c>.
+    /// </summary>
+    private static void BlowAwayFromSelf_0045CF70(byte* e)
+    {
+        short course = *(short*)(e + 0x32);
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * 120;   // Ghidra: 0x00545a1c
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * 120;        // Ghidra: 0x00545a16
+        *(int*)(e + 0x20) += 0xc8000;
+
+        for (short variant = 0; variant <= 3; variant++)
+        {
+            short keptVariant = *(short*)(e + 0x14);
+            short keptPeriod = *(short*)(e + 0x16);
+
+            *(short*)(e + 0x14) = variant;
+            *(short*)(e + 0x16) = 10;
+            SpawnEffectNearCamera_00468110(e, 0x39, 0, -1);                  // Ghidra: FUN_00468110
+
+            *(short*)(e + 0x14) = keptVariant;
+            *(short*)(e + 0x16) = keptPeriod;
+        }
+    }
+
+    /// <summary>Ghidra: FUN_0045a630 @ 0x0045a630 — la balance des sous-zones 0, 1, 2 et 4.
+    /// Decompilee dans <c>Blaze.c</c>.</summary>
+    private static void EntityHandler_0045A630(byte* e) => TickTowerSeesaw_0045A630(e);
+
+    /// <summary>Ghidra: FUN_0045e4e0 @ 0x0045e4e0 — <b>le meme corps, sans une seule
+    /// difference</b>, pour les sous-zones 3, 7 et 9.</summary>
+    private static void EntityHandler_0045E4E0(byte* e) => TickTowerSeesaw_0045A630(e);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0045A630"/> et <see cref="EntityHandler_0045E4E0"/> :
+    /// <b>une balance a six plateaux</b>, et le plus gros decor de la tour.
+    ///
+    /// <para>
+    /// <b>Il ne gouverne pas une entite mais six</b>, prises a la file dans la table des entites de
+    /// scene (<c>+0x9c</c> de pas) a partir de la sienne. Les six se repartissent en deux camps,
+    /// <b>les rangs pairs contre les rangs impairs</b> : 0, 2 et 4 d'un cote, 1, 3 et 5 de l'autre.
+    /// Tout ce que la fonction fait a la hauteur d'un camp, elle le fait a l'oppose sur l'autre.
+    /// </para>
+    /// <para>
+    /// <b>La hauteur de repos</b> est lue une seule fois, a la naissance : la hauteur du premier
+    /// plateau en unites entieres, rangee dans <c>+0x10</c> — et <b>forcee a 1 si elle est
+    /// nulle</b>, parce que <c>+0x10</c> nul est justement le marqueur de naissance. La balance
+    /// n'a donc pas de position de repos au ras du sol.
+    /// </para>
+    /// <para>
+    /// <b>Une variante ferme le mecanisme d'entree de jeu</b> : si <c>0x005de070</c> depasse
+    /// <c>0x7cffff</c>, le corps pose <c>+0x14</c> a 1, <b>descend les plateaux 2 et 3 de 80
+    /// unites</b>, met <c>+0x0a</c> a <c>0x0b</c> sur les six et <c>+0x05</c> a zero, puis rend la
+    /// main pour de bon.
+    /// </para>
+    /// <para>
+    /// <b>La pesee.</b> <see cref="CountPartyMembersMatching"/> (<c>FUN_00535000</c>, rayon
+    /// <c>0x10</c>, bit <c>0x40000000</c>) est appelee <b>six fois</b>, une par plateau ; la somme
+    /// de chaque camp devient un simple oui/non en <c>+0x98</c> et <c>+0x9a</c>. Quatre cas :
+    /// </para>
+    /// <list type="bullet">
+    /// <item>les deux camps charges : <c>+0x14</c> passe a 1 et rien ne bouge ;</item>
+    /// <item>aucun camp charge : <c>+0x16</c> retombe a zero et la balance <b>revient au
+    /// repos</b> par pas de <c>0x4000</c> ;</item>
+    /// <item>un seul camp charge : elle <b>penche de son cote</b> par pas de <c>0xc000</c>, trois
+    /// fois plus vite, tant que le debattement n'a pas atteint <b>350 unites</b> (<c>0x15e</c>) de
+    /// part et d'autre du repos, et <c>+0x16</c> passe a 1 au premier pas.</item>
+    /// </list>
+    /// <para>
+    /// <b>La hauteur de reference est toujours celle du premier plateau</b> (<c>+0x20</c> de
+    /// l'entite recue), jamais celle du plateau qu'on deplace : les six sont censes rester
+    /// solidaires, et le binaire ne verifie pas qu'ils le sont.
+    /// </para>
+    /// <para>Une image sur trois, les six plateaux poussent un effet <c>0x3f</c> — la poussiere.</para>
+    /// </summary>
+    private static void TickTowerSeesaw_0045A630(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            short resting = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(short*)(e + 0x10) = resting;
+            if (resting == 0) *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x98) = 0;
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x5c) = 0;
+
+            if (*Mem.Camera(0x005de070) > 0x7cffff)
+            {
+                *(short*)(e + 0x14) = 1;
+                *(int*)(e + 0x1f4) -= 0x50000;          // Ghidra: param_1 + 500, le plateau 3
+                *(int*)(e + 0x158) -= 0x50000;          // le plateau 2
+
+                for (int i = 0; i < 6; i++) e[0x0a + i * 0x9c] = 0x0b;
+
+                e[5] = 0;
+                return;
+            }
+
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        if ((short)(CrtRand() % 3) == 0)                // Ghidra: FUN_00547140
+        {
+            byte* plate = e;
+            for (int i = 6; i != 0; i--, plate += 0x9c)
+                SpawnEffectNearCamera_00468110(plate, 0x3f, 0, -1);   // Ghidra: FUN_00468110
+        }
+
+        // Ghidra: FUN_00535000 six fois — les rangs pairs, puis les rangs impairs.
+        int evens = CountPartyMembersMatching(e, 0x10, 0x40000000)
+                  + CountPartyMembersMatching(e + 0x138, 0x10, 0x40000000)
+                  + CountPartyMembersMatching(e + 0x270, 0x10, 0x40000000);
+        *(short*)(e + 0x98) = (short)((short)evens == 0 ? 0 : 1);
+
+        int odds = CountPartyMembersMatching(e + 0x9c, 0x10, 0x40000000)
+                 + CountPartyMembersMatching(e + 0x1d4, 0x10, 0x40000000)
+                 + CountPartyMembersMatching(e + 0x30c, 0x10, 0x40000000);
+        *(short*)(e + 0x9a) = (short)((short)odds == 0 ? 0 : 1);
+
+        short loadedEvens = *(short*)(e + 0x98);
+        short loadedOdds = *(short*)(e + 0x9a);
+
+        if (loadedEvens == 1 && loadedOdds == 1) *(short*)(e + 0x14) = 1;
+
+        int resting1000 = *(short*)(e + 0x10) * 0x1000;
+
+        if (loadedEvens == 0 && loadedOdds == 0)
+        {
+            *(short*)(e + 0x16) = 0;
+            if (*(int*)(e + 0x20) < resting1000) TiltSeesaw_0045A630(e, 0x4000);
+            if (resting1000 < *(int*)(e + 0x20)) TiltSeesaw_0045A630(e, -0x4000);
+        }
+
+        if (loadedEvens == 1 && loadedOdds == 0
+            && (*(short*)(e + 0x10) - 0x15e) * 0x1000 < *(int*)(e + 0x20))
+        {
+            if (*(short*)(e + 0x16) == 0) *(short*)(e + 0x16) = 1;
+            TiltSeesaw_0045A630(e, -0xc000);
+        }
+
+        if (loadedEvens == 0 && loadedOdds == 1
+            && *(int*)(e + 0x20) < (*(short*)(e + 0x10) + 0x15e) * 0x1000)
+        {
+            if (*(short*)(e + 0x16) == 0) *(short*)(e + 0x16) = 1;
+            TiltSeesaw_0045A630(e, 0xc000);
+        }
+    }
+
+    /// <summary>
+    /// Le pas de <see cref="TickTowerSeesaw_0045A630"/> : les rangs pairs montent de
+    /// <paramref name="step"/>, les rangs impairs descendent d'autant. Le binaire ecrit ce bloc de
+    /// six additions <b>quatre fois</b>, au signe et a l'amplitude pres.
+    /// </summary>
+    private static void TiltSeesaw_0045A630(byte* e, int step)
+    {
+        *(int*)(e + 0x020) += step;    // plateau 0
+        *(int*)(e + 0x158) += step;    // plateau 2
+        *(int*)(e + 0x290) += step;    // plateau 4
+
+        *(int*)(e + 0x0bc) -= step;    // plateau 1
+        *(int*)(e + 0x1f4) -= step;    // plateau 3
+        *(int*)(e + 0x32c) -= step;    // plateau 5
+    }
 }

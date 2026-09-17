@@ -22671,3 +22671,143 @@ la constante 1, 2 ou 3 — et il laisse en chemin un `jne` vers l'instruction su
 Vérifications : `dotnet build` 0 erreur ; deux relevés neufs sous `Legacy/Raw/Blaze/AreaVerbs/`
 (`FUN_00443C60.asm`, `FUN_004442F0.asm`) ; recensement et tri régénérés ; aucun des quatre n'était
 marqué testé, donc rien à retirer de `handlers-exerces.tsv`.
+
+## 2026-09-17 (suite 10) — vieille tour, catégorie C, lot 1 : les huit formes à jumeaux
+
+**17 créneaux pour 8 corps**, et après ce lot **la catégorie C de la zone 4 n'a plus un seul
+jumeau** : elle passe de 55 corps / 46 lectures à 38 / 38. La zone va de **101 à 118 sur 176**.
+Total : 714 à transcrire, 390 écrits jamais appelés.
+
+### Ce que le tri par forme a rendu, et ce qu'il a coûté de vérifier
+
+Le tableau des jumeaux de `Zone4ParComplexite.md` est une *mesure*, pas une promesse, et il fallait
+la refaire avant d'écrire. Le premier essai a échoué d'une façon instructive : désassembler
+chaque adresse sur une fenêtre fixe et comparer fait apparaître des différences massives qui
+n'existent pas — la fenêtre déborde sur la fonction suivante. **La borne d'un corps est la première
+adresse connue qui le suit**, celle que `census-duplicates.sh` calcule dans `spans.tsv`, et la
+comparaison ne vaut qu'après troncature à la dernière instruction `ret`. Avec les bonnes bornes, les
+huit diffs se réduisent à ceci :
+
+| forme | jumeaux | instr. | toute la différence |
+|---|---|---:|---|
+| `0x0045DF60` | `0x0045FFA0` | 59 | banc de verrous `0x005716E0` / `0x00571730` |
+| `0x0045E040` | `0x00460080` | 47 | idem |
+| `0x0045E100` | `0x00460140` | 56 | idem |
+| `0x00417E10` | `0x00419A20` | 111 | planche `0x0054FA58` / `0x0054FC00` |
+| `0x00417F80` | `0x00419B90` | 131 | planche `0x0054FA18` / `0x0054FBB8` |
+| `0x0045CF70` | `0x0045F3B0` | 176 | **rien** |
+| `0x0045A630` | `0x0045E4E0` | 239 | **rien** |
+| `0x00417110` | `0x00418C40`, `0x0041C250` | 243 | planche `0x0054FAC0` / `0x0054FC68` / `0x0054FDC0` |
+
+**Les deux paires sans différence ne sont pas identiques au bit près** — `od` en rend 34 et
+28 lignes —, et c'est attendu : un `call rel32` et un `jmp near` encodent un *déplacement*, qui
+change avec l'adresse tout en désignant la même cible. Le désassemblage résolu, lui, est mot pour
+mot le même. C'est le cas de `LAB_00474320` / `FUN_00450700`, à plus grande échelle : un seul corps,
+deux enveloppes nues, sans le moindre paramètre.
+
+### Le banc de verrous, et les trois gestionnaires qu'il relie
+
+`0x005716E0` (sous-zones 5, 6, 8, 10) et `0x00571730` (3, 7, 9) sont **un octet de cinq bits, un par
+mécanisme**. Les trois premières formes s'en servent et lisent leur numéro de mécanisme dans
+`+0x14`, de 1 à 5 — hors de cette plage, elles ne touchent à rien (`dec ecx ; cmp ecx,4 ; ja`) :
+
+- **`0x0045DF60` pivote en jouant `sons[0x2e]`** et allume son bit ;
+- **`0x0045E040` pivote en silence et dans l'autre sens** (`sub [eax+32h],cx` là où l'autre ajoute)
+  et allume le sien. Les deux battants d'une même ouverture, un seul son pour la paire ;
+- **`0x0045E100` attend son bit**, fait monter son échelle `+0x28` de `+0x12` par image jusqu'à
+  `0x1000`, puis passe à l'état 2, pose `0x40000000` et **efface le bit**.
+
+**Le bit est posé à l'octet et effacé au mot** (`or byte […],1` contre `and word […],0FFFEh`). Les
+deux largeurs sont transcrites telles quelles ; l'octet voisin `0x005716E1` n'est jamais lu, donc
+rien ne dépend de la différence — mais elle est réelle et vaut d'être notée.
+
+Les deux pivots partagent la **courbe du tourniquet de la forêt** (`TurnstileSpin`) : la vitesse
+gagne un huitième d'elle-même pendant douze images, en perd un huitième ensuite, quarante images en
+tout. Les champs ne sont pas les mêmes (`+0x54`/`+0x10` ici, `+0x5c`/`+0x12` là-bas), donc les corps
+restent séparés : partager effacerait à la fois le son et le signe.
+
+### La balance à six plateaux — `0x0045A630`
+
+Le plus gros décor de la tour, et **le premier corps transcrit qui gouverne six entités et non une**.
+Il les prend à la file dans la table des entités de scène (`+0x9c` de pas) à partir de la sienne, et
+les répartit en deux camps : **les rangs pairs contre les rangs impairs**. Tout ce qu'il fait à la
+hauteur d'un camp, il le fait à l'opposé sur l'autre — d'où un seul `TiltSeesaw_0045A630(e, pas)`
+pour les quatre blocs de six additions que le binaire écrit.
+
+`FUN_00535000` est appelé **six fois**, une par plateau, et chaque camp est réduit à un oui/non
+(`+0x98`, `+0x9a`). Quatre cas : les deux camps chargés verrouillent (`+0x14 = 1`) ; aucun camp
+chargé fait revenir au repos par pas de `0x4000` ; un seul camp penche de son côté par pas de
+`0xc000`, trois fois plus vite, jusqu'à **350 unités** (`0x15e`) de débattement.
+
+Deux détails que seul le binaire donne :
+
+- **la hauteur de repos est forcée à 1 si elle est nulle**, parce que `+0x10` — où elle est rangée —
+  est justement le marqueur de naissance. La balance ne peut donc pas reposer au ras du sol ;
+- **la hauteur de référence est toujours celle du premier plateau**, jamais celle du plateau qu'on
+  déplace. Les six sont censés rester solidaires, et rien ne le vérifie.
+
+Une variante ferme le mécanisme d'entrée de jeu si `0x005de070` dépasse `0x7cffff` : `+0x14` à 1,
+les plateaux 2 et 3 descendus de 80 unités, `+0x0a` à `0x0b` sur les six, `+0x05` à zéro, et retour
+sec.
+
+### Le souffleur — `0x0045CF70`
+
+**Il se sert de lui-même comme point d'émission.** Pour chaque bouffée il met de côté sa position,
+son ancre et son cap — sept valeurs —, se transporte à **120 unités** dans la direction voulue et
+**200 unités plus haut**, fait naître quatre fois le sous-type `0x39`, puis remet tout. Deux
+bouffées, à `cap + 0x80` et `cap + 0x880`. Les quatre naissances d'une bouffée ne diffèrent que par
+`+0x14`, mis à 0, 1, 2 puis 3 juste avant chaque appel : `SpawnStatusEffectEntity_0047AC40` recopie
+l'entité entière, c'est ainsi que l'enfant reçoit sa variante — la mécanique de
+`SpawnSummonChildren` dans la forêt.
+
+La bouffée part quand le compteur atteint **trois fois** la période `+0x16`, ou bien — une chance
+sur cinquante par image — dès qu'il dépasse 10. Et le décor **oscille toujours**, bouffée ou non :
+le cap avance de `0x44` par image et la hauteur reçoit le sinus de ce cap **décalé de `+0x12`**,
+l'octet bas — donc une amplitude en puissance de deux que la fiche de placement fixe.
+
+### Le feu follet — `0x00417110`, et pourquoi il est dans `Combat/`
+
+Le seul triplet de la zone, et le seul de ces huit corps qui **décide qui perd des points de vie** :
+sa dernière instruction est un appel à `DamagePartyNearPoint_00418F50`, 5 % des points de vie
+maximum dans un rayon de 50 unités. C'est le test d'appartenance d'`ARCHITECTURE.md` — et non le
+sujet apparent — qui l'envoie dans `Combat/Projectiles.cs` pendant que ses frères de forme restent
+dans `Effects/OldTowerParticles.cs`.
+
+Trois choses qu'il fallait lire deux fois :
+
+- **il brûle hors de tout état.** L'appel est *après* les quatre `if`, donc il porte aussi pendant
+  l'attente de l'état 1 et à l'image où il s'éteint ;
+- **son mouvement ne s'accumule pas, il se recalcule** : position et ancre sont réécrites l'une
+  depuis l'autre à chaque image, et l'ancre reçoit ensuite la position obtenue. Le follet tourne
+  donc autour d'un centre qui le suit — une dérive, pas un cercle ;
+- **il ne se pose qu'une image sur cinq.** `FinalizeEntityPlacement2` n'est appelé que tous les cinq
+  tours, et c'est seulement là que le mot de contact `+0x90` peut le tuer (`0x8802`). Le reste du
+  temps il traverse.
+
+Son `+0x14` sert trois fois : il échelonne le départ d'une volée (état 1 d'une durée de `2 × +0x14`
+images), il désigne le premier follet — celui dont `+0x14` est nul joue le son `0x21` pour toute la
+volée — et il sert de centre à la marche aléatoire de l'indice d'image.
+
+### La spirale de `0x00417E10` n'est pas un cercle
+
+X et Y suivent la phase `+0x16` avec un rayon **divisé par quatre**, mais **Z suit le cap `+0x32`**
+et prend le rayon entier (`movsx edx,word [esi+32h]` entre les deux lectures de `+0x16`). C'est donc
+une ellipse orientée dont l'axe long vaut quatre fois les deux autres. La fermeture est quadratique :
+le rayon perd la moitié d'un décompte qui gagne un par image, et la spirale meurt quand il passe
+sous zéro.
+
+### Les planches
+
+Quatre neuves — `0x0054FA18`, `0x0054FAC0`, `0x0054FC68`, `0x0054FDC0` —, **toutes de quatre
+enregistrements et toutes à marge 0**, et c'est exactement ce que leurs corps consomment : les deux
+concernés bornent `+0x40` explicitement à 3 (`cmp ; mov 3` et `cmp ; mov 0` dans le follet, mort à
+la quatrième image dans l'éclaboussure). `check-descriptors.sh` confirme le contenu et les marges ;
+les 50 marges courtes restent prouvées, aucune preuve périmée.
+
+`0x0054FA18` est octet pour octet `0x0054FBB8`, déjà déclarée pour `0x00419D30` ; les trois planches
+du follet sont identiques entre elles. Elles restent déclarées séparément — ce sont des adresses
+distinctes du binaire, et les fusionner ferait perdre la borne de chacune.
+
+Vérifications : `dotnet build` 0 erreur ; `check-descriptors.sh` propre ; quatre relevés neufs sous
+`Legacy/Raw/Blaze/OldTower/` ; recensement et tri régénérés ; aucun des dix-sept n'était marqué
+testé, donc rien à retirer de `handlers-exerces.tsv`.

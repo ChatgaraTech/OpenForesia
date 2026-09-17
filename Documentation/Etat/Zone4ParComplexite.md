@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**176 gestionnaires, 101 implementes, 75 a ecrire.**
+**176 gestionnaires, 118 implementes, 58 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,7 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 55 | 46 | 6439 |
+| **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 38 | 38 | 5377 |
 | **D — gros** | pas d'IA, > 250 instr. | 4 | 4 | 1548 |
 | **E — intelligence** | une routine de bete | 16 | 15 | 14235 |
 
@@ -29,16 +29,10 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## C — moyen (55)
+## C — moyen (38)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
-| `0x0045E040` | 5,6,8,10 | 0056ADC8 | 47 | 1 | non | `0x00460080` |  |
-| `0x00460080` | 3,7,9 | 0056ADC8 | 47 | 1 | non | `0x0045E040` |  |
-| `0x0045E100` | 5,6,8,10 | 0056ADC8 | 56 | 1 | non | `0x00460140` |  |
-| `0x00460140` | 3,7,9 | 0056ADC8 | 56 | 1 | non | `0x0045E100` |  |
-| `0x0045DF60` | 5,6,8,10 | 0056ADC8 | 59 | 1 | oui | `0x0045FFA0` |  |
-| `0x0045FFA0` | 3,7,9 | 0056ADC8 | 59 | 1 | oui | `0x0045DF60` |  |
 | `0x0045BF20` | 0,1,2,4 | 0056ADC8 | 74 | 0 | oui |  | appelee(s) inconnue(s) : `0x0045C000` |
 | `0x0045AA90` | 0,1,2,4 | 0056ADC8 | 101 | 0 | oui |  |  |
 | `0x00418AF0` | 5,6,8,10 | 0056B2C8 | 103 | 0 | oui |  |  |
@@ -47,9 +41,7 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x0045FBA0` | 3,7,9 | 0056ADC8 | 106 | 0 | oui |  |  |
 | `0x0041BB20` | 3,7,9 | 0056B0C8 | 107 | 0 | non |  |  |
 | `0x00417CA0` | 0,1,2,4 | 0056B2C8 | 111 | 0 | non |  |  |
-| `0x00417E10` | 0,1,2,4 | 0056B2C8 | 111 | 0 | non | `0x00419A20` |  |
 | `0x004198B0` | 5,6,8,10 | 0056B2C8 | 111 | 0 | non |  |  |
-| `0x00419A20` | 5,6,8,10 | 0056B2C8 | 111 | 0 | non | `0x00417E10` |  |
 | `0x0041C0E0` | 3,7,9 | 0056B2C8 | 113 | 0 | non |  |  |
 | `0x0045B3B0` | 0,1,2,4 | 0056ADC8 | 113 | 0 | oui |  |  |
 | `0x0045B540` | 0,1,2,4 | 0056ADC8 | 113 | 0 | non |  |  |
@@ -61,8 +53,6 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x00416C40` | 0,1,2,4 | 0056B2C8 | 119 | 0 | non |  |  |
 | `0x0045AE90` | 0,1,2,4 | 0056ADC8 | 122 | 0 | oui |  |  |
 | `0x0045E300` | 3,7,9 | 0056ADC8 | 123 | 0 | non |  |  |
-| `0x00417F80` | 0,1,2,4 | 0056B2C8 | 131 | 0 | oui | `0x00419B90` |  |
-| `0x00419B90` | 5,6,8,10 | 0056B2C8 | 131 | 0 | oui | `0x00417F80` |  |
 | `0x00416A80` | 0,1,2,4 | 0056B0C8 | 136 | 0 | non |  |  |
 | `0x0041BC90` | 3,7,9 | 0056B1C8 | 141 | 0 | non |  |  |
 | `0x00417770` | 0,1,2,4 | 0056B2C8 | 142 | 0 | non |  |  |
@@ -71,8 +61,6 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x00417420` | 0,1,2,4 | 0056B2C8 | 166 | 0 | non |  |  |
 | `0x00419030` | 5,6,8,10 | 0056B2C8 | 166 | 0 | non |  |  |
 | `0x0041B7C0` | 3,7,9 | 0056B2C8 | 167 | 0 | non |  |  |
-| `0x0045CF70` | 5,6,8,10 | 0056ADC8 | 176 | 0 | non | `0x0045F3B0` |  |
-| `0x0045F3B0` | 3,7,9 | 0056ADC8 | 176 | 0 | non | `0x0045CF70` |  |
 | `0x0045DD00` | 5,6,8,10 | 0056ADC8 | 178 | 0 | non |  |  |
 | `0x0045FD40` | 3,7,9 | 0056ADC8 | 178 | 0 | non |  |  |
 | `0x0045B030` | 0,1,2,4 | 0056ADC8 | 186 | 0 | non |  |  |
@@ -83,11 +71,6 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x0045F7E0` | 3,7,9 | 0056ADC8 | 201 | 0 | oui |  |  |
 | `0x0045D750` | 5,6,8,10 | 0056ADC8 | 227 | 0 | non |  |  |
 | `0x0041B460` | 3,7,9 | 0056B0C8 | 232 | 0 | non |  |  |
-| `0x0045A630` | 0,1,2,4 | 0056ADC8 | 239 | 0 | oui | `0x0045E4E0` |  |
-| `0x0045E4E0` | 3,7,9 | 0056ADC8 | 239 | 0 | oui | `0x0045A630` |  |
-| `0x00417110` | 0,1,2,4 | 0056B2C8 | 243 | 0 | oui | `0x00418C40`, `0x0041C250` |  |
-| `0x00418C40` | 5,6,8,10 | 0056B2C8 | 243 | 0 | oui | `0x00417110`, `0x0041C250` |  |
-| `0x0041C250` | 3,7,9 | 0056B2C8 | 243 | 0 | oui | `0x00417110`, `0x00418C40` |  |
 
 ## D — gros (4)
 

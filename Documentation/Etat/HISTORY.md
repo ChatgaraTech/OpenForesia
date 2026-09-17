@@ -4,6 +4,43 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 4)
+
+- feat : **les huit formes à jumeaux de la catégorie C de la vieille tour** — 17 créneaux pour
+  8 corps. Zone 4 : 101 → 118 sur 176, et **la catégorie C n'a plus un seul jumeau**
+- feat : `Handlers/OldTower.cs` — les deux battants d'une ouverture (`0x0045DF60` sonore et à cap
+  croissant, `0x0045E040` silencieux et à cap décroissant), ce qui attend leur verrou puis l'efface
+  (`0x0045E100`), le souffleur à deux bouffées (`0x0045CF70`) et **la balance à six plateaux**
+  (`0x0045A630`)
+- feat : `Effects/OldTowerParticles.cs` — la spirale qui se resserre (`0x00417E10`) et
+  l'éclaboussure cardinale (`0x00417F80`) ; planche neuve `0x0054FA18`
+- feat : `Combat/Projectiles.cs` — **le feu follet** (`0x00417110`), le seul triplet de la zone ;
+  trois planches neuves, `0x0054FAC0`, `0x0054FC68`, `0x0054FDC0`
+- doc : **un banc de verrous de cinq bits relie trois gestionnaires** — `0x005716E0` (sous-zones 5,
+  6, 8, 10) et `0x00571730` (3, 7, 9). Les deux pivots posent leur bit en s'ouvrant, le troisième
+  l'attend pour grandir puis l'efface. Le bit est **posé à l'octet et effacé au mot** ; les deux
+  largeurs sont conservées
+- doc : **deux paires n'ont aucun paramètre** — `0x0045CF70`/`0x0045F3B0` et
+  `0x0045A630`/`0x0045E4E0` ne diffèrent que par les déplacements relatifs de leurs `call`, qui
+  résolvent vers les mêmes cibles. Un seul corps, deux enveloppes nues — le cas de `LAB_00474320`
+- doc : **le souffleur se sert de lui-même comme point d'émission** — il met de côté position, ancre
+  et cap, se transporte à 120 unités et 200 de haut, fait naître quatre fois `0x39`, puis remet les
+  sept valeurs. Deux fois, à `cap + 0x80` et `cap + 0x880`
+- doc : **la balance ne gouverne pas une entité mais six**, prises à la file : les rangs pairs
+  contre les rangs impairs, ce qu'elle fait à la hauteur d'un camp elle le fait à l'opposé sur
+  l'autre. Sa hauteur de repos est lue à la naissance et **forcée à 1 si elle est nulle**, parce que
+  `+0x10` nul est justement le marqueur de naissance
+- doc : **le feu follet brûle hors de tout état** — l'appel à `DamagePartyNearPoint_00418F50` est
+  après les quatre états, y compris pendant son attente de départ et l'image où il meurt. Et il ne
+  se pose qu'une image sur cinq : le reste du temps il traverse les murs
+- doc : **la spirale de `0x00417E10` n'est pas un cercle** — X et Y suivent la phase `+0x16`, mais Z
+  suit le cap `+0x32`, et son rayon n'est pas divisé par quatre. Une ellipse orientée dont l'axe
+  long vaut quatre fois les deux autres
+- doc : quatre planches neuves, **toutes de quatre enregistrements et toutes à marge 0** —
+  `check-descriptors.sh` les confirme, et chaque corps borne `+0x40` explicitement à 3
+
+---
+
 ## 2026-09-17 (suite 3)
 
 - feat : **les quatre verbes simples de la vieille tour** (table `0x0056aec8`, catégorie B de

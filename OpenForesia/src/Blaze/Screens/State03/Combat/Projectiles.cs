@@ -1238,4 +1238,241 @@ public static unsafe partial class Blaze
         *(uint*)(e + 0x38) = tint;
         if (tint == 0) *(uint*)e = 0;
     }
+
+    // =====================================================================
+    // LE FEU FOLLET DE LA VIEILLE TOUR — 0x00417110 et ses DEUX jumeaux (2026-09-17)
+    //
+    // Le seul triplet de la categorie C de Zone4ParComplexite.md : trois creneaux, 243 instructions,
+    // une lecture. Un bloc de sous-zones chacun, et le diff ne rend qu'une ligne — l'adresse de la
+    // planche.
+    //
+    //   0x00417110  sous-zones 0, 1, 2, 4   planche 0x0054FAC0
+    //   0x00418C40  sous-zones 5, 6, 8, 10  planche 0x0054FC68
+    //   0x0041C250  sous-zones 3, 7, 9      planche 0x0054FDC0
+    //
+    // IL EST ICI ET NON DANS Effects/ parce qu'il DECIDE QUI PERD DES POINTS DE VIE : sa derniere
+    // instruction est un appel a DamagePartyNearPoint_00418F50. C'est le test d'appartenance de
+    // ARCHITECTURE.md, pas le sujet apparent, qui choisit le repertoire — ses freres de forme
+    // vivent dans Effects/OldTowerParticles.cs.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fac0</c> — <b>la planche du feu follet des sous-zones 0, 1, 2
+    /// et 4</b> : quatre tuiles <c>0x20 x 0x20</c> en rangee sur la page <c>0x03</c>, role 1. Bornee
+    /// en haut par <c>0x0054fae0</c>, ou commence la meme rangee sur la page <c>0x02</c> (le jumeau
+    /// de <c>s_Descriptors_0054FDE0</c>, <c>Effects/OldTowerParticles.cs</c>). Quatre
+    /// enregistrements, et le corps mene <c>+0x40</c> de 0 a 3 en le bornant explicitement :
+    /// marge 0, exactement juste.</summary>
+    private static readonly byte[] s_Descriptors_0054FAC0 =
+    [
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fac0  <- 0x00417110
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fac8
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fad0
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fad8
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fc68</c> — la meme planche pour les sous-zones 5, 6, 8 et 10,
+    /// memes octets, bornee par <c>0x0054fc88</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FC68 =
+    [
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fc68  <- 0x00418C40
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fc70
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fc78
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fc80
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fdc0</c> — la meme planche pour les sous-zones 3, 7 et 9,
+    /// memes octets, bornee par <c>0x0054fde0</c>, le debut de <c>s_Descriptors_0054FDE0</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054FDC0 =
+    [
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fdc0  <- 0x0041C250
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fdc8
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fdd0
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fdd8
+    ];
+
+    private static byte* s_Descriptors0054FAC0Storage;
+    private static byte* s_Descriptors0054FC68Storage;
+    private static byte* s_Descriptors0054FDC0Storage;
+
+    private static byte* Descriptors0054FAC0()
+        => NativeCopy(s_Descriptors_0054FAC0, ref s_Descriptors0054FAC0Storage);
+
+    private static byte* Descriptors0054FC68()
+        => NativeCopy(s_Descriptors_0054FC68, ref s_Descriptors0054FC68Storage);
+
+    private static byte* Descriptors0054FDC0()
+        => NativeCopy(s_Descriptors_0054FDC0, ref s_Descriptors0054FDC0Storage);
+
+    /// <summary>Ghidra: FUN_00417110 @ 0x00417110 — le feu follet des sous-zones 0, 1, 2 et 4.
+    /// Decompilee dans <c>Blaze.c</c>. Corps : <see cref="TickWanderingFlame_00417110"/>.</summary>
+    private static void EntityHandler_00417110(byte* e)
+        => TickWanderingFlame_00417110(e, Descriptors0054FAC0());        // Ghidra: &DAT_0054fac0
+
+    /// <summary>Ghidra: FUN_00418c40 @ 0x00418c40 — le meme corps pour les sous-zones 5, 6, 8 et
+    /// 10 ; le diff ne rend que <c>mov dword [esi+3Ch],54FC68h</c>.</summary>
+    private static void EntityHandler_00418C40(byte* e)
+        => TickWanderingFlame_00417110(e, Descriptors0054FC68());        // Ghidra: &DAT_0054fc68
+
+    /// <summary>Ghidra: FUN_0041c250 @ 0x0041c250 — le meme corps pour les sous-zones 3, 7 et 9 ;
+    /// le diff ne rend que <c>mov dword [esi+3Ch],54FDC0h</c>.</summary>
+    private static void EntityHandler_0041C250(byte* e)
+        => TickWanderingFlame_00417110(e, Descriptors0054FDC0());        // Ghidra: &DAT_0054fdc0
+
+    /// <summary>
+    /// Le corps des trois : <b>un feu follet qui tourne autour de sa proie, brule le groupe autour de
+    /// lui a chaque image, et s'eteint contre un mur</b>.
+    ///
+    /// <para>
+    /// <b>Trois etats et une extinction.</b> L'etat 0 arme la planche, une echelle de <c>0x1000</c>,
+    /// le bit <c>0x4000</c>, et fige son ancre (<c>+0x50</c>, <c>+0x54</c>, <c>+0x58</c>). Le
+    /// <b>premier</b> follet d'une volee — celui dont <c>+0x14</c> est nul — joue le son <c>0x21</c>
+    /// pour toute la volee. L'etat 1 est une attente de <c>2 × +0x14</c> images : c'est ce qui
+    /// <b>echelonne le depart</b> d'une volee, chaque follet partant deux images apres son cadet. En
+    /// sortant il rend le bit <c>0x4000</c> et remet sa phase <c>+0x5c</c> a zero.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 2 est tout le mouvement, et il ne s'accumule pas : il se recalcule.</b> Position et
+    /// ancre sont reecrites l'une depuis l'autre a chaque image —
+    /// <c>X = sin(cap) × +0x16 × 2 + ancreX</c>, <c>Z = cos(cap) × +0x16 × 2 + ancreZ</c>,
+    /// <c>Y = ancreY</c> —, puis <b>l'ancre recoit la position ainsi obtenue</b>. Le follet tourne
+    /// donc autour d'un centre qui le suit, ce qui produit une derive et non un cercle.
+    /// </para>
+    /// <para>
+    /// <b>Il redescend vers la camera</b> : si son ancre en hauteur depasse de plus de 100 unites la
+    /// hauteur de camera <c>0x005de06c</c>, l'ecart est reduit d'un seizieme par image. C'est la
+    /// seule chose qui le retienne en l'air.
+    /// </para>
+    /// <para>
+    /// <b>Par-dessus, un battement a trois axes</b> pris sur la phase <c>+0x5c</c>, qui avance de
+    /// <b>300</b> par image et repasse par zero au-dela de <c>0xfff</c> : la hauteur recoit
+    /// <c>sin(phase) × 10</c> en pleine amplitude, X et Z un produit de deux tables <b>divisees par
+    /// 64 chacune</b> — le seul endroit du corps ou l'echelle des tables est reduite. Et les trois
+    /// axes prennent ensuite un brouillage de ±10 unites entieres.
+    /// </para>
+    /// <para>
+    /// <b>Son image change par marche aleatoire</b>, pas par cycle : toutes les 7 a 11 images
+    /// (10 images, ou 7 avec une chance sur cinq), l'indice repart de <c>+0x14 - 1</c> augmente d'un
+    /// tirage sur trois, <b>borne a 0..3</b> par deux comparaisons explicites. La planche a quatre
+    /// enregistrements : la borne du corps est exactement sa taille.
+    /// </para>
+    /// <para>
+    /// <b>Une image sur cinq seulement, il se pose</b> (<see cref="FinalizeEntityPlacement2"/>) et
+    /// regarde son mot de contact <c>+0x90</c> : les bits <c>0x8802</c> le font passer a l'etat 3,
+    /// qui eteint l'entite. Le reste du temps il traverse.
+    /// </para>
+    /// <para>
+    /// <b>Et il brule, quoi qu'il arrive</b> : l'appel a
+    /// <see cref="DamagePartyNearPoint_00418F50"/> est <b>apres</b> les quatre etats, hors de tout
+    /// test — 5 % des points de vie maximum dans un rayon de 50 unites, a chaque image, y compris
+    /// pendant l'attente de l'etat 1 et l'image ou il meurt. Les sites d'appel empilent huit
+    /// arguments, le corps n'en lit que six.
+    /// </para>
+    /// </summary>
+    private static void TickWanderingFlame_00417110(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x4000;
+            e[0x40] = (byte)(sbyte)*(short*)(e + 0x14);
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            *(short*)(e + 0x28) = 0x1000;
+            *(short*)(e + 0x2a) = 0x1000;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            // Ghidra: FUN_00468080 — le son porte un identifiant en dur, pas un indice de sous-zone.
+            if (*(short*)(e + 0x14) == 0)
+                TryPlaySoundNearEntity((uint*)e, 0x21, 0x200, 0x1800, 0, 0);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))++;
+            *(short*)(e + 0x98) = 0;
+
+            if (*(short*)(e + 0x14) * 2 < *(short*)(e + 0x12))
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+                *(int*)(e + 0x5c) = 0;
+                *(uint*)e &= 0xffffbfff;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            short flicker = (short)(*(short*)(e + 0x14) * 0x80);
+            *(ushort*)(e + 0x28) = (ushort)(CrtRand() % 0x200 + 0xed8 + flicker);
+            *(ushort*)(e + 0x2a) = (ushort)(CrtRand() % 0x200 + 0xed8 + flicker);
+
+            short course = *(short*)(e + 0x32);
+            short radius = *(short*)(e + 0x16);
+
+            int x = (int)Winsys3d.GetSinTableEntry(course) * radius * 2 + *(int*)(e + 0x50);
+            int z = Winsys3d.GetCosTableEntry(course) * radius * 2 + *(int*)(e + 0x58);
+            int anchorY = *(int*)(e + 0x54);
+
+            *(int*)(e + 0x1c) = x;
+            *(int*)(e + 0x24) = z;
+            *(int*)(e + 0x20) = anchorY;
+
+            // L'ancre suit la position : le centre du tour derive avec lui.
+            *(int*)(e + 0x50) = x;
+            *(int*)(e + 0x58) = z;
+
+            int cameraY = *Mem.Camera(0x005de06c);
+            if ((cameraY >> 0xc) + 100 < anchorY >> 0xc)
+                *(int*)(e + 0x54) = anchorY - ((anchorY - cameraY) >> 4);
+
+            int phase = *(int*)(e + 0x5c);
+            *(int*)(e + 0x20) += (int)Winsys3d.GetSinTableEntry(phase) * 10;
+            *(int*)(e + 0x24) +=
+                ((int)Winsys3d.GetSinTableEntry(course) >> 6) * (Winsys3d.GetCosTableEntry(phase) >> 6) * 10;
+            *(int*)(e + 0x1c) +=
+                (Winsys3d.GetCosTableEntry(course) >> 6) * (Winsys3d.GetCosTableEntry(phase) >> 6) * 10;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x14 - 10) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x14 - 10) * 0x1000;
+
+            int jitterZ = CrtRand();
+            int advanced = phase + 300;
+            *(int*)(e + 0x24) += (jitterZ % 0x14 - 10) * 0x1000;
+            *(int*)(e + 0x5c) = advanced > 0xfff ? phase - 0xed4 : advanced;
+
+            (*(short*)(e + 0x9a))++;
+
+            int roll = CrtRand();
+            if (*(short*)(e + 0x9a) > 10 || ((short)(roll % 5) == 0 && *(short*)(e + 0x9a) > 6))
+            {
+                ushort seed = *(ushort*)(e + 0x14);
+                *(short*)(e + 0x9a) = 0;
+
+                int frame = seed - 1 + CrtRand() % 3;
+                if ((short)frame > 3) frame = 3;
+                if ((short)frame < 0) frame = 0;
+                e[0x40] = (byte)(sbyte)frame;
+            }
+
+            (*(short*)(e + 0x98))++;
+            if (*(short*)(e + 0x98) > 4)
+            {
+                *(short*)(e + 0x98) = 0;
+                FinalizeEntityPlacement2((uint*)e);                  // Ghidra: FUN_00533940
+
+                if ((*(uint*)(e + 0x90) & 0x8802) != 0) *(short*)(e + 0x10) = 3;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3) *(uint*)e &= 0x7fffffff;
+
+        // Ghidra: FUN_00418f50, hors de tout etat — il brule meme a l'image de sa mort.
+        DamagePartyNearPoint_00418F50(
+            *(int*)(e + 0x1c), *(int*)(e + 0x20), *(int*)(e + 0x24), 0x32, 5, 0);
+    }
 }
