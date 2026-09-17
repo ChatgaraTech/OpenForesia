@@ -1370,6 +1370,29 @@ public static unsafe partial class Blaze
             // Ai/Labyrinth/Mummy.cs.
             case 0x004C0B60: TickSceneEntityAi_004C0B60(record); return;
 
+            // LES EFFETS DU LABYRINTHE DES MORTS — table 0x0056b2c8, lot 2 : les NEUF PAIRES MIROIR.
+            // Le bloc des sous-zones 5 a 8 est celui des sous-zones 0 a 3 recopie a +0x2ff0, corps
+            // par corps et creneau par creneau ; 19 adresses pour 8 lectures. Effects/LabyrinthParticles.cs.
+            case 0x0041E610: EntityHandler_0041E610(record); return;   // la bouffee large, 0-3
+            case 0x0041E700: EntityHandler_0041E700(record); return;   // la bouffee serree, 0-3
+            case 0x00421600: EntityHandler_00421600(record); return;   // la bouffee large, 5-8
+            case 0x004216F0: EntityHandler_004216F0(record); return;   // la bouffee serree, 5-8
+            case 0x0041E340: EntityHandler_0041E340(record); return;   // le grain qui monte, 0-3
+            case 0x00421330: EntityHandler_00421330(record); return;   // le grain qui monte, 5-8
+            case 0x00425500: EntityHandler_00425500(record); return;   // le grain qui monte, 4 et 9
+            case 0x0041DF60: EntityHandler_0041DF60(record); return;   // le grain projete, 0-3
+            case 0x00420F50: EntityHandler_00420F50(record); return;   // le grain projete, 5-8
+            case 0x0041E9D0: EntityHandler_0041E9D0(record); return;   // le grain qui attend puis tombe, 0-3
+            case 0x004219C0: EntityHandler_004219C0(record); return;   // idem, 5-8
+            case 0x0041E7F0: EntityHandler_0041E7F0(record); return;   // la braise, cap soustrait, 0-3
+            case 0x004217E0: EntityHandler_004217E0(record); return;   // la braise, cap AJOUTE, 5-8
+            case 0x0041DA80: EntityHandler_0041DA80(record); return;   // la nappe qui tombe, 0-3
+            case 0x00420A70: EntityHandler_00420A70(record); return;   // la nappe qui tombe, 5-8
+            case 0x0041DBD0: EntityHandler_0041DBD0(record); return;   // le flocon de cendre, 0-3
+            case 0x00420BC0: EntityHandler_00420BC0(record); return;   // le flocon de cendre, 5-8
+            case 0x0041DD40: EntityHandler_0041DD40(record); return;   // l'etincelle d'eventail, 0-3
+            case 0x00420D30: EntityHandler_00420D30(record); return;   // l'etincelle d'eventail, 5-8
+
             // LE DECOR DU LABYRINTHE DES MORTS — table 0x0056adc8, lot 1 (les sept plus simples de
             // la categorie B de Zone5ParComplexite.md). Handlers/Labyrinth.cs.
             case 0x004610E0: EntityHandler_004610E0(record); return;   // l'echelle reposee a chaque image

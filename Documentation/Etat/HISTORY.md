@@ -4,6 +4,27 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 12)
+
+- feat : **le lot 2 du Labyrinthe des morts — les neuf paires miroir**, 19 corps pour 8 lectures ;
+  zone 5, 68 → 87 sur 160
+- feat : `Effects/LabyrinthParticles.cs` — la bouffee (deux etalements), le grain qui monte, le grain
+  projete dans le cap, le grain qui attend puis tombe, la braise, la nappe qui tombe puis se pose,
+  le flocon de cendre et l'etincelle d'eventail
+- feat : treize planches de plus relevees dans `Blaze.exe`, chacune bornee deux fois — par l'adresse
+  suivante ET par l'indice maximal que son corps mene en `+0x40`
+- fix : les cinq marges courtes du lot sont **prouvees et scellees** dans `marges-verifiees.txt`
+- doc : **la planche `0x0054fee0` fait CINQ enregistrements, pas huit** — l'adresse suivante en
+  laissait huit, mais les octets changent de forme des `0x0054ff08` et le corps fait tourner `+0x40`
+  de 0 a 4 : les deux lectures se recoupent
+- doc : **la braise n'est pas la meme des deux cotes** — deux `sub edx,eax` du bloc 0-3 sont des
+  `add edx,eax` dans le bloc 5-8 : elle part dans le cap opposee. Deux instructions sur 154, que le
+  diff LOOSE ne rapprochait pas
+- doc : **le binaire tire le hasard une fois pour rien** dans la braise — deux `call 00547140h` qui
+  se suivent, le premier resultat jamais lu ; reproduit, parce qu'il decale le flux
+- doc : **le banc de planches des sous-zones 4 et 9 est a +0x400 du banc 0-3**, la ou celui des
+  sous-zones 5 a 8 est a +0x1e8
+
 ## 2026-09-17 (suite 11)
 
 - feat : **le lot 1 du Labyrinthe des morts hors intelligence** — les dix gestionnaires les plus

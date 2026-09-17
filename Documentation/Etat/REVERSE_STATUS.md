@@ -23447,3 +23447,98 @@ dans ce cas. Corrigé par un `|| true` explicite, commenté sur place.
 ### Où en est la zone
 
 **68 / 160.** Reste 92 : catégorie B 46 corps (38 lectures), C 35 (33), D 11 (10).
+
+---
+
+## 2026-09-17 (suite 18) — Labyrinthe des morts, lot 2 : les neuf paires miroir
+
+Le tri de la suite 17 avait relevé que **le bloc des sous-zones 5 à 8 de la table `0x0056b2c8` est
+le bloc 0 à 3 recopié à `+0x2ff0`**. Ce lot le vérifie et l'exploite : **19 corps pour 8 lectures**.
+
+### La parenté, mesurée
+
+Neuf paires au décalage constant, même créneau des deux côtés :
+
+| 0 à 3 | 5 à 8 | créneau | instr. |
+|---|---|---:|---:|
+| `0x0041DA80` | `0x00420A70` | 60 | 96 |
+| `0x0041DBD0` | `0x00420BC0` | 59 | 116 |
+| `0x0041DD40` | `0x00420D30` | 56 | 163 |
+| `0x0041DF60` | `0x00420F50` | 55 | 84 |
+| `0x0041E340` | `0x00421330` | 63 | 73 |
+| `0x0041E610` | `0x00421600` | 48 | 78 |
+| `0x0041E700` | `0x004216F0` | 49 | 78 |
+| `0x0041E7F0` | `0x004217E0` | 50 | 154 |
+| `0x0041E9D0` | `0x004219C0` | 51 | 89 |
+
+Le diff normalisé (sauts internes et cibles absolues neutralisés) ne rend, dans huit cas sur neuf,
+**qu'une seule instruction différente** : `mov dword [esi+3Ch],<planche>`. Les planches elles-mêmes
+sont à `+0x1e8` l'une de l'autre, et **portent les mêmes octets**.
+
+**`0x0041E340` a un TROISIÈME exemplaire**, `0x00425500` (sous-zones 4 et 9), planche `0x00550350`.
+Le banc des sous-zones 4 et 9 est à **`+0x400`** du banc 0 à 3 — pas à deux fois `+0x1e8` : c'est un
+banc réordonné, et cette adresse est la seule du lot à en venir.
+
+**Et `0x0041E610` / `0x0041E700` partagent leur corps ET leur planche** : la seule différence est
+l'étalement horizontal à la naissance, `0x190` contre `0xc8`. Quatre corps pour une lecture.
+
+### La seule paire qui n'est pas un simple échange de planche
+
+`0x0041E7F0` et `0x004217E0` diffèrent par **deux instructions de plus** : `sub edx,eax` devient
+`add edx,eax`, aux deux endroits où la braise avance le long de son cap. Elle part donc dans le cap
+d'un côté et dans le cap **opposé** de l'autre. Le diff LOOSE de `census-duplicates.sh` ne les avait
+pas rapprochées ; c'est le décalage constant `+0x2ff0` qui les a désignées, et la lecture qui a
+tranché. Transcrit avec un paramètre de signe, pas dupliqué.
+
+### Les longueurs de planche, bornées deux fois
+
+Treize planches relevées dans le binaire. La règle du dépôt — « borner par l'adresse connue
+suivante » — a été **recoupée avec le plafond que chaque corps mène en `+0x40`**, et les deux
+lectures concordent partout. Deux cas valent d'être notés.
+
+**`0x0054fee0` fait CINQ enregistrements, pas huit.** L'adresse connue suivante est `0x0054ff20`, ce
+qui laisserait huit places. Mais les octets changent de forme dès `0x0054ff08` (`0x18 x 0x18` page
+`0x10`, au lieu de `0x2f x 0x2f` page `0x18`), et `TickLabyrinthEmber` fait tourner `+0x40` de 0 à 4
+exactement. C'est le défaut que `check-descriptors.sh` existe pour attraper, pris à l'endroit.
+
+**`0x00550008` fait UN enregistrement.** L'adresse suivante est `0x00550078` — le début du banc des
+sous-zones 5 à 8 —, soit quatorze places, et les octets d'après sont visiblement d'autres tables. La
+preuve vient du corps : `TickLabyrinthFallingShroud` met `+0x40` à zéro en posant cette planche, et
+l'état 1 ne fait que descendre ; c'est l'état 2 qui change de planche, pour `0x0054ffe8`, et qui
+remet le compteur à zéro pour celle-là.
+
+Les **cinq marges courtes** du lot sont écrites et **scellées** dans `marges-verifiees.txt`. Le
+compte global passe de « 57 prouvées, 8 à vérifier » à « 62 prouvées, 3 à vérifier » : aucune
+régression, et rien du lot n'est laissé en suspens.
+
+### Un tirage de hasard perdu, dans le binaire
+
+`TickLabyrinthEmber` porte, à `0x0041e83d`, **deux `call 00547140h` qui se suivent**, et le résultat
+du premier n'est jamais lu. Ce n'est pas un artefact du désassemblage : c'est un tirage gâché. Il est
+reproduit, parce qu'il décale le flux du générateur pour tout ce qui suit.
+
+### Ce que les huit corps font
+
+| corps | ce que c'est |
+|---|---|
+| `TickLabyrinthPuff` | une bouffée qui attend (sortie au hasard, une chance sur cinq, forcée à la 3e image) puis joue trois images et s'éteint |
+| `TickLabyrinthRisingMote` | un grain qui monte en ralentissant d'une unité toutes les deux images, rétrécit sous 7, meurt sous 3 |
+| `TickLabyrinthSpiralMote` | un grain projeté de trente unités dans le cap, puis dispersé ; il ne bouge plus, seule sa planche avance |
+| `TickLabyrinthHoveringMote` | il apparaît d'un côté **ou de l'autre** (pile ou face, `±0x64000`, rien entre), attend, puis tombe en accélérant de deux par image |
+| `TickLabyrinthEmber` | une braise lancée dans un cap dévié de `±0x100`, qui freine de deux par image, grossit de `0x96` et pâlit de 8 — c'est la teinte qui la tue |
+| `TickLabyrinthFallingShroud` | une nappe lâchée mille cases plus haut ; **le drapeau 236 choisit son plancher**, et selon le cas elle se pose ou disparaît sans se poser |
+| `TickLabyrinthAshFleck` | un flocon dont l'apparence, **dans la sous-zone 3 seulement**, compte les bits posés parmi les drapeaux 240 à 243 ; son image de planche est retirée au hasard à chaque image — il scintille, il ne s'anime pas |
+| `TickLabyrinthSparkFan` | une étincelle d'éventail à trois branches de dispersion, dont `+0x16` choisit la planche (trois images ou six) et donc la durée de vie |
+
+### Un point laissé ouvert
+
+`check-descriptors.sh` signale que `TickLabyrinthSparkFan` reçoit ses deux planches en paramètre et
+les pose **par un conditionnel** — le script ne sait pas mesurer cette marge. Lu à la main : la
+branche courte (`0x0054fea8`, 3 enregistrements) meurt quand `+0x40` dépasse 2, la longue
+(`0x0054ff20`, 6) quand il dépasse 5. Dans les deux cas le binaire **écrit l'indice qui dépasse**
+avant d'éteindre, dans la même image ; le bit `0x80000000` étant retiré, l'enregistrement n'est
+jamais lu. C'est le comportement du binaire, table pour table, et il est reproduit tel quel.
+
+### Où en est la zone
+
+**87 / 160.** Reste 73 : catégorie B 33 corps (32 lectures), C 29 (29), D 11 (10).

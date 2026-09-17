@@ -175,6 +175,189 @@ public static unsafe partial class Blaze
         0x60, 0xf0, 0x0f, 0x0f, 0x01, 0x02, 0x09, 0x00,   // 0x00550440  <- 0x00424490
     ];
 
+    // -----------------------------------------------------------------
+    // LOT 2 (2026-09-17) — LES PLANCHES DES NEUF PAIRES MIROIR
+    //
+    // Le bloc des sous-zones 5 a 8 est le bloc 0 a 3 recopie a +0x1e8, planches comprises : chaque
+    // paire ci-dessous porte les MEMES octets. Les longueurs ne viennent pas de l'adresse suivante
+    // seule — chaque corps borne sa propre planche par l'indice maximal qu'il ecrit en +0x40, et les
+    // deux lectures concordent partout.
+    // -----------------------------------------------------------------
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fe90</c> — <b>la bouffee</b> des sous-zones 0 a 3, trois tuiles
+    /// <c>0x20 x 0x20</c> de la page <c>0x03</c>. Bornee par <c>0x0054fea8</c> ET par le corps :
+    /// <see cref="TickLabyrinthPuff"/> mene <c>+0x40</c> de 0 a 2.</summary>
+    private static readonly byte[] s_Descriptors_0054FE90 =
+    [
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fe90  <- 0x0041E610, 0x0041E700
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fe98
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x0054fea0
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fea8</c> — <b>l'eventail d'etincelles court</b> des sous-zones
+    /// 0 a 3. Memes tuiles que <see cref="s_Descriptors_0054FE90"/> a l'octet 4 pres (<c>0x00</c> au
+    /// lieu de <c>0x01</c>). Bornee par <c>0x0054fec0</c> ; <see cref="TickLabyrinthSparkFan"/> mene
+    /// <c>+0x40</c> de 0 a 2 sur cette branche.</summary>
+    private static readonly byte[] s_Descriptors_0054FEA8 =
+    [
+        0x60, 0x88, 0x20, 0x20, 0x00, 0x03, 0x10, 0x00,   // 0x0054fea8  <- 0x0041DD40 (+0x16 == 0)
+        0x80, 0x88, 0x20, 0x20, 0x00, 0x03, 0x10, 0x00,   // 0x0054feb0
+        0xa0, 0x88, 0x20, 0x20, 0x00, 0x03, 0x10, 0x00,   // 0x0054feb8
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054fee0</c> — <b>la braise</b> des sous-zones 0 a 3, cinq tuiles
+    /// <c>0x2f x 0x2f</c> de la page <c>0x18</c>.
+    ///
+    /// <para>
+    /// <b>CINQ enregistrements, pas huit.</b> L'adresse connue suivante est <c>0x0054ff20</c>, ce qui
+    /// laisserait huit places ; mais les octets changent de forme des <c>0x0054ff08</c>
+    /// (<c>0x18 x 0x18</c>, page <c>0x10</c>) et <see cref="TickLabyrinthEmber"/> fait tourner
+    /// <c>+0x40</c> de 0 a 4 exactement. Les deux lectures se recoupent : la table s'arrete a cinq.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054FEE0 =
+    [
+        0x00, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fee0  <- 0x0041E7F0
+        0x30, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fee8
+        0x60, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fef0
+        0x90, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x0054fef8
+        0xc0, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x0054ff00
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054ff50</c> — <b>le grain qui monte</b> des sous-zones 0 a 3, deux
+    /// tuiles <c>8 x 8</c> de la page <c>0x10</c> qui ne different que par l'octet 5. Bornee par
+    /// <c>0x0054ff60</c> ; <see cref="TickLabyrinthRisingMote"/> laisse <c>+0x40</c> a zero.</summary>
+    private static readonly byte[] s_Descriptors_0054FF50 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054ff50  <- 0x0041E340
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x00, 0x10, 0x00,   // 0x0054ff58
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054ffe8</c> — <b>la nappe posee</b> des sous-zones 0 a 3, quatre
+    /// tuiles <c>0x18 x 0x17</c> de la page <c>0x03</c>. C'est la SECONDE planche de
+    /// <see cref="TickLabyrinthFallingShroud"/>, celle de l'etat 3 ; bornee par <c>0x00550008</c>, et
+    /// le corps borne <c>+0x40</c> a 3 explicitement.</summary>
+    private static readonly byte[] s_Descriptors_0054FFE8 =
+    [
+        0x00, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x0054ffe8  <- 0x0041DA80 (etat 3)
+        0x18, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x0054fff0
+        0x30, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x0054fff8
+        0x48, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x00550000
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00550008</c> — <b>la nappe qui tombe</b> des sous-zones 0 a 3, la PREMIERE
+    /// planche de <see cref="TickLabyrinthFallingShroud"/>.
+    ///
+    /// <para>
+    /// <b>UN seul enregistrement, et c'est une preuve, pas une borne.</b> L'adresse connue suivante
+    /// est <c>0x00550078</c> — le debut du banc des sous-zones 5 a 8 —, ce qui laisserait quatorze
+    /// places ; mais les octets qui suivent sont d'une autre forme (<c>0x20 x 0x20</c> page
+    /// <c>0x10</c>, puis <c>0x10 x 0x10</c>), et surtout le corps met <c>+0x40</c> a zero en posant
+    /// cette planche et n'y touche plus : l'etat 1 ne fait que descendre. C'est l'etat 2 qui change de
+    /// planche, et c'est lui qui remet le compteur a zero pour l'autre.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00550008 =
+    [
+        0x00, 0xc0, 0x17, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x00550008  <- 0x0041DA80 (etats 0 et 1)
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550078</c> — la bouffee des sous-zones 5 a 8. Memes octets que
+    /// <see cref="s_Descriptors_0054FE90"/> ; bornee par <c>0x00550090</c>.</summary>
+    private static readonly byte[] s_Descriptors_00550078 =
+    [
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x00550078  <- 0x00421600, 0x004216F0
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x00550080
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x03, 0x10, 0x00,   // 0x00550088
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550090</c> — l'eventail d'etincelles court des sous-zones 5 a 8.
+    /// Memes octets que <see cref="s_Descriptors_0054FEA8"/> ; bornee par <c>0x005500a8</c>.</summary>
+    private static readonly byte[] s_Descriptors_00550090 =
+    [
+        0x60, 0x88, 0x20, 0x20, 0x00, 0x03, 0x10, 0x00,   // 0x00550090  <- 0x00420D30 (+0x16 == 0)
+        0x80, 0x88, 0x20, 0x20, 0x00, 0x03, 0x10, 0x00,   // 0x00550098
+        0xa0, 0x88, 0x20, 0x20, 0x00, 0x03, 0x10, 0x00,   // 0x005500a0
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_005500c8</c> — la braise des sous-zones 5 a 8. Memes octets que
+    /// <see cref="s_Descriptors_0054FEE0"/>, et meme arret a CINQ : les octets changent de forme des
+    /// <c>0x005500f0</c>.</summary>
+    private static readonly byte[] s_Descriptors_005500C8 =
+    [
+        0x00, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x005500c8  <- 0x004217E0
+        0x30, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x005500d0
+        0x60, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x005500d8
+        0x90, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x005500e0
+        0xc0, 0x40, 0x2f, 0x2f, 0x01, 0x02, 0x18, 0x00,   // 0x005500e8
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550138</c> — le grain qui monte des sous-zones 5 a 8. Memes
+    /// octets que <see cref="s_Descriptors_0054FF50"/> ; bornee par <c>0x00550148</c>.</summary>
+    private static readonly byte[] s_Descriptors_00550138 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x00550138  <- 0x00421330
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x00, 0x10, 0x00,   // 0x00550140
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_005501d0</c> — la nappe posee des sous-zones 5 a 8. Memes octets
+    /// que <see cref="s_Descriptors_0054FFE8"/> ; bornee par <c>0x005501f0</c>.</summary>
+    private static readonly byte[] s_Descriptors_005501D0 =
+    [
+        0x00, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x005501d0  <- 0x00420A70 (etat 3)
+        0x18, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x005501d8
+        0x30, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x005501e0
+        0x48, 0xe8, 0x18, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x005501e8
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_005501f0</c> — la nappe qui tombe des sous-zones 5 a 8. Memes
+    /// octets que <see cref="s_Descriptors_00550008"/>, et meme preuve : le corps laisse <c>+0x40</c>
+    /// a zero tant que cette planche est posee.</summary>
+    private static readonly byte[] s_Descriptors_005501F0 =
+    [
+        0x00, 0xc0, 0x17, 0x17, 0x01, 0x02, 0x03, 0x00,   // 0x005501f0  <- 0x00420A70 (etats 0 et 1)
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550350</c> — le grain qui monte des sous-zones <b>4 et 9</b>.
+    /// Memes octets que <see cref="s_Descriptors_0054FF50"/> : le banc des sous-zones 4 et 9 est celui
+    /// des sous-zones 0 a 3 recopie a <c>+0x400</c>, la ou celui des sous-zones 5 a 8 l'est a
+    /// <c>+0x1e8</c>.</summary>
+    private static readonly byte[] s_Descriptors_00550350 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x00550350  <- 0x00425500
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x00, 0x10, 0x00,   // 0x00550358
+    ];
+
+    private static byte* s_Descriptors0054FE90Storage;
+    private static byte* s_Descriptors0054FEA8Storage;
+    private static byte* s_Descriptors0054FEE0Storage;
+    private static byte* s_Descriptors0054FF50Storage;
+    private static byte* s_Descriptors0054FFE8Storage;
+    private static byte* s_Descriptors00550008Storage;
+    private static byte* s_Descriptors00550078Storage;
+    private static byte* s_Descriptors00550090Storage;
+    private static byte* s_Descriptors005500C8Storage;
+    private static byte* s_Descriptors00550138Storage;
+    private static byte* s_Descriptors005501D0Storage;
+    private static byte* s_Descriptors005501F0Storage;
+    private static byte* s_Descriptors00550350Storage;
+
+    private static byte* Descriptors0054FE90() => NativeCopy(s_Descriptors_0054FE90, ref s_Descriptors0054FE90Storage);
+    private static byte* Descriptors0054FEA8() => NativeCopy(s_Descriptors_0054FEA8, ref s_Descriptors0054FEA8Storage);
+    private static byte* Descriptors0054FEE0() => NativeCopy(s_Descriptors_0054FEE0, ref s_Descriptors0054FEE0Storage);
+    private static byte* Descriptors0054FF50() => NativeCopy(s_Descriptors_0054FF50, ref s_Descriptors0054FF50Storage);
+    private static byte* Descriptors0054FFE8() => NativeCopy(s_Descriptors_0054FFE8, ref s_Descriptors0054FFE8Storage);
+    private static byte* Descriptors00550008() => NativeCopy(s_Descriptors_00550008, ref s_Descriptors00550008Storage);
+    private static byte* Descriptors00550078() => NativeCopy(s_Descriptors_00550078, ref s_Descriptors00550078Storage);
+    private static byte* Descriptors00550090() => NativeCopy(s_Descriptors_00550090, ref s_Descriptors00550090Storage);
+    private static byte* Descriptors005500C8() => NativeCopy(s_Descriptors_005500C8, ref s_Descriptors005500C8Storage);
+    private static byte* Descriptors00550138() => NativeCopy(s_Descriptors_00550138, ref s_Descriptors00550138Storage);
+    private static byte* Descriptors005501D0() => NativeCopy(s_Descriptors_005501D0, ref s_Descriptors005501D0Storage);
+    private static byte* Descriptors005501F0() => NativeCopy(s_Descriptors_005501F0, ref s_Descriptors005501F0Storage);
+    private static byte* Descriptors00550350() => NativeCopy(s_Descriptors_00550350, ref s_Descriptors00550350Storage);
+
     private static byte* s_Descriptors0054FEC0Storage;
     private static byte* s_Descriptors0054FF20Storage;
     private static byte* s_Descriptors0054FF60Storage;
@@ -315,4 +498,787 @@ public static unsafe partial class Blaze
 
         TickFivePhaseBurst(e, Descriptors00550280());                 // Ghidra: FUN_00423d80
     }
+
+    // =====================================================================
+    // LOT 2 (2026-09-17) — LES NEUF PAIRES MIROIR DE LA TABLE 0x0056b2c8
+    //
+    // Le bloc des sous-zones 5 a 8 est le bloc 0 a 3 RECOPIE A +0x2ff0, corps par corps, creneau par
+    // creneau. Dix-neuf corps (les neuf paires, plus le troisieme exemplaire de la troisieme en
+    // sous-zones 4 et 9) pour HUIT lectures : la seule difference entre les deux exemplaires d'une
+    // paire est la planche — et une fois, un signe.
+    //
+    // Ce qui suit est donc huit corps partages et dix-neuf points d'entree qui ne font que nommer
+    // leur planche. Chaque corps borne sa planche par l'indice qu'il mene en +0x40 ; les longueurs
+    // declarees plus haut viennent de la, pas seulement de l'adresse suivante.
+    // =====================================================================
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041E610"/>, <see cref="EntityHandler_0041E700"/>
+    /// et de leurs deux jumeaux des sous-zones 5 a 8. Absent de <c>Blaze.c</c> ; 78 instructions.
+    ///
+    /// <para>
+    /// <b>Une bouffee qui attend, puis se joue en trois images.</b> A la naissance elle se decale au
+    /// hasard des trois cotes — <paramref name="xSpread"/> centre en X, <c>0x1e</c> centre en Y,
+    /// <c>0x64</c> centre en Z, tout en cases —, se met a l'echelle <c>0x1000</c> et allume le bit
+    /// <c>0x4000</c>.
+    /// </para>
+    /// <para>
+    /// <b>L'attente se termine au hasard.</b> Chaque image, une chance sur cinq d'en sortir ; et de
+    /// toute facon a la troisieme. Le passage a l'etat 2 retire le bit <c>0x4000</c> et <b>rend la
+    /// main tout de suite</b> — le binaire a un <c>ret</c> propre a cette branche, la planche ne
+    /// commence donc qu'a l'image suivante.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 2 est la planche</b> : <c>+0x40</c> avance d'une image par tour et la bouffee
+    /// s'eteint (bit <c>0x80000000</c>) des qu'il atteint 3. Trois enregistrements suffisent, et la
+    /// planche en a exactement trois.
+    /// </para>
+    /// </summary>
+    /// <param name="xSpread">L'etalement en X, en cases ; le tirage est centre sur sa moitie.</param>
+    private static void TickLabyrinthPuff(byte* e, byte* plate, int xSpread)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            *(short*)(e + 0x28) = 0x1000;
+            *(short*)(e + 0x2a) = 0x1000;
+            e[0x0a] = 3;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x1c) += (CrtRand() % xSpread - xSpread / 2) << 0xc;   // Ghidra: FUN_00547140
+            *(int*)(e + 0x20) += (CrtRand() % 0x1e - 0xf) << 0xc;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x24) += (CrtRand() % 0x64 - 0x32) << 0xc;
+            e[0x40] = 0;
+            *(uint*)e |= 0x4000;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))++;
+
+            if (CrtRand() % 5 == 1 || *(short*)(e + 0x12) == 3)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(uint*)e &= 0xffffbfff;
+                return;                       // Ghidra: `pop esi ; pop ebx ; ret` propre a la branche
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            byte frame = (byte)(e[0x40] + 1);
+            e[0x40] = frame;
+
+            if (frame >= 3)                   // Ghidra: `cmp al,3 ; jb` — NON signe
+            {
+                e[0x40] = 0;
+                *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0041e610</c> — la bouffee large, sous-zones 0 a 3, creneau <b>48</b> du
+    /// bloc <c>0x00557fa8</c>. Etalement en X de <c>0x190</c> cases.</summary>
+    private static void EntityHandler_0041E610(byte* e)
+        => TickLabyrinthPuff(e, Descriptors0054FE90(), 0x190);         // Ghidra: &DAT_0054fe90
+
+    /// <summary>Ghidra: <c>0x0041e700</c> — <b>la meme bouffee, deux fois plus serree</b> :
+    /// <c>0x0041E610</c> a une constante pres (<c>0xc8</c> au lieu de <c>0x190</c>), meme planche.
+    /// Sous-zones 0 a 3, creneau <b>49</b>.</summary>
+    private static void EntityHandler_0041E700(byte* e)
+        => TickLabyrinthPuff(e, Descriptors0054FE90(), 0xc8);          // Ghidra: &DAT_0054fe90
+
+    /// <summary>Ghidra: <c>0x00421600</c> — la bouffee large, sous-zones 5 a 8, creneau 48 du bloc
+    /// <c>0x00558628</c>.</summary>
+    private static void EntityHandler_00421600(byte* e)
+        => TickLabyrinthPuff(e, Descriptors00550078(), 0x190);         // Ghidra: &DAT_00550078
+
+    /// <summary>Ghidra: <c>0x004216f0</c> — la bouffee serree, sous-zones 5 a 8, creneau 49.</summary>
+    private static void EntityHandler_004216F0(byte* e)
+        => TickLabyrinthPuff(e, Descriptors00550078(), 0xc8);          // Ghidra: &DAT_00550078
+
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041E340"/> et de ses <b>deux</b> jumeaux.
+    /// Absent de <c>Blaze.c</c> ; 73 instructions.
+    ///
+    /// <para>
+    /// <b>Un grain qui monte en ralentissant, et qui retrecit avant de disparaitre.</b> Il nait dans
+    /// un carre de <c>0xa0</c> cases centre sur sa position, monte de <c>0 a 0x14</c> cases, et se
+    /// donne une vitesse verticale de <c>10 a 19</c> cases par image dans <c>+0x12</c>.
+    /// </para>
+    /// <para>
+    /// <b>La vitesse tombe d'une unite toutes les DEUX images</b> — <c>+0x14</c> est le compteur de
+    /// parite, remis a zero a chaque decrement. Sous <c>7</c>, l'echelle perd <c>0xc8</c> par image
+    /// sur les deux axes ; sous <c>3</c>, le grain s'eteint. L'echelle de depart est <c>0x9c4</c>.
+    /// </para>
+    /// <para>
+    /// <b>La vitesse est relue apres le decrement</b>, pas avant : le binaire refait un
+    /// <c>mov ax,[esi+12h]</c> juste avant les deux comparaisons. C'est ce qui fait que le
+    /// retrecissement commence l'image meme ou la vitesse passe sous le seuil.
+    /// </para>
+    /// </summary>
+    private static void TickLabyrinthRisingMote(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            e[0x0a] = 6;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0xa0 - 0x50) << 0xc;
+            *(int*)(e + 0x24) += (CrtRand() % 0xa0 - 0x50) << 0xc;
+
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x28) = 0x9c4;
+            *(short*)(e + 0x2a) = 0x9c4;
+            e[0x40] = 0;
+
+            *(int*)(e + 0x20) += (CrtRand() % 0x14) << 0xc;            // sans decalage : vers le haut
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0xa + 0xa);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short speed = *(short*)(e + 0x12);
+            *(int*)(e + 0x20) += speed << 0xc;
+
+            (*(short*)(e + 0x14))++;
+            if (*(short*)(e + 0x14) == 2)
+            {
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x12) = (short)(speed - 1);
+            }
+
+            short now = *(short*)(e + 0x12);                           // Ghidra: relu, LAB_0041e408
+
+            if (now < 7)
+            {
+                *(short*)(e + 0x28) += -0xc8;
+                *(short*)(e + 0x2a) += -0xc8;
+            }
+
+            if (now < 3) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0041e340</c> — le grain qui monte, sous-zones 0 a 3, creneau
+    /// <b>63</b>.</summary>
+    private static void EntityHandler_0041E340(byte* e)
+        => TickLabyrinthRisingMote(e, Descriptors0054FF50());          // Ghidra: &DAT_0054ff50
+
+    /// <summary>Ghidra: <c>0x00421330</c> — le meme, sous-zones 5 a 8.</summary>
+    private static void EntityHandler_00421330(byte* e)
+        => TickLabyrinthRisingMote(e, Descriptors00550138());          // Ghidra: &DAT_00550138
+
+    /// <summary>Ghidra: <c>0x00425500</c> — le meme, sous-zones <b>4 et 9</b>. Le seul des trois blocs
+    /// a etre recopie a <c>+0x71c0</c> et non a <c>+0x2ff0</c> : c'est un banc reordonne, pas un
+    /// decalage constant, et cette adresse est la seule du lot a en venir.</summary>
+    private static void EntityHandler_00425500(byte* e)
+        => TickLabyrinthRisingMote(e, Descriptors00550350());          // Ghidra: &DAT_00550350
+
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041DF60"/> et de son jumeau. Absent de
+    /// <c>Blaze.c</c> ; 84 instructions.
+    ///
+    /// <para>
+    /// <b>Un grain projete dans le cap de l'entite, puis disperse.</b> La naissance monte d'abord de
+    /// <c>0 a 0xc8</c> cases, puis pousse de <b>trente unites</b> le long du cap <c>+0x32</c>
+    /// (sinus en X, cosinus en Z), puis ajoute un ecart au hasard de <c>0x3c</c> cases centre sur
+    /// chacun des deux axes horizontaux. Les deux echelles sont tirees separement dans
+    /// <c>[0x7e8, 0x914]</c> : le grain n'est pas carre.
+    /// </para>
+    /// <para>
+    /// <b>Il ne bouge plus ensuite.</b> L'etat 1 ne fait qu'avancer la planche : une image sur trois,
+    /// <c>+0x40</c> monte d'un cran, et le grain s'eteint quand il atteint 4 — la planche en a
+    /// quatre, et le binaire ecrit ce quatrieme indice avant d'eteindre, dans la meme image.
+    /// </para>
+    /// </summary>
+    private static void TickLabyrinthSpiralMote(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x20) += (CrtRand() % 0xc8) << 0xc;
+
+            // Ghidra: `lea eax,[eax+eax*2] ; lea eax,[eax+eax*4] ; shl eax,1` — x30.
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * 30;
+            *(int*)(e + 0x24) += (int)Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * 30;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x3c - 0x1e) << 0xc;
+            *(int*)(e + 0x24) += (CrtRand() % 0x3c - 0x1e) << 0xc;
+
+            *(short*)(e + 0x28) = (short)(CrtRand() % 0x12c + 0x7e8);
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 0x12c + 0x7e8);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x12) == 3)
+            {
+                *(short*)(e + 0x12) = 0;
+
+                byte frame = (byte)(e[0x40] + 1);
+                e[0x40] = frame;
+
+                if (frame == 4) *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0041df60</c> — le grain projete, sous-zones 0 a 3, creneau
+    /// <b>55</b>.</summary>
+    private static void EntityHandler_0041DF60(byte* e)
+        => TickLabyrinthSpiralMote(e, Descriptors0054FEC0());          // Ghidra: &DAT_0054fec0
+
+    /// <summary>Ghidra: <c>0x00420f50</c> — le meme, sous-zones 5 a 8.</summary>
+    private static void EntityHandler_00420F50(byte* e)
+        => TickLabyrinthSpiralMote(e, Descriptors005500A8());          // Ghidra: &DAT_005500a8
+
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041E9D0"/> et de son jumeau. Absent de
+    /// <c>Blaze.c</c> ; 89 instructions.
+    ///
+    /// <para>
+    /// <b>Il apparait d'un cote ou de l'autre, attend, puis descend en accelerant.</b> Le cote est un
+    /// pile ou face : <c>+0x1c</c> prend <c>+0x64000</c> ou <c>-0x64000</c>, rien entre les deux. Le
+    /// decalage en Z, lui, est un tirage ordinaire de <c>0xc8</c> cases centre. Les <b>trois</b>
+    /// echelles sont mises a <c>0x800</c> — le seul corps du lot a toucher <c>+0x2c</c>.
+    /// </para>
+    /// <para>
+    /// <b>L'attente sort au hasard, comme la bouffee</b> : une chance sur cinq par image, et de toute
+    /// facon passe la septieme. La sortie tire une vitesse de depart de <c>2 a 11</c> dans
+    /// <c>+0x14</c> et retire le bit <c>0x4000</c>. Ici le binaire <b>ne rend pas la main</b> : la
+    /// descente commence dans la meme image.
+    /// </para>
+    /// <para>
+    /// <b>La descente accelere de deux par image</b> (<c>+0x14 += 2</c>), et la planche avance toutes
+    /// les six images. Le grain s'eteint quand <c>+0x40</c> atteint 4, ce que la planche de quatre
+    /// enregistrements couvre.
+    /// </para>
+    /// </summary>
+    private static void TickLabyrinthHoveringMote(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            *(short*)(e + 0x28) = 0x800;
+            *(short*)(e + 0x2a) = 0x800;
+            *(short*)(e + 0x2c) = 0x800;
+            e[0x0a] = 3;
+            e[0x0b] = 0;
+
+            // Ghidra: `lea eax,[eax+eax*4]` deux fois puis `shl eax,0Fh` — (tirage & 1) * 25 * 0x8000,
+            // moins 0x64000 : le resultat ne peut valoir que -0x64000 ou +0x64000.
+            *(int*)(e + 0x1c) += ((CrtRand() % 2) * 25 << 0xf) - 0x64000;
+
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x24) += (CrtRand() % 0xc8 - 0x64) << 0xc;
+            e[0x40] = 0;
+            *(uint*)e |= 0x4000;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))++;
+
+            if (CrtRand() % 5 == 1 || *(short*)(e + 0x12) > 6)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x16) = 0;
+                *(short*)(e + 0x14) = (short)(CrtRand() % 0xa + 2);
+                *(uint*)e &= 0xffffbfff;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            short speed = *(short*)(e + 0x14);
+            *(int*)(e + 0x20) -= speed << 0xc;
+            *(short*)(e + 0x14) = (short)(speed + 2);
+
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x12) > 5)
+            {
+                *(short*)(e + 0x12) = 0;
+
+                byte frame = (byte)(e[0x40] + 1);
+                e[0x40] = frame;
+
+                if (frame == 4) *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0041e9d0</c> — le grain qui attend puis tombe, sous-zones 0 a 3,
+    /// creneau <b>51</b>.</summary>
+    private static void EntityHandler_0041E9D0(byte* e)
+        => TickLabyrinthHoveringMote(e, Descriptors0054FEC0());        // Ghidra: &DAT_0054fec0
+
+    /// <summary>Ghidra: <c>0x004219c0</c> — le meme, sous-zones 5 a 8.</summary>
+    private static void EntityHandler_004219C0(byte* e)
+        => TickLabyrinthHoveringMote(e, Descriptors005500A8());        // Ghidra: &DAT_005500a8
+
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041E7F0"/> et de son jumeau. Absent de
+    /// <c>Blaze.c</c> ; 154 instructions.
+    ///
+    /// <para>
+    /// <b>Une braise qui part dans un cap tire au hasard, freine, grossit et palit.</b> La naissance
+    /// devie le cap <c>+0x32</c> de <c>±0x100</c>, se donne une vitesse de <c>0x14 a 0x1d</c> dans
+    /// <c>+0x5c</c>, une montee de <c>0xa a 0x13</c> cases par image dans <c>+0x54</c>, une attente
+    /// de <c>0 a 3</c> images dans <c>+0x12</c> et une duree d'image de planche de <c>2 a 6</c> dans
+    /// <c>+0x14</c>. Elle descend d'abord de <c>0x32</c> cases, puis se decale de <c>0x50</c> cases
+    /// centre sur les deux axes horizontaux, et sa teinte part de <c>0x64</c> sur les trois canaux.
+    /// </para>
+    /// <para>
+    /// <b>Le binaire tire le hasard une fois pour rien</b> : deux <c>call 00547140h</c> se suivent a
+    /// <c>0x0041e83d</c> et le premier resultat n'est jamais lu. Ce n'est pas un artefact du
+    /// desassemblage — c'est un tirage perdu, qui decale la suite du flux. Il est reproduit ici.
+    /// </para>
+    /// <para>
+    /// <b>La course perd deux unites de vitesse par image</b>, plancher a zero, et l'echelle gagne
+    /// <c>0x96</c> par image sans borne. La teinte perd 8 par canal et par image par
+    /// <see cref="BrightenEntityTint_00404DE0"/> ; c'est <b>elle</b> qui tue la braise, quand le canal
+    /// rouge atteint zero. <c>+0x40</c> tourne de 0 a 4 sans fin — cinq enregistrements, exactement
+    /// ce que la planche contient.
+    /// </para>
+    /// <para>
+    /// <b>Et c'est ici que les deux exemplaires ne sont pas identiques.</b> Le bloc des sous-zones
+    /// 0 a 3 <b>soustrait</b> le deplacement (<c>sub edx,eax</c>), celui des sous-zones 5 a 8
+    /// l'<b>ajoute</b> (<c>add edx,eax</c>) : la braise part dans le cap d'un cote et dans le cap
+    /// oppose de l'autre. Deux instructions sur 154, et le diff LOOSE ne les rapprochait pas.
+    /// </para>
+    /// </summary>
+    /// <param name="forward">+1 quand le deplacement s'ajoute (sous-zones 5 a 8), -1 quand il se
+    /// soustrait (sous-zones 0 a 3).</param>
+    private static void TickLabyrinthEmber(byte* e, byte* plate, int forward)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            e[0x40] = 0;
+
+            short scale = (short)(CrtRand() % 0x400 + 0x7d0);
+            e[0x0a] = 6;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            CrtRand();                        // Ghidra: tirage PERDU, `call` sans lecture du retour
+            *(short*)(e + 0x32) += (short)(CrtRand() % 0x200 - 0x100);
+
+            *(int*)(e + 0x5c) = CrtRand() % 0xa + 0x14;
+            *(int*)(e + 0x54) = (CrtRand() % 0xa + 0xa) << 0xc;
+            *(short*)(e + 0x12) = (short)(CrtRand() % 4);
+            *(short*)(e + 0x16) = 0;
+            *(uint*)e |= 0x4000;
+            *(short*)(e + 0x14) = (short)(CrtRand() % 5 + 2);
+
+            *(int*)(e + 0x20) += -0x32000;
+            *(int*)(e + 0x1c) += (CrtRand() % 0x50 - 0x28) << 0xc;
+            *(int*)(e + 0x24) += (CrtRand() % 0x50 - 0x28) << 0xc;
+
+            e[0x38] = 0x64;
+            e[0x39] = 0x64;
+            e[0x3a] = 0x64;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))--;
+
+            if (*(short*)(e + 0x12) <= 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(uint*)e &= 0xffffbfff;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            int speed = *(int*)(e + 0x5c);
+
+            *(int*)(e + 0x1c) += forward * ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * speed);
+            *(int*)(e + 0x24) += forward * ((int)Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * speed);
+
+            *(short*)(e + 0x28) += 0x96;
+            *(short*)(e + 0x2a) += 0x96;
+
+            int slowed = speed - 2;
+            if (slowed < 0) slowed = 0;
+            *(int*)(e + 0x5c) = slowed;
+
+            *(int*)(e + 0x20) += *(int*)(e + 0x54);
+
+            BrightenEntityTint_00404DE0(e, -8, -8, -8);                // Ghidra: FUN_00404de0
+
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+
+            (*(short*)(e + 0x16))++;
+            if (*(short*)(e + 0x16) > *(short*)(e + 0x14))
+            {
+                *(short*)(e + 0x16) = 0;
+
+                byte frame = (byte)(e[0x40] + 1);
+                e[0x40] = frame;
+
+                if (frame == 5) e[0x40] = 0;
+            }
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0041e7f0</c> — la braise, sous-zones 0 a 3, creneau <b>50</b>. Elle part
+    /// dans le cap <b>soustrait</b>.</summary>
+    private static void EntityHandler_0041E7F0(byte* e)
+        => TickLabyrinthEmber(e, Descriptors0054FEE0(), -1);           // Ghidra: &DAT_0054fee0
+
+    /// <summary>Ghidra: <c>0x004217e0</c> — la meme braise, sous-zones 5 a 8, <b>cap ajoute</b> :
+    /// deux <c>sub edx,eax</c> devenus <c>add edx,eax</c>.</summary>
+    private static void EntityHandler_004217E0(byte* e)
+        => TickLabyrinthEmber(e, Descriptors005500C8(), 1);            // Ghidra: &DAT_005500c8
+
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041DA80"/> et de son jumeau. Decompilee dans
+    /// <c>Blaze.c</c> ; 96 instructions, <b>deux planches</b>.
+    ///
+    /// <para>
+    /// <b>Une nappe qui tombe puis se pose.</b> Elle nait mille cases au-dessus de sa position
+    /// (<c>+0x3e8000</c>), a l'echelle <c>0x800</c>, et descend en accelerant : <c>+0x12</c> gagne 2
+    /// par image et se retranche de la hauteur. La chute s'arrete a un plancher, et
+    /// <b>c'est le drapeau 236 qui dit lequel</b>.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>drapeau 236 absent</term><description>plancher <c>-0x12c000</c>, puis elle se
+    ///     pose (etat 2)</description></item>
+    ///   <item><term>drapeau 236 pose, <c>+0x14 == 0</c></term><description>plancher
+    ///     <c>-0x190000</c> : elle disparait <b>sans se poser</b>, et la hauteur est quand meme
+    ///     ramenee a <c>-0x12c000</c></description></item>
+    ///   <item><term>drapeau 236 pose, <c>+0x14 != 0</c></term><description>plancher
+    ///     <c>-0x1e0000</c>, puis elle se pose</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Se poser, c'est changer de planche.</b> L'etat 2 echange <paramref name="falling"/> pour
+    /// <paramref name="settled"/>, remet <c>+0x40</c> a zero et tire une echelle de
+    /// <c>[0x5dc, 0x9db]</c>. L'etat 3 palit de <c>0x32</c> par canal et par image, grandit de 400
+    /// par image, et avance la planche une image sur trois — <c>+0x40</c> est <b>borne a 3</b>
+    /// explicitement, ce qui est exactement la longueur de la planche posee. La nappe s'eteint quand
+    /// son canal rouge atteint zero.
+    /// </para>
+    /// </summary>
+    private static void TickLabyrinthFallingShroud(byte* e, byte* falling, byte* settled)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            e[0x0a] = 0x0e;
+            *(int*)(e + 0x20) += 0x3e8000;
+            e[0x0b] = 0;
+            *(byte**)(e + 0x3c) = falling;
+            e[0x40] = 0;
+            *(short*)(e + 0x12) = 10;
+            *(short*)(e + 0x28) = 0x800;
+            *(short*)(e + 0x2a) = 0x800;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) += 2;
+
+            int y = *(int*)(e + 0x20) + *(short*)(e + 0x12) * -0x1000;
+            *(int*)(e + 0x20) = y;
+
+            if ((Mem.s_StateBank0_005e96e0[0x1d] & 0x10) == 0)
+            {
+                if (y < -0x12c000)
+                {
+                    *(short*)(e + 0x10) = 2;
+                    *(int*)(e + 0x20) = -0x12c000;
+                }
+            }
+            else if (*(short*)(e + 0x14) == 0)
+            {
+                if (y < -0x190000)
+                {
+                    *(int*)(e + 0x20) = -0x12c000;
+                    *(uint*)e &= 0x7fffffff;
+                }
+            }
+            else if (y < -0x1e0000)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(int*)(e + 0x20) = -0x1e0000;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x10) = 3;
+            e[0x0a] = 0x0e;
+            e[0x0b] = 0;
+            *(byte**)(e + 0x3c) = settled;
+            e[0x40] = 0;
+
+            short scale = (short)(CrtRand() % 0x400 + 0x5dc);
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            (*(short*)(e + 0x12))++;
+
+            BrightenEntityTint_00404DE0(e, -0x32, -0x32, -0x32);       // Ghidra: FUN_00404de0
+
+            *(short*)(e + 0x28) += 400;
+            *(short*)(e + 0x2a) += 400;
+
+            if (*(short*)(e + 0x12) > 2)
+            {
+                *(short*)(e + 0x12) = 0;
+
+                byte frame = (byte)(e[0x40] + 1);
+                e[0x40] = frame;
+
+                if (frame > 3) e[0x40] = 3;                            // borne, pas boucle
+            }
+
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>Ghidra: FUN_0041da80 @ 0x0041da80 — la nappe qui tombe, sous-zones 0 a 3, creneau
+    /// <b>60</b>.</summary>
+    private static void EntityHandler_0041DA80(byte* e)
+        => TickLabyrinthFallingShroud(e, Descriptors00550008(), Descriptors0054FFE8());
+
+    /// <summary>Ghidra: FUN_00420a70 @ 0x00420a70 — la meme, sous-zones 5 a 8.</summary>
+    private static void EntityHandler_00420A70(byte* e)
+        => TickLabyrinthFallingShroud(e, Descriptors005501F0(), Descriptors005501D0());
+
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041DBD0"/> et de son jumeau. Decompilee dans
+    /// <c>Blaze.c</c> ; 116 instructions.
+    ///
+    /// <para>
+    /// <b>Un flocon de cendre, et son role depend de la carte.</b> Dans la <b>sous-zone 3</b> il
+    /// prend <c>+0x0b = 0xf4</c> et un <c>+0x0a</c> qui vaut <c>0x0b</c> plus le <b>nombre de bits
+    /// poses parmi les quatre premiers de l'octet <c>0x005e96fe</c></b> (les drapeaux 240 a 243) :
+    /// c'est le seul corps du lot dont l'apparence se lit dans l'etat de la partie. Partout ailleurs
+    /// c'est <c>+0x0a = 9</c>, <c>+0x0b = 0</c>.
+    /// </para>
+    /// <para>
+    /// <b>Il est projete dans le cap de l'entite, avec une portee tiree au hasard</b> — jusqu'a 99
+    /// unites le long de <c>+0x32</c> —, puis disperse de <c>0x32</c> cases centre en X et en Z et
+    /// monte de <c>0 a 0x1d</c> cases. Son echelle part de <c>[0x125c, 0x165b]</c> et sa teinte de
+    /// <c>0x80</c> sur les trois canaux.
+    /// </para>
+    /// <para>
+    /// <b>Son image de planche est tiree A CHAQUE IMAGE</b> — <c>+0x40 = rand() % 4</c> — et non
+    /// avancee : le flocon scintille au lieu de s'animer. Il palit de 7 par canal et par image, et
+    /// vit le nombre d'images tire dans <c>+0x12</c>, de 5 a 9.
+    /// </para>
+    /// </summary>
+    private static void TickLabyrinthAshFleck(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = plate;
+
+            byte flags = Mem.s_StateBank0_005e96e0[0x1e];              // Ghidra: DAT_005e96fe
+            sbyte set = (sbyte)((flags & 1) != 0 ? 1 : 0);
+            if ((flags & 2) != 0) set++;
+            if ((flags & 4) != 0) set++;
+            if ((flags & 8) != 0) set++;
+
+            if (s_Unknown_005de52c == 3)
+            {
+                e[0x0b] = 0xf4;
+                e[0x0a] = (byte)(set + 0x0b);
+            }
+            else
+            {
+                e[0x0a] = 9;
+                e[0x0b] = 0;
+            }
+
+            *(short*)(e + 0x10) = 1;
+
+            short scale = (short)(CrtRand() % 0x400 + 0x125c);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            e[0x40] = 0;
+            *(short*)(e + 0x12) = (short)(CrtRand() % 5 + 5);
+
+            int reach = (short)(CrtRand() % 100);
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * reach;
+            *(int*)(e + 0x24) += (int)Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * reach;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x1e) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+
+            e[0x38] = 0x80;
+            e[0x39] = 0x80;
+            e[0x3a] = 0x80;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            e[0x40] = (byte)(CrtRand() % 4);
+
+            BrightenEntityTint_00404DE0(e, -7, -7, -7);                // Ghidra: FUN_00404de0
+
+            *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) < 1) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>Ghidra: FUN_0041dbd0 @ 0x0041dbd0 — le flocon de cendre, sous-zones 0 a 3, creneau
+    /// <b>59</b>.</summary>
+    private static void EntityHandler_0041DBD0(byte* e)
+        => TickLabyrinthAshFleck(e, Descriptors0054FFC8());            // Ghidra: &DAT_0054ffc8
+
+    /// <summary>Ghidra: FUN_00420bc0 @ 0x00420bc0 — le meme, sous-zones 5 a 8.</summary>
+    private static void EntityHandler_00420BC0(byte* e)
+        => TickLabyrinthAshFleck(e, Descriptors005501B0());            // Ghidra: &DAT_005501b0
+
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_0041DD40"/> et de son jumeau. Decompilee dans
+    /// <c>Blaze.c</c> ; 163 instructions, <b>deux planches choisies par <c>+0x16</c></b>.
+    ///
+    /// <para>
+    /// <b>Une etincelle d'eventail, en trois eventails possibles.</b> Le cap de reference est
+    /// <c>+0x32 + 0x800</c> — un demi-tour —, et la naissance pousse de 200 unites dans ce cap. Un
+    /// tirage a trois branches decide ensuite de l'ecart :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>0</term><description>ecart perpendiculaire tire dans <c>[-200, 199]</c> sur
+    ///     chacun des deux axes, et montee de <c>0 a 9</c> cases</description></item>
+    ///   <item><term>1</term><description>ecart fixe de <c>+200</c> perpendiculaire, <c>+0x19 * 8</c>
+    ///     dans le cap, montee de <c>0 a 199</c> cases</description></item>
+    ///   <item><term>2</term><description>le meme, en negatif</description></item>
+    /// </list>
+    /// <para>
+    /// <b>La planche et la duree de vie dependent de <c>+0x16</c></b>, qui vient du placement :
+    /// <c>0</c> donne <paramref name="shortPlate"/> (trois images, mort a la quatrieme),
+    /// autre chose donne <paramref name="longPlate"/> (six images, mort a la septieme). La duree
+    /// d'une image est tiree de 3 a 5 dans <c>+0x14</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le compteur <c>+0x12</c> n'est jamais remis a zero</b> : passe le seuil, l'etincelle avance
+    /// d'une image de planche a <b>chaque</b> image, et non plus une fois sur trois. C'est le
+    /// binaire, pas une omission.
+    /// </para>
+    /// </summary>
+    private static void TickLabyrinthSparkFan(byte* e, byte* shortPlate, byte* longPlate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = *(short*)(e + 0x16) == 0 ? shortPlate : longPlate;
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+
+            short scale = (short)(CrtRand() % 0x400 + 0x708);
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            *(short*)(e + 0x14) = (short)(CrtRand() % 3 + 3);
+
+            int branchRoll = CrtRand();                                // tire AVANT les deux poussees
+            int heading = *(short*)(e + 0x32) + 0x800;
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 200;
+            short branch = (short)(branchRoll % 3);
+            *(int*)(e + 0x24) += (int)Winsys3d.GetCosTableEntry(heading) * 200;
+
+            int riseRoll, riseMod;
+
+            if (branch == 0)
+            {
+                *(int*)(e + 0x1c) += (int)Winsys3d.GetCosTableEntry(heading) * (CrtRand() % 400 - 200);
+                *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(heading) * (CrtRand() % 400 - 200);
+                riseRoll = CrtRand();
+                riseMod = 10;
+            }
+            else
+            {
+                int along;
+
+                if (branch == 1)
+                {
+                    *(int*)(e + 0x1c) += (int)Winsys3d.GetCosTableEntry(heading) * 200;
+                    along = (int)Winsys3d.GetSinTableEntry(heading) * 0x19;
+                }
+                else
+                {
+                    *(int*)(e + 0x1c) += (int)Winsys3d.GetCosTableEntry(heading) * -200;
+                    along = (int)Winsys3d.GetSinTableEntry(heading) * -0x19;
+                }
+
+                *(int*)(e + 0x24) += along * 8;
+                riseRoll = CrtRand();
+                riseMod = 200;
+            }
+
+            *(int*)(e + 0x20) += (riseRoll % riseMod) * 0x1000;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x14) <= *(short*)(e + 0x12))
+            {
+                byte frame = (byte)(e[0x40] + 1);
+                e[0x40] = frame;
+
+                if (frame > 2 && *(short*)(e + 0x16) == 0) *(uint*)e &= 0x7fffffff;
+                if (frame > 5 && *(short*)(e + 0x16) != 0) *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>Ghidra: FUN_0041dd40 @ 0x0041dd40 — l'etincelle d'eventail, sous-zones 0 a 3, creneau
+    /// <b>56</b>.</summary>
+    private static void EntityHandler_0041DD40(byte* e)
+        => TickLabyrinthSparkFan(e, Descriptors0054FEA8(), Descriptors0054FF20());
+
+    /// <summary>Ghidra: FUN_00420d30 @ 0x00420d30 — la meme, sous-zones 5 a 8.</summary>
+    private static void EntityHandler_00420D30(byte* e)
+        => TickLabyrinthSparkFan(e, Descriptors00550090(), Descriptors00550108());
 }

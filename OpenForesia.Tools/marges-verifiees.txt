@@ -90,3 +90,10 @@ EntityHandler_00423D40 | 0x00550438 | +0x00 | EntityHandler_00423D40,TickFivePha
 EntityHandler_00424490 | 0x00550438 | +0x08 | EntityHandler_00424490,TickFivePhaseBurst | e3533d0dfbfe | idem, second enregistrement
 EntityHandler_00423D40/TickFivePhaseBurst | 0x00550280 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | role 3 : pose atlas + 8 et 0
 EntityHandler_00424490/TickFivePhaseBurst | 0x00550280 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | idem
+
+# ---- Labyrinthe des morts, lot 2 (2026-09-17) : les neuf paires miroir de 0x0056b2c8
+EntityHandler_0041DA80 | 0x00550008 | +0x00 | EntityHandler_0041DA80,TickLabyrinthFallingShroud | 63b3f89348b3 | la planche de chute ne vit que pendant les etats 0 et 1 : l'etat 0 met +0x40 a 0, l'etat 1 ne fait que descendre, et l'etat 2 change de planche avant de toucher au compteur
+EntityHandler_00420A70 | 0x005501F0 | +0x00 | EntityHandler_00420A70,TickLabyrinthFallingShroud | d6204dfccedc | jumeau du precedent a la planche pres
+EntityHandler_0041E340 | 0x0054FF50 | +0x00 | EntityHandler_0041E340,TickLabyrinthRisingMote | 0257242f610f | pose 0 a la naissance et n'ecrit plus jamais +0x40 : le corps n'a qu'un etat apres la naissance et il ne touche qu'a +0x12, +0x14, +0x20 et aux echelles
+EntityHandler_00421330 | 0x00550138 | +0x00 | EntityHandler_00421330,TickLabyrinthRisingMote | a457af693db7 | jumeau du precedent a la planche pres
+EntityHandler_00425500 | 0x00550350 | +0x00 | EntityHandler_00425500,TickLabyrinthRisingMote | a45915094e40 | troisieme exemplaire du precedent (sous-zones 4 et 9)

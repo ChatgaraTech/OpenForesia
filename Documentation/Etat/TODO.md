@@ -53,7 +53,7 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 68 / 160 |
+| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 87 / 160 |
 | 6 | Le château de l’immortel | 29 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
@@ -86,29 +86,29 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **Le décor du Labyrinthe des morts** : 92 corps restants, tous B, C ou D — aucune bête. Le tri
-   est à jour dans `Zone5ParComplexite.md` : 46 simples pour 38 lectures, 35 moyens pour 33, 11 gros
-   pour 10. Fermer la zone 5 ne demande plus que du décor. **Le lot 1 (les dix plus simples) est
-   fait le 2026-09-17 (suite 17)**, et il a dégagé deux raccourcis pour la suite :
-   - **le bloc 5-8 de `0x0056b2c8` est le bloc 0-3 recopié à +0x2ff0** (neuf paires vérifiées) : les
-     31 particules restantes ne sont qu'une vingtaine de lectures ;
+4. **Le décor du Labyrinthe des morts** : 73 corps restants, tous B, C ou D — aucune bête. Le tri
+   est à jour dans `Zone5ParComplexite.md` : 33 simples pour 32 lectures, 29 moyens pour 29, 11 gros
+   pour 10. Fermer la zone 5 ne demande plus que du décor. Deux lots faits le 2026-09-17 :
+   - **lot 1** (suite 17) : les dix plus simples — sept décors de `0x0056adc8` dans le fichier neuf
+     `Handlers/Labyrinth.cs`, trois **verbes de script** de `0x0056aec8` dans `WorldMapScript.cs` ;
+   - **lot 2** (suite 18) : les **neuf paires miroir** de `0x0056b2c8`, 19 corps pour 8 lectures,
+     dans `Effects/LabyrinthParticles.cs`, avec treize planches relevées et cinq marges scellées.
+   Pour la suite :
    - **`0x0041C900` / `0x0041EDD0` / `0x004224F0` sont le même corps émis trois fois** (~390 instr.,
      une table de sauts, neuf feuilles chacun) : le gros morceau de la zone est **une** lecture pour
-     trois corps, à prendre en dernier et d'un bloc.
-   - **attention aux six adresses de `0x0056aec8`** : ce ne sont pas des gestionnaires d'entité mais
-     des **verbes de script**, à brancher dans `ScriptOpAreaVerb` (`WorldMapScript.cs`). Trois sont
-     faits ; il en reste trois.
+     trois corps, à prendre en dernier et d'un bloc ;
+   - **il reste trois adresses de `0x0056aec8`** — ce ne sont pas des gestionnaires d'entité mais des
+     **verbes de script**, à brancher dans `ScriptOpAreaVerb` (`WorldMapScript.cs`) ;
+   - le banc de planches des **sous-zones 4 et 9** est le banc 0-3 recopié à **`+0x400`** (celui des
+     sous-zones 5 à 8 l'est à `+0x1e8`) : la même méthode de parenté s'y applique.
 4. ~~**La vieille tour**~~ — **complète le 2026-09-17** (176 / 176). Pour la prochaine zone, la
    méthode qui a payé : `census-zone-complexity.sh <zone>`, puis **comparer chaque corps restant à
    tous les corps déjà écrits** (diff LOOSE de `census-duplicates.sh`, cache régénéré) avant d'en
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
-5. **La zone 5, le Labyrinthe (42 / 160) — TRIÉE, premier lot écrit le 2026-09-17** (`Zone5ParComplexite.md`,
-   `REVERSE_STATUS.md` suite 14). 137 corps à écrire, **97 formes neuves** une fois les jumeaux
-   fusionnés, **15 corps proches d'un corps déjà écrit**. Le premier lot — ces copies, les quatre autres amorces et
-   **l’Agonisant, qui est le Pourpre preux** — est branché (catégorie A vide). Reste B 56, C 35, D 11, E 16. Les 17 IA font
-   11 lectures ; leurs « appelées inconnues » sont des copies de `FUN_004A1020`.
-   La zone 6, le château (28 / 170), reste à trier de la même façon.
+5. ~~**La zone 5, le Labyrinthe**~~ — remplacé par le point 4 ci-dessus : la zone est triée, toute
+   son intelligence est écrite, et deux lots de décor sont passés. **La zone 6, le château (29 / 170),
+   reste à trier de la même façon** — `census-zone-complexity.sh 6`.
 6. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et
