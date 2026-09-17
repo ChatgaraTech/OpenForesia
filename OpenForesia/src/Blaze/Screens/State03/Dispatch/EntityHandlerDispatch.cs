@@ -448,6 +448,46 @@ public static unsafe partial class Blaze
             case 0x0045CE50:
             case 0x0045F290:
                 EntityHandler_00450BD0((uint*)record); return;
+
+            // ====================================================================================
+            // LE DECOR DE LA VIEILLE TOUR — table 0x0056adc8, Handlers/OldTower.cs. Les jumeaux des
+            // autres blocs (desassemblage STRICT identique) sont groupes sur leur representant.
+            // ====================================================================================
+            case 0x0045C7C0: EntityHandler_0045C7C0(record); return;   // 11, l'objet qui racle
+
+            case 0x0045CEE0:                                           // 23, le decor qui respire
+            case 0x0045B750:
+            case 0x0045F320:
+                EntityHandler_0045CEE0(record); return;
+
+            case 0x0045D1B0: EntityHandler_0045D1B0(record); return;   // 31 a 38, ceux qui tournent
+            case 0x0045D240: EntityHandler_0045D240(record); return;
+            case 0x0045D2B0: EntityHandler_0045D2B0(record); return;
+            case 0x0045D400: EntityHandler_0045D400(record); return;
+            case 0x0045D4C0: EntityHandler_0045D4C0(record); return;
+            case 0x0045D550: EntityHandler_0045D550(record); return;
+
+            case 0x0045D340: EntityHandler_0045D340(record); return;   // 34, un tour puis dort
+            case 0x0045D3A0: EntityHandler_0045D3A0(record); return;   // 35, la plate-forme
+            case 0x0045D5E0: EntityHandler_0045D5E0(record); return;   // 39, tombe et revient
+            case 0x0045D6F0: EntityHandler_0045D6F0(record); return;   // 40, le balancier
+
+            case 0x0045DB10:                                           // 42, la chute qui tremble
+            case 0x0045C120:
+            case 0x0045F5F0:
+                EntityHandler_0045DB10(record); return;
+
+            case 0x0045DBE0:                                           // 43, la bascule
+            case 0x0045F6C0:
+                EntityHandler_0045DBE0(record); return;
+
+            case 0x0045C6E0:                                           // 53, « un bruit, au loin »
+            case 0x0045EB30:
+                EntityHandler_0045C6E0(record); return;
+
+            case 0x0045C660:                                           // 55, la source d'effets
+            case 0x0045EAB0:
+                EntityHandler_0045C660(record); return;
             case 0x004746C0: EntityHandler_004746C0((uint*)record); return;
             case 0x004508B0: EntityHandler_004508B0((uint*)record); return;
             case 0x004502E0: EntityHandler_004502E0((uint*)record); return;

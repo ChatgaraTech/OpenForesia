@@ -22490,3 +22490,39 @@ leur base est aussi installée par d'autres corps de la tour pas encore écrits 
 - `check-descriptors.sh` : les six planches neuves relues conformes ; sept marges courtes, les
   jumelles exactes des sites prouvés de la mine, prouvées et scellées — **48 / 48**.
 - `GestionnairesEntites.md` et `Zone4ParComplexite.md` régénérés. Aucun des seize n'était marqué testé.
+
+## 2026-09-17 (suite 6) — vieille tour, catégorie B, lot 1 : les décors des sous-zones 5, 6, 8 et 10
+
+Demandé : le premier lot de la catégorie B, les seize décors simples du bloc `0x00556da8` (table
+`0x0056adc8`). **Seize lectures couvrent vingt-trois gestionnaires** : sept ont un jumeau au
+désassemblage STRICT identique dans les deux autres blocs de la tour, branché sur le même corps. La
+zone 4 passe de **44 à 67 sur 176**. Nouveau fichier `Handlers/OldTower.cs`, annoncé dans le choix
+du lot.
+
+| créneau | représentant | jumeaux | ce que c'est |
+|---:|---|---|---|
+| 11 | `0x0045C7C0` | — | l'objet qu'on pousse : `MoveSceneEntity_00455B30`, raclement toutes les 20 images |
+| 23 | `0x0045CEE0` | `0x0045B750`, `0x0045F320` | le décor qui respire (échelles sur sinus), effet `0x35` si `+0x14 == 1` |
+| 31–33, 36–38 | `0x0045D1B0` `0x0045D240` `0x0045D2B0` `0x0045D400` `0x0045D4C0` `0x0045D550` | — | six décors qui tournent, chacun ses axes, rayons et pas |
+| 34 | `0x0045D340` | — | un tour de tangage, puis `0x40000000` (absent de `Blaze.c`) |
+| 35 | `0x0045D3A0` | — | la plate-forme qui s'enfonce sur les bits `0x10` / `0x20` (absent de `Blaze.c`) |
+| 39 | `0x0045D5E0` | — | l'objet qui tombe, rétrécit, et revient d'en haut (absent de `Blaze.c`) |
+| 40 | `0x0045D6F0` | — | le balancier autour du cap de placement |
+| 42 | `0x0045DB10` | `0x0045C120`, `0x0045F5F0` | 64 images de bascule, puis la caméra tremble sept images |
+| 43 | `0x0045DBE0` | `0x0045F6C0` | la bascule sur un quart de cercle de rayon 150 |
+| 53 | `0x0045C6E0` | `0x0045EB30` | le mécanisme à drapeau de script, et « un bruit, au loin » |
+| 55 | `0x0045C660` | `0x0045EAB0` | la source d'effets `0x30` qui se déplace un instant et revient |
+
+**Pseudo-C recoupée au désassembleur** pour les quatre corps où elle était la plus douteuse
+(`0x0045C6E0`, `0x0045C7C0`, `0x0045D6F0`, `0x0045DBE0`) : elle tient, aux accès près
+(`param_1[0x26]` est `+0x98`, `param_1[0x17]` est `+0x5c`). Les trois corps absents de `Blaze.c` sont
+relevés sous `Legacy/Raw/Blaze/`.
+
+**Une question ouverte, notée dans le corps** : `0x0045C6E0` n'ouvre sa boîte de dialogue que si
+l'octet `0x005de52c` est nul, et cet octet est celui que `Resources.cs` lit comme **numéro de
+sous-zone**. Or le corps n'est installé que dans les sous-zones 3 et 5 à 10. Si l'octet a ce sens à
+cet instant, le message ne s'affiche jamais. Seul un passage en jeu le dira.
+
+Vérifications : `dotnet build` 0 erreur ; `GestionnairesEntites.md` et `Zone4ParComplexite.md`
+régénérés — la catégorie B tombe à **34 corps, 31 lectures** ; aucun des vingt-trois n'était marqué
+testé.

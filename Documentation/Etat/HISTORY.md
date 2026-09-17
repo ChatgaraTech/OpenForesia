@@ -39,6 +39,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   `0x00552a38`)
 - doc : six planches de la tour bornees par balayage du binaire ; sept marges courtes prouvees et
   scellees (48 / 48)
+- feat : **la vieille tour, categorie B lot 1 — seize decors des sous-zones 5, 6, 8 et 10**
+  (`Handlers/OldTower.cs`, nouveau), qui couvrent vingt-trois gestionnaires avec leurs jumeaux des
+  autres blocs. Zone 4 : 44 -> 67 sur 176
+- doc : `0x0045C6E0` n'ouvre « un bruit, au loin » que si l'octet de sous-zone `0x005de52c` est nul,
+  alors qu'il n'est installe que hors de la sous-zone 0 — a verifier en jeu
 
 ## 2026-09-17 (suite)
 
