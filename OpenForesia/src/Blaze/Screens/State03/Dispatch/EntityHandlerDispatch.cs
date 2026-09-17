@@ -1060,6 +1060,37 @@ public static unsafe partial class Blaze
             // L'etincelle qui garde une ancre et meurt de s'en etre eloignee de 0x78.
             case 0x0040EBE0: EntityHandler_0040EBE0(record); return;
 
+            // ====================================================================================
+            // LE DECOR DE LA MONTAGNE DU DRAGON DE FEU — zone 2, bloc 0x00554d28 de la table
+            // 0x0056adc8, Handlers/FireMountain.cs
+            // ====================================================================================
+
+            // Les deux sons d'ambiance a vingt images : l'un global, l'autre a portee de camera.
+            case 0x004560A0: EntityHandler_004560A0(record); return;
+            case 0x00456110: EntityHandler_00456110(record); return;
+
+            // Le decor qui ondule en hauteur et sonne a chaque passage par sa base, et celui qui
+            // tourne sur un cercle de 200.
+            case 0x00456180: EntityHandler_00456180(record); return;
+            case 0x00456270: EntityHandler_00456270(record); return;
+
+            // L'evenement unique : un drapeau de script leve a la naissance, une attente qui fait
+            // trembler la camera, une chute, puis l'entite se rendort.
+            case 0x00456310: EntityHandler_00456310(record); return;
+
+            // Le jet intermittent : six naissances par salve, une pause tiree au sort.
+            case 0x00456590: EntityHandler_00456590(record); return;
+
+            // ====================================================================================
+            // LE TRIO DES TABLES DE SOUS-ZONE — zone 2, Effects/MiscMarkers.cs
+            // ====================================================================================
+
+            // Le pere (0x0056b0c8, 0x1d) lance ce qui tombe (0x0056b2c8, 0x1e) ; a l'impact, il fait
+            // naitre 39 eclats (0x0056b1c8, 0x1f) qui tournent en s'ecartant et frappent dix images.
+            case 0x004830F0: EntityHandler_004830F0(record); return;
+            case 0x00483360: EntityHandler_00483360(record); return;
+            case 0x00483260: EntityHandler_00483260(record); return;
+
             // Le sous-type 16 du bloc C — LE MECHANT OURS, la plus riche de la famille : TROIS
             // gestes au lieu de deux, une attaque a distance, une prise qui projette, et le seul
             // pas du depot qui secoue la camera.

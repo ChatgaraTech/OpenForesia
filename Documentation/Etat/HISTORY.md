@@ -4,6 +4,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 2)
+
+- feat : **les six decors de la montagne du dragon de feu** (`Handlers/FireMountain.cs`, nouveau) —
+  deux sons d'ambiance, deux decors sur sinusoide, un jet intermittent, et l'evenement unique
+  `0x00456310` qui leve son drapeau de script, fait trembler la camera et tombe
+- feat : **le trio des tables de sous-zone** (`Effects/MiscMarkers.cs`) — le pere `0x004830F0` lance
+  ce qui tombe `0x00483360` ; a l'impact, 39 eclats `0x00483260` tournent et frappent dix images.
+  Zone 2 : 30 -> 39 sur 42
+- doc : les scripts de sons differes `0x00552600` et `0x00552610` releves ; le premier attendait un
+  consommateur depuis le 2026-08-31, la file est transcrite sans trou jusqu'a `0x0055268f`
+- doc : aucun des neuf n'a de jumeau (diff STRICT et LOOSE relances avant d'ecrire)
+
 ## 2026-09-17 (suite)
 
 - feat : **huit particules de la montagne du dragon de feu** (`Effects/FireMountainParticles.cs`) —

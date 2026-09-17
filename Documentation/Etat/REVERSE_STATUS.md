@@ -22223,3 +22223,78 @@ de défaut que `MemoryLayoutTests.cs` surveille. Laissées en attente, signalée
 **Dragon rouge `0x00499140`**, le boss à 8 000 PV : 841 instructions, table de sauts à
 `0x00499c14`, aucun jumeau — un corps de la taille du Troll, qui mérite sa séance et un répertoire
 `Ai/FireMountain/`.
+
+## 2026-09-17 (suite 2) — zone 2, second lot : les six décors et le trio des tables de sous-zone
+
+Demandé : continuer la zone 2 par le lot annoncé en fin de séance précédente. **Neuf gestionnaires
+écrits**, la zone passe de **30 à 39 sur 42**. Restent les deux scènes cinéma en attente d'une
+décision de plan mémoire (`0x0040D930`, `0x0040E3A0`) et le Dragon rouge `0x00499140`.
+
+**Aucun n'a de jumeau.** `census-duplicates.sh` a été relancé avant d'écrire une ligne : ni STRICT ni
+LOOSE ne rapproche l'un des neuf d'un corps écrit ou non écrit. Les neuf ont été lus un par un, les
+cinq corps décompilés recoupés au désassembleur.
+
+### Les six décors — `Handlers/FireMountain.cs`, nouveau
+
+Le bloc `0x00554d28` de la table `0x0056adc8` est le seul que la zone installe (une sous-zone). Ses
+créneaux 0 à 7 et 15 sont les décors communs déjà écrits en forêt ; les six propres à la zone sont :
+
+| créneau | adresse | ce que c'est |
+|---:|---|---|
+| 8 | `0x00456180` | ondule en hauteur (±200, phase au sort), sonne à chaque passage par sa base |
+| 9 | `0x00456270` | tourne sur un cercle de 200 autour de sa naissance |
+| 10 | `0x00456310` | **l'événement unique** : drapeau de script, attente qui secoue la caméra, chute, effacement |
+| 11 | `0x00456590` | le jet intermittent : six naissances `0xf1`/`0xf2` par salve, pause au sort |
+| 13 | `0x00456110` | son d'ambiance à portée de caméra, toutes les 20 images |
+| 14 | `0x004560A0` | son d'ambiance **global** (`FUN_0053cea0` direct), toutes les 20 images |
+
+**`0x00456310` lève lui-même son drapeau à la naissance**, dans la banque d'état 0, sans la borne à
+32 octets de `ScriptFlagRaise` ; endormi (`0x40000000`), il ne fait que relire ce drapeau et retire le
+bit `0x80000000` quand il est levé. Un détail est transcrit tel quel : une fois rendormi par sa propre
+fin (`0x50006000`), il relit la banque à l'indice `+0x14` — qui ne contient plus le numéro du drapeau
+mais `X >> 12`, rangé au départ de la chute. L'effet visible n'est pas établi.
+
+**`0x00456590` a un état `0x63` que son corps ne pose jamais.** Qui l'écrit n'est pas établi.
+
+### Le trio — `Effects/MiscMarkers.cs`
+
+Les voisins d'adresse de `0x00483450` / `0x004834D0`, et la même mécanique `0xc0 + n` : les trois
+vivent dans les tables de sous-zone, créneaux `0x1d`, `0x1e`, `0x1f`, et se tiennent par `+0x70`.
+
+- **`0x004830F0`, le père** (`0x0056b0c8`) : à sa naissance il se place sur son lanceur, part à
+  `0x28` dans le cap du lanceur avec une gravité `0x3000`, fait naître **ce qui tombe** par
+  `FUN_0047ac40` (planche `0x00551bc8`, sous-type `0xc0 + octet 0x0b du répertoire +0xd4`) et met en
+  file le script `0x00552600`. Puis il attend le bit `2`.
+- **`0x00483360`, ce qui tombe** (`0x0056b2c8`) : à l'impact, recopie sa position — altitude du
+  plancher — sur le père, lui pose le bit `2`, met en file `0x00552610`. Sorti du monde, il pose
+  `0x2000000` sur le père à la place.
+- **`0x00483260`, l'éclat** (`0x0056b1c8`) : le père en fait naître un par image pendant 39 images.
+  Chacun se pose sur un cercle dont le rayon rattrape 400 par huitièmes, **frappe dix images** par
+  `FUN_00474ca0` (dégâts au compte du lanceur), puis s'éteint par sa teinte.
+
+**La fin du père est un battement de cœur inversé** : il pose le bit `4` à chaque image, chaque éclat
+vivant l'efface ; le trouver encore posé veut dire qu'il ne reste aucun éclat, et le père se libère.
+
+**Le lanceur du père n'est pas établi** — aucun corps transcrit ne produit le sous-type `0xdd` dans
+cette zone. Le Dragon rouge est le candidat évident, mais rien ne le prouve encore.
+
+### Les deux scripts de sons
+
+`0x00552600` (deux pas) et `0x00552610` (cinq pas) sont relevés et bornés par leur délai nul. Le
+premier était signalé dans `DataSymbols.md` depuis le 2026-08-31 comme « sans consommateur connu » :
+il en a un. La file des sons différés est transcrite **sans trou de `0x00552530` à `0x0055268f`**.
+
+### Vérifications
+
+- `dotnet build` : 0 erreur.
+- `check-descriptors.sh` : le nouveau site `EntityHandler_004830F0` sur `0x00551BC8` (`0x00551BA0
+  +0x28`) garde **3** enregistrements ; 41 marges courtes, 41 prouvées ; aucun corps des pools qui
+  héritent `+0x40` ne pose `+0x3c`.
+- `GestionnairesEntites.md` régénéré : zone 2 à **39 / 42**, les neuf à `implemente=oui, teste=non`.
+  Aucun n'était marqué testé : rien à retirer de `handlers-exerces.tsv`.
+
+### Ce qui reste en zone 2
+
+**Trois.** Les deux scènes cinéma, qui attendent toujours la décision sur le trou
+`0x00571400..0x0057141f` de l'enregistrement `0x005713f0`, et le **Dragon rouge `0x00499140`**,
+841 instructions, table de sauts `0x00499c14`, aucun jumeau.

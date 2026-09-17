@@ -2585,9 +2585,33 @@ l'octet de délai nul du précédent, et les huit sont transcrits — ce sont ex
 de l'école 0.
 
 **La file ne s'arrête pas là.** `0x00552600` porte un neuvième script
-(`1f 01 01 00 00 04 00 18`, puis `1f 00 …` qui termine) dont **aucun consommateur n'est encore
-connu** ; son octet de gain vaut `0x18` là où les huit précédents portent `0x12`, ce qui suggère une
-autre famille d'appelants. À rattacher quand on le croisera.
+(`1f 01 01 00 00 04 00 18`, puis `1f 00 …` qui termine) ; son octet de gain vaut `0x18` là où les
+huit précédents portent `0x12`, ce qui suggérait une autre famille d'appelants. **C'était juste**
+(2026-09-17) : ses deux consommateurs ne sont pas des sorts d'école mais le trio de la montagne du
+dragon de feu (`Effects/MiscMarkers.cs`).
+
+## `0x00552600` et `0x00552610` — les deux scripts du trio de la zone 2 (2026-09-17)
+
+`0x00552600`, deux pas, mis en file par `0x004830F0` à sa naissance (le lancer) :
+
+| adresse | son | délai | hauteur |
+|---|---:|---:|---:|
+| `0x00552600` | `0x1f` | 1 | `0x0400` |
+| `0x00552608` | `0x1f` | **0** : fin | `0x06fd` |
+
+`0x00552610`, cinq pas, mis en file par `FUN_00483360` quand ce qui tombe touche le sol (l'impact) :
+
+| adresse | son | délai | hauteur |
+|---|---:|---:|---:|
+| `0x00552610` | `0x2e` | 5 | `0x0384` |
+| `0x00552618` | `0x2e` | 5 | `0x032a` |
+| `0x00552620` | `0x2e` | 5 | `0x02d5` |
+| `0x00552628` | `0x20` | 5 | `0x0384` |
+| `0x00552630` | `0x18` | **0** : fin | `0x0400` |
+
+Le suivant, `0x00552638`, est le script de l'explosion (`Effects/ForestParticlesA.cs`) : la file est
+donc transcrite **sans trou de `0x00552530` à `0x0055268f`**. Le dernier pas de `0x00552610` porte un
+gain `0x10`, le seul de la plage.
 
 
 ## `0x00551ab8` — l'atlas de la gerbe `0x3c`, et une borne par champ (2026-08-29)

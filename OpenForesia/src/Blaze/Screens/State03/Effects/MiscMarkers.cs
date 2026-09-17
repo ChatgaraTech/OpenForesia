@@ -15,6 +15,12 @@
 //
 // Quand le role de l'un d'eux sera etabli, il part rejoindre sa famille et ce fichier maigrit.
 // S'il se vide, il disparait.
+//
+// PLUS UN TRIO — 0x004830F0, 0x00483360, 0x00483260 (2026-09-17), les voisins d'adresse de
+// 0x00483450 et 0x004834D0, et de la meme forme : des enfants a sous-type 0xc0 + n, resolus par
+// les tables de sous-zone de la montagne du dragon de feu. Eux forment bien une famille — un pere
+// qui lance, ce qui tombe, et l'anneau d'eclats qui frappe au point d'impact. Si elle grossit, ou
+// quand son lanceur sera connu, elle merite son propre fichier.
 
 using System;
 using System.Runtime.InteropServices;
@@ -356,5 +362,323 @@ public static unsafe partial class Blaze
             e, (int*)(e + 0x1c), SplashDescriptors(), 0xbd, 0, 4);
 
         *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // LE TRIO DE LA MONTAGNE DU DRAGON DE FEU — zone 2, tables de sous-zone
+    //
+    //   0x004830F0   creneau 0x1d de 0x0056b0c8   le pere : il lance, attend, fait tourner l'anneau
+    //   0x00483360   creneau 0x1e de 0x0056b2c8   ce qui tombe, et dit au pere ou
+    //   0x00483260   creneau 0x1f de 0x0056b1c8   un eclat de l'anneau, qui frappe
+    //
+    // Les trois se tiennent par +0x70 : le pere s'y range lui-meme, et ses enfants le relisent.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552600</c> — <b>le script de sons differes du lancer</b>, que
+    /// <see cref="EntityHandler_004830F0"/> met en file a sa naissance. Deux pas, voix <c>0x1f</c>,
+    /// le second une image apres le premier. La borne est le delai nul du second
+    /// (<c>1f 00</c>) ; <c>0x00552610</c>, qui suit, est un autre script, avec son propre lecteur.
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552600 =
+    [
+        0x1f, 0x01, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552600
+        0x1f, 0x00, 0x01, 0x00, 0xfd, 0x06, 0x00, 0x18,   // 0x00552608 — [1] = 0 : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552600Storage;
+
+    private static byte* DelayedSoundScript00552600()
+        => NativeCopy(s_DelayedSoundScript_00552600, ref s_DelayedSoundScript00552600Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552610</c> — <b>le script de sons differes de l'impact</b>, que
+    /// <see cref="EntityHandler_00483360"/> met en file quand il touche le sol. Cinq pas a cinq
+    /// images d'intervalle : trois sur la voix <c>0x2e</c> a des hauteurs qui descendent, un
+    /// <c>0x20</c>, et un <c>0x18</c> au delai nul. Il s'arrete juste avant
+    /// <see cref="s_ExplosionSoundScript_00552638"/>.
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552610 =
+    [
+        0x2e, 0x05, 0x01, 0x00, 0x84, 0x03, 0x00, 0x18,   // 0x00552610
+        0x2e, 0x05, 0x01, 0x00, 0x2a, 0x03, 0x00, 0x18,   // 0x00552618
+        0x2e, 0x05, 0x01, 0x00, 0xd5, 0x02, 0x00, 0x18,   // 0x00552620
+        0x20, 0x05, 0x01, 0x00, 0x84, 0x03, 0x00, 0x18,   // 0x00552628
+        0x18, 0x00, 0x01, 0x00, 0x00, 0x04, 0x00, 0x10,   // 0x00552630 — [1] = 0 : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552610Storage;
+
+    private static byte* DelayedSoundScript00552610()
+        => NativeCopy(s_DelayedSoundScript_00552610, ref s_DelayedSoundScript00552610Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x004830f0</c> — <b>le pere du trio</b>, creneau <b>0x1d</b> du bloc
+    /// <c>0x00555028</c> de la table <c>0x0056b0c8</c>, montagne du dragon de feu. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 118 instructions, <c>Legacy/Raw/Blaze/FUN_004830F0.asm</c>.
+    ///
+    /// <para>
+    /// <b>A sa premiere image</b> (bit <c>0x1000000</c> absent), il se place par rapport a son
+    /// lanceur <c>+0x6c</c> : le decalage <c>+0x44</c>/<c>+0x4c</c> est nie sur X et Z, tourne par
+    /// les angles du lanceur (<see cref="RotateVectorByAngles_00536090"/> sur <c>lanceur + 0x30</c>)
+    /// et ajoute a la position du lanceur. La vitesse <c>+0x50</c> part du cap du lanceur et du
+    /// <c>+0x34</c> de l'entite, a <c>0x28</c>, et la gravite <c>+0x9a</c> vaut <c>0x3000</c>. Il
+    /// fait alors naitre <b>ce qui tombe</b> — <see cref="SpawnStatusEffectEntity_0047AC40"/>,
+    /// planche <c>0x00551bc8</c>, sous-type <c>0xc0 + n</c> ou <c>n</c> est l'octet <c>+0x0b</c> du
+    /// premier enregistrement du repertoire <c>+0xd4</c> —, et met en file
+    /// <see cref="s_DelayedSoundScript_00552600"/>. Il s'est range en <c>+0x70</c> avant la
+    /// naissance, pour que l'enfant le retrouve.
+    /// </para>
+    /// <para>
+    /// <b>La naissance ecrit deux fois l'echelle et la teinte</b> : <c>0x18001800</c> et
+    /// <c>0xf0f0f0</c> avant la naissance de l'enfant, <c>0x70005000</c> / <c>0x5000</c> et
+    /// <c>0x808080</c> apres. Le semeur recopie une partie de l'etat du pere : l'ordre est garde.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite, il attend.</b> Rien ne se passe tant que l'enfant n'a pas pose le bit <c>2</c> sur
+    /// lui — le signal d'atterrissage, avec la position du point d'impact. A partir de la,
+    /// pendant 39 images, il fait naitre a chaque image un <b>eclat</b> par
+    /// <see cref="SpawnCastEntity_0047AAE0"/>, sous-type <c>0xc0 + m</c> (<c>m</c> : octet
+    /// <c>+0x10</c> du repertoire <c>+0xd0</c>), apres avoir tire un rayon de depart
+    /// <c>+0x12</c> de 0 a 63 et un cap <c>+0x32</c> quelconque, dont les eclats heritent.
+    /// </para>
+    /// <para>
+    /// <b>Sa fin est un battement de cœur a l'envers.</b> Chaque image, il pose le bit <c>4</c> ;
+    /// chaque eclat vivant l'efface (<see cref="EntityHandler_00483260"/>). Trouver le bit
+    /// <c>4</c> encore pose veut dire qu'aucun eclat n'a vecu depuis l'image precedente : il pose
+    /// alors <c>0x2000000</c> et son emplacement est libere. L'enfant qui tombe peut aussi poser
+    /// <c>0x2000000</c> lui-meme, s'il sort du monde.
+    /// </para>
+    /// <para>
+    /// Qui fait naitre ce pere n'est pas etabli : aucun corps transcrit ne produit le sous-type
+    /// <c>0xdd</c> dans cette zone a ce jour.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004830F0(byte* e)
+    {
+        byte* caster = *(byte**)(e + 0x6c);
+        *(byte**)(e + 0x74) = caster;
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x1000000) != 0)
+        {
+            if ((state & 2) != 0)
+            {
+                if ((state & 4) != 0)
+                {
+                    *(uint*)e = state | 0x2000000;
+                }
+                else
+                {
+                    // Ghidra: LAB_00483118
+                    (*(short*)(e + 0x10))++;
+                    if (*(short*)(e + 0x10) < 0x28)
+                    {
+                        *(short*)(e + 0x12) = (short)(CrtRand() & 0x3f);   // Ghidra: FUN_00547140
+                        *(short*)(e + 0x32) = (short)CrtRand();
+
+                        // Ghidra: `mov al,[edx+10h]` puis `add eax,0C0h` — octet sans signe.
+                        byte* directory = *(byte**)(s_Unknown_005e97cc + 0xd0);
+                        byte shard = (byte)((*(byte**)directory)[0x10] + 0xc0);
+                        SpawnCastEntity_0047AAE0(e, shard, 0, 2);
+                    }
+
+                    // Ghidra: LAB_0048315d — le mot d'etat est RELU apres la naissance.
+                    *(uint*)e |= 4;
+                }
+            }
+
+            // Ghidra: LAB_00483163
+            if ((*(uint*)e & 0x2000000) != 0) *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_0048317c — la naissance.
+        int* offset = stackalloc int[3];
+
+        *(int*)(e + 0x44) = -*(int*)(e + 0x44);
+        *(byte**)(e + 0x70) = e;
+        *(int*)(e + 0x4c) = -*(int*)(e + 0x4c);
+        *(uint*)(e + 0x28) = 0x18001800;
+        *(uint*)(e + 0x38) = 0xf0f0f0;
+
+        RotateVectorByAngles_00536090((short*)(caster + 0x30), (int*)(e + 0x44), offset);
+
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c) + offset[0];
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20) + offset[1];
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24) + offset[2];
+
+        SetVectorFromAngles_00532AD0(
+            (int*)(e + 0x50), *(short*)(caster + 0x32), *(short*)(e + 0x34), 0x28);
+
+        *(short*)(e + 0x9a) = 0x3000;
+
+        byte* region = *(byte**)(s_Unknown_005e97cc + 0xd4);
+        byte falling = (byte)((*(byte**)region)[0x0b] + 0xc0);
+        SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), Descriptors00551BC8(), falling, 0, 2);
+
+        *(uint*)e |= 0x1000000;
+        *(uint*)(e + 0x38) = 0x808080;
+        *(uint*)(e + 0x28) = 0x70005000;
+        *(short*)(e + 0x2c) = 0x5000;
+        *(short*)(e + 0x2e) = -0x20;
+        e[0x04] = 0x1e;
+
+        Aud.QueueDelayedSoundScript(DelayedSoundScript00552600(), (int*)(e + 0x1c));   // Ghidra: FUN_0053dbe0
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00483360 @ 0x00483360 — <b>ce qui tombe</b>, creneau <b>0x1e</b> du bloc
+    /// <c>0x00555228</c> de la table <c>0x0056b2c8</c>. Decompilee dans <c>Blaze.c</c>, 87
+    /// instructions.
+    ///
+    /// <para>
+    /// Il integre sa vitesse lui-meme, avec le frottement faible de
+    /// <see cref="EntityHandler_004834D0"/> (<c>1/8 + 1/4096</c>) et la gravite <c>+0x9a</c> que
+    /// le pere a posee. Comme lui, il <b>sauvegarde <c>+0x20</c> autour de</b>
+    /// <see cref="FinalizeEntityPlacement2"/> : ce que la finalisation calcule en hauteur est jete.
+    /// </para>
+    /// <para>
+    /// <b>Il ne rebondit pas.</b> Des qu'il touche — un mur (<c>0x802</c>) ou le plancher
+    /// <c>+0x60</c>, hors terrain <c>0xa000</c> —, il recopie sa position sur le pere <c>+0x70</c>,
+    /// <b>l'altitude etant celle du plancher et non la sienne</b>, pose le bit <c>2</c> du pere,
+    /// met en file <see cref="s_DelayedSoundScript_00552610"/> et s'efface. S'il porte
+    /// <c>0x20000000</c> ou descend sous <c>-20000</c> unites, il s'efface aussi, mais en posant
+    /// <c>0x2000000</c> sur le pere : l'anneau n'aura pas lieu.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00483360(byte* e)
+    {
+        byte* parent = *(byte**)(e + 0x70);
+
+        int vx = *(int*)(e + 0x50);
+        int vy = *(int*)(e + 0x54);
+        int vz = *(int*)(e + 0x58);
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x24) += vz;
+
+        int gravity = *(short*)(e + 0x9a);
+
+        *(int*)(e + 0x50) = (vx - (vx >> 3)) - (vx >> 0xc);
+        *(int*)(e + 0x54) = ((gravity >> 8) - (vy >> 0xc)) - gravity + vy;
+        *(int*)(e + 0x58) = (vz - (vz >> 3)) - (vz >> 0xc);
+
+        int height = *(int*)(e + 0x20);
+
+        FinalizeEntityPlacement2((uint*)e);       // Ghidra: FUN_00533940
+
+        uint terrain = *(uint*)(e + 0x90);
+        *(int*)(e + 0x20) = height;
+
+        if ((terrain & 0xa000) == 0 && ((terrain & 0x802) != 0 || height <= *(int*)(e + 0x60)))
+        {
+            // Ghidra: LAB_004833f4 — l'impact.
+            *(int*)(parent + 0x1c) = *(int*)(e + 0x1c);
+            *(int*)(parent + 0x20) = *(int*)(e + 0x60);
+            *(int*)(parent + 0x24) = *(int*)(e + 0x24);
+            *(uint*)parent |= 2;
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00552610(), (int*)(e + 0x1c));   // Ghidra: FUN_0053dbe0
+
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00483429 — `cmp ebx,0FB1E0000h` puis `jge`, comparaison signee.
+        if ((*(uint*)e & 0x20000000) != 0 || height < -0x4e20000)
+        {
+            *(uint*)e = 0;
+            *(uint*)parent |= 0x2000000;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00483260</c> — <b>un eclat de l'anneau</b>, creneau <b>0x1f</b> du bloc
+    /// <c>0x00555128</c> de la table <c>0x0056b1c8</c>. <b>Absente de <c>Blaze.c</c></b> ; 85
+    /// instructions, <c>Legacy/Raw/Blaze/FUN_00483260.asm</c>.
+    ///
+    /// <para>
+    /// <b>Il n'integre rien : il se place.</b> A chaque image il se pose sur le cercle de rayon
+    /// <c>+0x12</c> autour du pere <c>+0x70</c>, dans son cap <c>+0x32</c> — sinus pour X, cosinus
+    /// pour Z, produit non recadre —, et le rayon rattrape <c>400</c> d'un huitieme de l'ecart par
+    /// image. L'altitude n'est pas touchee. Ses echelles perdent un seizieme par image.
+    /// </para>
+    /// <para>
+    /// <b>Il entretient le pere</b> en effacant son bit <c>4</c> — voir
+    /// <see cref="EntityHandler_004830F0"/>.
+    /// </para>
+    /// <para>
+    /// <b>Il frappe pendant dix images</b>, par <see cref="ProbeMeleeTarget_00474CA0"/> avec la
+    /// sonde <c>0, -200, 200, 50, 0, 400</c>. Une victime prend les degats au compte du lanceur
+    /// <c>+0x74</c>, recoit le bit <c>0x40</c> et <c>8</c> en <c>+0x96</c>. Ensuite il cesse de
+    /// frapper, et sa teinte perd <c>0x080808</c> par image jusqu'a valoir exactement zero, comme
+    /// <see cref="EntityHandler_004767E0"/>.
+    /// </para>
+    /// <para>
+    /// <b>C'est le retour du balayage qui garde les degats</b> (<c>test edi,edi</c>), et non le
+    /// drapeau <c>0x005de0b8</c> que lit <see cref="EntityHandler_004767E0"/>.
+    /// </para>
+    /// <para>
+    /// <b>La sonde se lit sur la pile.</b> Les six mots sont ecrits quand trois registres sont
+    /// sauvegardes (<c>[esp+0Ch]</c> = mot 0) ; l'adresse est prise apres le <c>push edi</c>
+    /// (<c>lea eax,[esp+10h]</c>), soit le meme mot 0. Le <c>0xff38</c> ecrit en <c>[esp+0Eh]</c>
+    /// est le mot 1.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00483260(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = -200;
+        probe[2] = 200;
+        probe[3] = 0x32;
+        probe[4] = 0;
+        probe[5] = 400;
+
+        byte* parent = *(byte**)(e + 0x70);
+        *(uint*)parent &= 0xfffffffb;
+
+        // Ghidra: `mov eax,190h` / `sub eax,edi` / `sar eax,3` / `add edi,eax` — sur 32 bits.
+        int radius = *(short*)(e + 0x12);
+        int course = *(short*)(e + 0x32);
+        radius += (400 - radius) >> 3;
+        *(short*)(e + 0x12) = (short)radius;
+
+        int sin = (int)Winsys3d.GetSinTableEntry(course);   // Ghidra: 0x00545a1c, Ordinal_451
+        *(int*)(e + 0x1c) = sin * radius + *(int*)(parent + 0x1c);
+
+        int cos = Winsys3d.GetCosTableEntry(course);        // Ghidra: 0x00545a16, Ordinal_450
+        *(int*)(e + 0x24) = cos * radius + *(int*)(parent + 0x24);
+
+        int scaleX = *(short*)(e + 0x28);
+        scaleX -= scaleX >> 4;
+        *(short*)(e + 0x28) = (short)scaleX;
+        *(short*)(e + 0x2c) = (short)scaleX;
+
+        // Ghidra: `sar dx,4` sur le mot — decalage sur 16 bits.
+        short scaleY = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)(scaleY - (short)(scaleY >> 4));
+
+        if (*(short*)(e + 0x10) < 0x0a)
+        {
+            (*(short*)(e + 0x10))++;
+
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+            if (victim == null) return;
+
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);
+
+            *(uint*)victim |= 0x40;
+            *(short*)(victim + 0x96) = 8;
+            return;
+        }
+
+        // Ghidra: LAB_00483340 — `add eax,0FFF7F7F8h` puis `jne` : la mort tient au drapeau de zero.
+        uint tint = *(uint*)(e + 0x38) + 0xfff7f7f8;
+        *(uint*)(e + 0x38) = tint;
+        if (tint == 0) *(uint*)e = 0;
     }
 }
