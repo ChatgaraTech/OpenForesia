@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-09-15** | **24** (`0x00486EE0`, **`0x00487260`**, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`, `0x0049FAD0`, `0x004A1D50`, `0x004A13E0`, `0x004A0480`) |
+| **écrits au 2026-09-17 (suite 10)** | **111 sur 167** — la liste nominative est tombée en désuétude ; `GestionnairesEntites.md`, qui est généré, la remplace |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -57,12 +57,12 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | **2** | **La montagne du dragon de feu** | **2** | **1** | **1 — complète** |
 | **3** | **La forêt** | **23** | **22** | **22 — complète** |
 | **4** | **La vieille tour** | **22** | **22** | **22 — complète** |
-| 5 | Le Labyrinthe des morts | 19 | 13 | 0 |
-| 6 | Le château de l'immortel | 21 | 9 | 0 |
-| 7 | Les ruines souterraines | 6 | 5 | 0 |
+| **5** | **Le Labyrinthe des morts** | **19** | **19** | **19 — complète** |
+| 6 | Le château de l'immortel | 21 | 21 | 5 |
+| 7 | Les ruines souterraines | 6 | 6 | 2 |
 | 8 | La vallée d'argent | 4 | 4 | 0 |
 | 9 | Les ruines dans le lac | 5 | 5 | 0 |
-| 10 | La grotte scellée | 39 | 25 | 0 |
+| 10 | La grotte scellée | 39 | 40 | 13 |
 
 Les totaux par zone dépassent 166 : **plusieurs zones partagent des gestionnaires**, et une même
 zone réutilise le même bloc sur plusieurs sous-zones.
@@ -75,6 +75,42 @@ des routines d'intelligence, et tous sont écrits ; la valeur « 17 » qu'elle p
 les deux sont écrits. **Les autres lignes n'ont pas été
 recalculées** et gardent leurs valeurs du 2026-09-15 ; en cas de doute, c'est `GestionnairesEntites.md`,
 qui est généré, qui fait foi.
+
+**Les colonnes « dont IA » et « IA écrites » ont toutes été recalculées le 2026-09-17 (suite 10)**
+depuis `GestionnairesEntites.md` : elles comptent les gestionnaires de la table `0x0056ad48` de
+chaque zone, et ceux d'entre eux qu'un `case` du répartiteur branche. **Dans les onze zones, tout
+gestionnaire de cette table est une routine d'intelligence** — la colonne « dont IA » égale donc la
+colonne « gestionnaires » partout, et les valeurs plus basses qu'elle portait dataient d'un décompte
+manuel. Le Labyrinthe des morts est la **sixième zone complète**.
+
+### Le Labyrinthe des morts (zone 5), en détail
+
+Dix-neuf gestionnaires pour **onze lectures** : dix routines d'intelligence transcrites le
+2026-09-17 (suite 10), plus l'Agonisant de la suite 9, déjà branché sur le Pourpre preux.
+
+| bête | gestionnaires | sous-zones | fichier |
+|---|---|---|---|
+| Persil | `0x004BAB60`, `0x004C4290` | 0-3 / 4, 9 | `Ai/Labyrinth/Persil.cs` |
+| Sanguinaire, Tas d'os | `0x004B8540`, `0x004C2770` | 0-3 / 4, 9 | `Ai/Labyrinth/Sanguinaire.cs` |
+| Mort-vivant | `0x004BB860`, `0x004BD170` | 0-3 / 5-8 | `Ai/Labyrinth/Undead.cs` |
+| Ombre, Ombre rouge | `0x004BFE90`, `0x004C5A30` | 5-8 / 4, 9 | `Ai/Labyrinth/Shadow.cs` |
+| Dunœud | `0x004BA110`, `0x004C3840` | 0-3 / 4, 9 | `Ai/Labyrinth/Dunoeud.cs` |
+| Revenant | `0x004C1C30`, `0x004C6700` | 5-8 / 4, 9 | `Ai/Labyrinth/Revenant.cs` |
+| Zombie | `0x004B95E0` | 0-3 | `Ai/Labyrinth/Zombie.cs` |
+| Durahan, Durahan-noir | `0x004C4F90` | 4, 9 | `Ai/Labyrinth/Durahan.cs` |
+| Roi-zombie | `0x004C7240` | 9 | `Ai/Labyrinth/ZombieKing.cs` |
+| Momie, Reine momie, Sanglante, Vieille momie | `0x004C0B60` | 5-8 | `Ai/Labyrinth/Mummy.cs` |
+| Agonisant | `0x004BEE40` | 5-8 | `Ai/ImmortalCastle/PurpleKnight.cs` |
+
+**Trois corps fermés hors zone par le même travail** : l'Ombre est LOOSE-identique à `0x004E7810` et
+`0x004EC580` (grotte scellée), et le Zombie est STRICT-identique à `0x004CA9C0` (château de
+l'immortel).
+
+**Deux familles seulement.** Le Persil, le Sanguinaire, le Dunœud, le Revenant, le Zombie et la Momie
+sont de la charpente du Rampant (terrestres, placement sauvegardé, `FUN_00488160` recopiée) ; le
+Mort-vivant et l'Ombre sont de celle du Sorcier (volants, `FUN_0049a8e0`) ; le Durahan et le
+Roi-zombie sont les deux exceptions — le premier tient du Behemoth, le second de la Coccinelle, et
+tous deux **appellent** les feuilles partagées au lieu de les recopier.
 
 ---
 

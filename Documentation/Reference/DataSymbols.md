@@ -3115,3 +3115,57 @@ indépendamment — *« ok 0x0054F180 40 octets = 5 enregistrements, fin 0x54F1A
 **Le corps n'atteint que l'enregistrement 0** : il pose `+0x40` à zéro à la naissance et n'y revient
 dans aucune des trois variantes. Les quatre autres sont relevés parce que la règle le veut — on
 relève la plage, jamais le descripteur —, pas parce qu'ils servent ici.
+
+## `0x00552B60` — les sorts de l'Ombre, et le mot qui départage ses quatre copies (2026-09-17)
+
+```
+0x00552b60: 0600 0802 0600 0802   0600 0802 0600 0802
+0x00552b70: 0600 0802 0600 0802   0600 0802 0600 0802
+0x00552b80: 1800
+```
+
+**Dix-sept mots**, pas plus : à `0x00552B82` commence autre chose. La variante 0 tire entre les deux
+premiers (`SignedMask(hasard, 1)`), la variante 1 sur les dix-sept (`hasard % 0x11`).
+
+**Au-delà de la variante 1, l'indice n'est jamais chargé** : le registre garde le compte de la boucle
+de refus, `32`, et la lecture tombe donc seize mots après la fin de la liste. C'est **la seule chose
+qui distingue les quatre copies du corps**, dont les dix-sept mots utiles portent par ailleurs les
+mêmes octets :
+
+| corps | liste | mot à l'indice 32 | valeur |
+|---|---|---|---|
+| `0x004BFE90` — l'Ombre | `0x00552B60` | `0x00552BA0` | `0x0000` |
+| `0x004C5A30` — l'Ombre rouge | `0x00552BB0` | `0x00552BF0` | `0x0200` |
+| `0x004E7810` — grotte scellée, sous-zone 0 | `0x00552E58` | `0x00552E98` | `0x000d` |
+| `0x004EC580` — grotte scellée, sous-zones 2 et 3 | `0x00552EB8` | `0x00552EF8` | `0x000d` |
+
+Le C# passe ce mot en paramètre plutôt que de porter quatre corps (`strayCast`).
+
+**`0x00552BA0` n'est pas un vide** : c'est le premier mot de la troisième sonde du Durahan, ci-dessous.
+Les deux tables se touchent, et c'est ce voisinage que le registre non chargé va lire.
+
+## `0x00552B88`, `0x00552B94`, `0x00552BA0` — les trois sondes du Durahan (2026-09-17)
+
+```
+0x00552b88: 0000 3200 3c00 9600   0000 6400
+0x00552b94: 0000 3200 3c00 9600   0000 6400
+0x00552ba0: 0000 3200 5000 9600   0000 6400
+```
+
+Six `short` chacune, passées telles quelles à `FUN_00519C30`. Les deux premières servent aux deux
+coups du combo, la troisième au bond : son troisième mot vaut `0x50` au lieu de `0x3c` — **le choc
+du bond porte plus loin que la lame**.
+
+## `0x00552BD8`, `0x00552BE8`, `0x00552BF8` — les trois tables du Roi-zombie (2026-09-17)
+
+```
+0x00552bd8: 0000 1e00 3200 7800   0000 5a00        la sonde du plongeon
+0x00552be8: 0d00 1700 1800 1a00   0002 0802 0c02   les sept sorts
+0x00552bf8: 1503 0100 2a03 0018   1500 0100 0203 0018   le cri, script de sons différés
+```
+
+Les sept sorts sont tirés par `hasard % 7` : quatre de la première famille (indices 13, 23, 24, 26)
+et trois de la troisième (0, 8, 12). **L'attente du Roi-zombie est l'octet `+0x13` de la fiche
+tirée** — il attend donc exactement la durée d'incantation du sort qu'il vient de choisir.
+
+Le script de sons est borné par le `[1] = 0` de son second pas, comme les trois du Ténébreux.

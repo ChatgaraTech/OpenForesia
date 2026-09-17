@@ -4,6 +4,34 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 10)
+
+- feat : **les seize routines d'intelligence du Labyrinthe des morts, en dix lectures** — zone 5,
+  42 → 58 sur 160, et la categorie « intelligence » du tri de zone est VIDE
+- feat : `Ai/Labyrinth/` — dix fichiers neufs : Persil, Sanguinaire (+ le Tas d'os), Mort-vivant,
+  Ombre (+ l'Ombre rouge), Dunœud, Revenant, Zombie, Durahan (+ le Durahan-noir), Roi-zombie, Momie
+  (+ la Reine momie, la Sanglante et la Vieille momie)
+- feat : **trois corps fermes hors zone** — l'Ombre ferme le groupe « 3 corps, 970 » du releve de
+  doublons (grotte scellee, sous-zones 0 puis 2 et 3) et le Zombie sa copie stricte du chateau
+- doc : **le Sanguinaire PARE** — toute replanification finit par un examen qui jette la posture
+  choisie pour la garde si la proie frappe, si la bete lui fait face, si elle est au sol a moins de
+  0xc8, et si le tirage est tombe sous sa timidite. Ses deux louvoiements detruisent ce tirage en
+  reutilisant son registre : apres eux la parade ne peut plus partir
+- doc : **le Durahan enchaine un combo a trois temps** a pile ou face — coup, coup, bond —, et son
+  bond frappe a demi-puissance en divisant par deux le mot +0x30 du bloc de modele le temps de l'appel
+- doc : **le Roi-zombie ne sait pas ce qu'il invoque** : les cinq sous-types de ses cinq appels
+  viennent tous du bloc que le repertoire de zone 0x005e97cc designe en +0xcc
+- doc : **la variante 3 de la Momie se reecrit en variante 0** des la premiere image ou elle est vue,
+  apres s'etre donne son echelle et sa teinte — seule bete du depot a changer de variante hors coup
+- doc : **le Zombie est arrete par les portes**, meme barriere de salle que la Belle bleue de la mine,
+  et son attente ne le fait PAS rendre la main : l'examen de proximite tourne quand meme
+- doc : **les quatre copies de l'Ombre ne different que par un mot** — celui que la variante 2 et
+  au-dela atteignent seize places apres la fin de leur liste de sorts, par un registre non charge
+- fix : `SettleSceneEntityOnGroundAndWalls` parametree sans changer ses appels — le Sanguinaire est
+  le seul de la famille a lacher le bit d'attaque sur un heurt en l'air
+
+---
+
 ## 2026-09-17 (suite 9)
 
 - feat : **le Labyrinthe des morts, premier lot — zone 5, 23 → 42 sur 160**, catégorie A vide : dix-neuf

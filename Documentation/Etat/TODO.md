@@ -13,13 +13,18 @@ déplacement.
 
 ---
 
-# SIX ENSEMBLES COMPLETS — LA VIEILLE TOUR EN EST (2026-09-17)
+# SIX ENSEMBLES COMPLETS, ET TOUTE L'INTELLIGENCE DU LABYRINTHE (2026-09-17)
 
 Les trois tables gravées dans `.data` — `0x00551c30`, `0x00551f30`, `0x00552230`, **274 sur 274** —,
 la **zone 0, l’auberge, 48 sur 48**, la **forêt (zone 3, 136 sur 136)** bouclée le 2026-09-02, et
 depuis le 2026-09-17 la **mine (zone 1, 157 sur 157)** et la **montagne du dragon de feu (zone 2,
 42 sur 42)**, puis la **vieille tour (zone 4, 176 sur 176)** : six ensembles entièrement
 implémentés. Le détail est dans `REVERSE_STATUS.md`, les sections du 2026-09-15 et du 2026-09-17.
+
+**Et depuis la suite 10, les DIX-NEUF routines d'intelligence du Labyrinthe des morts** — les seize
+qui restaient, écrites en dix lectures. La zone 5 n'a plus une seule bête à transcrire : sa catégorie
+« E — intelligence » est vide, et il ne lui reste que du décor (B, C, D). C'est aussi la première
+fois qu'une zone voit toutes ses bêtes écrites **sans être complète** : 58 sur 160.
 
 La mine s’est fermée sur sept routines d’intelligence, dont **une n’a demandé aucune ligne** :
 l’Ours gris `0x0048DB30` est le Grizzly, 660 instructions identiques sur 660. La montagne s’est fermée
@@ -37,8 +42,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **470** |
-| à transcrire | **634** |
+| implémentés, jamais appelés | **489** |
+| à transcrire | **615** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -48,12 +53,12 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts | 42 / 160 |
-| 6 | Le château de l’immortel | 28 / 170 |
+| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 58 / 160 |
+| 6 | Le château de l’immortel | 29 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 41 / 349 |
+| 10 | La grotte scellée | 43 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -72,12 +77,18 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      Crapouille, la Gargouille et le Crapaud, trois especes pour une routine.
    - ~~3 corps, 1 008 : `0x004F3350` `0x004F5630` `0x004FC9B0`~~ — **fait le 2026-09-15** : le Gremlin
      de la grotte scellee, un terrestre sans rapport avec celui de la vieille tour.
-   - 3 corps, 986 : `0x004E56C0` `0x004EA430` `0x004EEB20`
-   - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`
+   - 3 corps, 986 : `0x004E56C0` `0x004EA430` `0x004EEB20` — **le seul groupe qui reste**
+   - ~~3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`~~ — **fait le 2026-09-17 (suite 10)** :
+     l'Ombre du Labyrinthe et ses deux copies de la grotte scellée. Les quatre corps (la quatrième
+     est l'Ombre rouge, `0x004C5A30`) ne diffèrent que par **un mot** : celui que la variante 2 et
+     au-delà lisent seize places après la fin de leur liste de sorts, par un registre non chargé.
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
+4. **Le décor du Labyrinthe des morts** : 102 corps restants, tous B, C ou D — aucune bête. Le tri
+   est à jour dans `Zone5ParComplexite.md` : 56 simples pour 47 lectures, 35 moyens pour 33, 11 gros
+   pour 10. Fermer la zone 5 ne demande plus que du décor.
 4. ~~**La vieille tour**~~ — **complète le 2026-09-17** (176 / 176). Pour la prochaine zone, la
    méthode qui a payé : `census-zone-complexity.sh <zone>`, puis **comparer chaque corps restant à
    tous les corps déjà écrits** (diff LOOSE de `census-duplicates.sh`, cache régénéré) avant d'en

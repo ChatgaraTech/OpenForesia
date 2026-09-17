@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**160 gestionnaires, 42 implementes, 118 a ecrire.**
+**160 gestionnaires, 58 implementes, 102 a ecrire.**
 
 ## Le compte
 
@@ -22,7 +22,6 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 | **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 56 | 47 | 2880 |
 | **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 35 | 33 | 4642 |
 | **D — gros** | pas d'IA, > 250 instr. | 11 | 10 | 3782 |
-| **E — intelligence** | une routine de bete | 16 | 15 | 13504 |
 
 La colonne « instructions » additionne une seule fois chaque forme ; la categorie A n'en compte
 aucune, puisque son corps est deja ecrit.
@@ -146,24 +145,3 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x0041D310` | 0,1,2,3 | 0056B2C8 | 431 | 0 | oui |  |  |
 | `0x00421DC0` | 4,9 | 0056B2C8 | 441 | 0 | oui |  |  |
 | `0x00462A80` | 4,9 | 0056ADC8 | 536 | 0 | oui |  |  |
-
-## E — intelligence (16)
-
-| gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
-|---|---|---|---:|---:|---|---|---|
-| `0x004C4F90` | 4,9 | 0056AD48 | 709 | 2 | non |  | **Durahan, Durahan-noir** |
-| `0x004BA110` | 0,1,2,3 | 0056AD48 | 766 | 1 | non |  | **Dunoeud** ; appelee(s) inconnue(s) : `0x004B9220` `0x004BAAE0` `0x004BAB20` |
-| `0x004C3840` | 4,9 | 0056AD48 | 766 | 1 | non |  | **Dunoeud** ; appelee(s) inconnue(s) : `0x004C3450` |
-| `0x004C7240` | 4,9 | 0056AD48 | 790 | 4 | non |  | **Roi-zombie** |
-| `0x004B95E0` | 0,1,2,3 | 0056AD48 | 836 | 1 | non | (+1 ailleurs) | **Zombie** ; appelee(s) inconnue(s) : `0x004B9220` |
-| `0x004C1C30` | 5,6,7,8 | 0056AD48 | 853 | 1 | non |  | **Revenant** |
-| `0x004C6700` | 4,9 | 0056AD48 | 853 | 1 | non |  | **Revenant** ; appelee(s) inconnue(s) : `0x004C3450` |
-| `0x004B8540` | 0,1,2,3 | 0056AD48 | 941 | 1 | non | `0x004C2770` | **Sanguinaire, Tas d'os** ; appelee(s) inconnue(s) : `0x004B9220` |
-| `0x004C2770` | 4,9 | 0056AD48 | 941 | 1 | non | `0x004B8540` | **Sanguinaire** ; appelee(s) inconnue(s) : `0x004C3450` |
-| `0x004BAB60` | 0,1,2,3 | 0056AD48 | 966 | 1 | non |  | **Persil** ; appelee(s) inconnue(s) : `0x004B9220` |
-| `0x004C4290` | 4,9 | 0056AD48 | 966 | 1 | non |  | **Persil** ; appelee(s) inconnue(s) : `0x004C3450` |
-| `0x004BB860` | 0,1,2,3 | 0056AD48 | 970 | 1 | non |  | **Mort-vivant** ; appelee(s) inconnue(s) : `0x004B9220` |
-| `0x004BD170` | 5,6,7,8 | 0056AD48 | 970 | 1 | non |  | **Mort-vivant** |
-| `0x004BFE90` | 5,6,7,8 | 0056AD48 | 970 | 1 | non | (+2 ailleurs) | **Ombre** |
-| `0x004C5A30` | 4,9 | 0056AD48 | 970 | 1 | non |  | **Ombre rouge** ; appelee(s) inconnue(s) : `0x004C3450` |
-| `0x004C0B60` | 5,6,7,8 | 0056AD48 | 1178 | 1 | non |  | **Momie, Reine momie, Sanglante, Vielle momie** ; appelee(s) inconnue(s) : `0x004C1B70` `0x004C1BB0` `0x004C1BF0` |

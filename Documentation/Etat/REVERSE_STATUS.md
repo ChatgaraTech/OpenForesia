@@ -23222,3 +23222,120 @@ n'écrivent que des zéros dans `+0x40`) et sont scellées.
 Vérifications : `dotnet build` 0 erreur (38 avertissements) ; `check-descriptors.sh` : 57 marges
 prouvées sur 60, les trois restantes datent de la tour, aucune preuve périmée ; recensement et tri
 de la zone régénérés. **Rien n'a tourné en jeu.**
+
+## 2026-09-17 (suite 16) — Labyrinthe des morts, lot 2 : les seize routines d'intelligence
+
+**Zone 5 : 42 → 58 sur 160.** La catégorie « E — intelligence » du tri de zone est **vide** : la zone
+n'a plus une seule bête à transcrire. Il ne lui reste que du décor — 56 corps simples, 35 moyens,
+11 gros, pour 90 lectures.
+
+### Seize corps pour dix lectures, décidées avant d'ouvrir un désassemblage
+
+Le tri de la suite 14 annonçait « 16 corps, 15 lectures ». Le compte réel est **dix** : six paires,
+quatre isolés. La vérification a pris trois minutes, et elle vaut d'être écrite parce qu'elle
+contredit le générateur.
+
+`census-duplicates.sh` classe deux corps identiques seulement s'ils le sont **instruction pour
+instruction** une fois les adresses masquées (LOOSE). Or cinq des six paires du Labyrinthe sont
+LOOSE-**différentes** — et pourtant ce sont les mêmes corps. Le compilateur a alloué ses registres
+autrement dans un seul bloc arithmétique, et le diff des flux normalisés le montre d'un coup d'œil :
+
+```
+=== 0x004BB860 vs 0x004BD170        (le Mort-vivant)
+510c510
+< sar eax,3          >   sar eax,8
+515c515
+< sar edx,8          >   sar edx,3
+```
+
+Deux décalages échangés, c'est-à-dire les deux opérandes d'une même soustraction pris dans l'autre
+ordre. Les quatre autres paires sont du même genre : cinq à quinze lignes réordonnées dans le bloc
+qui calcule le cap de louvoiement.
+
+**La leçon** : après le diff LOOSE, refaire un diff *ligne à ligne des flux normalisés* sur les
+paires que le tri annonce comme « jumeaux à écrire ». Une différence de moins de vingt lignes, toutes
+dans le même bloc, est une réallocation de registres, pas un second corps. La sixième paire
+(Sanguinaire) était, elle, STRICT-identique.
+
+**Et trois corps sont tombés hors zone** : l'Ombre `0x004BFE90` est LOOSE-identique à `0x004E7810` et
+`0x004EC580` (grotte scellée) — c'est le groupe « 3 corps, 970 » du relevé de doublons du 2026-09-02,
+fermé — et le Zombie `0x004B95E0` est STRICT-identique à `0x004CA9C0` (château de l'immortel).
+
+### Les trois « appelées inconnues » du tri étaient des enveloppes d'effet
+
+Le tri signalait `0x004B9220`, `0x004BAAE0`, `0x004BAB20`, `0x004C3450`, `0x004BDE40`, `0x004C1B70`,
+`0x004C1BB0`, `0x004C1BF0` comme inconnues. Aucune n'a demandé de transcription :
+
+| adresse | ce que c'est |
+|---|---|
+| `0x004B9220`, `0x004C3450`, `0x004BDE40` | trois copies STRICT de `FUN_004A1020`, le chercheur de proie |
+| `0x004BAB20`, `0x004C1BF0` | deux copies de `FUN_004A2BF0` — filtre + effet de piège |
+| `0x004BAAE0`, `0x004C1B70` | la même enveloppe autour de `FUN_0053B3C0`, l'effet d'état 7 |
+| `0x004C1BB0` | la même autour de `FUN_0053B580`, l'effet d'état 9 |
+
+Deux petites fonctions ont été ajoutées (`ApplyStatusEffectIfAllowed_004BAAE0`,
+`ApplyStatusEffect9IfAllowed_004C1BB0`) ; les six autres appels passent par ce qui existait déjà.
+
+### Ce que les dix lectures ont appris
+
+**Le Sanguinaire pare, et c'est la seule bête du dépôt qui le fasse.** Sa replanification ne rend
+jamais la main directement : toutes ses branches convergent sur un dernier examen (`0x004c9112`) qui
+**jette la posture qu'elle vient de choisir** si cinq conditions tiennent — la proie frappe
+(son bit 2), le Sanguinaire lui fait face dans le cône large, il est au sol, à moins de `0xc8`, et le
+tirage de la replanification est tombé **sous sa timidité**. Une bête hardie ne pare presque jamais.
+
+Et ce dernier point est un piège de transcription : **les deux louvoiements détruisent ce tirage**.
+Ils réutilisent le registre `EDI` pour y ranger leur amplitude, `(hardiesse + 0x80) * 16`, qui est
+toujours supérieure à la timidité. Après un louvoiement, la parade ne peut donc plus partir. Écrit
+tel quel, avec le commentaire qui l'explique.
+
+**Le Durahan est de la famille du Behemoth, pas de celle du Rampant.** Deux tables de postures — une
+quand le bit d'attaque est posé, une quand il ne l'est pas —, donc la même posture désigne un geste
+ou un déplacement selon l'état. Son combo enchaîne à pile ou face : coup (animation 3) → coup
+(animation 6) → bond (animation 7), et le bond **frappe à demi-puissance** en divisant par deux le
+mot `+0x30` du bloc de *modèle* le temps de l'appel à `FUN_00539B80`, puis en le rendant. Il fait
+ensuite naître `0x39` **à la position de la victime**, en se prêtant ses coordonnées le temps de la
+naissance.
+
+**Le Roi-zombie ne sait pas ce qu'il invoque.** Ses cinq appels lisent leur sous-type dans le bloc que
+le répertoire de zone `0x005e97cc` désigne en `+0xcc` — octets `+0x0b`, `+0x0f`, `+0x09`, `+0x17`,
+`+0x18`, chacun augmenté de `0xc0`. C'est la zone qui décide de son escorte. Son plongeon, lui,
+frappe **à la vitesse et non à l'image** : il ne balaie que si sa vitesse à plat dépasse 3, et lâche
+le bit d'attaque dès qu'elle retombe sous 8.
+
+**La variante 3 de la Momie se réécrit en variante 0.** Le test n'est pas gardé par la première
+image : il est gardé par la variante elle-même, qui ne vaut plus 3 à l'appel suivant. Au passage elle
+se donne son échelle (`0x1388`, aplatie à `0x1068` en hauteur) et sa teinte (`0xdc`, `0xdc`, `0xaa`).
+C'est la seule bête du dépôt qui change de variante hors coup porté.
+
+**Le Zombie est arrêté par les portes** — la même barrière de salle que la Belle bleue de la mine :
+l'octet `+0x0f` du porteur `+0x7c` comparé à la carte courante `0x005de038`, et le mot de contact
+gagne `0x800`. Et **son attente ne le fait pas rendre la main** : `cmp [esi+43h],bl ; jne` saute la
+replanification mais tombe quand même dans l'examen de proximité, qui tourne alors sur la distance
+et le cap de la *lecture de situation* au lieu de ceux que la replanification aurait recalculés à
+plat. Transcrit par un paramètre de sortie plutôt que par une duplication.
+
+**Les quatre copies de l'Ombre ne diffèrent que par un mot.** Leur liste de sorts fait dix-sept
+entrées ; au-delà de la variante 1 l'indice n'est jamais chargé et garde le compte de la boucle de
+refus, `32`. La lecture tombe donc seize mots après la fin de la liste, et c'est là que les quatre
+copies divergent : `0x0000`, `0x0200`, `0x000d`, `0x000d`. Le C# passe ce mot en paramètre. Le détail
+est dans `DataSymbols.md`, avec les trois autres tables relevées (les sondes du Durahan, les tables du
+Roi-zombie).
+
+### Une feuille partagée, paramétrée sans changer ses appels
+
+`SettleSceneEntityOnGroundAndWalls` a reçu `dropAttackOnAirborneHit`, à `false` par défaut. Le
+Sanguinaire est **le seul** de la famille à porter un `and al,0FDh` dans la sortie du heurt en l'air :
+son bit d'attaque tombe avec la chute. Une instruction, un paramètre — plutôt qu'un second corps de
+soixante lignes qui aurait dérivé. C'est le même choix qu'à la suite 9 pour les quatre corps modèles
+de particules.
+
+### Ce qui est écrit
+
+`OpenForesia/src/Blaze/Screens/State03/Ai/Labyrinth/`, dix fichiers : `Persil.cs`, `Sanguinaire.cs`,
+`Undead.cs`, `Shadow.cs`, `Dunoeud.cs`, `Revenant.cs`, `Zombie.cs`, `Durahan.cs`, `ZombieKing.cs`,
+`Mummy.cs`. Les désassemblages sont sous `Legacy/Raw/Blaze/Labyrinth/`.
+
+Le répertoire suit la convention des cinq autres zones (`Forest/`, `Mine/`, `OldTower/`,
+`FireMountain/`, `ImmortalCastle/`, `SealedCave/`) : une bête par fichier, le nom venant du
+croisement `especes.csv` × `modeles.csv`, jamais d'une supposition.

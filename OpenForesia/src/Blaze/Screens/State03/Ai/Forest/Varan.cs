@@ -1009,8 +1009,13 @@ public static unsafe partial class Blaze
     /// et <see cref="ProbeClearSide_004D5E60"/> dit de quel cote contourner.
     /// </para>
     /// </summary>
+    /// <param name="dropAttackOnAirborneHit">Le Sanguinaire (<c>0x004b8540</c>, <c>LAB_004b8d86</c>)
+    /// ajoute un <c>and al,0FDh</c> a la sortie du heurt en l'air : le bit d'attaque tombe avec la
+    /// chute. Une instruction, et lui seul de la famille la porte — d'ou le parametre plutot qu'un
+    /// second corps.</param>
     private static void SettleSceneEntityOnGroundAndWalls(
-        byte* e, int boldness, uint contactMask, SceneEntityPlacement* keep)
+        byte* e, int boldness, uint contactMask, SceneEntityPlacement* keep,
+        bool dropAttackOnAirborneHit = false)
     {
         uint contact = *(uint*)(e + 0x90) & 0xfffffcff;
         *(uint*)(e + 0x90) = contact;
@@ -1039,6 +1044,8 @@ public static unsafe partial class Blaze
         {
             // Ghidra: LAB_004a27e4 — heurtee EN L'AIR : arret net, retour au sol, et 0x28 images
             // d'attente. C'est la seule sortie qui reecrit +0x2c.
+            if (dropAttackOnAirborneHit) *(uint*)e &= 0xfffffffd;   // Ghidra: LAB_004b8d86
+
             *(int*)(e + 0x5c) = 0;
             *(int*)(e + 0x50) = 0;
             *(int*)(e + 0x58) = 0;

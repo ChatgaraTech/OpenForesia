@@ -1298,6 +1298,83 @@ public static unsafe partial class Blaze
             case 0x004FC9B0:
                 TickSceneEntityAi_004F3350(record); return;
 
+            // LE PERSIL (Labyrinthe des morts, sous-zones 0 a 3 pour 0x004BAB60, 4 et 9 pour
+            // 0x004C4290) — la charpente du Rampant, mais il frappe EN PLEIN BOND, sa posture 10
+            // fait naitre le sous-type 0x36 au lieu d'incanter, et il plane (8) et vire au huitieme
+            // de l'ecart (9). Ai/Labyrinth/Persil.cs.
+            case 0x004BAB60:
+            case 0x004C4290:
+                TickSceneEntityAi_004BAB60(record); return;
+
+            // LE SANGUINAIRE ET LE TAS D'OS (Labyrinthe des morts, sous-zones 0 a 3 pour
+            // 0x004B8540, 4 et 9 pour 0x004C2770 — le meme corps au sens STRICT) — la seule bete du
+            // depot qui PARE : toute replanification finit par un examen qui jette la posture
+            // choisie pour la garde si la cible est elle-meme en train de frapper.
+            // Ai/Labyrinth/Sanguinaire.cs.
+            case 0x004B8540:
+            case 0x004C2770:
+                TickSceneEntityAi_004B8540(record); return;
+
+            // LE MORT-VIVANT (Labyrinthe des morts, sous-zones 0 a 3 pour 0x004BB860, 5 a 8 pour
+            // 0x004BD170) — un volant de la famille du Sorcier qui frappe A CHAQUE IMAGE tant que
+            // son plongeon dure, et dont le plongeon descend vers la proie au lieu de flotter.
+            // Ai/Labyrinth/Undead.cs.
+            case 0x004BB860:
+            case 0x004BD170:
+                TickSceneEntityAi_004BB860(record); return;
+
+            // L'OMBRE (Labyrinthe des morts, sous-zones 5 a 8), L'OMBRE ROUGE (4 et 9) et leurs deux
+            // copies de la grotte scellee — un volant incantateur qui scintille, ne tombe jamais et
+            // porte le bit 0x1000 a chaque image. Les quatre corps sont LOOSE-identiques ; seul
+            // differe le mot lu seize places apres leur liste de sorts, que la variante 2 et au-dela
+            // atteint par un registre non charge. Ai/Labyrinth/Shadow.cs.
+            // LE DUNŒUD (Labyrinthe des morts, sous-zones 0 a 3 pour 0x004BA110, 4 et 9 pour
+            // 0x004C3840) — la plus courte routine de la zone : elle ne sauvegarde pas son
+            // placement, dort tant que la proie est loin, et n'a qu'une idee, une charge en onze
+            // temps dont elle est la seule posture a tourner en frappant. Ai/Labyrinth/Dunoeud.cs.
+            case 0x004BA110:
+            case 0x004C3840:
+                TickSceneEntityAi_004BA110(record); return;
+
+            // LE REVENANT (Labyrinthe des morts, sous-zones 5 a 8 pour 0x004C1C30, 4 et 9 pour
+            // 0x004C6700) — le Dunœud en plus lourd : meme sommeil, meme charge en onze temps, mais
+            // il rend son placement sur un heurt et le mur le met en marche droite.
+            // Ai/Labyrinth/Revenant.cs.
+            case 0x004C1C30:
+            case 0x004C6700:
+                TickSceneEntityAi_004C1C30(record); return;
+
+            // LE ZOMBIE (Labyrinthe des morts, sous-zones 0 a 3) et sa copie STRICTE du chateau de
+            // l'immortel (sous-zones 0 a 4) — un terrestre que les portes arretent, dont la demarche
+            // saute une fois sur hardiesse/8, et dont toute decision est ecrasee sous 0x64.
+            // Ai/Labyrinth/Zombie.cs.
+            case 0x004B95E0:
+            case 0x004CA9C0:
+                TickSceneEntityAi_004B95E0(record); return;
+
+            // LE DURAHAN ET LE DURAHAN-NOIR (Labyrinthe des morts, sous-zones 4 et 9) — la charpente
+            // du Behemoth, DEUX tables de postures selon que le bit d'attaque est pose, un combo a
+            // trois temps chaine a pile ou face, et un bond qui frappe a demi-puissance.
+            // Ai/Labyrinth/Durahan.cs.
+            case 0x004C4F90: TickSceneEntityAi_004C4F90(record); return;
+
+            // LE ROI-ZOMBIE (Labyrinthe des morts, sous-zone 9) — le patron : un volant incantateur
+            // a QUATRE tables de sauts, dont cinq appels dont les sous-types viennent tous du bloc
+            // de zone, et un plongeon qui frappe a la vitesse et non a l'image.
+            // Ai/Labyrinth/ZombieKing.cs.
+            case 0x004C7240: TickSceneEntityAi_004C7240(record); return;
+
+            // LA MOMIE, LA REINE MOMIE, LA SANGLANTE ET LA VIEILLE MOMIE (Labyrinthe des morts,
+            // sous-zones 5 a 8) — la plus longue routine de la zone, quatorze postures, et une
+            // VARIANTE qui decide de tout : la taille, la teinte, l'effet du coup et la naissance.
+            // Ai/Labyrinth/Mummy.cs.
+            case 0x004C0B60: TickSceneEntityAi_004C0B60(record); return;
+
+            case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
+            case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
+            case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98
+            case 0x004EC580: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552ef8
+
             // Le sous-type 11 du bloc B — LA FLEUR DU MAL, seconde routine de la charpente du
             // Varan : memes feuilles propres, meme sonde au mot pres, et un geste qui seme des
             // braises. Elle FERME la zone 3.
