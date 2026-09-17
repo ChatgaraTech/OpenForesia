@@ -53,12 +53,12 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 87 / 160 |
-| 6 | Le château de l’immortel | 29 / 170 |
+| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 92 / 160 |
+| 6 | Le château de l’immortel | 31 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 44 / 349 |
+| 10 | La grotte scellée | 47 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -86,21 +86,28 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **Le décor du Labyrinthe des morts** : 73 corps restants, tous B, C ou D — aucune bête. Le tri
-   est à jour dans `Zone5ParComplexite.md` : 33 simples pour 32 lectures, 29 moyens pour 29, 11 gros
-   pour 10. Fermer la zone 5 ne demande plus que du décor. Deux lots faits le 2026-09-17 :
+4. **Le décor du Labyrinthe des morts** : 68 corps restants, tous B, C ou D — aucune bête. Le tri
+   est à jour dans `Zone5ParComplexite.md` : 29 simples pour 29 lectures, 28 moyens pour 28, 11 gros
+   pour 10. Fermer la zone 5 ne demande plus que du décor. Trois lots faits le 2026-09-17 :
    - **lot 1** (suite 17) : les dix plus simples — sept décors de `0x0056adc8` dans le fichier neuf
      `Handlers/Labyrinth.cs`, trois **verbes de script** de `0x0056aec8` dans `WorldMapScript.cs` ;
-   - **lot 2** (suite 18) : les **neuf paires miroir** de `0x0056b2c8`, 19 corps pour 8 lectures,
-     dans `Effects/LabyrinthParticles.cs`, avec treize planches relevées et cinq marges scellées.
-   Pour la suite :
-   - **`0x0041C900` / `0x0041EDD0` / `0x004224F0` sont le même corps émis trois fois** (~390 instr.,
-     une table de sauts, neuf feuilles chacun) : le gros morceau de la zone est **une** lecture pour
-     trois corps, à prendre en dernier et d'un bloc ;
+   - **lot 2** (suite 18) : les **neuf paires miroir** de `0x0056b2c8` (bloc 5-8 = bloc 0-3 à
+     `+0x2ff0`), 19 corps pour 8 lectures, treize planches relevées, cinq marges scellées ;
+   - **lot 3** (suite 19) : le **banc des sous-zones 4 et 9**, 12 corps pour 4 lectures, **sur trois
+     zones** — ses parents sont au château (6) et dans la grotte scellée (10).
+   Pour la suite, dans cet ordre de rendement :
+   - **`0x004224F0` (389 instr.) a un jumeau à UNE instruction près hors zone**, `0x0043F4E0`
+     (grotte scellée) : le plus gros corps restant du Labyrinthe est deux corps pour une lecture.
+     C'est le meilleur rapport qui reste dans la zone ;
+   - `0x0041C900` / `0x0041EDD0` / `0x004224F0` partagent une **charpente** (une table de sauts,
+     neuf feuilles chacun) mais **ce ne sont pas des copies** — 396 / 380 / 389 instr., 236 lignes
+     d'écart entre les deux premiers (mesuré suite 19, après une affirmation trop forte en suite 17) ;
    - **il reste trois adresses de `0x0056aec8`** — ce ne sont pas des gestionnaires d'entité mais des
      **verbes de script**, à brancher dans `ScriptOpAreaVerb` (`WorldMapScript.cs`) ;
-   - le banc de planches des **sous-zones 4 et 9** est le banc 0-3 recopié à **`+0x400`** (celui des
-     sous-zones 5 à 8 l'est à `+0x1e8`) : la même méthode de parenté s'y applique.
+   - **la méthode qui a payé trois fois** : normaliser le désassemblage en neutralisant *toute*
+     constante hexadécimale à six chiffres (pas seulement les cibles de saut — c'est ce qui rend un
+     échange de planche invisible), puis apparier par nombre d'instructions égal. Les parentés qui
+     en sortent traversent les zones.
 4. ~~**La vieille tour**~~ — **complète le 2026-09-17** (176 / 176). Pour la prochaine zone, la
    méthode qui a payé : `census-zone-complexity.sh <zone>`, puis **comparer chaque corps restant à
    tous les corps déjà écrits** (diff LOOSE de `census-duplicates.sh`, cache régénéré) avant d'en

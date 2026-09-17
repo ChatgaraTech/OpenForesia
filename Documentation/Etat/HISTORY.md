@@ -4,6 +4,23 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-17 (suite 13)
+
+- feat : **le lot 3 du Labyrinthe — le banc des sous-zones 4 et 9**, 12 corps pour 4 lectures,
+  repartis sur **trois zones** : zone 5, 87 → 92 ; zone 6, 29 → 31 ; zone 10, 44 → 47
+- feat : la luciole accrochee a deux porteurs, l'invocation en onze avec son tremblement d'ecran, la
+  mort du porteur en trois temps, et le decor qui respire en couleur
+- fix : **correction d'une affirmation de la suite 11** — `0x0041C900`, `0x0041EDD0` et `0x004224F0`
+  ne sont PAS le meme corps emis trois fois : 396 / 380 / 389 instructions, 236 lignes d'ecart entre
+  les deux premiers. Ils partagent une charpente, pas un corps. Trois lectures, pas une
+- doc : **le banc des sous-zones 4 et 9 n'est pas une copie du banc 0-3** — sur ses trente corps,
+  cinq seulement ont un parent proche, et ces parents vivent au chateau de l'immortel et dans la
+  grotte scellee : ecrire un corps de ce banc en ferme deux a quatre, sur trois zones
+- doc : **`0x004224F0` a un jumeau hors zone a UNE instruction pres** — `0x0043F4E0` (grotte
+  scellee) : le plus gros corps restant du Labyrinthe est deux corps pour une lecture
+- doc : la branche `+0x98 == 1` de la mort du porteur est **morte dans le cours normal** — l'etat 1
+  met le champ a zero et l'etat 2 tourne dans la meme image ; transcrite telle quelle
+
 ## 2026-09-17 (suite 12)
 
 - feat : **le lot 2 du Labyrinthe des morts — les neuf paires miroir**, 19 corps pour 8 lectures ;
@@ -42,9 +59,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 - doc : **le bloc 5-8 de la table 0x0056b2c8 est le bloc 0-3 recopie a +0x2ff0** — neuf paires
   verifiees, comptes d'instructions identiques : les 31 particules restantes ne sont qu'une
   vingtaine de lectures
-- doc : **trois des onze gros gestionnaires de la zone sont le meme corps emis trois fois**
-  (0x0041C900 en 0-3, 0x0041EDD0 en 5-8, 0x004224F0 en 4-9) — ~390 instructions, une table de
-  sauts et neuf feuilles chacun
+- doc : **trois des onze gros gestionnaires de la zone partagent une CHARPENTE** (0x0041C900 en 0-3,
+  0x0041EDD0 en 5-8, 0x004224F0 en 4-9) — une table de sauts et neuf feuilles chacun. **Ce ne sont
+  PAS trois copies** : 396 / 380 / 389 instructions, 236 lignes d ecart entre les deux premiers
 - doc : **le verbe 0x00444620 rend le mot des boutons, pas la reponse qu'il range dans la banque** —
   le binaire ne remet jamais EAX a zero, et le dernier registre ecrit est la lecture de la table
   d'entree

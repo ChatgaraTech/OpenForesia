@@ -23379,12 +23379,18 @@ Les 31 particules restantes de la zone ne sont donc qu'une vingtaine de **lectur
 `4,9` (`0x00424xxx`–`0x00425xxx`) est la même famille mais **réordonnée** : pas de décalage
 constant, il faudra le lire pour lui-même.
 
-### Trois des onze gros gestionnaires sont le même corps émis trois fois
+### Trois des onze gros gestionnaires portent la même *forme* — ~~et donc le même corps~~
 
-`0x0041C900` (0-3), `0x0041EDD0` (5-8) et `0x004224F0` (4,9) portent la même signature : ~390
-instructions, **une** table de sauts, et **neuf** feuilles appelées chacun, contiguës et espacées
-de `0x40`. C'est le gros morceau de la zone, et c'est **une** lecture pour trois corps : à prendre
-d'un bloc, en dernier.
+> **Corrigé le 2026-09-17 (suite 19). Ce paragraphe disait « le même corps émis trois fois » ; c'est
+> faux, et la mesure est plus bas.** `0x0041C900` (0-3), `0x0041EDD0` (5-8) et `0x004224F0` (4,9)
+> portent la même *signature de forme* — ~390 instructions, **une** table de sauts, **neuf** feuilles
+> appelées chacun, contiguës et espacées de `0x40` — mais ce sont **trois corps différents** :
+> 396 / 380 / 389 instructions, et le diff normalisé rend **236 lignes** d'écart entre les deux
+> premiers. Partager une charpente n'est pas être une copie. C'est bien le gros morceau de la zone,
+> mais c'est **trois** lectures, pas une.
+>
+> Ce qui est vrai en revanche : `0x004224F0` a un jumeau **hors zone**, `0x0043F4E0`, à **une
+> instruction près** sur 389 — voir la suite 19.
 
 ### Le lot écrit
 
@@ -23542,3 +23548,87 @@ jamais lu. C'est le comportement du binaire, table pour table, et il est reprodu
 ### Où en est la zone
 
 **87 / 160.** Reste 73 : catégorie B 33 corps (32 lectures), C 29 (29), D 11 (10).
+
+---
+
+## 2026-09-17 (suite 19) — Labyrinthe des morts, lot 3 : le banc des sous-zones 4 et 9
+
+Le lot 2 avait exploité une parenté **interne** à la zone. Ce lot pose la même question au troisième
+bloc, et la réponse est différente — et plus intéressante.
+
+### Le banc des sous-zones 4 et 9 n'est pas une copie
+
+Trente corps restaient dans les blocs `4, 9`. La signature « super-LOOSE » (celle de
+`census-duplicates.sh`, plus la neutralisation de **toute** constante hexadécimale à six chiffres —
+c'est ce qui rend un échange de planche invisible) n'en apparie que **deux** exactement. En ouvrant
+à une poignée de lignes d'écart, on en trouve **cinq**, et c'est tout :
+
+| corps 4-9 | instr. | parent | écart | zone du parent |
+|---|---:|---|---:|---|
+| `0x00422C60` | 74 | `0x0043FA90` | 0 | grotte scellée |
+| `0x00463640` | 91 | `0x00462860` | 0 | zone 5, sous-zones 5-8 |
+| `0x00422D50` | 77 | `0x0042A440` | 2 | château de l'immortel |
+| `0x00422330` | 125 | `0x00429A20`, `0x00436790`, `0x0043F320` | 2 | château, grotte ×2 |
+| `0x004224F0` | 389 | `0x0043F4E0` | 1 | grotte scellée |
+
+**La leçon vaut pour la suite du dépôt** : la parenté de ce banc ne va pas vers les autres blocs de
+sa zone, elle va vers les **autres zones** — le château de l'immortel (6) et la grotte scellée (10),
+c'est-à-dire les deux plus gros morceaux restants. Un corps écrit ici en ferme deux à quatre.
+
+### Ce que les quatre lectures ont donné : 12 corps
+
+`TickTwoHostOrbitMote` (`0x00422C60`, `0x0043FA90`) — **une luciole accrochée à deux porteurs à la
+fois.** `+0x74` donne la position de référence, `+0x6c` un décalage, et les deux retombent sur
+`s_EntityList_005de558` — le bloc de trente-neuf mots remis à zéro à chaque chargement — quand ils
+sont nuls. C'est ce qui permet au reste du corps de déréférencer sans un seul test. Elle tourne à
+quinze unités dans un cap qui est pour partie le sien et pour partie celui du porteur, vit onze
+images, et son image de planche de départ est tirée au hasard.
+
+`TickSummonBurstShake` (`0x00422D50`, `0x0042A440`) — **onze entités d'un coup, puis trois de plus,
+et l'écran qui tremble trente images.** Le tremblement est écrit directement dans le voile plein
+cadre `0x005de024` : octet de poids fort à 1, octet bas qui alterne `0x1e` / `0` une image sur deux.
+L'entité s'éteint au bout de trente images **sans rabaisser le voile** — c'est à un autre de le
+faire. Le seul écart entre les deux exemplaires est le sous-type engendré : `0xdf` / `0xde`.
+
+`TickHostDeathBurst` (`0x00422330` et ses **trois** parents) — **la mort d'un porteur, en trois
+temps.** Elle se recolle sur la position du porteur à chaque image et **meurt avec lui**. Vingt
+images de préparation pendant lesquelles elle se reconfigure **entièrement à chaque image** — cap,
+orientation, échelles, `+0x48` — et fait naître une entité `0x70` : vingt images, vingt naissances.
+Puis une seule image d'explosion, deux entités symétriques (`+0x5c` à `±0x400`), et trente images
+d'attente.
+
+`TickColourBreathingDecor` (`0x00462860`, `0x00463640`) — **un décor qui respire en couleur.** Les
+trois échelles suivent le sinus, et les trois canaux de teinte aussi, mais **chacun avec son propre
+grain de bruit** : le rouge part de `0x76` plus un tirage sur `0x28`, le vert et le bleu de `0x80`
+moins un tirage sur `0x1e`, les trois retranchant `sinus / 128`. La teinte n'est donc jamais deux
+fois la même, même à phase égale. L'arithmétique est celle d'un octet, débordements compris, et les
+trois canaux sont assemblés en un dword écrit d'un coup — ce qui remet `+0x3b` à zéro au passage.
+
+### Une branche morte, transcrite telle quelle
+
+`TickHostDeathBurst` teste `+0x98 == 1` avant `+0x98 == 0`, pour jouer deux sons différents. Mais
+l'état 1 met `+0x98` à zéro en passant la main, et l'état 2 s'exécute dans la **même image** : le son
+`0x1c` ne peut partir que si quelqu'un d'autre a posé 1 dans `+0x98` entre-temps. Dans le cours
+normal, la branche est morte. Elle est écrite, pas simplifiée.
+
+### La correction de la suite 17
+
+La suite 17 affirmait que `0x0041C900`, `0x0041EDD0` et `0x004224F0` étaient **« le même corps émis
+trois fois »**. C'est faux, et la mesure le dit : 396 / 380 / 389 instructions, et le diff normalisé
+rend **236 lignes** d'écart entre les deux premiers, 109 entre les deux derniers. Ils partagent une
+**charpente** — une table de sauts, neuf feuilles contiguës espacées de `0x40` — ce qui n'est pas la
+même chose qu'une copie. Le paragraphe de la suite 17 porte la correction sur place.
+
+Ce qui est vrai en revanche, et qui vaut mieux : **`0x004224F0` a un jumeau hors zone à une
+instruction près**, `0x0043F4E0` (grotte scellée). Le plus gros corps restant du Labyrinthe est donc
+deux corps pour une lecture, et il ouvre la grotte scellée par la même occasion.
+
+### Où en sont les trois zones
+
+| zone | avant le lot 3 | après |
+|---|---:|---:|
+| 5 — Labyrinthe des morts | 87 / 160 | **92 / 160** |
+| 6 — Château de l'immortel | 29 / 170 | **31 / 170** |
+| 10 — Grotte scellée | 44 / 349 | **47 / 349** |
+
+Zone 5, il reste 68 : catégorie B 29 corps (29 lectures), C 28 (28), D 11 (10).

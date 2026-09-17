@@ -1370,6 +1370,22 @@ public static unsafe partial class Blaze
             // Ai/Labyrinth/Mummy.cs.
             case 0x004C0B60: TickSceneEntityAi_004C0B60(record); return;
 
+            // LOT 3 — LE BANC DES SOUS-ZONES 4 ET 9 DU LABYRINTHE, ET SES PARENTS HORS ZONE.
+            // Ce banc n'est PAS une copie du banc 0-3 : cinq corps seulement y ont un parent proche,
+            // et ces parents vivent au CHATEAU DE L'IMMORTEL (zone 6) et dans la GROTTE SCELLEE
+            // (zone 10). Douze corps pour quatre lectures, reparties sur trois zones.
+            // Effects/LabyrinthParticles.cs, sauf le decor, dans Handlers/Labyrinth.cs.
+            case 0x00422C60: EntityHandler_00422C60(record); return;   // la luciole a deux porteurs, labyrinthe 4-9
+            case 0x0043FA90: EntityHandler_0043FA90(record); return;   // la meme, grotte scellee
+            case 0x00422D50: EntityHandler_00422D50(record); return;   // l'invocation en onze, labyrinthe 4-9
+            case 0x0042A440: EntityHandler_0042A440(record); return;   // la meme, chateau de l'immortel
+            case 0x00422330: EntityHandler_00422330(record); return;   // la mort du porteur, labyrinthe 4-9
+            case 0x00429A20: EntityHandler_00429A20(record); return;   // la meme, chateau de l'immortel
+            case 0x00436790: EntityHandler_00436790(record); return;   // la meme, grotte scellee
+            case 0x0043F320: EntityHandler_0043F320(record); return;   // la meme, grotte scellee, second bloc
+            case 0x00462860: EntityHandler_00462860(record); return;   // le decor qui respire en couleur, 5-8
+            case 0x00463640: EntityHandler_00463640(record); return;   // le meme, 4 et 9
+
             // LES EFFETS DU LABYRINTHE DES MORTS — table 0x0056b2c8, lot 2 : les NEUF PAIRES MIROIR.
             // Le bloc des sous-zones 5 a 8 est celui des sous-zones 0 a 3 recopie a +0x2ff0, corps
             // par corps et creneau par creneau ; 19 adresses pour 8 lectures. Effects/LabyrinthParticles.cs.

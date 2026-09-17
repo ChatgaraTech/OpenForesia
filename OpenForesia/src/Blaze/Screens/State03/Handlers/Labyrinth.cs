@@ -285,4 +285,78 @@ public static unsafe partial class Blaze
         (*(short*)(e + 0x10))++;
         if (*(short*)(e + 0x10) > 9) *(uint*)e |= 0x40002000;
     }
+
+    // =====================================================================
+    // LOT 3 (2026-09-17) — LE DECOR QUI CHANGE DE COULEUR
+    // =====================================================================
+
+    /// <summary>
+    /// Le corps partage de <see cref="EntityHandler_00462860"/> (sous-zones 5 a 8) et de
+    /// <see cref="EntityHandler_00463640"/> (sous-zones 4 et 9). Absent de <c>Blaze.c</c> ;
+    /// 91 instructions, et le desassemblage des deux est <b>identique</b> une fois la relocalisation
+    /// retiree : pas meme une planche pour les distinguer.
+    ///
+    /// <para>
+    /// <b>Un decor qui respire en couleur.</b> Sa phase <c>+0x12</c> part d'un des quinze
+    /// seiziemes de tour tires au hasard (<c>rand() % 15</c>, decale de 8 bits) et avance de
+    /// <c>0x100</c> par image — un battement en seize images.
+    /// </para>
+    /// <para>
+    /// <b>Les trois echelles suivent le sinus</b>, un seizieme autour de <c>0x1000</c>, et les trois
+    /// canaux de teinte aussi — mais chacun avec <b>son propre grain de bruit</b> : le rouge part de
+    /// <c>0x76</c> plus un tirage sur <c>0x28</c>, le vert et le bleu de <c>0x80</c> moins un tirage
+    /// sur <c>0x1e</c>, et les trois retranchent <c>sinus / 128</c>. La teinte n'est donc jamais deux
+    /// fois la meme, meme a phase egale.
+    /// </para>
+    /// <para>
+    /// <b>L'arithmetique est celle d'un octet</b>, avec ses debordements : le binaire fait
+    /// <c>sub dl,bl</c> et <c>add dl,76h</c> sur des registres de huit bits, et les trois canaux sont
+    /// ensuite assembles en un seul dword ecrit d'un coup dans <c>+0x38</c> — l'octet
+    /// <c>+0x3b</c> est donc remis a zero au passage.
+    /// </para>
+    /// <para>
+    /// Le binaire appelle la table de sinus <b>six fois</b> avec la meme phase ; c'est une lecture
+    /// pure, sans effet sur le tirage, et elle est faite une fois ici par valeur distincte.
+    /// </para>
+    /// </summary>
+    private static void TickColourBreathingDecor(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);          // Ghidra: FUN_00460fc0
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)((CrtRand() % 0x0f) << 8);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x12) += 0x100;
+
+        int wave = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12));   // Ghidra: call 00545a1c
+        byte damp = (byte)(wave >> 7);                                    // Ghidra: `sar ebx,7`
+
+        byte red = (byte)((byte)(CrtRand() % 0x28) - damp + 0x76);
+        byte green = (byte)((byte)(0x80 - (byte)(CrtRand() % 0x1e)) - damp);
+        byte blue = (byte)((byte)(0x80 - (byte)(CrtRand() % 0x1e)) - damp);
+
+        // Ghidra: `mov dh,al ; mov dl,bl ; shl edx,8 ; or edx,eax ; mov [esi+38h],edx` — les trois
+        // canaux sont ranges en un seul dword, ce qui remet +0x3b a zero.
+        *(uint*)(e + 0x38) = ((uint)blue << 16) | ((uint)green << 8) | red;
+
+        short scale = (short)((wave >> 4) + 0x1000);
+        *(short*)(e + 0x28) = scale;
+        *(short*)(e + 0x2a) = scale;
+        *(short*)(e + 0x2c) = scale;
+
+        if (*(short*)(e + 0x12) >= 0x1000) *(short*)(e + 0x12) -= 0x1000;
+    }
+
+    /// <summary>Ghidra: <c>0x00462860</c> — le decor qui respire en couleur, sous-zones 5 a 8,
+    /// creneau <b>30</b> du bloc <c>0x00558128</c>.</summary>
+    private static void EntityHandler_00462860(byte* e) => TickColourBreathingDecor(e);
+
+    /// <summary>Ghidra: <c>0x00463640</c> — le meme, sous-zones 4 et 9. Le compilateur a emis deux
+    /// fois le meme corps ; le desassemblage STRICT est identique.</summary>
+    private static void EntityHandler_00463640(byte* e) => TickColourBreathingDecor(e);
 }

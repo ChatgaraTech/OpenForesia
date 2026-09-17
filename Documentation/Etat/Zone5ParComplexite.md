@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**160 gestionnaires, 87 implementes, 73 a ecrire.**
+**160 gestionnaires, 92 implementes, 68 a ecrire.**
 
 ## Le compte
 
@@ -19,8 +19,8 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 33 | 32 | 2187 |
-| **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 29 | 29 | 4055 |
+| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 29 | 29 | 1945 |
+| **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 28 | 28 | 3930 |
 | **D — gros** | pas d'IA, > 250 instr. | 11 | 10 | 3782 |
 
 La colonne « instructions » additionne une seule fois chaque forme ; la categorie A n'en compte
@@ -29,7 +29,7 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## B — simple (33)
+## B — simple (29)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
@@ -53,21 +53,17 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x0041F520` | 5,6,7,8 | 0056B2C8 | 69 | 0 | non |  |  |
 | `0x00425410` | 4,9 | 0056B2C8 | 71 | 0 | oui |  |  |
 | `0x00460990` | 0,1,2,3 | 0056ADC8 | 72 | 0 | non |  |  |
-| `0x00422C60` | 4,9 | 0056B2C8 | 74 | 0 | non | (+1 ailleurs) |  |
-| `0x00422D50` | 4,9 | 0056B0C8 | 77 | 0 | non |  |  |
 | `0x00460C00` | 0,1,2,3 | 0056ADC8 | 81 | 0 | oui |  |  |
 | `0x0041D090` | 0,1,2,3 | 0056B2C8 | 83 | 0 | non |  |  |
 | `0x00461260` | 5,6,7,8 | 0056ADC8 | 83 | 0 | non |  |  |
 | `0x004249D0` | 4,9 | 0056B2C8 | 85 | 0 | non |  |  |
-| `0x00462860` | 5,6,7,8 | 0056ADC8 | 91 | 0 | non | `0x00463640` |  |
-| `0x00463640` | 4,9 | 0056ADC8 | 91 | 0 | non | `0x00462860` |  |
 | `0x00461390` | 5,6,7,8 | 0056ADC8 | 93 | 0 | oui |  |  |
 | `0x004606C0` | 0,1,2,3 | 0056ADC8 | 95 | 0 | oui |  |  |
 | `0x00461980` | 5,6,7,8 | 0056ADC8 | 95 | 0 | oui |  |  |
 | `0x00461100` | 5,6,7,8 | 0056ADC8 | 96 | 0 | oui |  |  |
 | `0x00460AC0` | 0,1,2,3 | 0056ADC8 | 99 | 0 | non |  |  |
 
-## C — moyen (29)
+## C — moyen (28)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
@@ -83,7 +79,6 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x0041C740` | 0,1,2,3 | 0056B0C8 | 123 | 0 | non |  |  |
 | `0x00460800` | 0,1,2,3 | 0056ADC8 | 124 | 0 | non |  |  |
 | `0x00461F50` | 5,6,7,8 | 0056ADC8 | 124 | 0 | non |  |  |
-| `0x00422330` | 4,9 | 0056B0C8 | 125 | 0 | non |  |  |
 | `0x00424800` | 4,9 | 0056B1C8 | 125 | 0 | oui |  |  |
 | `0x00461730` | 5,6,7,8 | 0056ADC8 | 129 | 0 | oui |  |  |
 | `0x00461C60` | 5,6,7,8 | 0056ADC8 | 130 | 0 | non |  |  |
