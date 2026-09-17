@@ -1390,6 +1390,12 @@ public static unsafe partial class Blaze
             case 0x0040A670: EntityHandler_0040A670(record); return;
             case 0x0040AAC0: EntityHandler_0040AAC0(record); return;   // Cutscene/MineScenes.cs
             case 0x0040B8D0: EntityHandler_0040B8D0(record); return;   // Cutscene/MineScenes.cs
+
+            // Les deux scenes de la montagne du dragon de feu, bloc prive 0x005713f0 — l'envol du
+            // Dragon rouge (0xc2), qui fait naitre la scene muette (0xff). Cutscene/FireMountainScenes.cs.
+            case 0x0040E3A0: EntityHandler_0040E3A0(record); return;
+            case 0x0040D930: EntityHandler_0040D930(record); return;
+
             case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
             case 0x0040B900: EntityHandler_0040B900(record); return;
             case 0x0040C820: EntityHandler_0040C820(record); return;

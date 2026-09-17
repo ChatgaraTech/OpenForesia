@@ -13,10 +13,9 @@
 //
 // NE SONT PAS ICI, bien que la zone les porte :
 //   - ses DEUX SCENES CINEMA, 0x0040D930 et 0x0040E3A0, qui se partagent le bloc prive
-//     0x005713f0 / 0x00571418 — voir `Cutscene/MineScenes.cs`, qui signale que cet enregistrement
-//     chevauche une frontiere d'allocation. Elles attendent un fichier et une decision ;
-//   - ses six DECORS de la table 0x0056adc8, qui vont dans `Handlers/FireMountain.cs` ;
-//   - son BOSS, le Dragon rouge 0x00499140.
+//     0x005713f0 / 0x00571418 : `Cutscene/FireMountainScenes.cs` ;
+//   - ses six DECORS de la table 0x0056adc8 : `Handlers/FireMountain.cs` ;
+//   - son BOSS, le Dragon rouge 0x00499140 : `Ai/FireMountain/RedDragon.cs`.
 //
 // LES SIX PLANCHES DE LA ZONE, ET LEURS BORNES. La region .data 0x0054f620..0x0054f6d8 est une
 // grille reguliere d'enregistrements de huit octets. Les bornes ci-dessous ne sont pas des

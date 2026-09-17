@@ -22369,3 +22369,70 @@ trois mots `L8..L10` servent de sauvegarde de position pendant la projection.
 
 **Les deux scènes cinéma** `0x0040D930` et `0x0040E3A0`, et elles seules. Elles attendent la décision
 de plan mémoire sur `0x00571400..0x0057141f` (voir la section « suite » du même jour).
+
+## 2026-09-17 (suite 4) — les deux scènes de la montagne, et la zone 2 complète
+
+Demandé : écrire les deux scènes cinéma mises de côté, en présentant d'abord la décision de plan
+mémoire. **Décision prise par l'utilisateur : étendre `s_ViewParams_00571270`.** Les deux corps sont
+écrits dans `Cutscene/FireMountainScenes.cs` (fichier annoncé en fin de lot 1). **La zone 2 est
+complète : 42 / 42**, cinquième ensemble entier après les tables statiques, l'auberge, la forêt et la
+mine.
+
+### La décision de plan mémoire
+
+L'enregistrement `0x005713f0` court de `0x005713f0` à `0x0057141f`. `s_ViewParams_00571270` s'arrêtait
+à `0x00571400` — la fin du contenu de `.data` dans le fichier, pas une frontière de structure : les
+enregistrements de scène se suivent au pas de `0x30` par-dessus (`0x005713c0` la mine, `0x005713f0`
+la montagne, `0x00571420` la forêt). **Trois options présentées** : étendre `ViewParams` à `0x1b0`,
+fusionner `0x00571270..0x00571a38` en une seule arène, ou différer. **Retenue : l'extension.**
+
+- `0x1b0` s'arrête exactement sur `0x00571420`, la base de `s_ForestSceneBlock_00571420` : ni trou ni
+  recouvrement.
+- Zéro fidèle des deux côtés : `0x005713c0..0x005713ff` relevés nuls dans le fichier, `0x00571400..`
+  dans la queue non initialisée.
+- Aucun code écrit avant ce jour n'adressait `0x00571400..0x0057141f` : aucun comportement existant ne
+  change. `MemoryLayoutTests` rend les mêmes deux rouges qu'avant (39 champs simples, 1 débordement),
+  au même compte.
+
+### Le recouvrement latent trouvé en chemin — non corrigé
+
+`s_ForestSceneBlock_00571420` (`0x248` octets) et `s_EntityState_00571500` **se recouvrent sur
+`0x00571500..0x00571667`**. Relevé des accès au 2026-09-17 : `EntityState` n'adresse que
+`0x00571528`, `0x00571540` et `0x00571570` ; `ForestSceneField` que `0x0057150c`, `0x00571510`,
+`0x00571580`, `0x005715a8`, `0x005715b0` et `0x00571640..0x00571660`. **Aucune adresse n'est vue par
+les deux noms**, donc rien ne casse aujourd'hui — mais la première qui le sera donnera une valeur qui
+reste à zéro. `MemoryLayoutTests` ne le voit pas : le test 2 ne regarde que les allocations dont la
+**base** tombe dans une arène, et celle-ci commence avant. Le correctif naturel est l'option écartée
+aujourd'hui — une seule arène `0x00571270..0x00571a38` —, à mener comme changement délibéré, et le test
+2 gagnerait à comparer les **étendues**, pas les bases.
+
+### `0x0040D930` — la scène muette, recompilée
+
+Décompilée dans `Blaze.c`. Le désassemblage, cibles de saut et adresses du bloc masquées, ne diffère
+de `0x00410820` (`TickForestCutscene`) qu'en quatre endroits : le bloc (`0x005713f0`), `+0x98 = 0x3d`
+avec le sous-type du semis propagé en constante `0xfd`, le fondu de sortie (autres registres, mêmes
+valeurs), et **la dernière image** — mode de caméra, caméra rendue, mode une troisième fois, puis le
+**script 0** (la forêt : mode, script 1, caméra rendue). Écrite comme corps propre, avec les aides de
+`ForestScenes.cs`.
+
+### `0x0040E3A0` — l'envol du Dragon rouge
+
+Au désassembleur, 183 instructions, aucun jumeau. La cousine de `TickPartySummon` et de
+`0x0040B940` : elle saisit la dernière entité de scène dont `+0x0c` vaut **0** — l'espèce 0 de la
+sous-zone, le Dragon rouge —, la pose en 1, lit son clip au `+4` de la table d'animation, et range son
+`+0x09` en `0x00571418`. Puis : battements `0x1f`/`0x21` aux images 15 et 34 du clip (celles du pas du
+dragon) et leur écho deux images plus tard qui fait baisser le volume ; montée de `0x5000` par image,
+pause de 21 images, départ à `0x3000` et cinq fois plus vite dans le cap ; au-delà de cent images,
+**naissance de `0xff`** — le créneau `0x3f` du même bloc, c'est-à-dire `0x0040D930` —, extinction,
+`0x2004000` sur le dragon et le dragon rejeté à `(20000, y, 20000)`. Le clip boucle.
+
+**La chaîne est donc lue dans le binaire** : l'envol fait naître la scène muette, et lui passe par
+`0x00571418` le membre à cadrer. Qui fait naître l'envol (`0xc2`) n'est pas établi.
+
+Même défaut de 1998 que ses cousines : sans cible, le clip est un mot de pile jamais écrit ; il est
+laissé nul ici.
+
+### Vérifications
+
+- `dotnet build` : 0 erreur. `dotnet test OpenForesia.Tests` : 2 rouges, les mêmes, aux mêmes comptes.
+- `GestionnairesEntites.md` régénéré : zone 2 à **42 / 42**. Aucun des deux n'était marqué testé.

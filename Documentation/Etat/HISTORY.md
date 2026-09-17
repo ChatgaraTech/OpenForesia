@@ -20,6 +20,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   feu et Meteores. Zone 2 : 39 -> 40 sur 42, il ne reste que les deux scenes cinema
 - doc : `ModelAnchorRow_00535770` rejoint `SceneEntityAiCommon.cs` — le Dragon rouge est son second
   appelant ; le projete du Troll est reemploye tel quel
+- feat : **la montagne du dragon de feu est complete — 42 / 42**, cinquieme ensemble entier ; ses deux
+  scenes cinema sont ecrites (`Cutscene/FireMountainScenes.cs`) : l'envol du Dragon rouge `0x0040E3A0`
+  fait naitre la scene muette `0x0040D930`, qui lance le script 0
+- fix : `s_ViewParams_00571270` etendue de `0x190` a `0x1b0` — l'enregistrement de scene `0x005713f0`
+  tombait sur un trou au-dela de `0x00571400` ; la borne est desormais celle du bloc de la foret
+- doc : recouvrement latent releve entre `s_ForestSceneBlock_00571420` et `s_EntityState_00571500`
+  (`0x00571500..0x00571667`) — aucune adresse partagee aujourd'hui, invisible pour `MemoryLayoutTests`
 
 ## 2026-09-17 (suite)
 

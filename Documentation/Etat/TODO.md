@@ -13,15 +13,18 @@ déplacement.
 
 ---
 
-# QUATRE ENSEMBLES COMPLETS — ET LA MINE EN EST (2026-09-17)
+# CINQ ENSEMBLES COMPLETS — LA MINE ET LA MONTAGNE EN SONT (2026-09-17)
 
 Les trois tables gravées dans `.data` — `0x00551c30`, `0x00551f30`, `0x00552230`, **274 sur 274** —,
 la **zone 0, l’auberge, 48 sur 48**, la **forêt (zone 3, 136 sur 136)** bouclée le 2026-09-02, et
-depuis le 2026-09-17 la **mine (zone 1, 157 sur 157)** : quatre ensembles entièrement implémentés.
-Le détail est dans `REVERSE_STATUS.md`, les sections du 2026-09-15 et du 2026-09-17.
+depuis le 2026-09-17 la **mine (zone 1, 157 sur 157)** et la **montagne du dragon de feu (zone 2,
+42 sur 42)** : cinq ensembles entièrement implémentés. Le détail est dans `REVERSE_STATUS.md`, les
+sections du 2026-09-15 et du 2026-09-17.
 
 La mine s’est fermée sur sept routines d’intelligence, dont **une n’a demandé aucune ligne** :
-l’Ours gris `0x0048DB30` est le Grizzly, 660 instructions identiques sur 660.
+l’Ours gris `0x0048DB30` est le Grizzly, 660 instructions identiques sur 660. La montagne s’est fermée
+sur le Dragon rouge et sur ses deux scènes — l’envol du dragon fait naître la scène muette —, au prix
+d’une décision de plan mémoire : `ViewParams` étendue à `0x1b0`.
 
 Les tables statiques ne sont pas une zone : **ce qui est écrit là vaut dans les onze**. C'est le
 socle commun, et il est entier.
@@ -32,8 +35,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **327** |
-| implémentés, jamais appelés | **298** |
-| à transcrire | **805** |
+| implémentés, jamais appelés | **300** |
+| à transcrire | **803** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -41,7 +44,7 @@ socle commun, et il est entier.
 | 0 | **L'auberge** | **48 / 48** |
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
-| 2 | La montagne du dragon de feu | 40 / 42 |
+| 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | La vieille tour | 28 / 176 |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
 | 6 | Le château de l’immortel | 26 / 170 |
@@ -71,15 +74,17 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
-3. **La zone 2 (40 / 42) et la zone 7 (18 / 35)**, les deux plus petites de celles qui restent.
-   La zone 2 n'a plus que **deux** gestionnaires : les deux scenes cinema (`0x0040D930`,
-   `0x0040E3A0`), qui attendent une **decision de plan memoire** sur le trou
-   `0x00571400..0x0057141f`. Tout le reste est ecrit depuis le 2026-09-17 — les six decors
-   (`Handlers/FireMountain.cs`), le trio des tables de sous-zone (`Effects/MiscMarkers.cs`) et le
-   **Dragon rouge** (`Ai/FireMountain/RedDragon.cs`).
+3. **La zone 7 (18 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
+   2026-09-17.
 4. Le reste. La grotte scellée (349) et la vieille tour (176) sont les deux gros morceaux.
 
-**La dette d’épreuve, elle, grandit** : 298 corps écrits n’ont jamais tourné, et **la mine y entre
+**Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et
+`s_EntityState_00571500` se recouvrent sur `0x00571500..0x00571667`. Aucune adresse n'est vue par les
+deux noms au 2026-09-17, donc rien ne casse — mais `MemoryLayoutTests` ne le detecte pas. Le correctif
+naturel est une seule arene `0x00571270..0x00571a38` (voir `REVERSE_STATUS.md`, 2026-09-17 suite 4),
+a mener comme changement delibere.
+
+**La dette d’épreuve, elle, grandit** : 300 corps écrits n’ont jamais tourné, et **la mine y entre
 entière** — ses 157 créneaux sont implémentés et pas un seul n’a été vu passer. Quatre ensembles
 sont complets, et seuls 12 créneaux de l’auberge et 37 de la forêt ont été exercés. Une séance de
 test sur l’auberge ou sur la mine se lirait désormais comme une mesure, pas comme une chasse au

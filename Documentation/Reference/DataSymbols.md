@@ -1094,7 +1094,7 @@ symbole qui tombe dans l'une de ces étendues **ne doit jamais recevoir sa propr
 | Base | Taille | Nom | Accesseur | Fichier |
 |---|---|---|---|---|
 | `0x00551640` | `0x200` | EntityParams | `EntityParam(va)` | `Memory/GameMemory.cs` |
-| `0x00571270` | `0x190` | ViewParams | `ViewParams(va)` | `Memory/GameMemory.cs` |
+| `0x00571270` | `0x1b0` | ViewParams | `ViewParams(va)` | `Memory/GameMemory.cs` |
 | `0x00571500` | `0x538` | EntityState | `EntityState(va)` / `EntityStateBytes(va)` | `Memory/GameMemory.cs` |
 | `0x005de030` | `0x084` | CameraBlock | `Camera(va)` | `Memory/GameMemory.cs` |
 | `0x005de100` | `0x410` | ItemMenuArena | `ItemMenuState(va)` / `ItemMenuBytes(va)` | `Memory/GameMemory.cs` |
@@ -1109,6 +1109,20 @@ symbole qui tombe dans l'une de ces étendues **ne doit jamais recevoir sa propr
 chargement : `s_WorldFlags_005de02c` (`Memory/GameMemory.cs`, quatre octets juste avant
 `CameraBlock`), `s_CutsceneActive_00604b78` et `s_SavedViewMode_00604b7c` (`Engine/SaveData.cs`,
 immédiatement après `s_CardWriteEventHandles_00604b68` qui s'arrête pile à `0x00604b78`).
+
+**Mis à jour le 2026-09-17** : `ViewParams` étendue de `0x190` à `0x1b0`. L'enregistrement de scène
+`0x005713f0` (montagne du dragon de feu) court jusqu'à `0x0057141f`, par-dessus la borne
+`0x00571400` qui n'est que la fin du contenu de `.data` dans le fichier. La nouvelle borne,
+`0x00571420`, est exactement la base de `s_ForestSceneBlock_00571420` (`Effects/ForestParticlesB.cs`,
+`0x248` octets, hors de cette table parce que déclaré comme allocation propre).
+
+**Recouvrement latent relevé le même jour, non corrigé** : `s_ForestSceneBlock_00571420` couvre
+`0x00571420..0x00571667` et `EntityState` commence à `0x00571500` — les deux allocations se
+recouvrent sur `0x00571500..0x00571667`. Au 2026-09-17, aucune adresse de cette plage n'est
+adressée par les deux noms (`EntityState` : `0x00571528`, `0x00571540`, `0x00571570` ;
+`ForestSceneField` : `0x0057150c`, `0x00571510`, `0x00571580`, `0x005715a8`, `0x005715b0`,
+`0x00571640..0x00571660`), donc rien ne casse. `MemoryLayoutTests` ne le détecte pas : il compare les
+symboles voisins, pas une allocation propre à une arène qui commence à l'intérieur de son étendue.
 
 **Avertissement sur cette table** : elle ne recense que les étendues d'arène. Un `static int`
 ordinaire dont l'adresse tombe dans l'une d'elles n'y apparaît pas — c'est le cas de

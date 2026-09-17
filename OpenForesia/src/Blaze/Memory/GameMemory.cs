@@ -335,9 +335,25 @@ internal sealed unsafe class GameMemory
     // recoit des valeurs de camera (0x005de068/06c/070) en deux exemplaires paralleles
     // (0x00571300.. et 0x00571370..), et porte des bits de drapeau a 0x0057139c. Le detail de ses
     // 69 champs n'est pas trace.
+    //
+    // ETENDUE DE 0x190 A 0x1B0 LE 2026-09-17 — la borne 0x00571400 ne tenait pas cote code.
+    // Les enregistrements de scene cinema se suivent au pas de 0x30 PAR-DESSUS elle : 0x005713c0
+    // (la mine, deja adressee ici), 0x005713f0 (la montagne du dragon de feu), puis 0x00571420 ou
+    // commence s_ForestSceneBlock_00571420 (Effects/ForestParticlesB.cs). L'enregistrement
+    // 0x005713f0 court jusqu'a 0x0057141f : borne a 0x190, il tombait a cheval sur cette
+    // allocation et sur un trou qu'aucune ne couvrait. 0x1b0 s'arrete EXACTEMENT sur la base du bloc
+    // de la foret — ni trou, ni recouvrement. La fidelite du zero tient des deux cotes : les
+    // 0x10 octets sous 0x00571400 sont nuls dans le fichier (verifie), les 0x20 au-dessus sont dans
+    // la queue non initialisee de .data. Rien d'ecrit avant ce jour n'adressait 0x00571400..
+    // 0x0057141f : l'extension ne change aucun comportement existant.
+    //
+    // A SAVOIR, ET NON TRAITE ICI : s_ForestSceneBlock_00571420 (0x248 octets) et
+    // s_EntityState_00571500 se RECOUVRENT sur 0x00571500..0x00571667. Au 2026-09-17 aucune adresse
+    // n'est lue par les deux noms, donc rien ne casse, mais c'est le defaut d'aliasing en attente —
+    // et MemoryLayoutTests ne le voit pas. Voir REVERSE_STATUS.md, 2026-09-17 (suite 4).
     // =====================================================================
     internal const int ViewParamsBase = 0x00571270;
-    internal readonly byte* s_ViewParams_00571270 = (byte*)NativeMemory.AllocZeroed(0x190);
+    internal readonly byte* s_ViewParams_00571270 = (byte*)NativeMemory.AllocZeroed(0x1b0);
     internal byte* ViewParams(int va) => s_ViewParams_00571270 + (va - ViewParamsBase);
 
     // ---------------------------------------------------------------------------------------

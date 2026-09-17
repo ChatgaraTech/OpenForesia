@@ -35,9 +35,10 @@ public static unsafe partial class Blaze
     // deux noms a la meme adresse — le defaut d'aliasing que MemoryLayoutTests.cs surveille.
     // L'enregistrement de la mine passe donc par Mem.ViewParams, adresse par adresse.
     //
-    // Consequence a garder en tete : l'enregistrement 0x005713f0 CHEVAUCHE la borne (0x005713f0..
-    // 0x0057141f) et tomberait a cheval sur deux allocations, avec un trou de 0x00571400 a
-    // 0x0057141f qu'aucune allocation C# ne couvre. Aucun code transcrit ne l'emploie aujourd'hui.
+    // L'enregistrement suivant, 0x005713f0 (0x005713f0..0x0057141f), chevauchait la borne
+    // 0x00571400 et tombait sur un trou qu'aucune allocation C# ne couvrait. Resolu le 2026-09-17,
+    // quand les scenes de la montagne du dragon de feu en ont eu besoin : s_ViewParams_00571270 a
+    // ete etendue a 0x1b0 et s'arrete exactement sur 0x00571420. Voir `FireMountainScenes.cs`.
     // =====================================================================
 
     /// <summary>
