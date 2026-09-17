@@ -172,6 +172,9 @@ public static unsafe partial class Blaze
             // La meme routine dans la mine abandonnee, sous-zones 0 a 2 : seule la table de sorts change
             // d'adresse, 0x00552880, dont les quatre rangees sont celles de 0x00552868.
             case 0x00488210: TickSceneEntityAi_00488210(record); return;
+            // Et le Goblin-sorcier de la vieille tour, sous-zones 0, 1, 2 et 4 : sa propre table,
+            // 0x00552a38, aux memes octets. Ai/Inn.cs.
+            case 0x004A6A00: TickSceneEntityAi_004A6A00(record); return;
 
             // LA BELLE BLEUE — sous-type 7 de la mine (sous-zones 5 a 8), et deux copies au Labyrinthe
             // des morts. Ai/Mine/BlueBeauty.cs.
@@ -438,6 +441,13 @@ public static unsafe partial class Blaze
             case 0x004736D0: EntityHandler_004736D0((uint*)record); return;
             case 0x00473A70: EntityHandler_00473A70((uint*)record); return;
             case 0x00450BD0: EntityHandler_00450BD0((uint*)record); return;
+
+            // Les trois copies de 0x00450BD0 dans la vieille tour, une par bloc de sous-zones :
+            // desassemblage STRICT identique, sans aucune donnee propre.
+            case 0x0045B6C0:
+            case 0x0045CE50:
+            case 0x0045F290:
+                EntityHandler_00450BD0((uint*)record); return;
             case 0x004746C0: EntityHandler_004746C0((uint*)record); return;
             case 0x004508B0: EntityHandler_004508B0((uint*)record); return;
             case 0x004502E0: EntityHandler_004502E0((uint*)record); return;
@@ -1188,6 +1198,10 @@ public static unsafe partial class Blaze
             // fonctions. Le compilateur a emis le meme corps deux fois.
             case 0x0049F0C0: TickSceneEntityAi_0049D030(record); return;
 
+            // L'Homme-lezard et le Lezard rouge de la vieille tour, sous-zones 0, 1, 2 et 4 : le
+            // desassemblage STRICT est identique a celui de 0x0049D030, table de sauts comprise.
+            case 0x004AA070: TickSceneEntityAi_0049D030(record); return;
+
             // Le sous-type 8 — le GOBLIN, la premiere bete qui ATTAQUE DE LOIN : son second geste
             // ne croise aucun gabarit, il fait naitre le projectile 0x49 et rend la main.
             // Et deux copies : la mine (sous-zones 0 a 2) et la vieille tour (0, 1, 2, 4). Leur texte
@@ -1395,6 +1409,28 @@ public static unsafe partial class Blaze
             // Dragon rouge (0xc2), qui fait naitre la scene muette (0xff). Cutscene/FireMountainScenes.cs.
             case 0x0040E3A0: EntityHandler_0040E3A0(record); return;
             case 0x0040D930: EntityHandler_0040D930(record); return;
+
+            // ====================================================================================
+            // LA VIEILLE TOUR, categorie A — des corps deja ecrits, a la planche ou au bloc pres.
+            // Effects/OldTowerParticles.cs et Cutscene/OldTowerScenes.cs.
+            // ====================================================================================
+
+            // Les bulles (le corps de 0x004079E0) et les grains (celui de 0x004070F0), un par bloc.
+            case 0x00417A20: EntityHandler_00417A20(record); return;
+            case 0x00419630: EntityHandler_00419630(record); return;
+            case 0x0041C650: EntityHandler_0041C650(record); return;
+            case 0x00417930: EntityHandler_00417930(record); return;
+            case 0x00419540: EntityHandler_00419540(record); return;
+            case 0x0041C560: EntityHandler_0041C560(record); return;
+
+            // La fumee violette et les deux amorces de la gerbe a cinq phases.
+            case 0x004186A0: EntityHandler_004186A0(record); return;
+            case 0x0041A560: EntityHandler_0041A560(record); return;
+            case 0x0041B420: EntityHandler_0041B420(record); return;
+
+            // Les deux amorces de la scene parlante, bloc prive 0x00571480.
+            case 0x00419F40: EntityHandler_00419F40(record); return;
+            case 0x0041B3F0: EntityHandler_0041B3F0(record); return;
 
             case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
             case 0x0040B900: EntityHandler_0040B900(record); return;

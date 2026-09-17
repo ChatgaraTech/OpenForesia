@@ -68,3 +68,12 @@ EntityHandler_004380C0 | 0x00550F30 | +0x00 | EntityHandler_004380C0,TickOpening
 # Verifiees le 2026-09-17 — montagne du dragon de feu.
 EntityHandler_0040DDE0 | 0x0054F630 | +0x00 | EntityHandler_0040DDE0 | bd12efd1ae16 | pose +0x40 = 0 a la naissance des variantes 0, 1 et 4, les seules qui installent cette planche, et ne le rebouge jamais ; la variante 2, qui fait tourner +0x40, installe l'AUTRE planche (0x0054F640, trois enregistrements pour trois valeurs)
 EntityHandler_0040EAF0 | 0x0054F658 | +0x00 | EntityHandler_0040EAF0,SpawnStatusEffectEntity_0047AC40 | e534e0a55a5c | n'ecrit jamais +0x40 ; sous-type lu a 0x56b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40, qui le met a 0 — meme preuve que EntityHandler_004079E0
+
+# ---- la vieille tour, categorie A (2026-09-17) : les memes corps que la mine, memes preuves
+EntityHandler_004186A0 | 0x0054FBA8 | +0x00 | EntityHandler_004186A0,TickPurpleSmoke | 3625d407e1d6 | trois ecritures de +0x40 dans TickPurpleSmoke, toutes a 0 (FUN_004186b0 = FUN_00408050 a la planche pres)
+EntityHandler_0041A560 | 0x0054FD08 | +0x00 | EntityHandler_0041A560,TickFivePhaseBurst | 49c71677d4e4 | TickFivePhaseBurst n'ecrit que des zeros dans +0x40 (cinq ecritures)
+EntityHandler_0041B420 | 0x0054FD08 | +0x00 | EntityHandler_0041B420,TickFivePhaseBurst | 3065c5fdce76 | idem
+EntityHandler_0041A560 | 0x0054FE80 | +0x00 | EntityHandler_0041A560,TickFivePhaseBurst | 49c71677d4e4 | role 2 : le corps pose 0 dans la meme passe
+EntityHandler_0041B420 | 0x0054FE80 | +0x08 | EntityHandler_0041B420,TickFivePhaseBurst | 3065c5fdce76 | idem, second enregistrement
+EntityHandler_0041A560/TickFivePhaseBurst | 0x0054FD08 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | role 3 : pose atlas + 8 et 0
+EntityHandler_0041B420/TickFivePhaseBurst | 0x0054FD08 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | idem

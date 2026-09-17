@@ -22436,3 +22436,57 @@ laissé nul ici.
 
 - `dotnet build` : 0 erreur. `dotnet test OpenForesia.Tests` : 2 rouges, les mêmes, aux mêmes comptes.
 - `GestionnairesEntites.md` régénéré : zone 2 à **42 / 42**. Aucun des deux n'était marqué testé.
+
+## 2026-09-17 (suite 5) — la vieille tour triée par complexité, et sa catégorie A écrite
+
+Demandé : identifier tous les gestionnaires de la vieille tour par complexité, pour prendre les
+simples d'abord, puis écrire la première catégorie. **La zone 4 passe de 28 à 44 sur 176.**
+
+### Le tri — `census-zone-complexity.sh`, `Zone4ParComplexite.md`
+
+Un script générateur, réutilisable pour toute zone, mesure chaque gestionnaire à écrire sur son
+désassemblage (instructions jusqu'au dernier `ret`, tables de sauts, appelées inconnues du C#,
+jumeaux LOOSE) et le range en cinq catégories. Au départ : **A 16** déjà écrits ailleurs, **B 57**
+simples, **C 55** moyens, **D 4** gros, **E 16** routines d'intelligence (15 formes, 14 235
+instructions — plus que tout le reste réuni).
+
+**Une amorce se juge à son appelée.** Le script compare l'appelée des amorces de moins de seize
+instructions à celles des amorces déjà écrites. C'est ainsi que quatre amorces de dix instructions
+se sont révélées pointer sur des corps de 372 et 514 instructions… déjà écrits pour la mine et la
+forêt, à la base du bloc près.
+
+### La catégorie A — seize corps, aucune lecture neuve
+
+| gestionnaires | modèle | ce qui diffère | où |
+|---|---|---|---|
+| `0x0045B6C0` `0x0045CE50` `0x0045F290` | `0x00450BD0` | rien | répartiteur |
+| `0x004AA070` (Homme-lézard, Lézard rouge) | `0x0049D030` | rien — sa table de sauts est relogée à l'identique (5 entrées) | répartiteur |
+| `0x004A6A00` (Goblin-sorcier) | `0x00487260` | la table de sorts, `0x00552a38` — 4 rangées, mêmes octets | `Ai/Inn.cs` |
+| `0x00417A20` `0x00419630` `0x0041C650` | `0x004079E0`, la bulle | la planche : `0x0054fa58` / `fc00` / `fd58` | `Effects/OldTowerParticles.cs` |
+| `0x00417930` `0x00419540` `0x0041C560` | `0x004070F0`, le grain | la planche : `+8` des mêmes plages | idem |
+| `0x004186A0` | `0x00408040`, la fumée violette | la planche `0x0054fba8` | idem |
+| `0x0041A560` `0x0041B420` | `0x0040B1B0` / `0x0040B900`, la gerbe | `+0x98`, `+0x96`, planches `0x0054fd08` et `0x0054fe80` | idem |
+| `0x00419F40` `0x0041B3F0` | `0x0040AAC0` / `0x0040B8D0`, la scène parlante | `+0x98`, la piste 0x10, le bloc `0x00571480` | `Cutscene/OldTowerScenes.cs` |
+
+**Le diff STRICT ne voit pas le contenu des tables de sauts** : il masque la cible de
+`jmp dword [reg*4+table]`. Pour les deux IA copiées, les tables ont donc été relues dans le binaire :
+toutes leurs entrées sont décalées exactement de l'écart entre les deux fonctions.
+
+**`TickSpellcasterAi_00487260` prend maintenant sa table en paramètre** — elle était un indice dans
+`s_Spells_00552868`, qui ne pouvait pas désigner une table à une autre adresse.
+
+**Les planches de la tour viennent du balayage du binaire entier.** Les trois plages bulle + grain
+(`0x0054fa58`, `0x0054fc00`, `0x0054fd58`) sont modélisées d'un seul tenant sur cinq enregistrements :
+leur base est aussi installée par d'autres corps de la tour pas encore écrits (`0x00416EE0`,
+`0x00417CA0`, `0x00417E10`, `0x00418290` pour la première). Les octets diffèrent de ceux de la mine
+(page `0x03` au lieu de `0x02` pour la bulle).
+
+**Le bloc privé de la scène parlante, `0x00571480`, est le troisième enregistrement du domaine
+`s_ForestSceneBlock_00571420`** : aucune décision de plan mémoire.
+
+### Vérifications
+
+- `dotnet build` : 0 erreur.
+- `check-descriptors.sh` : les six planches neuves relues conformes ; sept marges courtes, les
+  jumelles exactes des sites prouvés de la mine, prouvées et scellées — **48 / 48**.
+- `GestionnairesEntites.md` et `Zone4ParComplexite.md` régénérés. Aucun des seize n'était marqué testé.

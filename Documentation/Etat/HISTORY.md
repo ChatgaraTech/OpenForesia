@@ -27,6 +27,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   tombait sur un trou au-dela de `0x00571400` ; la borne est desormais celle du bloc de la foret
 - doc : recouvrement latent releve entre `s_ForestSceneBlock_00571420` et `s_EntityState_00571500`
   (`0x00571500..0x00571667`) — aucune adresse partagee aujourd'hui, invisible pour `MemoryLayoutTests`
+- feat : `census-zone-complexity.sh` et `Zone4ParComplexite.md` — les 148 gestionnaires a ecrire de la
+  vieille tour tries par complexite : 16 deja ecrits ailleurs, 57 simples, 55 moyens, 4 gros, 16 IA
+- doc : quatre amorces de la tour (`0x00419F40`, `0x0041B3F0`, `0x0041A560`, `0x0041B420`) appellent
+  les corps des scenes parlantes deja ecrites — une amorce se juge a son appelee, pas a sa taille
+- feat : **la vieille tour, categorie A — seize corps deja ecrits ailleurs** : bulles, grains, fumee
+  violette et gerbe (`Effects/OldTowerParticles.cs`, nouveau), scene parlante
+  (`Cutscene/OldTowerScenes.cs`, nouveau), Goblin-sorcier, Homme-lezard et trois decors. Zone 4 :
+  28 -> 44 sur 176
+- feat : `TickSpellcasterAi_00487260` prend sa table de sorts en parametre (celle de la tour est a
+  `0x00552a38`)
+- doc : six planches de la tour bornees par balayage du binaire ; sept marges courtes prouvees et
+  scellees (48 / 48)
 
 ## 2026-09-17 (suite)
 

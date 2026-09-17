@@ -269,7 +269,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void TickSceneEntityAi_00487260(byte* record)
-        => TickSpellcasterAi_00487260(record, 0);
+        => TickSpellcasterAi_00487260(record, s_Spells_00552868, 0);
 
     /// <summary>
     /// Ghidra: <c>0x00488210</c> — <b>la meme routine dans la mine abandonnee</b>, sous-zones 0 a 2,
@@ -293,14 +293,42 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void TickSceneEntityAi_00488210(byte* record)
-        => TickSpellcasterAi_00487260(record, 4 * 3);   // Ghidra: &DAT_00552880
+        => TickSpellcasterAi_00487260(record, s_Spells_00552868, 4 * 3);   // Ghidra: &DAT_00552880
 
     /// <summary>
-    /// Le corps partage par <see cref="TickSceneEntityAi_00487260"/> (auberge) et
-    /// <see cref="TickSceneEntityAi_00488210"/> (mine). <paramref name="spellBase"/> est la
-    /// position, dans <see cref="s_Spells_00552868"/>, du debut de la table que lit l'emission.
+    /// Ghidra: <c>0x00552a38</c> — <b>la table de sorts du Goblin-sorcier de la vieille tour</b>,
+    /// quatre rangees de trois, relevees dans <c>.data</c>. <b>Memes octets</b> que les quatre
+    /// premieres rangees de <see cref="s_Spells_00552868"/>, a une autre adresse. Bornee en bas par
+    /// la table du Behemoth (<c>0x00552a30</c>, trois mots) et ses deux octets nuls ; les
+    /// quatre rangees finissent a <c>0x00552a50</c>.
     /// </summary>
-    private static void TickSpellcasterAi_00487260(byte* record, int spellBase)
+    private static readonly ushort[] s_Spells_00552A38 =
+    [
+        0x0000, 0x0003, 0x0008,   // 0x00552a38
+        0x000a, 0x0010, 0x020c,   // 0x00552a3e
+        0x0003, 0x0008, 0x0200,   // 0x00552a44
+        0x0008, 0x0200, 0x0101,   // 0x00552a4a
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>0x004a6a00</c> — <b>le Goblin-sorcier de la vieille tour</b>, creneau 1 de la
+    /// table <c>0x0056ad48</c> dans les sous-zones 0, 1, 2 et 4 (<c>especes.csv</c> x
+    /// <c>modeles.csv</c>). Absente de <c>Blaze.c</c>. Le desassemblage STRICT ne differe de celui de
+    /// <see cref="TickSceneEntityAi_00487260"/> que par une ligne :
+    /// <c>mov ax,[ecx*2+552A38h]</c> au lieu de <c>552868h</c> — la meme mecanique d'incantation,
+    /// sur <see cref="s_Spells_00552A38"/>.
+    /// </summary>
+    private static void TickSceneEntityAi_004A6A00(byte* record)
+        => TickSpellcasterAi_00487260(record, s_Spells_00552A38, 0);   // Ghidra: &DAT_00552a38
+
+    /// <summary>
+    /// Le corps partage par <see cref="TickSceneEntityAi_00487260"/> (auberge),
+    /// <see cref="TickSceneEntityAi_00488210"/> (mine) et <see cref="TickSceneEntityAi_004A6A00"/>
+    /// (vieille tour). <paramref name="spells"/> est la table de sorts lue par l'emission, et
+    /// <paramref name="spellBase"/> la position de son debut dans cette table — la mine lit la
+    /// seconde moitie de <see cref="s_Spells_00552868"/>, la tour sa propre table.
+    /// </summary>
+    private static void TickSpellcasterAi_00487260(byte* record, ushort[] spells, int spellBase)
     {
         byte* e = record;
 
@@ -324,7 +352,7 @@ public static unsafe partial class Blaze
         int timid = 0x40 - boldness;
 
         // ---------------------------------------------------------------- 1. decider
-        DecideSceneEntityAction_00487260(e, probe, boldness, distance, heading, speed, traits, spellBase);
+        DecideSceneEntityAction_00487260(e, probe, boldness, distance, heading, speed, traits, spells, spellBase);
 
         // ---------------------------------------------------------------- 2. appliquer
         IntegrateSceneEntityMotion_00488160(e, speed);
@@ -351,7 +379,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void DecideSceneEntityAction_00487260(
-        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits, int spellBase)
+        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits, ushort[] spells, int spellBase)
     {
         if (speed == 0) return;
 
@@ -411,7 +439,7 @@ public static unsafe partial class Blaze
         // ================================================================ l'incantation
         if ((flags & 0x804) != 0)
         {
-            AdvanceIncantation_00487260(e, boldness, heading, traits, flags, spellBase);
+            AdvanceIncantation_00487260(e, boldness, heading, traits, flags, spells, spellBase);
             return;
         }
 
@@ -538,7 +566,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void AdvanceIncantation_00487260(
-        byte* e, int boldness, int heading, uint traits, uint flags, int spellBase)
+        byte* e, int boldness, int heading, uint traits, uint flags, ushort[] spells, int spellBase)
     {
         if ((traits & 0x400003e8) != 0)
         {
@@ -593,7 +621,7 @@ public static unsafe partial class Blaze
                 // ne borne PAS la rangee : un +0x14 au-dela de 7 y lirait la donnee qui suit. Ici
                 // la lecture leve, ce qui est la bonne facon de decouvrir qu'une carte pose une
                 // valeur inattendue — les huit rangees couvrent tout ce que la donnee declare.
-                ushort sheet = s_Spells_00552868[spellBase + *(short*)(e + 0x14) * 3 + CrtRand() % 3];
+                ushort sheet = spells[spellBase + *(short*)(e + 0x14) * 3 + CrtRand() % 3];
                 *(ushort*)(e + 6) = sheet;
 
                 // Ghidra: `mov edx,[edx+9Ch] ; mov ecx,[edx+ecx*4] ; mov dl,[ecx+eax+13h]` — le

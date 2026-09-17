@@ -35,8 +35,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **327** |
-| implémentés, jamais appelés | **300** |
-| à transcrire | **803** |
+| implémentés, jamais appelés | **316** |
+| à transcrire | **787** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -45,7 +45,7 @@ socle commun, et il est entier.
 | 3 | **La forêt** | **136 / 136** |
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
-| 4 | La vieille tour | 28 / 176 |
+| 4 | La vieille tour | 44 / 176 |
 | 5 | Le Labyrinthe des morts | 23 / 160 |
 | 6 | Le château de l’immortel | 26 / 170 |
 | 7 | Les ruines souterraines | 18 / 35 |
@@ -76,7 +76,10 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (18 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. Le reste. La grotte scellée (349) et la vieille tour (176) sont les deux gros morceaux.
+4. **La vieille tour (44 / 176), en cours, par complexité** — `Zone4ParComplexite.md` (régénérer
+   avec `sh OpenForesia.Tools/census-zone-complexity.sh 4`). La catégorie A est écrite ; restent
+   **B, 57 simples** (47 lectures), puis C (55), D (4), et les 16 routines d'intelligence en dernier.
+5. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et
 `s_EntityState_00571500` se recouvrent sur `0x00571500..0x00571667`. Aucune adresse n'est vue par les
@@ -84,7 +87,7 @@ deux noms au 2026-09-17, donc rien ne casse — mais `MemoryLayoutTests` ne le d
 naturel est une seule arene `0x00571270..0x00571a38` (voir `REVERSE_STATUS.md`, 2026-09-17 suite 4),
 a mener comme changement delibere.
 
-**La dette d’épreuve, elle, grandit** : 300 corps écrits n’ont jamais tourné, et **la mine y entre
+**La dette d’épreuve, elle, grandit** : 316 corps écrits n’ont jamais tourné, et **la mine y entre
 entière** — ses 157 créneaux sont implémentés et pas un seul n’a été vu passer. Quatre ensembles
 sont complets, et seuls 12 créneaux de l’auberge et 37 de la forêt ont été exercés. Une séance de
 test sur l’auberge ou sur la mine se lirait désormais comme une mesure, pas comme une chasse au
