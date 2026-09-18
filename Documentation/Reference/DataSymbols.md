@@ -3263,3 +3263,17 @@ L'adresse tombe dans la plage que `s_PanelSelection_005e9060` ouvre (`Memory/Gam
 atteinte par `Mem.s_PanelSelection_005e9060[2]`.
 TODO(REVERSE) : qui écrit `0x005e9062`, et pourquoi la moitié basse du labyrinthe l'emploie là où sa
 moitié haute emploie `0x005de538`.
+
+## `0x005e9065` — l'autorisation du mécanisme à usage unique du labyrinthe (2026-09-18)
+
+`FUN_004633C0` (labyrinthe des morts, créneau 29 du bloc `0x005587a8`, sous-zones 4 et 9) rend la
+main sans rien faire tant que cet octet vaut zéro — avant même de regarder quel membre le touche. Il
+tombe dans la plage que `s_PanelSelection_005e9060` ouvre (`Memory/GameMemory.cs`), et est atteint
+par `Mem.s_PanelSelection_005e9060[5]`.
+
+Il est **voisin de `0x005e9062`**, relevé le même jour au lot 6, sans qu'on sache encore si les deux
+appartiennent à la même structure : l'un sert d'index d'emplacement, l'autre de drapeau
+d'autorisation.
+TODO(REVERSE) : qui écrit `0x005e9065`, et ce que la plage `0x005e9060`..`0x005e909f` porte
+réellement — quatre offsets y ont déjà un rôle établi (`+0x02`, `+0x05`, `+0x0a`, `+0x3f`) sans que
+la structure d'ensemble soit lue.

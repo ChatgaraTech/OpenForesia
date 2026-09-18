@@ -23959,3 +23959,99 @@ zéro.
 
 **Aucun des douze corps n'a été exercé en jeu** : la colonne `teste` de la zone 5 reste à zéro sur
 les 160. Trente-deux dettes en deux jours.
+
+## 2026-09-18 (suite 3) — Labyrinthe des morts, lot 7 : la catégorie C du décor
+
+Zone 5 : **124 → 133 sur 160**. La catégorie C passe de 25 à **16** corps, et il ne reste **plus un
+seul `0x0056adc8` en C** — la table du décor de sous-zone n'a plus que son unique « D »
+(`0x00462A80`, 536 instructions).
+
+Les neuf corps « moyens » de cette table, pris ensemble pour garder le lot dans deux fichiers. Un
+seul est dans `Blaze.c` ; les huit autres sont relevés au désassembleur, dumps sous
+`Legacy/Raw/Blaze/`.
+
+| adresse | bloc / créneau | sous-zones | `Blaze.c` | ce qu'il fait | fichier |
+|---|---|---|---|---|---|
+| `0x00460430` | `0x00557aa8` / 44 | 0-3 | **non** | le porte-voix des quatorze points | `Labyrinth.cs` |
+| `0x00460D60` | `0x00557aa8` / 15 | 0-3 | **non** | tourne, puis fait trembler la carte | `Labyrinth.cs` |
+| `0x00461C60` | `0x00558128` / 9 | 5-8 | **non** | le pilon : descend, écrase, remonte | `Labyrinth.cs` |
+| `0x00463150` | `0x005587a8` / 33 | 4,9 | **non** | le chemin en huit temps | `Labyrinth.cs` |
+| `0x00462330` | `0x00558128` / 16 | 5-8 | **non** | tombe du plafond et rebondit | `Labyrinth.cs` |
+| `0x004625B0` | `0x00558128` / 17 | 5-8 | **non** | sa sœur, garde de caméra inverse | `Labyrinth.cs` |
+| `0x00461730` | `0x00558128` / 40 | 5-8 | oui | guette, file, lance un script | `LabyrinthMecanismes.cs` |
+| `0x004633C0` | `0x005587a8` / 29 | 4,9 | **non** | fige la partie pour dire une phrase | `LabyrinthMecanismes.cs` |
+| `0x004614B0` | `0x00558128` / 42 | 5-8 | **non** | roule et pousse ce qu'il rencontre | `LabyrinthMecanismes.cs` |
+
+### Le piège du lot : `+0x10` n'est pas toujours l'état
+
+`0x00462330` et `0x004625B0` dispatchent sur **`+0x16`**, et leur `+0x10` est la **vitesse de
+rotation** de `+0x34` — il part de `0x10` et gagne `0x20` à chaque rebond, si bien que la chose
+tourne de plus en plus vite. Lire `+0x10` comme un état, ce que fait tout le reste de la zone,
+donnerait un corps qui n'a aucun sens : l'état 0x10, puis 0x30, puis 0x50…
+
+C'est le second corps du Labyrinthe à détourner ces champs, après `0x00461F50` (lot 5) qui empaquette
+quatre compteurs dans `+0x10` et `+0x16`. La leçon est la même : **vérifier sur quoi le corps
+dispatche avant de nommer les champs**, plutôt que présumer la convention.
+
+Conséquence transcrite telle quelle : quand la fin de course remet `+0x10` à zéro, la garde de
+naissance (`+0x10 == 0`) est à nouveau vraie et **le cycle entier recommence**. Les deux ne meurent
+jamais.
+
+### Deux sœurs qui se partagent la carte
+
+`0x00462330` (créneau 16) et `0x004625B0` (créneau 17) sont deux blocs voisins et deux corps très
+proches — même découpage, même rebond sur `|sinus| * 256`, même fin de course. Ils diffèrent par six
+choses, et **la première est un garde inversé** :
+
+```
+0x00462330 :  test eax,0FFFFF000h ; jl   → ne tourne que si 0x005de068 tronqué est POSITIF
+0x004625B0 :  test eax,0FFFFF000h ; jg   → ne tourne que si il est NÉGATIF ou nul
+```
+
+Les deux ne tournent donc **jamais ensemble** : la caméra décide laquelle est active. Les cinq
+autres différences (position de départ tirée au hasard, rotation à rebours, neuf effets `0x31`
+contre quinze `0x30`, dérive négative, seuil `0xaa` contre `0xf5`) sont trop nombreuses pour un
+partage ; seule la fin de course, identique à un seuil près, est factorisée dans
+`TickStomperFade`.
+
+### `0x00463150` écrit l'état de ses deux voisines
+
+`mov [eax+0ACh],cx` et `mov [eax+148h],cx` avec `cx = 2`. Les entités de scène font `0x9c` octets,
+donc `0xac = 0x9c + 0x10` et `0x148 = 2 × 0x9c + 0x10` : ce sont les champs `+0x10` des **deux
+entités qui la suivent dans la table**. C'est le même adressage relatif que les portes à deux
+battants de la mine (`SecondLeafAngle`), ici à trois éléments. La reconstruction l'écrit sous cette
+forme (`e + 0x9c + 0x10`) plutôt qu'en offsets bruts, pour que l'intention reste lisible.
+
+### Trois relevés plus petits
+
+- **`0x00461C60` joue un son en clair.** Le choc du pilon est l'identifiant `0x0b` écrit en dur, à
+  hauteur `0x653` — le seul son du décor du labyrinthe qui ne passe pas par `ZoneSound`.
+- **`0x00460430` est la troisième copie de la même source sonore ambiante.** Son `0x17` de la
+  sous-zone, hauteur `0x700`, période de vingt et une images : exactement `0x004603C0` (lot 1), et
+  `0x00461260` (lot 5) porte la même chose à `0x500` sur vingt images. Les trois sont le même objet
+  posé dans trois blocs, avec des jeux de points de naissance différents — 0, 3 et 14.
+- **`0x00460D60` publie deux secousses à la cinquantième image**, l'une à zéro immédiatement écrasée
+  par celle du tirage. Sa valeur de retour est jetée ; transcrit tel quel.
+
+### `0x005e9065`, l'autorisation de `0x004633C0`
+
+Tant que cet octet vaut zéro, le mécanisme à usage unique de la sous-zone 4/9 rend la main sans
+rien faire — avant même de regarder qui le touche. Il est voisin de `0x005e9062`, relevé au lot 6, et
+on ne sait pas encore si les deux appartiennent à la même structure. Consigné dans `DataSymbols.md`
+avec un `TODO(REVERSE)`.
+
+Ce corps est aussi le seul de la zone à **figer la partie** (`FreezeAllEntities` /
+`UnfreezeAllEntities`) autour de son animation, et il partage avec `0x0041D860` (lot 6) une
+particularité : il affiche un libellé **sans** poser `0x005e99c8` à `0x40`, contrairement à tous les
+autres panneaux de la carte du monde relevés jusqu'ici. Deux corps du même labyrinthe, la même
+omission.
+
+### Reste à faire dans la zone
+
+27 corps : **16 en C** (2 098 instructions) et 11 en D (3 782, 10 lectures). Les seize « C »
+restants sont sur `0056B0C8` (7), `0056B2C8` (3), `0056B1C8` (2) et `0056AEC8` (2 verbes de script),
+plus `0x004443D0` — sept instructions et une appelée inconnue, `0x00545A28`. Le prochain lot repart
+donc dans `Effects/`, `Combat/` et `WorldMapScript.cs`.
+
+**Aucun des neuf corps n'a été exercé en jeu.** `teste` reste à zéro sur les 160 de la zone :
+quarante et une dettes en deux jours.

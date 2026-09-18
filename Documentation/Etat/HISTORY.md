@@ -6,6 +6,22 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le lot 7 du Labyrinthe des morts — la catégorie C du décor est vide** : zone 5, 124 → 133
+  sur 160. C passe de 25 à 16 corps, et la table `0x0056adc8` n'a plus que son unique « D »
+- feat : six corps de décor — le porte-voix des **quatorze** points fixes, ce qui tourne puis fait
+  trembler la carte cinquante images, le pilon qui descend / écrase / remonte, le chemin en huit
+  temps qui entraîne ses deux voisines, et les **deux sœurs** qui tombent du plafond et rebondissent
+- feat : trois corps dans `Handlers/LabyrinthMecanismes.cs` — celle qui guette le groupe puis file
+  en ligne droite et lance un script, le mécanisme à usage unique qui fige la partie pour dire une
+  phrase, et ce qui roule dans un couloir en **poussant** les membres qu'il rencontre
+- doc : `0x00463150` écrit l'état de ses **deux voisines** par `+0xac` et `+0x148` — le même
+  adressage relatif que les portes à deux battants de la mine, ici à trois
+- doc : `0x00462330` et `0x004625B0` ont des **gardes de caméra inverses** (`jl` contre `jg` sur
+  `0x005de068`) : les deux sœurs ne tournent jamais ensemble, elles se partagent la carte
+- doc : dans ces deux corps, **`+0x10` n'est pas l'état** mais la vitesse de rotation, qui gagne
+  `0x20` à chaque rebond ; l'état est `+0x16`
+- doc : `0x005e9065` relevé dans `DataSymbols.md` — l'autorisation de `0x004633C0`, voisine de
+  `0x005e9062` sans qu'on sache encore si les deux appartiennent à la même structure
 - feat : **le lot 6 du Labyrinthe des morts — la catégorie B est VIDE** : zone 5, 112 → 124 sur 160.
   Il ne reste que du « moyen » (25) et du « gros » (11, 10 lectures)
 - feat : neuf effets dans `Effects/LabyrinthParticles.cs` — celle qui se transforme et meurt en une

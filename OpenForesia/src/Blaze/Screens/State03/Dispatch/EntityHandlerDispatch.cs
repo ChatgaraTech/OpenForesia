@@ -1468,6 +1468,20 @@ public static unsafe partial class Blaze
             case 0x0041D860: EntityHandler_0041D860(record); return;   // la secousse qui finit sur une phrase
             case 0x00420860: EntityHandler_00420860(record); return;   // la meme, qui finit sur un script
 
+            // LE LABYRINTHE DES MORTS, lot 7 : la categorie C du DECOR (table 0x0056adc8), videe.
+            // Handlers/Labyrinth.cs, sauf les trois dernieres.
+            case 0x00460430: EntityHandler_00460430(record); return;   // le porte-voix des quatorze points
+            case 0x00460D60: EntityHandler_00460D60(record); return;   // ce qui tourne puis fait trembler la carte
+            case 0x00461C60: EntityHandler_00461C60(record); return;   // le pilon qui descend, ecrase et remonte
+            case 0x00463150: EntityHandler_00463150(record); return;   // le chemin en huit temps, et ses deux voisines
+            case 0x00462330: EntityHandler_00462330(record); return;   // ce qui tombe du plafond et rebondit
+            case 0x004625B0: EntityHandler_004625B0(record); return;   // sa sœur, au garde de camera inverse
+
+            // ... et les trois qui prennent le groupe en charge. Handlers/LabyrinthMecanismes.cs.
+            case 0x00461730: EntityHandler_00461730(record); return;   // elle guette, file, et lance un script
+            case 0x004633C0: EntityHandler_004633C0(record); return;   // le mecanisme a usage unique qui fige la partie
+            case 0x004614B0: EntityHandler_004614B0(record); return;   // ce qui roule et pousse ce qu'il rencontre
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98
