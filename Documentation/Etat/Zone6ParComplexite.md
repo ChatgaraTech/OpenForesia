@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**170 gestionnaires, 159 implementes, 11 a ecrire.**
+**170 gestionnaires, 161 implementes, 9 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,7 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **E — intelligence** | une routine de bete | 11 | 11 | 11585 |
+| **E — intelligence** | une routine de bete | 9 | 9 | 9717 |
 
 La colonne « instructions » additionne une seule fois chaque forme ; la categorie A n'en compte
 aucune, puisque son corps est deja ecrit.
@@ -27,14 +27,12 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## E — intelligence (11)
+## E — intelligence (9)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
 | `0x004DACC0` | 5,11 | 0056AD48 | 682 | 2 | non |  | **Nocturio** |
 | `0x004C9E00` | 0,1,2,3,4 | 0056AD48 | 861 | 1 | non |  | **Fantôme** |
-| `0x004CC650` | 0,1,2,3,4 | 0056AD48 | 934 | 1 | non |  | **Loup, Loup gris** |
-| `0x004D4E10` | 5,11 | 0056AD48 | 934 | 1 | non | (+2 ailleurs) | **Loup gris** |
 | `0x004D80D0` | 5,11 | 0056AD48 | 1075 | 1 | non |  | **Tigre** |
 | `0x004D7200` | 5,11 | 0056AD48 | 1106 | 1 | non |  | **Loup-garou** |
 | `0x004D2FC0` | 6,7,8,9,10 | 0056AD48 | 1122 | 1 | non |  | **Chimère** |

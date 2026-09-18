@@ -1049,6 +1049,14 @@ après lui avoir donné sa cible et son mode. Un seul vampire à la fois : il re
 entité de scène est déjà en posture 12. **Premier ennemi relevé dont l'attaque passe par un
 gestionnaire d'effet de zone** : la bête et son nuage se lisent ensemble.
 
+### Le Loup et le Loup gris (2026-09-18)
+
+`0x004CC650` (sous-zones 0 à 4), `0x004D4E10` (5 et 11), et `0x004DDE30` aux **ruines
+souterraines** — un seul corps, `Ai/ImmortalCastle/Wolf.cs`. Une lecture neuve sur la charpente
+commune : il **vire sans s'arrêter**, **court** (poussée `0xc000`), attaque à l'image 10 par le coup
+**ou par le bond** (posture 6, bit d'attaque posé en l'air), et **tourne autour de sa cible** sous
+100 unités. Sa queue porte un test d'espèce : la marche n'est gardée au heurt que pour l'espèce 11.
+
 ## Trois espèces, un comportement : la Crapouille, la Gargouille, le Crapaud (2026-09-15)
 
 `0x004ACC20` (vieille tour), `0x004CE120` (château), `0x004DB610` (ruines souterraines) : trois

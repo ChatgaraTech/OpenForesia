@@ -24752,3 +24752,32 @@ posture 12. Il renonce aussi au-delà de 1000 unités de sa cible.
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés ; `Comportement.md` complété
   (section du château).
 - **Non exercé en jeu.**
+
+## 2026-09-18 (suite 16) — Zone 6, palier 5 : le Loup et le Loup gris
+
+**159 sur 170 devient 161 sur 170**, et les ruines souterraines gagnent un corps (`0x004DDE30`,
+20 sur 35). `0x004CC650` (château, sous-zones 0 à 4), `0x004D4E10` (5 et 11) et `0x004DDE30`
+(ruines, 0 à 2) sont un seul corps : l'allocation des registres de l'intégration, les adresses de
+table et le chercheur de proie (trois copies de `FUN_004a1020`) sont les seuls écarts. Absents de
+`Blaze.c`, 934 instructions ; relevé `Legacy/Raw/Blaze/ImmortalCastle/FUN_004CC650.asm`. Nouveau
+fichier, proposé et accepté : `Ai/ImmortalCastle/Wolf.cs`.
+
+**Une lecture neuve** : aucune routine écrite n'en est proche (la plus proche à 537 lignes sur 960).
+Ce qui le distingue est dans le bandeau du fichier ; les points qui méritent d'être retenus :
+
+- **la queue de la famille, avec un test d'espèce** : au heurt de mur au sol, la marche en cours
+  (posture 7) n'est gardée que si l'octet `+0x0c` vaut 11 (`cmp byte [esi+0Ch],0Bh`) — un loup
+  d'une autre espèce la reprend à zéro à chaque heurt. Ajouté à `SettleSceneEntityOnGroundAndWalls`
+  comme paramètre facultatif `keepWalkingSpecies`, avec le `dropAttackOnAirborneHit` du Sanguinaire
+  que le Loup porte aussi ;
+- **le bond est une attaque** : la posture 6 pose le bit 2 à l'image 10, et la sonde de coup
+  balaie à chaque image passée la dixième tant que ce bit est posé — en l'air compris. Elle ne
+  frappe qu'à la dixième ;
+- **la replanification de près est écrasée sous 100 unités** par un louvoiement court (5 à 9
+  images, sans la timidité) : au contact, le loup tourne autour de sa cible.
+
+### Contrôles
+
+- `dotnet build OpenForesia.sln` : 0 erreur.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
+- **Non exercé en jeu.**

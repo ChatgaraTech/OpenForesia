@@ -1013,9 +1013,14 @@ public static unsafe partial class Blaze
     /// ajoute un <c>and al,0FDh</c> a la sortie du heurt en l'air : le bit d'attaque tombe avec la
     /// chute. Une instruction, et lui seul de la famille la porte — d'ou le parametre plutot qu'un
     /// second corps.</param>
+    /// <param name="keepWalkingSpecies">Le Loup (<c>0x004cc650</c>, <c>0x004ccd93</c>) ne garde sa
+    /// marche en cours — la posture 7 deja prise — que si l'octet d'espece <c>+0x0c</c> vaut ce
+    /// nombre, 11 : <c>cmp cl,7 ; jne ; cmp byte [esi+0Ch],0Bh ; je</c>. Toute autre espece sur ce
+    /// corps retire sa marche a chaque heurt. <c>-1</c> (le defaut) : le test d'espece n'existe
+    /// pas.</param>
     private static void SettleSceneEntityOnGroundAndWalls(
         byte* e, int boldness, uint contactMask, SceneEntityPlacement* keep,
-        bool dropAttackOnAirborneHit = false)
+        bool dropAttackOnAirborneHit = false, int keepWalkingSpecies = -1)
     {
         uint contact = *(uint*)(e + 0x90) & 0xfffffcff;
         *(uint*)(e + 0x90) = contact;
@@ -1058,7 +1063,9 @@ public static unsafe partial class Blaze
             return;
         }
 
-        if (e[0x42] != 7)
+        bool keepWalking = e[0x42] == 7 && (keepWalkingSpecies < 0 || e[0x0c] == keepWalkingSpecies);
+
+        if (!keepWalking)
         {
             e[0x42] = 7;
             *(ushort*)(e + 0x12) = 0;

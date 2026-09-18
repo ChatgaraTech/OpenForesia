@@ -1239,6 +1239,13 @@ public static unsafe partial class Blaze
             case 0x004D8F70:
                 TickSceneEntityAi_004CF3A0(record); return;
 
+            // LE LOUP ET LE LOUP GRIS (chateau, sous-zones 0 a 4 ; 5 et 11) — et la meme routine aux
+            // ruines souterraines, sous-zones 0 a 2. Ai/ImmortalCastle/Wolf.cs.
+            case 0x004CC650:
+            case 0x004D4E10:
+            case 0x004DDE30:
+                TickSceneEntityAi_004CC650(record); return;
+
             // LE CHEVALIER NOIR (vieille tour, sous-zones 5, 6, 8, 10) ET LE PLATINUM (3, 7, 9) — le Pourpre
             // preux retouche : poussee 0x7000, coups speciaux au quart, charge refusee a la variante 0.
             // Ai/OldTower/BlackKnight.cs.

@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le Loup et le Loup gris** (`0x004CC650`, `0x004D4E10`) et leur copie des ruines
+  souterraines (`0x004DDE30`) — une lecture neuve : il court, vire sans s'arrêter, attaque en
+  bondissant et tourne autour de sa cible. Zone 6 : 161 sur 170 ; nouveau fichier
+  `Ai/ImmortalCastle/Wolf.cs`
+- feat : `SettleSceneEntityOnGroundAndWalls` prend un test d'espèce facultatif au heurt de mur
 - feat : **le Vampire et le Petit vampire** (`0x004CF3A0`, `0x004D8F70`) — la charpente du Rampant,
   et une posture 12 qui invoque le nuage à effet 32 du château. Zone 6 : 159 sur 170 ; nouveau
   fichier `Ai/ImmortalCastle/Vampire.cs`
