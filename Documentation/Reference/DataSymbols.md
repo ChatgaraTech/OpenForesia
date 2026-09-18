@@ -3251,6 +3251,25 @@ que `+0x3c` et ne le réécrit jamais.
 sous-zones déjà relevée sur les neuf paires miroir du lot 2 ; ici les deux corps qui les installent
 ne sont pas identiques pour autant — voir `REVERSE_STATUS.md`, section du 2026-09-18 (lot 6).
 
+## `0x00550388`, `0x00550410`, `0x00550430`, `0x005526a8` — les quatre plages du lot 8 du labyrinthe (2026-09-18)
+
+Relevées en vidant la catégorie C de la zone 5. Trois planches de sprite et le script de sons
+différés que la section précédente annonçait « d'un autre site » ; octets transcrits dans
+`Screens/State03/Effects/LabyrinthParticles.cs`.
+
+| VA | quoi | longueur | ce qui borne |
+|---|---|---:|---|
+| `0x00550388` | planche de `FUN_004250B0` | 8 × 8 o. | **double** : `+0x40` meurt à 8, et `0x005503c8` change de forme (`08 08 07 07`) |
+| `0x00550410` | planche de `FUN_00424AE0` | 4 × 8 o. | `+0x40` meurt à 4, et `0x00550430` est la planche suivante |
+| `0x00550430` | planche de `FUN_00424C70` | 1 × 8 o. | `0x00550438`, déjà relevée ; marge de 1 **prouvée et scellée** (`+0x40` posé à zéro avec `+0x3c`, jamais réécrit) |
+| `0x005526a8` | script de sons différés de `FUN_00483F30` | 3 × 8 o. | délai nul au troisième ; `0x005526c0` commence le script suivant |
+
+**La région `0x00550388`..`0x00550440` est maintenant lue d'un seul tenant**, à l'exception de
+`0x005503c8`..`0x00550410` : neuf enregistrements en deux formes — quatre tuiles `0x07` de la
+page `0x10`, puis cinq tuiles `0x18`/`0x17` de la page `0x03` — qu'aucun corps écrit ne désigne
+encore. Les huit tuiles de `0x00550388` sont les mêmes que les huit de queue de `0x0054ff80` —
+une même rangée de la page `0x08`, adressée depuis deux planches.
+
 ## `0x005e9062` — un numéro d'emplacement, et ce n'est pas `0x005de538` (2026-09-18)
 
 `FUN_0041D860` (labyrinthe, sous-zones 0 à 3) désigne le locuteur d'une boîte de dialogue par

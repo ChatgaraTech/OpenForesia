@@ -100,3 +100,6 @@ EntityHandler_00425500 | 0x00550350 | +0x00 | EntityHandler_00425500,TickLabyrin
 
 # ---- Ajoute le 2026-09-18 (lot 6 du labyrinthe)
 EntityHandler_004249D0 | 0x00550350 | +0x08 | EntityHandler_004249D0 | 66d6c3652fe1 | pose 0 a la naissance dans la meme branche que +0x3c, et ne reecrit jamais +0x40 (releve FUN_004249D0.asm jusqu au ret 0x00424add)
+
+# ---- Ajoute le 2026-09-18 (lot 8 du labyrinthe)
+EntityHandler_00424C70 | 0x00550430 | +0x00 | EntityHandler_00424C70 | ad30a4eef84d | pose 0 a la naissance dans la meme branche que +0x3c, et ne reecrit jamais +0x40 (Blaze.c FUN_00424c70, releve jusqu au ret)

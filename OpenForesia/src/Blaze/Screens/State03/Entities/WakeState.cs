@@ -136,11 +136,11 @@ public static unsafe partial class Blaze
     /// se rendent eux-memes, <b>toute autre valeur rend 0</b>. Deux codegens pour une meme regle,
     /// ce qui la confirme.</para>
     ///
-    /// <para><b>Ce que fait <c>Ordinal_762</c> n'est pas etabli.</b> Elle est declaree et deja
-    /// appelee par <c>SetupMenuScreen</c> sur ce meme bloc ; sa decompilation dans
-    /// <c>winsys3d.c</c> tombe sur un corps partage par des dizaines d'ordinaux, ce qui ne dit rien
-    /// de plus. Les deux champs decomptes sont donc transcrits pour ce qu'ils sont — deux
-    /// <c>short</c> du bloc — sans leur preter un role.</para>
+    /// <para><b><c>Ordinal_762</c> ne fait rien dans cette version de la DLL</b> — etabli le
+    /// 2026-09-18 : son export tombe sur <c>0x00a02870</c>, un <c>ret 4</c> nu que partagent des
+    /// dizaines d'ordinaux (<c>Documentation/DLL/winsys3d.md</c>). Publier le bloc est donc sans
+    /// effet ; le decompte, lui, compte, puisque ce corps le relit. Les deux champs sont transcrits
+    /// pour ce qu'ils sont — deux <c>short</c> du bloc — sans leur preter un role.</para>
     /// </summary>
     private static void EntityHandler_00404E50(uint* entity)
     {

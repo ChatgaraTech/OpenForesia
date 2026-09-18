@@ -483,7 +483,7 @@ trivial stub bodies in the shipped `winsys3d.dll`. Confirmed by reading each stu
 | Stub body | Behavior | Ordinals observed folded onto it (subset actually used from `Blaze.c`) |
 |---|---|---|
 | `FUN_00a02490` | `return 0;` | 116, 129, 64, and many more unused ones |
-| `FUN_00a02870` | `return;` | 712, 720, 63, and many more unused ones |
+| `FUN_00a02870` | `return;` (`ret 4`) | 712, 720, 63, **762**, and many more unused ones |
 | `FUN_00a02e20` | `return 0;` | 45, 104, 110, 681, 766, 768, 769, 770, and many more unused ones |
 | `FUN_00a02e40` | `return;` | 767, and many more unused ones |
 | `FUN_00a26470` | `return;` | 138, 771, 66, and many more unused ones |
@@ -491,6 +491,15 @@ trivial stub bodies in the shipped `winsys3d.dll`. Confirmed by reading each stu
 These are declared as real P/Invokes in `Blaze.cs` and called for real (not specially
 skipped) — "does nothing" is the DLL's actual, confirmed behavior at these ordinals, not
 an assumption.
+
+**Ordinal 762 added 2026-09-18.** Its export resolves to `0x00a02870` — the bare `c2 04 00`,
+one stack argument. Every Blaze-side caller hands it the screen block `0x00566c48` after
+writing `0xc0` into its head (`SetupMenuScreen`, `MusicFadeStep_0041AF50`,
+`EntityHandler_00404E50`, and the labyrinth script verb `AreaVerb_004443D0`): **publishing
+that block does nothing in this build**. The countdown on its `+0x10`/`+0x12` shorts still
+matters, because Blaze itself reads them back. And since the stub leaves EAX alone, a caller
+that returns straight after it (as `AreaVerb_004443D0` does) returns whatever EAX held before
+the call.
 
 #### A stub still has an arity, and getting it wrong leaks the stack (2026-08-21)
 

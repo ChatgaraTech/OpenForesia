@@ -1482,6 +1482,26 @@ public static unsafe partial class Blaze
             case 0x004633C0: EntityHandler_004633C0(record); return;   // le mecanisme a usage unique qui fige la partie
             case 0x004614B0: EntityHandler_004614B0(record); return;   // ce qui roule et pousse ce qu'il rencontre
 
+            // LE LABYRINTHE DES MORTS, lot 8 : la categorie C des tables d'effets. Les deux verbes
+            // du lot (0x004443D0, 0x004444A0) vivent dans WorldMapScript.cs, aiguilles par
+            // ScriptOpAreaVerb. Effects/LabyrinthParticles.cs.
+            case 0x0041D1A0: EntityHandler_0041D1A0(record); return;   // le nuage cale sur son porteur, effet 32
+            case 0x0041F600: EntityHandler_0041F600(record); return;   //   le meme, sans tester le porteur
+            case 0x00421C10: EntityHandler_00421C10(record); return;   //   le meme, avec le repli et le garde
+            case 0x0041FCA0: EntityHandler_0041FCA0(record); return;   //   le stroboscope de la foret ou le nuage, selon +0x9a
+            case 0x0041C740: EntityHandler_0041C740(record); return;   // la mort du porteur, sans porteur : on joue quand meme
+            case 0x0041EC20: EntityHandler_0041EC20(record); return;   //   la meme, porteur lu sans test
+            case 0x00424C70: EntityHandler_00424C70(record); return;   // l'escarbille qui retombe et palit
+            case 0x00424AE0: EntityHandler_00424AE0(record); return;   // la ligne oblique qui s'eloigne en montant
+            case 0x00424800: EntityHandler_00424800(record); return;   // le modele qui s'ouvre en tournant, tient, s'eteint
+            case 0x004250B0: EntityHandler_004250B0(record); return;   // la fumee qui derive, tourbillonne et gonfle
+            case 0x00483F30: EntityHandler_00483F30(record); return;   // naissance, ou tireur qui vise le porteur de son porteur
+            case 0x00483CC0: EntityHandler_00483CC0(record); return;   // le tourbillon qui grandit, avance et frappe
+
+            // ... et une scene, Cutscene/LabyrinthScenes.cs.
+            case 0x00424DC0: EntityHandler_00424DC0(record); return;   // cent images sur l'espece 1, puis le script du membre
+            case 0x004244D0: EntityHandler_004244D0(record); return;   // deux cents images sur l'espece 2, fond rouge
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98

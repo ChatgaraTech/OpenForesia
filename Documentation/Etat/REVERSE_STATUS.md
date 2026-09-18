@@ -24055,3 +24055,89 @@ donc dans `Effects/`, `Combat/` et `WorldMapScript.cs`.
 
 **Aucun des neuf corps n'a été exercé en jeu.** `teste` reste à zéro sur les 160 de la zone :
 quarante et une dettes en deux jours.
+
+## 2026-09-18 (suite 4) — Labyrinthe des morts, lot 8 : la catégorie C est vide
+
+Zone 5 : **133 → 149 sur 160**. Les seize « C » d'un coup : il ne reste que les **onze « D »**
+(3 782 instructions, 10 lectures). Seize corps, mais **douze lectures** : le diff « super-LOOSE »
+contre les 895 corps écrits (cache `census-duplicates.sh`) a désigné deux familles internes avant
+toute lecture, et deux corps se sont révélés entièrement faits de corps déjà écrits.
+
+| adresse | bloc / créneau | sous-zones | `Blaze.c` | ce qu'il fait | fichier |
+|---|---|---|---|---|---|
+| `0x004443D0` | `0x00557ba8` / verbe 4 | 0-3 | **non** | coupe net le décompte du bloc de son | `WorldMapScript.cs` |
+| `0x004444A0` | `0x005588a8` / verbe 12 | 4, 9 | **non** | « tout le groupe a passé la ligne ? », puis le script | `WorldMapScript.cs` |
+| `0x0041D1A0` | `0x00557da8` / 29 | 0-3 | oui | le nuage calé sur son porteur, effet 32 | `LabyrinthParticles.cs` |
+| `0x0041F600` | `0x00558428` / 29 | 5-8 | oui | le même, porteur lu sans test | idem |
+| `0x00421C10` | `0x00558aa8` / 29 | 4, 9 | oui | le même, repli et garde | idem |
+| `0x0041FCA0` | `0x00558428` / 31 | 5-8 | oui | stroboscope de la forêt **ou** nuage, selon `+0x9a` | idem |
+| `0x0041C740` | `0x00557da8` / 30 | 0-3 | **non** | `TickHostDeathBurst`, sans porteur on joue quand même | idem |
+| `0x0041EC20` | `0x00558428` / 30 | 5-8 | **non** | `TickHostDeathBurst`, porteur lu sans test | idem |
+| `0x00424C70` | `0x00558ca8` / 6 | 4, 9 | oui | l'escarbille qui retombe et pâlit | idem |
+| `0x00424AE0` | `0x00558ca8` / 5 | 4, 9 | **non** | la ligne oblique qui s'éloigne en montant | idem |
+| `0x004250B0` | `0x00558ca8` / 58 | 4, 9 | **non** | la fumée qui dérive, tourbillonne et gonfle | idem |
+| `0x00424800` | `0x00558ba8` / 5 | 4, 9 | oui | le modèle de zone qui s'ouvre en tournant | idem |
+| `0x00483F30` | `0x00558aa8` / 27 | 4, 9 | oui | naissance, ou tireur qui vise le porteur de son porteur | idem |
+| `0x00483CC0` | `0x00558ba8` / 29 | 4, 9 | **non** | le tourbillon qui grandit, avance et frappe | idem |
+| `0x00424DC0` | `0x00558aa8` / 9 | 4, 9 | oui | cent images sur l'espèce 1, puis le script du membre | `Cutscene/LabyrinthScenes.cs` |
+| `0x004244D0` | `0x00558aa8` / 8 | 4, 9 | oui | deux cents images sur l'espèce 2, fond rouge | idem |
+
+### Le porteur nul n'est PAS une règle de bloc
+
+Trois corps de même forme dans les trois blocs de sous-zones diffèrent par **une seule chose** : ce
+qu'ils font d'un porteur `+0x6c` nul. On pouvait croire à une règle par bloc — et c'était vrai de la
+mort du porteur (`TickHostDeathBurst`) : 4-9 retombe sur `s_EntityList_005de558`, 5-8 ne teste rien,
+0-3 saute la lecture du porteur **et continue** (le `je` de tête de `0x0041C740` vise
+`0x0041c77b`, le début de la machine à états, pas la sortie). Mais le nuage du créneau voisin fait,
+en 0-3, une **quatrième** chose : il **sort**. Même bloc, même compilateur, deux conduites. Encodé
+par `AbsentHost` sur l'un et à la main sur l'autre — **lire le `je` de tête de chaque corps, ne pas
+le déduire du bloc**.
+
+### `0x0041FCA0` : deux corps déjà écrits sous un même toit
+
+Aiguillé par `+0x9a` : à 0, c'est **le stroboscope de la forêt** `EntityHandler_00413330`
+(le voile rouge une image sur deux, trente images), invocations en `0xdf` au lieu de `0xde`, **sans**
+la boucle morte que porte l'émission de la forêt ; à 2, c'est le nuage du créneau 29, semis en
+`0xdf`. Le stroboscope est sorti de `ForestScenes.cs` en `StepCarrierStrobe(e, spawn)`, le nuage
+découpé en `TrackCarrierOrDie` + `StepStatusCloud(seed, gate)`. Sa seule appelée inconnue,
+`FUN_0041ff00`, est **octet pour octet** `FUN_00421d80` (61 octets, deux déplacements d'appel qui
+résolvent vers les mêmes cibles) : `IsEffectPairBlocked_004364B0` puis l'effet 32.
+
+### Deux arguments relus dans l'emplacement de l'argument
+
+`0x00483F30` (Ghidra : `unaff_EBP`) et `0x00483CC0` rangent une valeur **dans l'emplacement de
+leur propre argument** et la relisent plus loin — la distance horizontale pour le premier
+(`mov [esp+1Ch],eax` sous deux mots empilés, relue `[esp+14h]`), le cap gardé pour le second
+(`[esp+2Ch]`, relu `[esp+3Ch]` sous quatre arguments). Le premier cas résout un paramètre que Ghidra
+avait perdu : le second `Ordinal_457` est `ratan2(dy, distance)`, un tangage. `0x00424DC0` et
+`0x004244D0` font de même avec leur pointeur de clip, qui **part de l'entité elle-même** : sans
+cible, la borne d'animation se lit dans le `+0x16` de la scène — un nombre absurde, pas une faute,
+contrairement aux fins de la tour dont le clip est un mot de pile jamais écrit.
+
+### `Ordinal_762` ne fait rien
+
+`0x00545A28`, la seule « appelée inconnue » de `0x004443D0`, est le thunk d'`Ordinal_762` — et
+son export tombe sur `0x00a02870`, le `ret 4` nu déjà relevé pour 712, 720 et 63. **Publier le bloc
+d'écran `0x00566c48` est sans effet dans cette version de la DLL**, pour les quatre appelants. Le
+verbe rend donc le zéro de son `xor eax,eax` de tête. Consigné dans `Documentation/DLL/winsys3d.md`
+et dans le résumé de `EntityHandler_00404E50`, qui le disait « non établi ».
+
+### Relevés
+
+- Trois planches — `0x00550388` (8), `0x00550410` (4), `0x00550430` (1) — et le script de sons
+  `0x005526a8` (3), dans `DataSymbols.md`. `check-descriptors.sh` : toutes bornées juste ; la marge
+  de 1 de `0x00424C70` est **prouvée et scellée**. Trois marges restent « à vérifier »
+  (`0x00417B10`, `0x00419720`, `0x00418AF0`), antérieures à ce lot.
+- `0x004444A0` lit l'octet `0x20` du banc d'état 0 (`0x005e9700`), bit `0x20` : une fois posé par la
+  suite du scénario, le verbe ne fait plus rien.
+
+### Reste à faire dans la zone
+
+**11 corps, tous « D »** (3 782 instructions, 10 lectures) : `0x00484190` (252), `0x00420480` et
+`0x00422E50` (avec deux appelées inconnues chacun), les trois charpentes à table de sauts
+`0x0041C900` / `0x0041EDD0` / `0x004224F0` (neuf feuilles chacune), la paire `0x0041F760` /
+`0x0041FF40`, `0x0041D310`, `0x00421DC0`, et l'unique « D » du décor, `0x00462A80`.
+**`0x004224F0` a un jumeau à une instruction près dans la grotte scellée** (`0x0043F4E0`) : c'est
+le meilleur rapport qui reste.
+
+**Aucun des seize n'a été exercé en jeu** ; `teste` reste à zéro sur les 160 de la zone.

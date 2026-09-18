@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**160 gestionnaires, 133 implementes, 27 a ecrire.**
+**160 gestionnaires, 149 implementes, 11 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,6 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 16 | 16 | 2098 |
 | **D — gros** | pas d'IA, > 250 instr. | 11 | 10 | 3782 |
 
 La colonne « instructions » additionne une seule fois chaque forme ; la categorie A n'en compte
@@ -27,27 +26,6 @@ aucune, puisque son corps est deja ecrit.
 
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
-
-## C — moyen (16)
-
-| gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
-|---|---|---|---:|---:|---|---|---|
-| `0x004443D0` | 0,1,2,3 | 0056AEC8 | 7 | 0 | non |  | appelee(s) inconnue(s) : `0x00545A28` |
-| `0x00424C70` | 4,9 | 0056B2C8 | 106 | 0 | oui |  |  |
-| `0x0041F600` | 5,6,7,8 | 0056B0C8 | 110 | 0 | oui |  |  |
-| `0x0041D1A0` | 0,1,2,3 | 0056B0C8 | 112 | 0 | oui |  |  |
-| `0x00424AE0` | 4,9 | 0056B2C8 | 114 | 0 | non |  |  |
-| `0x004444A0` | 4,9 | 0056AEC8 | 114 | 0 | non |  |  |
-| `0x00421C10` | 4,9 | 0056B0C8 | 116 | 0 | oui |  | appelee(s) inconnue(s) : `0x00421D80` |
-| `0x0041EC20` | 5,6,7,8 | 0056B0C8 | 121 | 0 | non |  |  |
-| `0x0041C740` | 0,1,2,3 | 0056B0C8 | 123 | 0 | non |  |  |
-| `0x00424800` | 4,9 | 0056B1C8 | 125 | 0 | oui |  |  |
-| `0x004250B0` | 4,9 | 0056B2C8 | 136 | 0 | non |  |  |
-| `0x00483F30` | 4,9 | 0056B0C8 | 139 | 0 | oui |  |  |
-| `0x00483CC0` | 4,9 | 0056B1C8 | 149 | 0 | non |  |  |
-| `0x0041FCA0` | 5,6,7,8 | 0056B0C8 | 185 | 0 | oui |  | appelee(s) inconnue(s) : `0x0041FF00` |
-| `0x00424DC0` | 4,9 | 0056B0C8 | 217 | 0 | oui |  |  |
-| `0x004244D0` | 4,9 | 0056B0C8 | 224 | 0 | oui |  |  |
 
 ## D — gros (11)
 

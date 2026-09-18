@@ -784,6 +784,18 @@ public static unsafe partial class Blaze
 
         if (*(short*)(e + 0x9a) != 0) return;
 
+        StepCarrierStrobe(e, 0xde);
+    }
+
+    /// <summary>
+    /// Le stroboscope de <see cref="EntityHandler_00413330"/>, une fois le porteur suivi et
+    /// trouve vivant : les trois temps du resume, avec le sous-type des invocations en parametre.
+    /// Sorti du corps le 2026-09-18 quand <c>0x0041FCA0</c> (Labyrinthe des morts, sous-zones 5 a
+    /// 8) s'est revele porter <b>la meme branche</b> sous <c>+0x9a == 0</c>, en <c>0xdf</c> — et
+    /// <b>sans</b> la boucle morte, qui n'existe que dans l'emission de la foret.
+    /// </summary>
+    private static void StepCarrierStrobe(byte* e, byte spawn)
+    {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
@@ -794,7 +806,7 @@ public static unsafe partial class Blaze
             *(int*)(e + 0x5c) = 1;
             *(int*)(e + 0x44) = SignedMask(CrtRand(), 1);
 
-            for (int i = 0x0b; i != 0; i--) SpawnCastEntity_0047AAE0(e, 0xde, 0, -1);
+            for (int i = 0x0b; i != 0; i--) SpawnCastEntity_0047AAE0(e, spawn, 0, -1);
         }
 
         if (*(short*)(e + 0x10) != 1) return;
@@ -805,7 +817,7 @@ public static unsafe partial class Blaze
         {
             *(int*)(e + 0x5c) = 0;
             *(short*)(e + 0x16) = (short)(beat == 0 ? 0 : 1);
-            SpawnCastEntity_0047AAE0(e, 0xde, 0, -1);
+            SpawnCastEntity_0047AAE0(e, spawn, 0, -1);
         }
 
         (*(short*)(e + 0x12))++;
@@ -815,7 +827,8 @@ public static unsafe partial class Blaze
 
         if (*(short*)(e + 0x12) < 0x1e) return;
 
-        // Ghidra: ici la boucle morte sur les quatre fiches d'emplacement. Voir le resume.
+        // Ghidra: ici, dans 0x00413330 seulement, la boucle morte sur les quatre fiches
+        // d'emplacement. Voir le resume de EntityHandler_00413330.
         *(uint*)e &= 0x7fffffff;
     }
 

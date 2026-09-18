@@ -6,6 +6,26 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le lot 8 du Labyrinthe des morts — la catégorie C est vide** : zone 5, 133 → 149 sur
+  160. Seize corps pour douze lectures ; il ne reste que les onze « D »
+- feat : deux verbes de script de `0x0056aec8` — le silence net du bloc de son, et « tout le groupe
+  a-t-il passé la ligne ? » qui lance le script sur le chef
+- feat : le nuage calé sur son porteur qui porte l'effet 32, en quatre émissions ; la quatrième
+  (`0x0041FCA0`) est aussi le stroboscope de la forêt, sorti en `StepCarrierStrobe`
+- feat : deux corps sans une ligne propre — `0x0041C740` et `0x0041EC20` sont `TickHostDeathBurst`,
+  à la conduite près quand le porteur est nul
+- feat : six effets — l'escarbille, la ligne oblique, la fumée qui tourbillonne, le modèle qui
+  s'ouvre en tournant, le tireur qui vise le porteur de son porteur, le tourbillon qui frappe
+- feat : deux scènes dans `Cutscene/LabyrinthScenes.cs` — cent images sur l'espèce 1, deux cents
+  sur l'espèce 2 avec le fond peint en rouge
+- doc : **`Ordinal_762` ne fait rien** — son export est le `ret 4` nu de `0x00a02870` ; publier le
+  bloc d'écran `0x00566c48` est sans effet dans cette DLL
+- doc : ce qu'un corps fait d'un porteur nul **n'est pas une règle de bloc** — deux corps voisins
+  des sous-zones 0 à 3 font l'un « continuer », l'autre « sortir »
+- doc : le paramètre perdu de `0x00483F30` (`unaff_EBP`) est la distance, rangée dans
+  l'emplacement de l'argument ; le second `Ordinal_457` est un tangage
+- doc : `0x00550388`, `0x00550410`, `0x00550430` et `0x005526a8` relevés dans `DataSymbols.md` ;
+  la marge de `0x00424C70` prouvée et scellée
 - feat : **le lot 7 du Labyrinthe des morts — la catégorie C du décor est vide** : zone 5, 124 → 133
   sur 160. C passe de 25 à 16 corps, et la table `0x0056adc8` n'a plus que son unique « D »
 - feat : six corps de décor — le porte-voix des **quatorze** points fixes, ce qui tourne puis fait

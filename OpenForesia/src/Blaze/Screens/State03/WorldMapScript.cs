@@ -1807,6 +1807,11 @@ public static unsafe partial class Blaze
             // l'entite appelante : son corps ne lit que [esp+8], donc le second argument.
             0x00444340 => AreaVerb_00444340((short)(s[2] | (s[3] << 8))),
 
+            // Ses deux voisins de table (2026-09-18, lot 8) : le silence du bloc de son, et « le
+            // groupe entier a-t-il franchi la ligne ? ». Le premier ne lit aucun argument.
+            0x004443D0 => AreaVerb_004443D0(),
+            0x004444A0 => AreaVerb_004444A0((short)(s[2] | (s[3] << 8))),
+
             0x00442F60 => AreaVerb_00442F60(),
 
             0x00443100 => AreaVerb_00443100(),
@@ -3031,6 +3036,120 @@ public static unsafe partial class Blaze
             *(ushort*)(slot + 0x8e) |= 0xa000;
 
             slot[0x94] = 0;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004443d0</c> — le <b>verbe 4</b> du bloc <c>0x00557ba8</c> (table <c>0x0056aec8</c>,
+    /// Labyrinthe des morts, sous-zones 0 a 3). <b>Absent de <c>Blaze.c</c></b> ; releve au
+    /// desassembleur, <b>7 instructions</b>, dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_004443D0.asm</c>.
+    ///
+    /// <para>
+    /// <b>La fin sans palier du decompte de <see cref="MusicFadeStep_0041AF50"/></b> : la tete du
+    /// bloc <c>0x00566c48</c> a <c>0xc0</c>, ses deux <c>short</c> de <c>+0x10</c>/<c>+0x12</c>
+    /// mis a zero d'un coup, et le bloc republie par <c>Ordinal_762</c>. Les deux autres ecrivains
+    /// de <c>0xc0</c> descendent de 300 par image ; celui-ci saute a zero.
+    /// </para>
+    /// <para>
+    /// <b><c>Ordinal_762</c> ne fait rien dans cette version de <c>winsys3d.dll</c></b> : son
+    /// export tombe sur <c>0x00a02870</c>, un <c>ret 4</c> nu que partagent une quarantaine
+    /// d'ordinaux (voir <c>Documentation/DLL/winsys3d.md</c>). Il ne touche donc pas EAX, et le
+    /// resultat du verbe est le <c>xor eax,eax</c> de sa premiere instruction — les deux
+    /// <c>mov [..],ax</c> qui suivent n'y changent rien.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_004443D0()
+    {
+        byte* block = (byte*)s_MenuScreenBlock_00566c48;
+
+        *(uint*)block = 0xc0;
+        *(short*)(block + 0x10) = 0;
+        *(short*)(block + 0x12) = 0;
+
+        Winsys3d.Ordinal_762(block);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004444a0</c> — le <b>verbe 12</b> du bloc <c>0x005588a8</c> (table <c>0x0056aec8</c>,
+    /// Labyrinthe des morts, sous-zones 4 et 9). <b>Absent de <c>Blaze.c</c></b> ; releve au
+    /// desassembleur, <b>114 instructions</b>, dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_004444A0.asm</c>.
+    ///
+    /// <para>
+    /// <b>« Tout le groupe a-t-il passe la ligne ? » — et quand oui, lancer le script.</b> Il
+    /// parcourt les quatre emplacements vivants (<c>0x80000000</c> sans aucun bit de
+    /// <c>0x50010000</c>) et compte, d'une part, ces vivants, d'autre part ceux dont la position
+    /// est au-dela de <b>deux seuils</b> : <c>+0x1c</c> strictement au-dessus de <c>0x5dc000</c>
+    /// et <c>+0x20</c> strictement au-dessus de <c>0xffe5c000</c>, les deux compares
+    /// <b>signes</b>. Chaque membre passe qui ne porte encore ni <c>0x04000000</c> ni le bit 0
+    /// recoit le <c>0x04000000</c>, sa teinte <c>+0x38</c>..<c>+0x3a</c> a <c>0xff</c>, le bit
+    /// <c>4</c> de <c>+0x36</c> efface, <c>+0x96</c> a zero, et l'effet d'etat <c>0x9d</c> —
+    /// le meme que pose <see cref="EvaluatePartyDispersal"/>.
+    /// </para>
+    /// <para>
+    /// <b>Le script ne part que si les deux comptes sont egaux et non nuls.</b> Il part sur le
+    /// chef (<c>0x005de538</c>) quand son mot de tete n'a aucun bit de <c>0xd0000000</c>, sinon
+    /// sur le premier emplacement vivant — la boucle de repli sort par <c>cx = 0x63</c>, un
+    /// <c>break</c> ecrit a la main. L'indice de script est le second argument du verbe.
+    /// </para>
+    /// <para>
+    /// Deux gardes en tete : l'octet <c>0x005de058</c> doit etre nul, et le bit <c>0x20</c> de
+    /// l'octet <c>0x20</c> du banc d'etat 0 (<c>0x005e9700</c>) eteint — une fois ce drapeau
+    /// pose par la suite du scenario, le verbe ne fait plus rien.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero : les trois sorties font <c>xor eax,eax</c>.</returns>
+    private static uint AreaVerb_004444A0(short script)
+    {
+        if ((byte)*Mem.Camera(0x005de058) != 0) return 0;
+        if ((Mem.s_StateBank0_005e96e0[0x20] & 0x20) != 0) return 0;   // Ghidra: DAT_005e9700
+
+        short alive = 0;
+        short across = 0;
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50010000) != 0) continue;
+
+            alive++;
+            if (*(int*)(slot + 0x1c) <= 0x5dc000) continue;
+            if (*(int*)(slot + 0x20) <= unchecked((int)0xffe5c000)) continue;
+
+            across++;
+            if ((flags & 0x04000001) != 0) continue;
+
+            slot[0x38] = 0xff;
+            slot[0x39] = 0xff;
+            slot[0x3a] = 0xff;
+            *(ushort*)(slot + 0x36) &= 0xfffb;
+            *(short*)(slot + 0x96) = 0;
+            *(uint*)slot = flags | 0x04000000;
+            SpawnStatusEffectEntity_0047AC40(slot, (int*)(slot + 0x1c), null, 0x9d, 0, -1);
+        }
+
+        if (alive != across || alive == 0 || across == 0) return 0;
+
+        byte* leader = Inp.s_SlotFlags_005e93c0 + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c;
+        if ((*(uint*)leader & 0xd0000000) == 0)
+        {
+            RunEntityScript(s_Unknown_005e97cc, leader, (uint)(int)script);   // Ghidra: FUN_00513dd0
+            return 0;
+        }
+
+        slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50010000) != 0) continue;
+
+            RunEntityScript(s_Unknown_005e97cc, slot, (uint)(int)script);     // Ghidra: FUN_00513dd0
+            break;                                                             // Ghidra: mov ecx,63h
         }
 
         return 0;
