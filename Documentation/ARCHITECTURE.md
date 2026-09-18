@@ -250,8 +250,8 @@ les répertoires sont le niveau « ce que l'écran atteint ».
 
 **Une zone peut avoir deux fichiers dans `Handlers/`, et la coupure a son propre test.** La mine
 en a deux depuis le 2026-09-16 : `Mine.cs` (2 079 l.) et `MineMecanismes.cs` (1 694 l.) ; le
-labyrinthe des morts depuis le 2026-09-18 : `Labyrinth.cs` (771 l.) et `LabyrinthMecanismes.cs`
-(297 l.). Ce n'est pas une coupure de taille — le second a été ouvert à trois corps, bien avant que
+labyrinthe des morts depuis le 2026-09-18 : `Labyrinth.cs` (1 468 l.) et `LabyrinthMecanismes.cs`
+(488 l.). Ce n'est pas une coupure de taille — le second a été ouvert à trois corps, bien avant que
 le premier ne grossisse —, c'est une coupure de rôle, et elle se lit **dans le corps** :
 
 | fichier | ce qui y va | test d'appartenance |

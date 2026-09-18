@@ -6,6 +6,24 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le lot 5 du Labyrinthe des morts** — la fin de la catégorie B du décor et ses trois plus
+  simples « C » : zone 5, 102 → 112 sur 160 ; B passe de 19 à 12 corps, C de 28 à 25
+- feat : huit corps de décor — le demi-tour verrouillé par un drapeau, ce qui frappe et projette en
+  l'air, le bloc dont la position survit au changement de carte, le balancier qui change de bord
+  tous les cinq à neuf coups, la navette qui va et vient sans fin, ce qui s'effondre quand on monte
+  dessus, l'écroulement à quatre compteurs empaquetés dans deux demi-mots, et le porte-voix des
+  trois points fixes
+- feat : deux corps dans `Handlers/LabyrinthMecanismes.cs` — l'escalier qui se dérobe marche par
+  marche en lançant un script à chacune, et ce qui guette l'approche du groupe puis lance un script
+- doc : **`0x005517a8`, `0x005517c8`, `0x005517e8`** relevées dans `DataSymbols.md` — trois tables
+  de huit `int` (X, hauteur, Z en cases) qui gardent la position d'un bloc poussé **entre deux
+  cartes** ; le contrôle de sanité de `0x00461980` renvoie le bloc à une position que son propre
+  test rejette
+- doc : quatre corps absents de `Blaze.c` relevés au désassembleur sous `Legacy/Raw/Blaze/` —
+  `FUN_00461260`, `FUN_00460AC0`, `FUN_00460800`, `FUN_00461F50` — plus `FUN_00460C00`, décompilée
+  mais à laquelle Ghidra avait perdu un argument
+- fix : `0x00462860` et `0x00463640` sont au créneau **47** de leurs blocs, pas 30 — le lot 3 avait
+  écrit 30, et le créneau 30 du bloc `0x00558128` est `0x00461980`
 - feat : **le lot 4 du Labyrinthe des morts — les dix plus simples qui restaient** : zone 5, 92 → 102
   sur 160, et la catégorie B du tri par complexité passe de 29 à 19 corps
 - feat : sept corps de décor dans `Handlers/Labyrinth.cs` — la lueur rouge que son drapeau éteint,

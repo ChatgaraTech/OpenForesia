@@ -3169,3 +3169,53 @@ et trois de la troisième (0, 8, 12). **L'attente du Roi-zombie est l'octet `+0x
 tirée** — il attend donc exactement la durée d'incantation du sort qu'il vient de choisir.
 
 Le script de sons est borné par le `[1] = 0` de son second pas, comme les trois du Ténébreux.
+
+## `0x005517a8`, `0x005517c8`, `0x005517e8` — la position d'un bloc poussé, gardée entre deux cartes (2026-09-18)
+
+Relevées en transcrivant `FUN_00461980` (labyrinthe des morts, créneau 30 du bloc `0x00558128`,
+sous-zones 5 à 8). Ce sont **trois tables de huit `int`**, contiguës, à l'intérieur de la plage
+`s_EntityParams_00551640` (`Memory/GameMemory.cs`) — donc déjà présentes dans la reconstruction, mais
+jamais identifiées :
+
+| VA | rôle | longueur | contenu au chargement |
+|---|---|---:|---|
+| `0x005517a8` | **X** en cases | 8 × `int` | `[0] = 100`, `[1..7] = 0` |
+| `0x005517c8` | **hauteur** en cases | 8 × `int` | `[0] = 605` (`0x25d`), `[1..7] = 0` |
+| `0x005517e8` | **Z** en cases | 8 × `int` | `[0] = -1300` (`0xfffffaec`), `[1..7] = 0` |
+
+**La longueur vient de la disposition, pas d'un compteur.** Les trois adresses sont espacées de
+`0x20` exactement, et `0x00551808` — juste après la troisième — porte autre chose (le triplet
+constant, ci-dessous). Chacune fait donc `0x20 / 4 = 8` entrées. L'index est le numéro de placement
+`+0x14` de l'entité, et rien dans le corps ne le borne : un placement au-delà de 7 écrirait dans la
+table suivante.
+
+**Ce que ça sert.** `FUN_00461980` est un bloc que le groupe pousse. À chaque image il se *relit*
+depuis les trois tables, se déplace (`MoveSceneEntity_00455B30`, masque `0x88c0`), et s'y *réécrit*.
+Comme les tables sont dans `.data` et non dans l'enregistrement d'entité, **la position survit au
+changement de sous-zone** : quitter la carte et revenir retrouve le bloc où on l'avait laissé. C'est
+le seul décor du labyrinthe qui garde un état hors de son enregistrement.
+
+**Le triplet `(100, 605, -1300)` est la pose de départ, et il apparaît trois fois dans `.data`** :
+
+```
+0x00551798  64 00 00 00  5d 02 00 00  ec fa ff ff        (100, 605, -1300)
+0x005517a8  64 00 00 00  ...                             la table X, entrée 0
+0x005517c8  5d 02 00 00  ...                             la table hauteur, entrée 0
+0x005517e8  ec fa ff ff  ...                             la table Z, entrée 0
+0x00551808  64 00 00 00  5d 02 00 00  ec fa ff ff        (100, 605, -1300) à nouveau
+```
+
+Les copies de `0x00551798` et `0x00551808` ne sont lues par aucun des corps transcrits à ce jour ;
+`FUN_00461980` écrit les trois constantes **en dur** (`mov` immédiats) quand son contrôle de sanité
+se déclenche. TODO(REVERSE) : leur lecteur n'est pas établi.
+
+**Le contrôle de sanité ne dit pas ce qu'il a l'air de dire.** À la naissance, si `X` sort de
+`[201, 399]` **ou** si `Z` sort de `[-1399, -1201]`, les trois entrées sont remises au triplet de
+départ. Mais `X = 100` est **hors** de l'intervalle testé : le renvoi chez soi produit une position
+que le contrôle rejettera à la naissance suivante, et le bloc est donc remis là à chaque entrée dans
+la carte tant qu'on ne l'a pas poussé dans `[201, 399]`. C'est sans conséquence — la remise est
+idempotente — mais ce n'est pas un « remettre si aberrant ». La hauteur `0x005517c8` n'est, elle,
+**jamais testée**.
+
+Le test lit `< 0xc9` et `> 399` sur X, `> -0x4b1` et `< -0x577` sur Z : les bornes sont écrites une
+en hexadécimal et l'autre en décimal dans la pseudo-C, c'est le même nombre des deux côtés.

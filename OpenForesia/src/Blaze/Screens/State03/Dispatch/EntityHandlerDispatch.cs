@@ -1435,6 +1435,21 @@ public static unsafe partial class Blaze
             case 0x00460990: EntityHandler_00460990(record); return;   // la porte tenue ouverte a la manette
             case 0x00462990: EntityHandler_00462990(record); return;   // le panneau qui tourne puis s'eteint
 
+            // LE DECOR DU LABYRINTHE DES MORTS — table 0x0056adc8, lot 5 : la fin de la categorie B
+            // du decor, et ses trois plus simples « C ». Handlers/Labyrinth.cs.
+            case 0x00460C00: EntityHandler_00460C00(record); return;   // le demi-tour verrouille par un drapeau
+            case 0x00461390: EntityHandler_00461390(record); return;   // ce qui frappe et projette en l'air
+            case 0x00461980: EntityHandler_00461980(record); return;   // le bloc dont la position survit a la carte
+            case 0x00461100: EntityHandler_00461100(record); return;   // le balancier qui change de bord
+            case 0x004620D0: EntityHandler_004620D0(record); return;   // la navette, aller et retour sans fin
+            case 0x00460800: EntityHandler_00460800(record); return;   // ce qui s'effondre quand on monte dessus
+            case 0x00461F50: EntityHandler_00461F50(record); return;   // l'ecroulement a quatre compteurs empaquetes
+            case 0x00461260: EntityHandler_00461260(record); return;   // le porte-voix des trois points fixes
+
+            // ... et les deux qui lancent un script de zone. Handlers/LabyrinthMecanismes.cs.
+            case 0x004606C0: EntityHandler_004606C0(record); return;   // l'escalier qui se derobe, marche par marche
+            case 0x00460AC0: EntityHandler_00460AC0(record); return;   // ce qui guette l'approche puis lance un script
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98

@@ -23741,3 +23741,118 @@ zone — ce sont des **verbes de script**, pas des gestionnaires d'entité, et e
 
 **Aucun des dix corps n'a été exercé en jeu** : la colonne `teste` de la zone 5 est toujours à
 zéro sur les 160. Dix dettes de plus, et c'est la sonde qui les lèvera.
+
+## 2026-09-18 (suite) — Labyrinthe des morts, lot 5 : la fin de la catégorie B du décor
+
+Zone 5 : **102 → 112 sur 160**. La catégorie B passe de 19 à **12** corps (699 instructions
+restantes contre 1 341), la catégorie C de 28 à **25**.
+
+Le lot : les **sept derniers « B » de la table `0x0056adc8`** plus ses **trois « C » les plus
+simples**. Prendre une table entière plutôt que les dix plus courts en absolu garde le lot dans un
+ou deux fichiers, comme au lot 4 — les dix plus courts toutes tables confondues auraient touché
+`0056B0C8`, `0056B1C8` et `0056AEC8`, dont les verbes de script.
+
+| adresse | bloc / créneau | sous-zones | `Blaze.c` | ce qu'il fait | fichier |
+|---|---|---|---|---|---|
+| `0x00460C00` | `0x00557aa8` / 22 | 0-3 | oui¹ | le demi-tour verrouillé par un drapeau | `Labyrinth.cs` |
+| `0x00461390` | `0x00558128` / 41 | 5-8 | oui | ce qui frappe et projette en l'air | `Labyrinth.cs` |
+| `0x00461980` | `0x00558128` / 30 | 5-8 | oui | le bloc dont la position survit à la carte | `Labyrinth.cs` |
+| `0x00461100` | `0x00558128` / 53 | 5-8 | oui | le balancier qui change de bord | `Labyrinth.cs` |
+| `0x004620D0` | `0x00558128` / 13 | 5-8 | oui | la navette, aller et retour sans fin | `Labyrinth.cs` |
+| `0x00460800` | `0x00557aa8` / 39 | 0-3 | **non** | ce qui s'effondre quand on monte dessus | `Labyrinth.cs` |
+| `0x00461F50` | `0x00558128` / 12 | 5-8 | **non** | l'écroulement à quatre compteurs empaquetés | `Labyrinth.cs` |
+| `0x00461260` | `0x00558128` / 52 | 5-8 | **non** | le porte-voix des trois points fixes | `Labyrinth.cs` |
+| `0x004606C0` | `0x00557aa8` / 38 | 0-3 | oui | l'escalier qui se dérobe, marche par marche | `LabyrinthMecanismes.cs` |
+| `0x00460AC0` | `0x00557aa8` / 24 | 0-3 | **non** | guette l'approche, puis lance un script | `LabyrinthMecanismes.cs` |
+
+¹ décompilée, mais Ghidra lui avait perdu un argument — voir plus bas.
+
+Les cinq dumps sont sous `Legacy/Raw/Blaze/` : `FUN_00460800.asm`, `FUN_00460AC0.asm`,
+`FUN_00461260.asm`, `FUN_00461F50.asm`, et `FUN_00460C00.asm` pour l'argument manquant.
+
+### Le partage décor / mécanismes s'est fait sur un précédent, pas sur une impression
+
+Deux corps du lot touchent au groupe, et ils ne sont pas allés du même côté :
+
+| corps | ce qu'il fait au groupe | où | pourquoi |
+|---|---|---|---|
+| `0x00461390` | `StrikePartyMembers_0045DA40`, puis écrit `+0x54` dans chaque emplacement touché | **décor** | `Mine.cs` a **6** appels à cette fonction, `MineMecanismes.cs` **0**. « Abîmer n'est pas décider » — le pilon de la mine est du même côté. |
+| `0x004606C0`, `0x00460AC0` | `RunEntityScript` (`FUN_00513dd0`) | **mécanismes** | `MineMecanismes.cs` en a **15**, `Mine.cs` **4**. « Lance un script » est dans la liste du test d'appartenance. |
+
+Le comptage des appels dans les deux fichiers de la mine est ce qui a tranché, plutôt qu'une lecture
+du sujet apparent. `0x00460AC0` est doublement du côté mécanismes : il balaie aussi les quatre
+emplacements en entier.
+
+### Trois relevés qui changent ce qu'on sait
+
+**`0x005517a8` / `0x005517c8` / `0x005517e8` — la position d'un bloc poussé survit au changement de
+carte.** `0x00461980` ne garde pas sa position dans son enregistrement d'entité mais dans **trois
+tables de huit `int` gravées dans `.data`**, indexées par son numéro de placement `+0x14` : X,
+hauteur et Z en cases. À chaque image il s'y relit, se déplace, et s'y réécrit. Les trois adresses
+tombent **à l'intérieur de `s_EntityParams_00551640`**, la plage de 0x200 octets déjà recopiée
+verbatim dans `Memory/GameMemory.cs` — les octets étaient donc déjà justes dans la reconstruction,
+mais personne n'avait identifié ce qu'ils portaient. Longueur, contenu au chargement, et le défaut
+du contrôle de sanité (il renvoie le bloc à `X = 100`, hors de l'intervalle `[201, 399]` qu'il teste)
+sont dans `Documentation/Reference/DataSymbols.md`.
+
+**Ghidra avait perdu un argument de `0x00460C00`, et il change le sens du site.** Sa pseudo-C écrit
+`FUN_0041be60(param_1, 0, rand() % 6 - 3)` — deux valeurs. Le désassemblage donne six `push` et
+`add esp,18h`, donc `(entité, 0, tirage, 0, 0, 0)`. Or le troisième argument de
+`TryPublishCameraEffectNearEntity` a une **valeur sentinelle**, `999`, qui veut dire « ne touche pas
+à cet axe » : les sites de la montagne du dragon de feu et de la vieille tour passent
+`(999, secousse, 999)`. Celui-ci passe `0`, donc il **écrase les deux axes horizontaux à zéro à
+chaque image** et annule toute secousse qu'une autre entité aurait demandée. Un argument manquant
+lu comme « absent » aurait donné le comportement inverse.
+
+**`0x00461F50` range quatre compteurs dans deux demi-mots.** Le corps dépaquette les octets haut et
+bas de `+0x10` **et** de `+0x16` dans des variables de pile (`mov ax,[esi+10h] ; sar eax,8`),
+travaille dessus, et les remballe en sortant (`mov ch,… ; mov cl,bl ; mov [esi+10h],cx`). L'état
+n'est donc que l'octet **bas** de `+0x10`, et `+0x11` porte un second compteur. Lire `+0x10` comme
+un mot entier — ce que fait tout le reste de la zone — donnerait n'importe quoi sur cette entité.
+La sortie par la garde `0x40000000` **saute le remballage**, ce qui est cohérent : une fois posée,
+plus rien n'est écrit.
+
+### Un `ScriptFlagRaiseUnbounded`, parce que le garde n'est pas partout
+
+`0x00460C00` et `0x004606C0` posent un drapeau de script par `or [eax+5e96e0h],dl`, **sans aucune
+comparaison**. `ScriptFlagRaise` — écrit pour `0x00458e90` en forêt — porte un garde `cell > 0x1f`
+qui *est* dans ce corps-là. Réutiliser la fonction aurait importé un garde absent de ces deux corps.
+Un second point d'entrée a donc été écrit, avec la raison en commentaire ; le corps du calcul
+(division vers zéro par 8, décalage masqué à cinq bits) reste identique.
+
+### Une correction du lot 3
+
+`0x00462860` (sous-zones 5-8) et `0x00463640` (sous-zones 4 et 9) étaient documentés « créneau
+**30** ». C'est **47**, relevé à nouveau dans le binaire :
+
+```
+bloc 0x00558128, créneau 30 → 0x00461980      (un corps de ce lot-ci)
+bloc 0x00558128, créneau 47 → 0x00462860
+bloc 0x005587a8, créneau 47 → 0x00463640
+```
+
+Les deux jumeaux sont donc au **même** créneau de leurs blocs respectifs, ce qui confirme au passage
+qu'ils sont bien le même sous-type — la lecture « 30 » ne le disait pas. Les créneaux des lots 1 et 4
+ont été revérifiés du même coup et sont justes.
+
+### Deux détails de transcription qui auraient pu passer
+
+- `0x00460AC0` mesure la distance aux membres en faisant **la soustraction avant le décalage**
+  (`sub eax,edx ; sar eax,0Ch`), et non `(a >> 12) - (b >> 12)` comme les trois sœurs de distance à
+  la caméra. Le résultat diffère d'une unité selon les restes.
+- `0x004620D0` est une navette à deux branches miroir, et les deux branches **ne s'inversent pas
+  complètement** : `+0x50` reçoit toujours le cosinus et `+0x58` toujours le sinus, non niés, dans
+  l'aller *comme* dans le retour. Seul le déplacement change de signe. C'est exactement le genre de
+  différence qu'un partage « avec un paramètre de signe » effacerait — cf. l'avertissement de
+  `CLAUDE.md` sur `0x004736D0` / `0x004738A0` — donc le partage a été écrit en nommant cette
+  asymétrie plutôt qu'en la paramétrant.
+
+### Reste à faire dans la zone
+
+48 corps, aucun d'intelligence : **12 en B**, 25 en C, 11 en D (10 lectures). De la catégorie B il
+ne reste **plus rien sur `0x0056adc8`** : les douze sont sur `0056B0C8`, `0056B1C8`, `0056B2C8` et
+`0056AEC8`. Le prochain lot changera donc de fichier de destination — `Effects/`, `Combat/` et
+`WorldMapScript.cs` — et le tri à jour est dans `Documentation/Etat/Zone5ParComplexite.md`.
+
+**Aucun des dix corps n'a été exercé en jeu** : la colonne `teste` de la zone 5 reste à zéro sur les
+160. Vingt dettes depuis hier.

@@ -15,6 +15,11 @@
 //   0x00460990  la porte tenue ouverte a la manette
 //   0x00462990  le panneau de dialogue qui tourne puis s eteint
 //
+// Le lot 5, le meme jour, en a ajoute deux — ceux qui lancent un script de zone :
+//
+//   0x004606C0  l escalier qui se derobe, marche par marche
+//   0x00460AC0  ce qui guette l approche du groupe puis lance un script
+//
 // Les trois blocs de la zone dans cette table, rappeles de `Labyrinth.cs` :
 //
 //   0x00557aa8  sous-zones 0, 1, 2, 3
@@ -293,5 +298,191 @@ public static unsafe partial class Blaze
 
         (*(short*)(e + 0x10))++;
         if (*(short*)(e + 0x10) >= 0x0a) *(uint*)e |= 0x40002000;
+    }
+
+    // =====================================================================
+    // LOT 5 (2026-09-18) — LES DEUX QUI LANCENT UN SCRIPT DE ZONE
+    //
+    // Les huit autres corps du lot sont du decor et vivent dans `Labyrinth.cs`. Ces deux-ci
+    // appellent `RunEntityScript` (`FUN_00513dd0`), ce qui les range ici par le test
+    // d'appartenance ; le second lit en plus la table des emplacements en entier.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004606c0 @ 0x004606c0 — creneau <b>38</b> du bloc <c>0x00557aa8</c>
+    /// (sous-zones 0 a 3). Decompilee dans <c>Blaze.c</c>, 95 instructions.
+    ///
+    /// <para>
+    /// <b>L'escalier qui se derobe, marche par marche, en lancant un script a chacune.</b> Le
+    /// contact (bit <c>0x10</c>) au repos leve le drapeau de script <c>+0x16</c> et met la
+    /// descente en marche. Le compteur <c>+0x5c</c> — un mot de 32 bits, arme a <b>3</b> a la
+    /// naissance — est la vitesse : la hauteur perd <c>(compteur + 1) * 0x1000</c> par image et le
+    /// compteur monte d'un, si bien que la chute accelere sans borne.
+    /// </para>
+    /// <para>
+    /// <b>Toutes les trois images, une marche.</b> Le corps appelle
+    /// <see cref="RunEntityScript"/> avec l'indice <c>+0x9a + +0x14 * 4</c> — quatre scripts
+    /// consecutifs a partir de <c>+0x14 * 4</c>, un par marche — et <c>+0x9a</c> compte de 0 a 3.
+    /// A la quatrieme, l'etat passe a 99, le son <c>0x1a</c> de la sous-zone part a hauteur
+    /// <c>0x400</c>, et <b>seize</b> effets <c>0x32</c> naissent d'un coup.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 99 n'est pas une fin : c'est un regime.</b> Il fait naitre <b>un</b> effet
+    /// <c>0x32</c> par image, indefiniment — la poussiere ne retombe jamais.
+    /// </para>
+    /// <para>
+    /// <b>L'etat <c>0x62</c> est une entree separee, posee par ailleurs</b> : il enfonce la hauteur
+    /// de <c>0x72000</c> d'un seul coup — quatorze cases — et passe directement au regime 99, sans
+    /// script ni son. C'est le chemin de celui qui n'a pas ete declenche par un pas.
+    /// </para>
+    /// <para>
+    /// Le drapeau est pose <b>sans le garde a 32 octets</b> de <see cref="ScriptFlagRaise"/> — voir
+    /// <see cref="ScriptFlagRaiseUnbounded"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004606C0(byte* e)
+    {
+        // Ghidra: l'etat est lu UNE fois en tete et les deux premiers blocs le relisent par cette
+        // copie ; le troisieme relit le champ.
+        short state = *(short*)(e + 0x10);
+
+        if (state == 0)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x5c) = 3;
+        }
+
+        if ((*e & 0x10) != 0 && state == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            ScriptFlagRaiseUnbounded(*(short*)(e + 0x16));
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int speed = *(int*)(e + 0x5c);
+
+            (*(short*)(e + 0x12))++;
+            *(int*)(e + 0x5c) = speed + 1;
+            *(int*)(e + 0x20) += (speed + 1) * -0x1000;
+
+            if (*(short*)(e + 0x12) == 3)
+            {
+                short group = *(short*)(e + 0x14);
+                short step = *(short*)(e + 0x9a);
+
+                *(short*)(e + 0x12) = 0;
+
+                // Ghidra: FUN_00513dd0(DAT_005e97cc, param_1, +0x9a + +0x14 * 4)
+                RunEntityScript(s_Unknown_005e97cc, e, (uint)(step + group * 4));
+
+                (*(short*)(e + 0x9a))++;
+                if (*(short*)(e + 0x9a) == 4)
+                {
+                    *(short*)(e + 0x10) = 99;
+                    TryPlaySoundNearEntity((uint*)e, ZoneSound(0x1a), 0x400, 0x1000, 0, 0);
+
+                    for (int i = 0x10; i != 0; i--)
+                        SpawnEffectNearCamera_00468110(e, 0x32, 0, -1);
+                }
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 0x62)
+        {
+            *(short*)(e + 0x10) = 99;
+            *(int*)(e + 0x20) -= 0x72000;
+        }
+
+        if (*(short*)(e + 0x10) == 99) SpawnEffectNearCamera_00468110(e, 0x32, 0, -1);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00460ac0</c> — creneau <b>24</b> du bloc <c>0x00557aa8</c> (sous-zones 0 a 3).
+    /// <b>Absente de <c>Blaze.c</c></b> ; relevee au desassembleur, <b>99 instructions</b>, dump
+    /// conserve dans <c>Legacy/Raw/Blaze/FUN_00460AC0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle guette l'approche du groupe, clignote, puis lance un script.</b> Son garde d'entree
+    /// est celui de <see cref="EntityHandler_00460A90"/> au bit pres : dans la <b>sous-zone 1</b>
+    /// et seulement la, elle reste muette tant que le <b>drapeau 234</b> n'est pas pose.
+    /// </para>
+    /// <para>
+    /// <b>La detection balaie les quatre emplacements a chaque image</b> — actifs
+    /// (<c>0x80000000</c>) et sans <c>0x50000000</c> —, et mesure la distance <b>horizontale</b>
+    /// seule : X et Z, pas la hauteur. Sous <b>200</b> cases, et si elle est encore au repos, elle
+    /// part avec le son <c>0x27</c> de la sous-zone a hauteur <c>0x400</c>. La garde d'etat est
+    /// <i>dans</i> la boucle, si bien qu'un second membre proche dans la meme image ne rejoue pas
+    /// le son.
+    /// </para>
+    /// <para>
+    /// <b>La soustraction precede le decalage</b> : le binaire fait
+    /// <c>(membre - elle) &gt;&gt; 12</c> et non <c>(membre &gt;&gt; 12) - (elle &gt;&gt; 12)</c>.
+    /// C'est l'inverse de l'idiome des trois sœurs de distance a la camera
+    /// (<see cref="TryPlaySoundNearEntity"/> et ses voisines), et le resultat differe d'une unite
+    /// selon les restes.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 1 clignote quatorze images</b> : seize effets <c>0x35</c> naissent sur la premiere,
+    /// puis le bit <c>0x4000</c> suit la <b>parite</b> du compteur — pose sur les pairs. A la 14e,
+    /// le mot d'etat prend <c>0x6000</c> et l'etat passe a 2. <b>L'etat 2 lance le script</b>
+    /// numero <c>+0x14</c> par <see cref="RunEntityScript"/>, une seule fois, et passe a 3 : la
+    /// fin.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00460AC0(byte* e)
+    {
+        // Ghidra: `mov al,[5e96fdh] ; test al,4 ; jne` puis `cmp [5de52ch],bl ; je` — le drapeau
+        // 234 ne commande que dans la sous-zone 1.
+        if ((Mem.s_StateBank0_005e96e0[0x1d] & 4) == 0 && s_Unknown_005de52c == 1) return;
+
+        byte* member = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50000000) != 0) continue;
+
+            // Ghidra: `sub eax,edx ; sar eax,0Ch` — la difference d'abord, le decalage ensuite.
+            int dx = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz)) >= 0xc8) continue;
+            if (*(short*)(e + 0x10) != 0) continue;
+
+            *(short*)(e + 0x10) = 1;
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x27), 0x400, 0x1000, 0, 0);
+        }
+
+        short state = *(short*)(e + 0x10);
+        if (state == 0) *(short*)(e + 0x12) = 0;
+
+        if (state == 1)
+        {
+            if (*(short*)(e + 0x12) == 0)
+                for (int i = 0x10; i != 0; i--) SpawnEffectNearCamera_00468110(e, 0x35, 0, -1);
+
+            (*(short*)(e + 0x12))++;
+
+            short beat = *(short*)(e + 0x12);
+            uint word = *(uint*)e;
+
+            word = (beat & 1) == 0 ? word | 0x4000 : word & 0xffffbfff;
+            *(uint*)e = word;
+
+            if (beat >= 0x0e)
+            {
+                *(uint*)e = word | 0x6000;
+                *(short*)(e + 0x10) = 2;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            // Ghidra: FUN_00513dd0(DAT_005e97cc, param_1, (short)+0x14)
+            RunEntityScript(s_Unknown_005e97cc, e, (uint)*(short*)(e + 0x14));
+            *(short*)(e + 0x10) = 3;
+        }
     }
 }
