@@ -1450,6 +1450,24 @@ public static unsafe partial class Blaze
             case 0x004606C0: EntityHandler_004606C0(record); return;   // l'escalier qui se derobe, marche par marche
             case 0x00460AC0: EntityHandler_00460AC0(record); return;   // ce qui guette l'approche puis lance un script
 
+            // LE LABYRINTHE DES MORTS, lot 6 : la categorie B de la zone, VIDEE. Onze gestionnaires
+            // d'entite sur les douze restants — le douzieme, 0x00444340, est un VERBE de script
+            // (table 0x0056aec8) et vit dans WorldMapScript.cs, aiguille par ScriptOpAreaVerb.
+            // Effects/LabyrinthParticles.cs, sauf les deux dernieres.
+            case 0x00483C50: EntityHandler_00483C50(record); return;   // elle se transforme et meurt en une image
+            case 0x00483E90: EntityHandler_00483E90(record); return;   // le halo qui s'ouvre, monte et s'eteint
+            case 0x004840E0: EntityHandler_004840E0(record); return;   // le meme, qui entraine son jumeau de +0x70
+            case 0x00425270: EntityHandler_00425270(record); return;   // la bulle qui enfle et fait naitre
+            case 0x00425350: EntityHandler_00425350(record); return;   // la meme, deja grande et deja lancee
+            case 0x0041D090: EntityHandler_0041D090(record); return;   // l'etincelle a deux ancrages, version gardee
+            case 0x0041F520: EntityHandler_0041F520(record); return;   // la meme, sans le garde
+            case 0x004249D0: EntityHandler_004249D0(record); return;   // le debris qui attend puis tombe au sol
+            case 0x00425410: EntityHandler_00425410(record); return;   // huit images, quatre planches, fini
+
+            // ... et les deux secousses de camera, Handlers/LabyrinthMecanismes.cs.
+            case 0x0041D860: EntityHandler_0041D860(record); return;   // la secousse qui finit sur une phrase
+            case 0x00420860: EntityHandler_00420860(record); return;   // la meme, qui finit sur un script
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98

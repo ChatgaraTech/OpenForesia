@@ -97,3 +97,6 @@ EntityHandler_00420A70 | 0x005501F0 | +0x00 | EntityHandler_00420A70,TickLabyrin
 EntityHandler_0041E340 | 0x0054FF50 | +0x00 | EntityHandler_0041E340,TickLabyrinthRisingMote | 0257242f610f | pose 0 a la naissance et n'ecrit plus jamais +0x40 : le corps n'a qu'un etat apres la naissance et il ne touche qu'a +0x12, +0x14, +0x20 et aux echelles
 EntityHandler_00421330 | 0x00550138 | +0x00 | EntityHandler_00421330,TickLabyrinthRisingMote | a457af693db7 | jumeau du precedent a la planche pres
 EntityHandler_00425500 | 0x00550350 | +0x00 | EntityHandler_00425500,TickLabyrinthRisingMote | a45915094e40 | troisieme exemplaire du precedent (sous-zones 4 et 9)
+
+# ---- Ajoute le 2026-09-18 (lot 6 du labyrinthe)
+EntityHandler_004249D0 | 0x00550350 | +0x08 | EntityHandler_004249D0 | 66d6c3652fe1 | pose 0 a la naissance dans la meme branche que +0x3c, et ne reecrit jamais +0x40 (releve FUN_004249D0.asm jusqu au ret 0x00424add)

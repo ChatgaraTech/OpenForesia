@@ -6,6 +6,24 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le lot 6 du Labyrinthe des morts — la catégorie B est VIDE** : zone 5, 112 → 124 sur 160.
+  Il ne reste que du « moyen » (25) et du « gros » (11, 10 lectures)
+- feat : neuf effets dans `Effects/LabyrinthParticles.cs` — celle qui se transforme et meurt en une
+  image, le halo qui s'ouvre puis s'éteint, le même qui entraîne son jumeau de `+0x70`, les deux
+  bulles qui enflent, l'étincelle à deux ancrages en version gardée et non gardée, le débris qui
+  attend puis tombe, et la planche de quatre images
+- feat : deux secousses de caméra dans `Handlers/LabyrinthMecanismes.cs` — même corps au même
+  créneau de deux blocs, l'une finissant sur une phrase et l'autre sur un script
+- feat : **`AreaVerb_00444340`** dans `WorldMapScript.cs` — un **verbe de script**, pas un
+  gestionnaire d'entité : il rend à chaque membre désigné par un masque l'état de contact d'une
+  entité neuve (`0xA000` dans `+0x82`/`+0x86`/`+0x8a`/`+0x8e`, `+0x94` à zéro)
+- doc : `0x00550060`, `0x00550268`, `0x00550360` et le script de sons `0x00552690` relevés dans
+  `DataSymbols.md`. **`0x00550360` est le premier cas où la donnée invite à transcrire trop LONG** :
+  son cinquième enregistrement a la même forme que les quatre premiers, et c'est le corps qui borne
+- doc : `0x005e9062` — deux corps identiques instruction pour instruction lisent **deux globales
+  différentes** pour le même rôle : `0x005e9062` en sous-zones 0 à 3, `0x005de538` en 5 à 8
+- doc : marge courte de `EntityHandler_004249D0` (`0x00550350 +0x08`) prouvée et scellée dans
+  `marges-verifiees.txt` — 63 des 66 marges courtes du dépôt sont maintenant prouvées
 - feat : **le lot 5 du Labyrinthe des morts** — la fin de la catégorie B du décor et ses trois plus
   simples « C » : zone 5, 102 → 112 sur 160 ; B passe de 19 à 12 corps, C de 28 à 25
 - feat : huit corps de décor — le demi-tour verrouillé par un drapeau, ce qui frappe et projette en

@@ -1803,6 +1803,10 @@ public static unsafe partial class Blaze
 
             0x00442D90 => AreaVerb_00442D90(ent, (short)(s[2] | (s[3] << 8))),
 
+            // Le verbe du LABYRINTHE DES MORTS qui remet a zero les contacts du groupe. Il ignore
+            // l'entite appelante : son corps ne lit que [esp+8], donc le second argument.
+            0x00444340 => AreaVerb_00444340((short)(s[2] | (s[3] << 8))),
+
             0x00442F60 => AreaVerb_00442F60(),
 
             0x00443100 => AreaVerb_00443100(),
@@ -2964,6 +2968,71 @@ public static unsafe partial class Blaze
     private static uint AreaVerb_00442D90(byte* entity, short index)
     {
         *(byte**)(Mem.Entity(0x005ecaa0) + index * 0x9c + 0x6c) = entity;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00444340</c> — <b>le verbe du labyrinthe des morts qui rend au groupe ses
+    /// contacts</b>. Creneau <b>13</b> du bloc <c>0x00557ba8</c> (table <c>0x0056aec8</c>,
+    /// sous-zones 0 a 3). Quarante instructions, <b>absente de <c>Blaze.c</c></b> ; dump conserve
+    /// dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00444340.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle n'est PAS un gestionnaire d'entite</b>, malgre sa presence dans
+    /// <c>GestionnairesEntites.md</c> : la table <c>0x0056aec8</c> est celle des verbes de zone, et
+    /// le corps ne lit meme pas l'entite appelante — seulement l'argument de seize bits que le
+    /// script lui passe.
+    /// </para>
+    /// <para>
+    /// <b>Cet argument est un numero dans la TROISIEME table d'entites</b> (<c>0x005fa5e0</c>, pas
+    /// <c>0x005ecaa0</c> : celle que <c>FUN_0050e5e0</c> parcourt). Le verbe commence par exiger que
+    /// le champ <c>+0x16</c> de cet enregistrement soit <b>nul</b> ; sinon il rend la main.
+    /// </para>
+    /// <para>
+    /// <b>L'octet <c>+9</c> de cet enregistrement est un masque d'emplacements</b>, sur ses quatre
+    /// bits bas. Pour chaque emplacement actif (<c>0x80000000</c>, sans <c>0x50000000</c>) dont le
+    /// bit est pose, le verbe ecrit <c>0xA000</c> dans les <b>quatre</b> demi-mots <c>+0x82</c>,
+    /// <c>+0x86</c>, <c>+0x8a</c> et <c>+0x8e</c> — <b>un OU, pas une affectation</b> — et remet
+    /// <c>+0x94</c> a zero. Ce sont les memes champs que <see cref="MoveSceneEntity_00455B30"/>
+    /// arme a la naissance d'une entite : le verbe <b>rend au membre l'etat de contact d'une entite
+    /// neuve</b>.
+    /// </para>
+    /// <para>
+    /// <b>Le masque est relu de la pile a chaque tour</b>, puis decale de l'indice du tour
+    /// (<c>shr bl,cl</c>) : c'est bien le bit <i>n</i> qui commande l'emplacement <i>n</i>, et non
+    /// un decalage cumulatif.
+    /// </para>
+    /// <para>
+    /// <b>Aucune borne sur l'indice</b> — <c>movsx</c>, donc signe — et la boucle est ecrite
+    /// <c>cmp cx,3 ; jle</c>, donc quatre tours en dur, sans consulter
+    /// <c>s_PartySize_005e9020</c>.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero : les deux sorties font <c>xor eax,eax</c>.</returns>
+    private static uint AreaVerb_00444340(short index)
+    {
+        byte* record = Mem.Entity(0x005fa5e0) + index * 0x9c;
+
+        if (*(short*)(record + 0x16) != 0) return 0;
+
+        byte mask = (byte)(record[9] & 0x0f);
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50000000) != 0) continue;
+            if (((mask >> i) & 1) == 0) continue;
+
+            *(ushort*)(slot + 0x82) |= 0xa000;
+            *(ushort*)(slot + 0x86) |= 0xa000;
+            *(ushort*)(slot + 0x8a) |= 0xa000;
+            *(ushort*)(slot + 0x8e) |= 0xa000;
+
+            slot[0x94] = 0;
+        }
+
         return 0;
     }
 

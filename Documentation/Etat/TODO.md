@@ -1,9 +1,9 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (lots 4 et 5 du Labyrinthe : vingt
-corps de décor de plus, et `Handlers/LabyrinthMecanismes.cs` ouvert ; la table `0x0056adc8` n'a plus
-un seul « B » à écrire). La veille avait fermé la mine, la montagne du dragon de feu et la vieille
-tour. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (lots 4, 5 et 6 du Labyrinthe :
+trente-deux corps de plus, `Handlers/LabyrinthMecanismes.cs` ouvert, et **la catégorie « B » de la
+zone 5 est vide**). La veille avait fermé la mine, la montagne du dragon de feu et la vieille tour.
+L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -55,7 +55,7 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 112 / 160 |
+| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites** | 124 / 160 |
 | 6 | Le château de l’immortel | 31 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
@@ -88,13 +88,9 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **Le décor du Labyrinthe des morts** : 48 corps restants, tous B, C ou D — aucune bête. Le tri
-   est à jour dans `Zone5ParComplexite.md` : 12 simples pour 12 lectures, 25 moyens pour 25, 11 gros
-   pour 10. Fermer la zone 5 ne demande plus que du décor. **La table `0x0056adc8` — le décor de
-   sous-zone — n'a plus un seul « B » à écrire** : les douze restants sont sur `0056B0C8`,
-   `0056B1C8`, `0056B2C8` et `0056AEC8`, donc le prochain lot change de fichier de destination
-   (`Effects/`, `Combat/`, `WorldMapScript.cs`). Trois lots faits le 2026-09-17, deux le
-   2026-09-18 :
+4. **Le décor du Labyrinthe des morts** : 36 corps restants, tous C ou D — aucune bête, et
+   **plus un seul « B »**. Le tri est à jour dans `Zone5ParComplexite.md` : 25 moyens pour
+   25 lectures, 11 gros pour 10. Trois lots faits le 2026-09-17, trois le 2026-09-18 :
    - **lot 1** (suite 17) : les dix plus simples — sept décors de `0x0056adc8` dans le fichier neuf
      `Handlers/Labyrinth.cs`, trois **verbes de script** de `0x0056aec8` dans `WorldMapScript.cs` ;
    - **lot 2** (suite 18) : les **neuf paires miroir** de `0x0056b2c8` (bloc 5-8 = bloc 0-3 à
@@ -115,7 +111,14 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      `0x005517c8` / `0x005517e8` (la position d'un bloc poussé survit au changement de carte, voir
      `DataSymbols.md`), un **argument perdu par Ghidra** sur `0x00460C00` qui inverse le sens du site
      (`0` au lieu de la sentinelle `999`), et `0x00461F50` qui **empaquette quatre compteurs dans
-     `+0x10` et `+0x16`** — son état n'est que l'octet bas de `+0x10`.
+     `+0x10` et `+0x16`** — son état n'est que l'octet bas de `+0x10` ;
+   - **lot 6** (2026-09-18) : les **douze derniers « B »**, pris d'un coup plutôt que dix — neuf
+     effets, deux secousses de caméra, et **un verbe de script** (`0x00444340`, table `0x0056aec8`),
+     qui n'est pas un gestionnaire d'entité malgré sa ligne dans `GestionnairesEntites.md`. Deux
+     relevés : **`0x00550360` est le premier cas où la donnée invite à transcrire trop LONG** (son
+     cinquième enregistrement a la même forme que les quatre premiers ; c'est `+0x40`, qui meurt à
+     4, qui borne), et deux corps **identiques instruction pour instruction** lisent **deux globales
+     différentes** — `0x005e9062` en sous-zones 0 à 3, `0x005de538` en 5 à 8.
    Pour la suite, dans cet ordre de rendement :
    - **`0x004224F0` (389 instr.) a un jumeau à UNE instruction près hors zone**, `0x0043F4E0`
      (grotte scellée) : le plus gros corps restant du Labyrinthe est deux corps pour une lecture.

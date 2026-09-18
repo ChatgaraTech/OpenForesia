@@ -23856,3 +23856,106 @@ ne reste **plus rien sur `0x0056adc8`** : les douze sont sur `0056B0C8`, `0056B1
 
 **Aucun des dix corps n'a été exercé en jeu** : la colonne `teste` de la zone 5 reste à zéro sur les
 160. Vingt dettes depuis hier.
+
+## 2026-09-18 (suite 2) — Labyrinthe des morts, lot 6 : la catégorie B est vide
+
+Zone 5 : **112 → 124 sur 160**. La catégorie **B disparaît du tri** ; il ne reste que 25 « C » et
+11 « D » (10 lectures).
+
+Les douze derniers « B » d'un coup, plutôt que dix : la catégorie était à douze, et s'arrêter à dix
+aurait laissé deux corps orphelins dans trois fichiers différents. Ils quittent tous
+`0x0056adc8` — c'était l'avertissement laissé au lot 5 — et se répartissent :
+
+| table | corps | où |
+|---|---:|---|
+| `0x0056b0c8` / `0x0056b1c8` / `0x0056b2c8` | 9 | `Effects/LabyrinthParticles.cs` |
+| `0x0056b0c8` (les deux secousses) | 2 | `Handlers/LabyrinthMecanismes.cs` |
+| `0x0056aec8` | 1 | `WorldMapScript.cs` — **ce n'est pas un gestionnaire d'entité** |
+
+| adresse | bloc / créneau | sous-zones | `Blaze.c` | ce qu'il fait |
+|---|---|---|---|---|
+| `0x00483C50` | `0x00558aa8` / 28 | 4,9 | oui | se transforme et meurt en une image |
+| `0x00483E90` | `0x00558ba8` / 28 | 4,9 | **non** | le halo qui s'ouvre, monte et s'éteint |
+| `0x004840E0` | `0x00558ba8` / 27 | 4,9 | **non** | le même, qui entraîne son jumeau de `+0x70` |
+| `0x00425270` | `0x00558ba8` / 7 | 4,9 | **non** | la bulle qui enfle et fait naître |
+| `0x00425350` | `0x00558ba8` / 8 | 4,9 | **non** | la même, déjà grande et déjà lancée |
+| `0x0041D090` | `0x00557fa8` / 46 | 0-3 | **non** | l'étincelle à deux ancrages, gardée |
+| `0x0041F520` | `0x00558628` / 46 | 5-8 | **non** | la même, sans le garde |
+| `0x004249D0` | `0x00558ca8` / 57 | 4,9 | **non** | le débris qui attend puis tombe au sol |
+| `0x00425410` | `0x00558ca8` / 62 | 4,9 | oui | huit images, quatre planches, fini |
+| `0x0041D860` | `0x00557da8` / 63 | 0-3 | oui | la secousse qui finit sur une phrase |
+| `0x00420860` | `0x00558428` / 63 | 5-8 | oui | la même, qui finit sur un script |
+| `0x00444340` | `0x00557ba8` / 13 | 0-3 | **non** | **verbe de script** : rend au groupe ses contacts |
+
+Dix dumps sous `Legacy/Raw/Blaze/`, plus `AreaVerbs/FUN_00444340.asm` pour le verbe.
+
+### Deux paires au même créneau, et ce que ça prouve
+
+`0x0041D860` (bloc des sous-zones 0-3) et `0x00420860` (bloc des 5-8) sont au **créneau 63** de leur
+bloc respectif : même sous-type, donc un seul objet du jeu. Leurs cinquante premières instructions
+sont identiques — dix images de secousse amortie sur `0x005de0ac`, sonnées par le `0x3e` de la
+sous-zone. À la dernière image elles divergent :
+
+- moitié basse : `BindMenuLabels` avec le libellé **1** de la table `+0x70`, locuteur
+  `&DAT_005e93c0 + DAT_005e9060._2_1_ * 0x9c` ;
+- moitié haute : `RunEntityScript` avec le script **0x15**, sujet
+  `&DAT_005e93c0 + DAT_005de538 * 0x9c`.
+
+**Ce ne sont pas la même globale**, et c'était le point à vérifier plutôt qu'à supposer :
+`mov al,[5E9062h]` contre `mov al,[5DE538h]`, relevé au désassembleur. Deux corps identiques au
+sens propre, qui lisent deux globales différentes pour le même rôle apparent — consigné dans
+`DataSymbols.md`, avec un `TODO(REVERSE)`.
+
+`0x0041D090` et `0x0041F520` sont de même au **créneau 46** de leurs blocs. Leur écart de quatorze
+instructions est *exactement* un garde : la version des sous-zones 0 à 3 remplace un `+0x6c` ou
+`+0x74` nul par un enregistrement vide de `0x9c` octets pris sur la pile et mis à zéro
+(`rep stosd`), ce qui fait tomber l'étincelle à l'origine ; celle des 5 à 8 déréférence sans
+vérifier. La différence est dans le binaire, pas une précaution ajoutée ici.
+
+### Le piège inverse sur une planche : la donnée invite à transcrire trop LONG
+
+La règle connue est qu'une table transcrite trop **court** rend du tas non initialisé, sans erreur.
+`0x00550360` est le cas symétrique, et il n'était pas documenté. Ses quatre premiers
+enregistrements et le cinquième, à `0x00550380`, ont la **même forme** — `01 03 10 00` en octets 4 à
+7, seuls les U/V changent — donc le critère habituel (« la table finit où les octets changent de
+forme ») ne tranche pas et invite à en prendre cinq. C'est le corps qui borne : `+0x40` compte 0, 1,
+2, 3 et l'entité meurt à 4. Quatre.
+
+`check-descriptors.sh` confirme les quatre plages du lot (`0x00550060` et `0x00550268` à trois
+enregistrements, `0x00550360` à quatre) et la marge de 1 de `0x004249D0`, qui installe **le second
+enregistrement de la table de `0x00425500`** (`0x00550358`) plutôt qu'une table à lui. Cette marge
+est **prouvée et scellée** : le corps pose `+0x40` à zéro dans la même branche que `+0x3c` et ne le
+réécrit jamais. Le dépôt passe à 63 marges courtes prouvées sur 66.
+
+### Le douzième n'est pas une entité
+
+`0x00444340` apparaît dans `GestionnairesEntites.md` comme n'importe quel gestionnaire, et n'en est
+pas un : la table `0x0056aec8` est celle des **verbes de zone**, et ce corps ne lit même pas
+l'entité appelante — seulement l'argument de seize bits du script. Cet argument indexe la
+**troisième** table d'entités (`0x005fa5e0`, celle de `FUN_0050e5e0`) ; l'octet `+9` de
+l'enregistrement désigné est un masque d'emplacements sur ses quatre bits bas, et pour chaque membre
+actif dont le bit est posé, le verbe écrit `0xA000` dans `+0x82`, `+0x86`, `+0x8a`, `+0x8e` et remet
+`+0x94` à zéro.
+
+Ce sont **les champs que `MoveSceneEntity_00455B30` arme à la naissance d'une entité** : le verbe
+rend au membre son état de contact neuf. Il est branché dans `ScriptOpAreaVerb` et rend toujours
+zéro.
+
+### Deux partages, et pourquoi ils ne cachent rien
+
+- `TickSwellingBubble` : `0x00425270` et `0x00425350` ont la **même** boucle d'expansion à une
+  constante près (l'accélération, `0x14` contre `0x28`). Leurs naissances, elles, n'ont rien de
+  commun — genre et forme différents, l'une monte de cent cases et fait naître le sous-type `0xc8`,
+  l'autre part déjà grande — et restent donc écrites séparément.
+- `TickAnchoredSpark` : le garde sur les pointeurs est passé en paramètre **nommé**
+  (`guardNulls`) plutôt que caché, parce que c'est précisément la seule chose que le partage
+  risquait d'effacer.
+
+### Reste à faire dans la zone
+
+36 corps : 25 « C » (3 573 instructions) et 11 « D » (3 782, mais **10 lectures** — `0x0041F760` et
+`0x0041FF40` sont un seul corps émis deux fois). Le meilleur rapport reste `0x004224F0`
+(389 instructions) et son jumeau hors zone `0x0043F4E0` (grotte scellée), à une instruction près.
+
+**Aucun des douze corps n'a été exercé en jeu** : la colonne `teste` de la zone 5 reste à zéro sur
+les 160. Trente-deux dettes en deux jours.

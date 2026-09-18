@@ -485,4 +485,127 @@ public static unsafe partial class Blaze
             *(short*)(e + 0x10) = 3;
         }
     }
+
+    // =====================================================================
+    // LOT 6 (2026-09-18) — LA SECOUSSE QUI DECLENCHE, EN DEUX VERSIONS
+    //
+    // Table 0x0056b0c8, creneau 63 des blocs 0x00557da8 (sous-zones 0 a 3) et 0x00558428
+    // (sous-zones 5 a 8). Deux corps au MEME creneau de leurs blocs, et donc le meme sous-type ;
+    // ils sont identiques jusqu'a la derniere instruction, ou ils se separent.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>DAT_005e9060._2_1_</c> — l'octet 2 du bloc que
+    /// <see cref="Memory.s_PanelSelection_005e9060"/> ouvre. <see cref="EntityHandler_0041D860"/>
+    /// s'en sert comme <b>numero d'emplacement</b> pour designer le locuteur d'une boite de
+    /// dialogue, exactement comme <c>0x005de538</c> ailleurs — mais ce sont deux globales
+    /// differentes, verifiees au desassembleur (<c>mov al,[5E9062h]</c> contre
+    /// <c>mov al,[5DE538h]</c>).
+    /// TODO(REVERSE) : qui ecrit <c>0x005e9062</c>, et pourquoi la zone 5 l'emploie la ou sa jumelle
+    /// emploie <c>0x005de538</c>.</summary>
+    private static ref byte s_Unknown_005e9062 => ref Mem.s_PanelSelection_005e9060[2];
+
+    /// <summary>
+    /// Le compte a rebours partage par <see cref="EntityHandler_0041D860"/> et
+    /// <see cref="EntityHandler_00420860"/>. <b>Dix images de secousse</b>, apres quoi chacune fait
+    /// sa propre chose.
+    ///
+    /// <para>
+    /// La naissance joue le son <c>0x3e</c> de la sous-zone par
+    /// <see cref="Audio.PlaySoundEffect"/> — donc <b>sans attenuation par la distance</b> — a
+    /// hauteur <c>0x200</c>, gain plein sur les deux voies, et arme <c>+0x12</c> a dix.
+    /// </para>
+    /// <para>
+    /// <b>Le compteur alterne de signe a chaque image</b>, et c'est ce qui fait la secousse :
+    /// <c>0x005de0ac</c> — le deuxieme des trois mots de secousse de camera, celui que
+    /// <see cref="TryPublishCameraEffectNearEntity"/> publie — recoit <c>+0x12</c> tel quel, puis le
+    /// corps rapproche <c>+0x12</c> de zero d'une unite (par le haut ou par le bas) et le
+    /// <b>nie</b>. La camera reçoit donc <c>+10, -9, +8, -7…</c> : une oscillation amortie qui
+    /// s'eteint en dix images.
+    /// </para>
+    /// <para>
+    /// <b>Les trois mots de secousse sont remis a zero en tete de chaque image</b> par le prologue
+    /// de <c>RunWorldMapTick</c> ; l'ecriture directe ici est donc une requete valable une image, au
+    /// meme titre que celle de sa sœur — a ceci pres qu'elle ne passe pas par le garde de distance.
+    /// </para>
+    /// </summary>
+    /// <returns><c>true</c> a l'image ou le compteur atteint zero, une seule fois.</returns>
+    private static bool TickQuakeCountdown(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 10;
+
+            // Ghidra: FUN_0053cea0(**(int **)(DAT_005e97cc + 0xa8) + 0x3e, 0x200, 0x1000, 0x1000)
+            Aud.PlaySoundEffect(ZoneSound(0x3e), 0x200, 0x1000, 0x1000);
+        }
+
+        *Mem.Camera(0x005de0ac) = *(short*)(e + 0x12);
+
+        if (*(short*)(e + 0x12) > 0) (*(short*)(e + 0x12))--;
+        if (*(short*)(e + 0x12) < 0) (*(short*)(e + 0x12))++;
+
+        short swung = (short)-*(short*)(e + 0x12);
+        *(short*)(e + 0x12) = swung;
+
+        if (swung != 0) return false;
+
+        *(uint*)e &= 0x7fffffff;
+        return true;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0041d860 @ 0x0041d860 — creneau <b>63</b> du bloc <c>0x00557da8</c>
+    /// (<c>0x0056b0c8</c>, sous-zones 0 a 3). Decompilee dans <c>Blaze.c</c>, 53 instructions.
+    ///
+    /// <para>
+    /// <b>La secousse qui finit sur une phrase.</b> Dix images de tremblement
+    /// (<see cref="TickQuakeCountdown"/>), puis <see cref="BindMenuLabels"/> avec le libelle
+    /// <b>1</b> de la table <c>+0x70</c> de la zone et le descripteur <c>0x005633b0</c>. Le locuteur
+    /// est l'emplacement que <see cref="s_Unknown_005e9062"/> designe.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne pose PAS <c>0x005e99c8</c> a <c>0x40</c></b>, contrairement a tous les autres
+    /// panneaux de la carte du monde releves jusqu'ici. C'est la seule difference de forme avec
+    /// eux, et elle est dans le binaire.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0041D860(byte* e)
+    {
+        if (!TickQuakeCountdown(e)) return;
+
+        // Ghidra: FUN_00544350(*(undefined4 *)(*(int *)(DAT_005e97cc + 0x70) + 4),
+        //                      &DAT_005e93c0 + DAT_005e9060._2_1_ * 0x27, &DAT_005633b0, 0)
+        byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + 4);
+        byte* speaker = Inp.s_SlotFlags_005e93c0 + s_Unknown_005e9062 * 0x9c;
+
+        BindMenuLabels(labels, (uint)(nint)speaker, s_WorldMapDescriptor_005633b0, 0);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00420860 @ 0x00420860 — creneau <b>63</b> du bloc <c>0x00558428</c>
+    /// (<c>0x0056b0c8</c>, sous-zones 5 a 8). Decompilee dans <c>Blaze.c</c>, 50 instructions.
+    ///
+    /// <para>
+    /// <b>La meme secousse, qui finit sur un script.</b> Les cinquante premieres instructions sont
+    /// celles de sa jumelle <see cref="EntityHandler_0041D860"/> ; a la derniere image elle appelle
+    /// <see cref="RunEntityScript"/> avec le script <b>0x15</b>, sur l'emplacement que
+    /// <see cref="Memory.s_Unknown_005de538"/> designe — pas la meme globale que sa jumelle, verifie
+    /// au desassembleur.
+    /// </para>
+    /// <para>
+    /// Les deux corps occupent le <b>meme creneau</b> de leurs blocs respectifs, donc le meme
+    /// sous-type : c'est bien <i>un</i> objet du jeu, dont la moitie basse du labyrinthe parle et
+    /// dont la moitie haute declenche une scene.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00420860(byte* e)
+    {
+        if (!TickQuakeCountdown(e)) return;
+
+        // Ghidra: FUN_00513dd0(DAT_005e97cc, &DAT_005e93c0 + DAT_005de538 * 0x27, 0x15)
+        byte* subject = Inp.s_SlotFlags_005e93c0 + (Mem.s_Unknown_005de538 & 0xff) * 0x9c;
+
+        RunEntityScript(s_Unknown_005e97cc, subject, 0x15);
+    }
 }

@@ -3219,3 +3219,47 @@ idempotente — mais ce n'est pas un « remettre si aberrant ». La hauteur `0x0
 
 Le test lit `< 0xc9` et `> 399` sur X, `> -0x4b1` et `< -0x577` sur Z : les bornes sont écrites une
 en hexadécimal et l'autre en décimal dans la pseudo-C, c'est le même nombre des deux côtés.
+
+## `0x00550060`, `0x00550268`, `0x00550360`, `0x00552690` — les quatre plages du lot 6 du labyrinthe (2026-09-18)
+
+Relevées en vidant la catégorie B de la zone 5. Trois planches de sprite et un script de sons
+différés ; les octets sont transcrits dans
+`Screens/State03/Effects/LabyrinthParticles.cs`, cette section note **d'où vient chaque borne**.
+
+| VA | quoi | longueur | ce qui borne |
+|---|---|---:|---|
+| `0x00550060` | planche de `FUN_0041D090` | 3 × 8 o. | `0x00550078` change de forme, et le corps tire `+0x40` dans `[0, 3[` |
+| `0x00550268` | planche de `FUN_0041F520` | 3 × 8 o. | idem, borné par `0x00550280` — **mêmes octets que `0x00550060`** |
+| `0x00550360` | planche de `FUN_00425410` | 4 × 8 o. | **le corps seul** — voir ci-dessous |
+| `0x00552690` | script de sons différés de `FUN_00483C50` | 3 × 8 o. | délai nul au troisième, et `0x005526a8` est le script d'un autre site |
+
+**`0x00550360` est le cas où la donnée ne dit rien.** `0x00550380` porte un cinquième
+enregistrement de la *même* forme — `01 03 10 00` en octets 4 à 7, seuls les U/V changent — donc le
+critère habituel (« la table finit où les octets changent de forme ») ne tranche pas. Ce qui tranche
+est le corps : `+0x40` compte 0, 1, 2, 3 et l'entité meurt à 4. Quatre enregistrements, pas cinq.
+C'est exactement l'inverse du piège documenté plus haut (une table transcrite trop court) : ici la
+donnée invite à transcrire trop **long**.
+
+**`0x00550358` n'est pas une table, c'est le second enregistrement de `0x00550350`.**
+`FUN_004249D0` installe `+0x3c = 0x00550358` avec `+0x40 = 0`, donc il lit un seul enregistrement —
+le dernier de la table que `FUN_00425500` installe à `0x00550350`. L'adjacence est écrite dans le
+code (`Descriptors00550350() + 8`) plutôt que recopiée. La marge de 1 est **prouvée et scellée**
+dans `OpenForesia.Tools/marges-verifiees.txt` : le corps pose `+0x40` à zéro dans la même branche
+que `+0x3c` et ne le réécrit jamais.
+
+**`0x00550060` et `0x00550268` portent les mêmes vingt-quatre octets.** C'est la copie par groupe de
+sous-zones déjà relevée sur les neuf paires miroir du lot 2 ; ici les deux corps qui les installent
+ne sont pas identiques pour autant — voir `REVERSE_STATUS.md`, section du 2026-09-18 (lot 6).
+
+## `0x005e9062` — un numéro d'emplacement, et ce n'est pas `0x005de538` (2026-09-18)
+
+`FUN_0041D860` (labyrinthe, sous-zones 0 à 3) désigne le locuteur d'une boîte de dialogue par
+`&DAT_005e93c0 + DAT_005e9060._2_1_ * 0x9c`, là où sa jumelle `FUN_00420860` (sous-zones 5 à 8)
+désigne le sujet d'un script par `&DAT_005e93c0 + DAT_005de538 * 0x9c`. Vérifié au désassembleur :
+`mov al,[5E9062h]` contre `mov al,[5DE538h]` — **deux globales différentes pour le même rôle
+apparent**, dans deux corps par ailleurs identiques instruction pour instruction.
+
+L'adresse tombe dans la plage que `s_PanelSelection_005e9060` ouvre (`Memory/GameMemory.cs`), et est
+atteinte par `Mem.s_PanelSelection_005e9060[2]`.
+TODO(REVERSE) : qui écrit `0x005e9062`, et pourquoi la moitié basse du labyrinthe l'emploie là où sa
+moitié haute emploie `0x005de538`.
