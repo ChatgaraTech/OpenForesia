@@ -1502,6 +1502,15 @@ public static unsafe partial class Blaze
             case 0x00424DC0: EntityHandler_00424DC0(record); return;   // cent images sur l'espece 1, puis le script du membre
             case 0x004244D0: EntityHandler_004244D0(record); return;   // deux cents images sur l'espece 2, fond rouge
 
+            // LE LABYRINTHE DES MORTS, lot 9 : le premier « D », et son jumeau de la grotte scellee.
+            // Effects/LabyrinthParticles.cs.
+            case 0x004224F0: EntityHandler_004224F0(record); return;   // la nappe devant le porteur, qui marque qui s'y trouve
+            case 0x0043F4E0: EntityHandler_0043F4E0(record); return;   //   la meme, grotte scellee — une instruction d'ecart
+
+            // LE LABYRINTHE DES MORTS, lot 10 : les deux autres « charpentes », qui sont le meme corps.
+            case 0x0041C900: EntityHandler_0041C900(record); return;   //   la meme, repli sur un tampon nul
+            case 0x0041EDD0: EntityHandler_0041EDD0(record); return;   //   la meme, sans repli
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98

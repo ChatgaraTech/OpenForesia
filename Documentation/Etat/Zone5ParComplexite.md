@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**160 gestionnaires, 149 implementes, 11 a ecrire.**
+**160 gestionnaires, 152 implementes, 8 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,7 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **D — gros** | pas d'IA, > 250 instr. | 11 | 10 | 3782 |
+| **D — gros** | pas d'IA, > 250 instr. | 8 | 7 | 2617 |
 
 La colonne « instructions » additionne une seule fois chaque forme ; la categorie A n'en compte
 aucune, puisque son corps est deja ecrit.
@@ -27,16 +27,13 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## D — gros (11)
+## D — gros (8)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
 | `0x00484190` | 4,9 | 0056B1C8 | 252 | 0 | non |  |  |
 | `0x00420480` | 5,6,7,8 | 0056B1C8 | 261 | 0 | non |  | appelee(s) inconnue(s) : `0x004207E0` `0x00420820` |
 | `0x00422E50` | 4,9 | 0056B1C8 | 266 | 0 | non |  | appelee(s) inconnue(s) : `0x004231C0` `0x00423200` |
-| `0x0041EDD0` | 5,6,7,8 | 0056B1C8 | 380 | 1 | non |  | appelee(s) inconnue(s) : `0x0041F2E0` `0x0041F320` `0x0041F360` `0x0041F3A0` `0x0041F3E0` `0x0041F420` `0x0041F460` `0x0041F4A0` `0x0041F4E0` |
-| `0x004224F0` | 4,9 | 0056B1C8 | 389 | 1 | non |  | appelee(s) inconnue(s) : `0x00422A20` `0x00422A60` `0x00422AA0` `0x00422AE0` `0x00422B20` `0x00422B60` `0x00422BA0` `0x00422BE0` `0x00422C20` |
-| `0x0041C900` | 0,1,2,3 | 0056B1C8 | 396 | 1 | non |  | appelee(s) inconnue(s) : `0x0041CE50` `0x0041CE90` `0x0041CED0` `0x0041CF10` `0x0041CF50` `0x0041CF90` `0x0041CFD0` `0x0041D010` `0x0041D050` |
 | `0x0041F760` | 5,6,7,8 | 0056B2C8 | 430 | 0 | oui | `0x0041FF40` |  |
 | `0x0041FF40` | 5,6,7,8 | 0056B2C8 | 430 | 0 | oui | `0x0041F760` |  |
 | `0x0041D310` | 0,1,2,3 | 0056B2C8 | 431 | 0 | oui |  |  |

@@ -24141,3 +24141,66 @@ et dans le résumé de `EntityHandler_00404E50`, qui le disait « non établi »
 le meilleur rapport qui reste.
 
 **Aucun des seize n'a été exercé en jeu** ; `teste` reste à zéro sur les 160 de la zone.
+
+## 2026-09-18 (suite 5) — Labyrinthe des morts, lot 9 : le premier « D », deux corps pour une lecture
+
+Zone 5 : **149 → 150 sur 160** ; grotte scellée : **47 → 48**. `0x004224F0` (créneau 6 de
+`0x00558ba8`, sous-zones 4 et 9, 389 instructions, absent de `Blaze.c`) et `0x0043F4E0` (grotte
+scellée, sous-zones 13 à 15) sont **le même corps au `push` du sous-type semé près** — `0xee`
+contre `0xdf`. Écrits une fois, `TickOwnerFrontSweep(e, seed)`, dans `LabyrinthParticles.cs`.
+
+**Ce que c'est** : une nappe qui se déploie devant son propriétaire `+0x74` et marque, une seule
+fois chacun (un bit par emplacement dans `+0x44`), les membres vivants à moins de 200 unités dans un
+cône de ±`0x320` autour de son cap. L'effet dépend de `+0x9a` : 0 → l'effet 7
+(`ApplyStatusEffect_0053B3C0`), 2 → l'effet 8 (`0053B4B0`), 1 → l'un des neuf de la table de sauts
+`0x004229f0`, tiré par `rand() % 9`. L'état 1 dure dix images (ou s'interrompt sur un bit `0x8802`
+de `+0x90`), l'état 2 fond l'échelle et la teinte vers zéro en dix images.
+
+**Les « neuf appelées inconnues » du tri** (`0x00422A20`..`0x00422C20`) sont neuf corps de 61 octets
+**identiques au déplacement des deux `call` près** — la forme de `FUN_00421d80` du lot 8 :
+`IsEffectPairBlocked_004364B0`, puis un effet déjà écrit. Ils sont écrits en un seul
+`SweepLeaf_004224F0(cas, …)`. Le jumeau a ses neuf feuilles ailleurs (`0x0043f060`..`0x0043fa50`,
+dans un autre ordre en mémoire) ; vérifié cas par cas, **sa table les appelle dans le même ordre**.
+
+**La position de balayage n'est pas celle qu'on dessine** : l'entité avance de `+0x16` dans son cap
+pour balayer, appelle `FinalizeEntityPlacement2`, puis rend les trois coordonnées d'avant l'avancée
+— gardées dans trois mots de pile. Et le proprietaire replié est rangé **dans l'emplacement de
+l'argument** (`[esp+34h]`), le troisième corps de la journée à le faire.
+
+**Reste dans la zone : 10 « D »** (3 393 instructions, 9 lectures). Les deux charpentes à table de
+sauts `0x0041C900` / `0x0041EDD0` ont désormais un modèle écrit à comparer, et **leurs dix-huit
+feuilles sont déjà écrites** : vérifié octet par octet (`0x0041ce50`..`0x0041d050`,
+`0x0041f2e0`..`0x0041f4e0`), la même garde vers les mêmes neuf effets que `SweepLeaf_004224F0`.
+
+## 2026-09-18 (suite 6) — Labyrinthe des morts, lot 10 : les trois « charpentes » sont un seul corps
+
+Zone 5 : **150 → 152 sur 160**. `0x0041C900` (créneau 30 de `0x00557ea8`, sous-zones 0 à 3) et
+`0x0041EDD0` (créneau 30 de `0x00558528`, sous-zones 5 à 8) sont **`TickOwnerFrontSweep`**, le corps
+du lot 9, au sous-type semé près (`0xee` tous les deux). La note de la suite 19 — « une charpente,
+mais ce ne sont pas des copies » — était vraie **mesurée entre eux** (202 lignes d'écart) et fausse
+**mesurée contre le modèle** : il fallait un corps écrit pour voir ce que les trois partagent.
+
+| corps | écart au modèle | ce qui diffère |
+|---|---:|---|
+| `0x0041EDD0` | 69 lignes | **aucun repli** : `+0x74` et `+0x6c` lus tels quels ; le reste est l'allocation de registres |
+| `0x0041C900` | 211 lignes | le repli est un **enregistrement de `0x9c` octets mis à zéro sur la pile** à chaque image (`sub esp,0C0h`, `rep stosd` de 0x26 mots plus un) — la conduite des fins de la tour ; le tampon déplace tout le reste de la pile |
+
+Pour `0x0041C900`, la seule chose à vérifier à la main était la sauvegarde des trois coordonnées,
+dont les emplacements changent : `[esp+30h]` / `[esp+24h]` / `[esp+2Ch]` avant le `push` de
+l'argument, relus `[esp+34h]` / `[esp+28h]` / `[esp+30h]` après — mêmes champs rendus. Les deux
+tables (`0x0041ce20`, `0x0041f2b0`) appellent leurs neuf feuilles dans l'ordre du modèle.
+
+`AbsentHost` gagne une quatrième valeur, `FallBackOnBlankRecord`. Le bilan de la zone sur ce seul
+point : **cinq conduites** devant un porteur nul (repli sur `s_EntityList_005de558`, repli sur un
+tampon nul, saut de la lecture, sortie, aucun test) — et aucune ne se déduit du bloc.
+
+### Les huit restants ne font que quatre lectures
+
+Mesuré au diff « super-LOOSE » entre eux :
+
+| famille | corps | écart | note |
+|---|---|---|---|
+| A | `0x0041F760`, `0x0041FF40`, `0x0041D310`, `0x00421DC0` | 0 / 7 / 25 / 20 lignes | les quatre dans `Blaze.c`, table `0x0056b2c8` |
+| B | `0x00420480`, `0x00422E50` | 43 lignes | leurs quatre « appelées inconnues » sont encore la garde : `IsEffectPairBlocked_004364B0` puis `ApplyStatusEffect_0053BB20` / `0053BC60`, tous deux écrits |
+| — | `0x00484190` | — | 252 instr., isolé |
+| — | `0x00462A80` | — | 536 instr., le dernier du décor |

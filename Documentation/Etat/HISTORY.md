@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le lot 10 du Labyrinthe des morts** — `0x0041C900` et `0x0041EDD0` sont le corps du lot
+  9 à leur repli près (un tampon nul sur la pile, aucun repli) : deux corps sans lecture neuve. Zone
+  5 : 152 sur 160
+- doc : les huit « D » restants ne font que **quatre lectures** — une famille de quatre, une de
+  deux dont les appelées inconnues sont déjà écrites, et deux isolés
+- feat : **le lot 9 du Labyrinthe des morts** — `0x004224F0` et son jumeau de la grotte scellée
+  `0x0043F4E0`, deux corps pour une lecture : la nappe qui se déploie devant son propriétaire et
+  marque qui s'y trouve d'un des neuf effets d'état. Zone 5 : 150 sur 160 ; grotte : 48 sur 349
+- doc : les neuf « appelées inconnues » de `0x004224F0` sont neuf corps identiques — la garde,
+  puis un effet déjà écrit
 - feat : **le lot 8 du Labyrinthe des morts — la catégorie C est vide** : zone 5, 133 → 149 sur
   160. Seize corps pour douze lectures ; il ne reste que les onze « D »
 - feat : deux verbes de script de `0x0056aec8` — le silence net du bloc de son, et « tout le groupe

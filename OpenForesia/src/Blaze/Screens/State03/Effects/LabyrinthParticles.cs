@@ -1660,6 +1660,11 @@ public static unsafe partial class Blaze
         /// <summary>Sous-zones 5 a 8 : aucun test ; un porteur nul serait une faute de page dans
         /// le binaire, une violation d'acces ici — a la meme lecture.</summary>
         Unchecked,
+
+        /// <summary><c>0x0041C900</c> (sous-zones 0 a 3) : le porteur nul devient un
+        /// enregistrement de <c>0x9c</c> octets <b>mis a zero sur la pile</b> a chaque image
+        /// (<c>rep stosd</c>) — la conduite des fins de la vieille tour. Ajoute au lot 10.</summary>
+        FallBackOnBlankRecord,
     }
 
     // =====================================================================
@@ -2534,6 +2539,260 @@ public static unsafe partial class Blaze
         if (IsEffectPairBlocked_004364B0(attacker, victim) != 0) return true;
 
         return ApplyStatusEffect_0053C5E0(attacker, victim, keep) != 0;
+    }
+
+    // ---------------------------------------------------------------------
+    // CRENEAU 6 DE 0x00558ba8 (0x0056b1c8, SOUS-ZONES 4 ET 9) — LE BALAYAGE DEVANT LE PORTEUR,
+    // ET SON JUMEAU DE LA GROTTE SCELLEE
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Ghidra: <c>0x004224f0</c> — creneau <b>6</b> du bloc <c>0x00558ba8</c> (<c>0x0056b1c8</c>,
+    /// sous-zones 4 et 9) ; seme <c>0xee</c>. <b>Absente de <c>Blaze.c</c></b>, 389 instructions
+    /// et une table de sauts a neuf cas en <c>0x004229f0</c> ; dump sous
+    /// <c>Legacy/Raw/Blaze/FUN_004224F0.asm</c>. Lot 9, 2026-09-18.
+    /// </summary>
+    private static void EntityHandler_004224F0(byte* e) => TickOwnerFrontSweep(e, 0xee);
+
+    /// <summary>
+    /// Ghidra: <c>0x0043f4e0</c> — <b>grotte scellee</b>, sous-zones 13 a 15 (<c>0x0056b1c8</c>) ;
+    /// seme <c>0xdf</c>. <b>Absente de <c>Blaze.c</c></b> ; dump sous
+    /// <c>Legacy/Raw/Blaze/FUN_0043F4E0.asm</c>. <see cref="EntityHandler_004224F0"/> a <b>une
+    /// instruction</b> pres — le <c>push</c> du sous-type seme —, et ses neuf feuilles
+    /// (<c>0x0043f060</c>..<c>0x0043fa50</c>, emises dans un autre ordre en memoire) appellent les
+    /// memes effets <b>dans le meme ordre de table</b>, verifie cas par cas.
+    /// </summary>
+    private static void EntityHandler_0043F4E0(byte* e) => TickOwnerFrontSweep(e, 0xdf);
+
+    /// <summary>
+    /// Ghidra: <c>0x0041c900</c> — creneau <b>30</b> du bloc <c>0x00557ea8</c> (<c>0x0056b1c8</c>,
+    /// sous-zones 0 a 3) ; seme <c>0xee</c>. <b>Absente de <c>Blaze.c</c></b>, 396 instructions ;
+    /// dump sous <c>Legacy/Raw/Blaze/FUN_0041C900.asm</c>. Lot 10, 2026-09-18.
+    /// <see cref="EntityHandler_004224F0"/> <b>avec un autre repli</b> : proprietaire et ancre nuls
+    /// deviennent un enregistrement de <c>0x9c</c> octets mis a zero sur la pile a chaque image
+    /// (<c>sub esp,0C0h</c> puis <c>rep stosd</c>, 0x26 mots plus un). Les 211 lignes d'ecart
+    /// au modele sont ce tampon et l'allocation de registres qu'il deplace ; les trois
+    /// coordonnees gardees changent d'emplacement de pile mais sont rendues aux memes champs, et la
+    /// table <c>0x0041ce20</c> appelle ses neuf feuilles (<c>0x0041ce50</c>..<c>0x0041d050</c>)
+    /// dans l'ordre du modele — verifie cas par cas.
+    /// </summary>
+    private static void EntityHandler_0041C900(byte* e)
+        => TickOwnerFrontSweep(e, 0xee, AbsentHost.FallBackOnBlankRecord);
+
+    /// <summary>
+    /// Ghidra: <c>0x0041edd0</c> — creneau <b>30</b> du bloc <c>0x00558528</c> (<c>0x0056b1c8</c>,
+    /// sous-zones 5 a 8) ; seme <c>0xee</c>. <b>Absente de <c>Blaze.c</c></b>, 380 instructions ;
+    /// dump sous <c>Legacy/Raw/Blaze/FUN_0041EDD0.asm</c>. Lot 10, 2026-09-18.
+    /// <see cref="EntityHandler_004224F0"/> <b>sans aucun repli</b> : <c>+0x74</c> et <c>+0x6c</c>
+    /// sont lus tels quels. 69 lignes d'ecart au modele, toutes d'allocation de registres ; table
+    /// <c>0x0041f2b0</c>, feuilles <c>0x0041f2e0</c>..<c>0x0041f4e0</c>, meme ordre.
+    /// </summary>
+    private static void EntityHandler_0041EDD0(byte* e)
+        => TickOwnerFrontSweep(e, 0xee, AbsentHost.Unchecked);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_004224F0"/> et de <see cref="EntityHandler_0043F4E0"/>.
+    ///
+    /// <para>
+    /// <b>Une nappe qui se deploie devant son proprietaire et marque qui s'y trouve.</b> Deux
+    /// pointeurs, chacun replie sur <c>Res.s_EntityList_005de558</c> s'il est nul : le
+    /// <b>proprietaire</b> <c>+0x74</c> — son cap et sa position — et l'<b>ancre</b> <c>+0x6c</c> —
+    /// dont seuls <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> sont lus, ajoutes a la position. A chaque
+    /// image la nappe se replace a <b>15</b> fois le sinus de <c>+0x5c</c> plus son cap autour du
+    /// proprietaire, prend son cap plus <c>0xc00</c>, puis avance de <c>+0x16</c> dans ce cap moins
+    /// <c>0xc00</c>. La portee <c>+0x16</c> tend vers <c>0x258</c> et l'echelle <c>+0x2a</c> vers
+    /// <c>0x4000</c>, par quarts.
+    /// </para>
+    /// <para>
+    /// <b>Le balayage</b>, etat 1 seulement, depuis la position avancee : chaque membre vivant a
+    /// moins de <b>200</b> unites et dans un <b>cone de ±0x320</b> autour du cap du proprietaire
+    /// (<c>(ratan2 - cap) &amp; 0xfff</c> dans <c>]0, 0x320[</c> ou <c>]0xce0, 0x1000[</c>) est
+    /// marque <b>une seule fois</b> — un bit par emplacement dans <c>+0x44</c> — et recoit, au nom
+    /// du proprietaire, un effet choisi par <c>+0x9a</c> : 0, l'effet 7 ; 2, l'effet 8 ; 1, l'un
+    /// des neuf de la table, tire par <c>rand() % 9</c>. Chaque feuille passe d'abord par
+    /// <see cref="IsEffectPairBlocked_004364B0"/>. La couleur de naissance dit lequel : bleu-vert,
+    /// rouge, magenta.
+    /// </para>
+    /// <para>
+    /// <b>La position de balayage n'est pas celle qu'on dessine</b> : apres le balayage et
+    /// <see cref="FinalizeEntityPlacement2"/>, les trois coordonnees d'avant l'avancee sont
+    /// rendues — gardees dans trois mots de pile. L'etat 1 dure dix images, ou s'interrompt des
+    /// que <c>+0x90</c> porte un bit de <c>0x8802</c> (le compte, remis a 10, perd encore un dans
+    /// la meme image). L'etat 2 garde la nappe en place, echelle et teinte decroissant vers zero
+    /// — d'un quart et d'un huitieme par image —, puis l'eteint apres dix images.
+    /// </para>
+    /// </summary>
+    private static void TickOwnerFrontSweep(
+        byte* e, byte seed, AbsentHost absent = AbsentHost.FallBackOnEntityList)
+    {
+        // Ghidra: le repli de 0x0041C900, 0x9c octets de pile remis a zero a chaque image.
+        byte* blank = stackalloc byte[0x9c];
+        for (int i = 0; i < 0x9c; i++) blank[i] = 0;
+
+        // Ghidra: le repli est la seule difference des trois blocs — voir AbsentHost.
+        byte* fallback = absent == AbsentHost.FallBackOnBlankRecord ? blank : Res.s_EntityList_005de558;
+
+        byte* owner = *(byte**)(e + 0x74);
+        if (owner == null && absent != AbsentHost.Unchecked) owner = fallback;   // Ghidra: range dans [esp+34h], l'argument
+        byte* anchor = *(byte**)(e + 0x6c);
+        if (anchor == null && absent != AbsentHost.Unchecked) anchor = fallback;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0;
+            *(short*)(e + 0x28) = 0xfa;
+            *(short*)(e + 0x2c) = 0xfa;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x12) = 0x0a;
+
+            short kind = *(short*)(e + 0x9a);
+            if (kind == 0) { e[0x38] = 0; e[0x39] = 0x82; e[0x3a] = 0x96; }
+            if (kind == 1) { e[0x38] = 0x96; e[0x39] = 0; e[0x3a] = 0; }
+            if (kind == 2) { e[0x38] = 0x96; e[0x39] = 0; e[0x3a] = 0x96; }
+
+            e[0x36] &= 0xfe;
+            *(short*)(e + 0x16) = 0;
+            *(int*)(e + 0x44) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            PlaceInFrontOfOwner(e, owner, anchor);
+
+            if (*(short*)(e + 0x12) == 0x0a)
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, seed, 0, -1);
+
+            int keptX = *(int*)(e + 0x1c);
+            int keptY = *(int*)(e + 0x20);
+            int keptZ = *(int*)(e + 0x24);
+
+            StepAlongOwnerCourse(e);
+
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+            for (int i = 0; i < 4; i++, slot += 0x9c)
+            {
+                uint flags = *(uint*)slot;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                int dx = (*(int*)(slot + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                int dy = (*(int*)(slot + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+                int dz = (*(int*)(slot + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                int bearing = (Winsys3d.Ordinal_457(dx, dz) - *(short*)(owner + 0x32)) & 0xfff;   // Ghidra: 0x00545a22
+                int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));      // Ghidra: 0x00545a10
+                if (distance >= 200) continue;
+
+                bool inCone = (bearing < 0x320 && bearing > 0) || (bearing < 0x1000 && bearing > 0xce0);
+                if (!inCone) continue;
+
+                int bit = 1 << i;
+                if ((*(int*)(e + 0x44) & bit) != 0) continue;
+                *(int*)(e + 0x44) |= bit;
+
+                if (*(short*)(e + 0x9a) == 0) SweepLeaf_004224F0(1, owner, slot);
+
+                if (*(short*)(e + 0x9a) == 1)
+                {
+                    int leaf = (short)(CrtRand() % 9);                       // Ghidra: FUN_00547140
+                    if ((uint)leaf <= 8) SweepLeaf_004224F0(leaf, owner, slot);   // Ghidra: jmp [eax*4+4229F0h]
+                }
+
+                if (*(short*)(e + 0x9a) == 2) SweepLeaf_004224F0(3, owner, slot);
+            }
+
+            FinalizeEntityPlacement2((uint*)e);                       // Ghidra: FUN_00533940
+
+            *(int*)(e + 0x24) = keptZ;
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x20) = keptY;
+
+            short scale = *(short*)(e + 0x2a);
+            *(short*)(e + 0x2a) = (short)(((0x4000 - scale) >> 2) + scale);
+            short reach = *(short*)(e + 0x16);
+            *(short*)(e + 0x16) = (short)(((0x258 - reach) >> 2) + reach);
+
+            if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+
+            (*(short*)(e + 0x12))--;
+            if (*(short*)(e + 0x12) <= 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        PlaceInFrontOfOwner(e, owner, anchor);
+        StepAlongOwnerCourse(e);
+        *(short*)(e + 0x34) = 0xc00;
+
+        short fading = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)((-fading >> 2) + fading);
+
+        e[0x38] = (byte)(e[0x38] + (-e[0x38] >> 3));
+        e[0x39] = (byte)(e[0x39] + (-e[0x39] >> 3));
+        e[0x3a] = (byte)(e[0x3a] + (-e[0x3a] >> 3));
+
+        (*(short*)(e + 0x12))--;
+        if (*(short*)(e + 0x12) <= 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>La mise en place que <see cref="TickOwnerFrontSweep"/> ecrit deux fois a
+    /// l'identique : inclinaison <c>0x400</c>, cap du proprietaire plus <c>0xc00</c>, hauteur du
+    /// proprietaire plus <c>anchor+0x54</c>, et X/Z a 15 fois le sinus/cosinus de
+    /// <c>+0x5c + cap - 0xc00</c> autour du proprietaire, plus <c>anchor+0x50</c>/<c>+0x58</c>.</summary>
+    private static void PlaceInFrontOfOwner(byte* e, byte* owner, byte* anchor)
+    {
+        *(short*)(e + 0x34) = 0x400;
+        *(short*)(e + 0x32) = (short)(*(short*)(owner + 0x32) + 0xc00);
+        *(int*)(e + 0x20) = *(int*)(owner + 0x20) + *(int*)(anchor + 0x54);
+
+        int angle = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(angle) * 15 + *(int*)(owner + 0x1c) + *(int*)(anchor + 0x50);   // Ghidra: 0x00545a1c
+        angle = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(angle) * 15 + *(int*)(owner + 0x24) + *(int*)(anchor + 0x58);        // Ghidra: 0x00545a16
+    }
+
+    /// <summary>L'avancee de <c>+0x16</c> dans le cap moins <c>0xc00</c> — le demi-tour que
+    /// <see cref="PlaceInFrontOfOwner"/> avait ajoute.</summary>
+    private static void StepAlongOwnerCourse(byte* e)
+    {
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32) - 0xc00) * *(short*)(e + 0x16);
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32) - 0xc00) * *(short*)(e + 0x16);
+    }
+
+    /// <summary>
+    /// Les neuf feuilles de la table de sauts <c>0x004229f0</c>, dans l'ordre des cas. Chacune est
+    /// un corps de 61 octets de la forme de <see cref="ApplyStatusEffect32IfAllowed_00421D80"/> —
+    /// <see cref="IsEffectPairBlocked_004364B0"/> puis un effet —, et leur resultat n'est pas lu.
+    /// Les neuf sont identiques au deplacement des deux <c>call</c> pres.
+    /// </summary>
+    private static void SweepLeaf_004224F0(int leaf, byte* owner, byte* victim)
+    {
+        uint* attacker = (uint*)owner;
+        uint* target = (uint*)victim;
+        if (IsEffectPairBlocked_004364B0(attacker, target) != 0) return;
+
+        switch (leaf)
+        {
+            case 0: ApplyTrapEffect_0053C420(attacker, target, 0); break;    // Ghidra: FUN_00422be0
+            case 1: ApplyStatusEffect_0053B3C0(attacker, target, 0); break;  // Ghidra: FUN_00422a20
+            case 2: ApplyStatusEffect_0053BF00(attacker, target, 0); break;  // Ghidra: FUN_00422ba0
+            case 3: ApplyStatusEffect_0053B4B0(attacker, target, 0); break;  // Ghidra: FUN_00422a60
+            case 4: ApplyStatusEffect_0053B660(attacker, target, 0); break;  // Ghidra: FUN_00422ae0
+            case 5: ApplyStatusEffect_0053B580(attacker, target, 0); break;  // Ghidra: FUN_00422aa0
+            case 6: ApplyStatusEffect_0053B8F0(attacker, target, 0); break;  // Ghidra: FUN_00422b20
+            case 7: ApplyStatusEffect_0053C510(attacker, target, 0); break;  // Ghidra: FUN_00422c20
+            case 8: ApplyStatusEffect_0053B9C0(attacker, target, 0); break;  // Ghidra: FUN_00422b60
+        }
     }
 
     // ---------------------------------------------------------------------

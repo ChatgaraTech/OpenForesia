@@ -44,8 +44,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **585** |
-| à transcrire | **519** |
+| implémentés, jamais appelés | **589** |
+| à transcrire | **515** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -55,12 +55,12 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites, onze « D » restants** | 149 / 160 |
+| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites, huit « D » en quatre lectures** | 152 / 160 |
 | 6 | Le château de l’immortel | 31 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 47 / 349 |
+| 10 | La grotte scellée | 48 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -88,10 +88,10 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **Le décor du Labyrinthe des morts** : **11 corps restants, tous « D »** (3 782 instructions,
-   10 lectures) — plus un seul « B » ni « C ». Le tri est à jour dans `Zone5ParComplexite.md`. La
+4. **Le décor du Labyrinthe des morts** : **8 corps restants, tous « D », pour 4 lectures** —
+   plus un seul « B » ni « C ». Le tri est à jour dans `Zone5ParComplexite.md`. La
    table `0x0056adc8` n'a plus que son unique « D » (`0x00462A80`, 536 instr.), et `0x0056aec8` n'a
-   plus aucun verbe à écrire. Trois lots faits le 2026-09-17, cinq le 2026-09-18 :
+   plus aucun verbe à écrire. Trois lots faits le 2026-09-17, sept le 2026-09-18 :
    - **lot 1** (suite 17) : les dix plus simples — sept décors de `0x0056adc8` dans le fichier neuf
      `Handlers/Labyrinth.cs`, trois **verbes de script** de `0x0056aec8` dans `WorldMapScript.cs` ;
    - **lot 2** (suite 18) : les **neuf paires miroir** de `0x0056b2c8` (bloc 5-8 = bloc 0-3 à
@@ -135,16 +135,21 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      règle de bloc** — deux corps voisins des sous-zones 0 à 3 font l'un « continuer », l'autre
      « sortir » ; lire le `je` de tête. Et `0x00545A28`, l'« appelée inconnue », était
      `Ordinal_762` — un `ret 4` nu dans cette DLL.
-   Pour la suite, dans cet ordre de rendement :
-   - **`0x004224F0` (389 instr.) a un jumeau à UNE instruction près hors zone**, `0x0043F4E0`
-     (grotte scellée) : le plus gros corps restant du Labyrinthe est deux corps pour une lecture.
-     C'est le meilleur rapport qui reste dans la zone ;
-   - `0x0041C900` / `0x0041EDD0` / `0x004224F0` partagent une **charpente** (une table de sauts,
-     neuf feuilles chacun) mais **ce ne sont pas des copies** — 396 / 380 / 389 instr., 236 lignes
-     d'écart entre les deux premiers (mesuré suite 19, après une affirmation trop forte en suite 17) ;
-   - les **appelées inconnues** des « D » se lisent d'abord : `0x00420480` et `0x00422E50` en ont
-     deux chacun (`0x004207E0`/`0x00420820`, `0x004231C0`/`0x00423200`) ; au lot 8, les deux
-     appelées « inconnues » étaient une souche de DLL et une copie octet pour octet d'une aide écrite ;
+   - **lot 9** (2026-09-18, suite 5) : **`0x004224F0` et son jumeau de la grotte scellée
+     `0x0043F4E0`**, deux corps pour une lecture (`TickOwnerFrontSweep`). Ses « neuf appelées
+     inconnues » étaient neuf corps identiques : la garde, puis un effet d'état déjà écrit.
+   - **lot 10** (2026-09-18, suite 6) : **`0x0041C900` et `0x0041EDD0` sont `TickOwnerFrontSweep`**
+     à leur repli près (un tampon nul sur la pile ; aucun repli). La « charpente commune mais pas des
+     copies » de la suite 19 était vraie entre eux et fausse contre le modèle : **mesurer contre un
+     corps écrit, pas seulement entre non-écrits**.
+   Pour la suite, dans cet ordre de rendement — **huit corps, quatre lectures** :
+   - la **famille A**, `0x0041F760` / `0x0041FF40` / `0x0041D310` / `0x00421DC0` (430 à 441
+     instr., les quatre dans `Blaze.c`, table `0x0056b2c8`) : 0 / 7 / 25 / 20 lignes d'écart —
+     **quatre corps pour une lecture** ;
+   - la **famille B**, `0x00420480` / `0x00422E50` (261 / 266 instr.), 43 lignes d'écart ; leurs
+     quatre « appelées inconnues » sont la garde vers `ApplyStatusEffect_0053BB20` / `0053BC60`,
+     **déjà écrits** ;
+   - `0x00484190` (252) et `0x00462A80` (536, le dernier du décor), isolés ;
    - **la méthode qui a payé trois fois** : normaliser le désassemblage en neutralisant *toute*
      constante hexadécimale à six chiffres (pas seulement les cibles de saut — c'est ce qui rend un
      échange de planche invisible), puis apparier par nombre d'instructions égal. Les parentés qui
