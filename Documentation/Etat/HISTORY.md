@@ -4,7 +4,29 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-19
+
+- feat : **le château de l'immortel est complet — 170 sur 170**, le huitième ensemble entièrement
+  implémenté
+- feat : **le Tigre** (`0x004D80D0`) — le frère du Loup-garou, plus vif : un coup de patte en deux
+  temps, une griffe qui porte l'effet 12, un rugissement ; nouveau fichier `Ai/ImmortalCastle/Tiger.cs`
+- feat : **le Loup-garou** (`0x004D7200`) branché — sans hardiesse, une projection qui écrit la vitesse
+  de sa victime, un hurlement
+- fix : le Loup-garou tirait au hasard avant de regarder s'il faisait face, et oubliait de couper
+  sa poussée en commençant à hurler — deux écarts au binaire, trouvés en lisant le Tigre
+- doc : LB-032 — le second coup de la Sacuba, écrit sous la garde de l'image 13, ne part jamais
+
 ## 2026-09-18
+
+- feat : **la Sacuba** (`0x004D9D90`) et ses trois copies, dont deux dans la grotte scellée — la
+  charpente du Vampire, un vol stationnaire, quinze tirages de sort ; `Ai/ImmortalCastle/Sacuba.cs`
+- feat : `SettleSceneEntityOnGroundAndWalls` prend une animation de vol stationnaire facultative
+- feat : **la Chimère** (`0x004D2FC0`) et sa copie des ruines souterraines — un recul, un geste nu,
+  deux sorts, une replanification qui se relance ; `Ai/ImmortalCastle/Chimera.cs`
+- feat : **le Nocturio** (`0x004DACC0`) — l'Enchanteresse avec les deux appels du Roi-zombie et une
+  ruée qui empoisonne ; `Ai/ImmortalCastle/Nocturio.cs`
+- feat : **le Fantôme** (`0x004C9E00`) — la charpente du Vampire, et une teinte et une échelle qui
+  palpitent à chaque image ; `Ai/ImmortalCastle/Ghost.cs`
 
 - feat : **la Harpie** (`0x004CB4F0`, `0x004D60A0`) et sa copie de la grotte scellée
   (`0x004FDFE0`) — la charpente de la Crapouille, un sort, et un cri qui sème la famille à trois

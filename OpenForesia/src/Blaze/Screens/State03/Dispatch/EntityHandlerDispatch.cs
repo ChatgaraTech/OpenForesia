@@ -1253,6 +1253,47 @@ public static unsafe partial class Blaze
             case 0x004D60A0: TickSceneEntityAi_004CB4F0(record, 0x0015); return;   // &DAT_00552c80
             case 0x004FDFE0: TickSceneEntityAi_004CB4F0(record, 0x0015); return;   // &DAT_00553018
 
+            // LA SACUBA (chateau, sous-zones 5 et 11 ; 5, 8, 10 ; 6 a 10 ; 6 et 7) — la charpente du
+            // Vampire, un flottement en propre, et quinze tirages de sort. Les quatre corps sont une
+            // seule emission a trois immediates pres, et les quatre tables de sorts portent les memes
+            // trente octets. Ai/ImmortalCastle/Sacuba.cs.
+            case 0x004D9D90:                                                       // &DAT_00552ca0
+            case 0x004F40A0:                                                       // &DAT_00552f40
+            case 0x004D3EE0:                                                       // &DAT_00552c60
+            case 0x004FBA80:                                                       // &DAT_00552fe0
+                TickSceneEntityAi_004D9D90(record); return;
+
+            // LA CHIMERE (chateau, sous-zones 6 a 10 ; et les ruines souterraines, sous-zones 0 a 2) —
+            // quinze postures dont le recul et le geste nu, deux sorts, et une replanification qui se
+            // retire tant qu'elle recule. Ai/ImmortalCastle/Chimera.cs.
+            case 0x004D2FC0:                                                       // &DAT_00552c50
+            case 0x004DCF10:                                                       // &DAT_00552cd8
+                TickSceneEntityAi_004D2FC0(record); return;
+
+            // LE NOCTURIO (chateau, sous-zones 5 et 11) — l'Enchanteresse de la vieille tour avec les
+            // deux appels du Roi-zombie et un effet d'etat au bout de sa ruee.
+            // Ai/ImmortalCastle/Nocturio.cs.
+            case 0x004DACC0:
+                TickSceneEntityAi_004DACC0(record); return;
+
+            // LE FANTOME (chateau, sous-zones 0 a 4) — la charpente du Vampire sans le bond ni le
+            // sort, plus un scintillement qui lui fait palpiter teinte et echelle a chaque image.
+            // Ai/ImmortalCastle/Ghost.cs.
+            case 0x004C9E00:
+                TickSceneEntityAi_004C9E00(record); return;
+
+            // LE LOUP-GAROU (chateau, sous-zones 5 et 11) — sans hardiesse, trois coups dont une
+            // projection qui ecrit la vitesse de sa victime, et un hurlement.
+            // Ai/ImmortalCastle/Werewolf.cs.
+            case 0x004D7200:
+                TickSceneEntityAi_004D7200(record); return;
+
+            // LE TIGRE (chateau, sous-zones 5 et 11) — le frere du Loup-garou, plus vif : un coup de
+            // patte en deux temps, une griffe qui porte l'effet 12, un rugissement.
+            // Ai/ImmortalCastle/Tiger.cs.
+            case 0x004D80D0:
+                TickSceneEntityAi_004D80D0(record); return;
+
             // LE CHEVALIER NOIR (vieille tour, sous-zones 5, 6, 8, 10) ET LE PLATINUM (3, 7, 9) — le Pourpre
             // preux retouche : poussee 0x7000, coups speciaux au quart, charge refusee a la variante 0.
             // Ai/OldTower/BlackKnight.cs.

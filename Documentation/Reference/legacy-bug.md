@@ -1708,3 +1708,44 @@ violation d'accès. Le défaut est **tracé, pas observé**.
 `EntityHandler_00484190` le transcrit tel quel : la cible est mise à `null`, puis la visée la
 déréférence. Comme pour LB-007 : **ne pas rediriger le saut vers le chemin sans cible**. Le faire
 serait probablement l'intention de l'auteur, mais c'est une déviation, et elle se déclarerait ici.
+
+## LB-032 — Le second coup de la Sacuba ne part jamais
+
+**Repéré le 2026-09-18**, en transcrivant `0x004D9D90` (la Sacuba, château de l'immortel,
+sous-zones 5 et 11) et ses trois copies `0x004F40A0`, `0x004D3EE0`, `0x004FBA80`. La fonction est
+**absente de `Blaze.c`** ; le défaut ne se voit qu'au désassemblage.
+
+### Ce que fait le binaire
+
+Le bloc du coup contient deux frappes : l'une à l'image 13 (clignotement 3), l'autre à l'image 19
+(clignotement `0x10`, puis l'effet d'état une fois sur trois). La seconde est écrite **à
+l'intérieur** de la garde de la première :
+
+```
+004d9f74  mov   ebx,0Dh
+004d9f79  cmp   [esi+1Ah],bx            ; image 13 ?
+004d9f7d  jne   004DA03E                ; non : on saute les DEUX frappes
+004d9f8c  call  00519C30                ; la sonde
+...                                     ; frappe de l'image 13
+LAB_004d9fda:
+004d9fe3  cmp   word [esi+1Ah],13h      ; image 19 ?  -- on sait deja qu'elle vaut 13
+004d9fe8  jne   004DA03A
+...                                     ; frappe de l'image 19
+004da032  call  004DAC80                ; l'effet d'etat, 33 fois sur 100
+```
+
+Entre les deux comparaisons, rien n'écrit `+0x1a` : ni `FUN_00539b80` (vérifié dans `Blaze.c`), ni
+le son. La seconde comparaison est donc toujours fausse.
+
+### Portée
+
+La seconde frappe est **le seul moyen qu'a la Sacuba d'appliquer un effet d'état au corps à
+corps**. Dans le jeu vendu, elle ne frappe qu'une fois par geste et n'empoisonne jamais au contact.
+Le défaut est **tracé, pas observé** : à confirmer en jeu en regardant si un personnage touché par
+une Sacuba reçoit un jour une altération.
+
+### Dans OpenForesia
+
+`TickSceneEntityAi_004D9D90` (`Ai/ImmortalCastle/Sacuba.cs`) le transcrit tel quel, garde comprise.
+**Ne pas sortir le second bloc de la garde** : c'est vraisemblablement l'intention de l'auteur,
+mais ce serait une déviation.

@@ -1,9 +1,9 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (paliers 1 et 2 du château de
-l’immortel : **la zone 6 passe de 31 à 125 sur 170**, et la grotte scellée de 48 à 51). La zone 5,
-le Labyrinthe, a été fermée le même jour — **160 sur 160**, le septième ensemble entièrement
-implémenté —, et la veille avaient fermé la mine, la montagne du dragon de feu et la vieille tour.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**le château de l’immortel est
+complet — 170 sur 170**, le huitième ensemble entièrement implémenté ; la grotte scellée passe à 55
+et les ruines souterraines à 21). La zone 5, le Labyrinthe, a été fermée la veille — **160 sur
+160** —, et l’avant-veille la mine, la montagne du dragon de feu et la vieille tour.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -15,6 +15,13 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# HUIT ENSEMBLES COMPLETS — LE CHÂTEAU DE L’IMMORTEL FERMÉ (2026-09-19)
+
+**La zone 6, le château de l’immortel, est complète : 170 sur 170**, fermée en cinq paliers du
+2026-09-18 au 2026-09-19 — les paliers 1 à 4 pour le décor et les effets, le palier 5 pour ses treize
+routines d’intelligence, écrites en dix lectures. Le Loup-garou et le Tigre l’ont fermée ; voir
+`REVERSE_STATUS.md`, 2026-09-19. **Rien n’en a encore été exercé en jeu.**
 
 # SEPT ENSEMBLES COMPLETS — LE LABYRINTHE DES MORTS FERMÉ (2026-09-18)
 
@@ -52,8 +59,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **694** |
-| à transcrire | **410** |
+| implémentés, jamais appelés | **745** |
+| à transcrire | **359** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -64,11 +71,11 @@ socle commun, et il est entier.
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
 | 5 | **Le Labyrinthe des morts** | **160 / 160** |
-| 6 | Le château de l’immortel | 125 / 170 |
-| 7 | Les ruines souterraines | 19 / 35 |
+| 6 | **Le château de l’immortel** | **170 / 170** |
+| 7 | Les ruines souterraines | 21 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 51 / 349 |
+| 10 | La grotte scellée | 55 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -94,7 +101,7 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      au-delà lisent seize places après la fin de leur liste de sorts, par un registre non chargé.
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
-3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
+3. **La zone 7 (21 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
 4. ~~**Le décor du Labyrinthe des morts**~~ — **complet le 2026-09-18** (160 / 160) —
    plus un seul « B » ni « C ». Le tri est à jour dans `Zone5ParComplexite.md`. La
@@ -169,7 +176,7 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
 5. ~~**La zone 5, le Labyrinthe**~~ — **complète le 2026-09-18** (160 / 160), voir le point 4.
-   **La zone 6, le château, est en cours : 163 / 170.** Le tri est dans `Zone6ParComplexite.md`
+   ~~**La zone 6, le château**~~ — **complète le 2026-09-19** (170 / 170). Le tri est dans `Zone6ParComplexite.md`
    (2026-09-18, suite 10) et le classement en cinq paliers dans `REVERSE_STATUS.md`.
    - ~~**palier 1**, les 32 corps déjà écrits ou presque~~ — **fait le 2026-09-18 (suite 11)**,
      plus deux gestionnaires de la grotte scellée en prime.
@@ -185,8 +192,10 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      tableau du palier 5 dans `REVERSE_STATUS.md`, suite 10). ~~Vampire / Petit vampire~~ —
      **fait le 2026-09-18 (suite 15)**, `Ai/ImmortalCastle/Vampire.cs`. ~~Loup / Loup gris~~ — **fait (suite 16)**,
      `Ai/ImmortalCastle/Wolf.cs`, qui ferme aussi `0x004DDE30` des ruines souterraines. ~~Harpie~~ — **fait (suite 17)**,
-     `Ai/ImmortalCastle/Harpy.cs`, qui ferme aussi `0x004FDFE0` de la grotte. Restent Sacuba (deux),
-     Chimère, puis Tigre, Loup-garou, Fantôme, Nocturio.
+     `Ai/ImmortalCastle/Harpy.cs`, qui ferme aussi `0x004FDFE0` de la grotte. ~~Sacuba, Chimère,
+     Nocturio, Fantôme~~ — **faits (suite 18)** : la Sacuba valait quatre corps (dont deux dans la
+     grotte), la Chimère ferme aussi `0x004DCF10` des ruines souterraines. ~~Loup-garou, Tigre~~ —
+     **faits le 2026-09-19** : **la catégorie E est vide, la zone est fermée.**
    - **Ce que le palier 3 a appris** :
      - **un sous-type `0xc0 + n` va au créneau n de `0x0056b0c8`, `b1c8` ou `b2c8` selon la
        fonction qui le fait naître** — décor, `SpawnCastEntity_0047AAE0`,

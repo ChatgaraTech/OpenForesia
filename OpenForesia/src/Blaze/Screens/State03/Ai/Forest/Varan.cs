@@ -1020,7 +1020,8 @@ public static unsafe partial class Blaze
     /// pas.</param>
     private static void SettleSceneEntityOnGroundAndWalls(
         byte* e, int boldness, uint contactMask, SceneEntityPlacement* keep,
-        bool dropAttackOnAirborneHit = false, int keepWalkingSpecies = -1)
+        bool dropAttackOnAirborneHit = false, int keepWalkingSpecies = -1,
+        int hoverAnimation = -1)
     {
         uint contact = *(uint*)(e + 0x90) & 0xfffffcff;
         *(uint*)(e + 0x90) = contact;
@@ -1039,8 +1040,13 @@ public static unsafe partial class Blaze
             if ((landing & 1) != 0) return;
         }
 
+        // `hoverAnimation` : l'animation pendant laquelle l'entite NE DOIT PAS etre declaree en
+        // l'air, parce qu'elle plane. Une seule bete la passe — la Sacuba (Ghidra: 0x004da766,
+        // `cmp word [esi+18h],1` avant le leve du bit 0) ; partout ailleurs le bit se leve des que
+        // l'entite est au-dessus du plancher.
         uint flags = *(uint*)e;
-        if ((flags & 1) == 0 && *(int*)(e + 0x20) > floor) *(uint*)e = flags | 1;
+        if (*(short*)(e + 0x18) != hoverAnimation
+            && (flags & 1) == 0 && *(int*)(e + 0x20) > floor) *(uint*)e = flags | 1;
 
         if ((contact & contactMask) == 0) return;
 

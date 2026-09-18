@@ -24812,3 +24812,74 @@ de placement à `0xa000` et `TryPlaceEntity` au masque `0x8000`.
 - `dotnet build OpenForesia.sln` : 0 erreur.
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
 - **Non exercé en jeu.**
+
+## 2026-09-18 (suite 18) — Zone 6, palier 5 : la Sacuba, la Chimère, le Nocturio, le Fantôme
+
+**163 sur 170 devient 168 sur 170** (huit corps pour quatre lectures), les ruines souterraines
+gagnent `0x004DCF10` et la grotte scellée deux copies de la Sacuba, `0x004F40A0` et `0x004FBA80`
+(53 sur 349 devient 55). Quatre nouveaux fichiers sous
+`Ai/ImmortalCastle/` (création autorisée pour la série). Le détail de chaque bête est dans le
+bandeau de son fichier ; ce qui compte pour la suite :
+
+- **La Sacuba vaut quatre corps, pas deux.** `0x004D9D90`, `0x004F40A0`, `0x004D3EE0`,
+  `0x004FBA80` ne diffèrent qu'à trois endroits de même rang : le chercheur de proie, l'enrobage
+  de l'effet d'état (quatre émissions de `FUN_00492e00`) et l'adresse de la table de sorts — dont
+  les trente octets sont identiques aux quatre adresses. Les « 18 lignes d'écart » du tri étaient
+  du bourrage et une table de sauts décodés après le dernier `ret`. **Leçon : comparer corps
+  contre corps jusqu'au `ret`, pas jusqu'à la longueur annoncée.**
+- **La Sacuba plane**, et c'est le seul corps qui a obligé à toucher une aide commune :
+  `SettleSceneEntityOnGroundAndWalls` prend un `hoverAnimation` facultatif — l'animation pendant
+  laquelle l'entité n'est jamais déclarée en l'air (`0x004da766`). Défaut `-1`, aucun autre appel
+  ne change.
+- **Le second coup de la Sacuba est mort** dans le binaire : écrit sous la garde de l'image 13, il
+  teste l'image 19. **LB-032.**
+- **La Chimère n'a pas de chercheur de proie** et **retire son plan** : trois sites de la
+  replanification relancent toute la replanification tant qu'elle est en recul. Vraie boucle,
+  transcrite comme telle. Sa copie `0x004DCF10` (ruines souterraines) ne diffère que par ses deux
+  adresses de sorts, aux octets identiques.
+- **Le Nocturio est l'Enchanteresse de la vieille tour** plus les deux appels du Roi-zombie, et sa
+  ruée empoisonne (piège sous 20, effet d'état de 20 à 39).
+- **Le Fantôme est la charpente du Vampire** sans bond ni sort, plus un scintillement qui fait
+  palpiter à chaque image sa teinte (gris) et son échelle.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur.
+- **Non exercé en jeu.**
+
+## 2026-09-19 — Zone 6 fermée : le Loup-garou et le Tigre, 170 sur 170
+
+**168 sur 170 devient 170 sur 170 : le château de l'immortel est le huitième ensemble
+entièrement implémenté.** `0x004D7200` (Loup-garou) et `0x004D80D0` (Tigre), sous-zones 5 et 11,
+un corps chacun, 1 106 et 1 075 instructions, table de sauts à quinze entrées. Le Loup-garou était
+écrit à la fin de la séance précédente mais pas branché ; le Tigre est un nouveau fichier
+`Ai/ImmortalCastle/Tiger.cs`.
+
+**Deux frères émis l'un après l'autre.** Même charpente, mêmes quinze cases, même hardiesse
+**écrasée par la constante `0x40`** après la lecture de la situation, même fin de pas. Le diff
+normalisé ne sert à rien ici — 535 lignes, presque toutes des décalages de pile et des registres
+permutés — : la comparaison s'est faite case par case, en lisant le Tigre à côté du Loup-garou
+transcrit. Ce qui distingue le Tigre : une seule sonde (il ne projette personne), des poussées
+plus fortes (`0xe000`, `0xc000`, bond à `0x400`), un coup de patte qui frappe à deux images exactes
+(image 12 de l'animation 3, image 18 de la 5, qu'il enchaîne de lui-même), une griffe à demi-attaque
+suivie de l'effet 12 (`0x004D8F30`, copie de `ApplyStatusEffectIfAllowed_004B1620`), et un
+rugissement plus fort (`0x500`).
+
+**Deux écarts corrigés dans le Loup-garou**, trouvés en lisant le Tigre :
+
+- le tirage jeté de la plage proche (`0x004d7dbc`) n'a lieu **que s'il fait face** — le C# le
+  tirait avant le test d'orientation, ce qui décalait le flux du générateur à chaque demi-tour ;
+- la mise en place du hurlement retombe sur `LAB_004d7aff` et remet la poussée `+0x5c` à zéro — le
+  C# l'omettait.
+
+**Le bond de près est mort chez les deux**, pas seulement chez le Tigre : il exige une distance
+au-delà de hardiesse + 100 = 164 dans la plage où elle est sous 100. Le Tigre y ajoute un tirage
+`>= 0x55` et `< 0x46`. De loin, le repos est hors d'atteinte chez les deux (tirage sous 30 contre
+`2 * 0x40 + 10`).
+
+### Contrôles
+
+- `dotnet build` : 0 erreur.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés : zone 6 **170 / 170**,
+  catégorie E vide ; ruines souterraines 21 / 35, grotte scellée 55 / 349.
+- **Non exercé en jeu.**
