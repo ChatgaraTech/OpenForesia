@@ -24576,3 +24576,94 @@ sa course. Six gestionnaires, une lecture, et le nombre est lisible comme une do
   et scellée** (`0x005506e8`). Il reste trois marges à vérifier dans tout le dépôt, toutes
   antérieures.
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
+
+## 2026-09-18 (suite 13) — Zone 6, palier 3 : les 23 « C », et la catégorie C est vide
+
+**125 sur 170 devient 148 sur 170**, et la grotte scellée gagne un corps (`0x00442AC0`, 52 sur
+349). Il reste 22 corps à la zone — D 9, E 13. Les catégories A, B et C du tri sont vides.
+
+### Ce que le palier contenait
+
+| destination | corps | lectures | ce que c'est |
+|---|---:|---:|---|
+| `Handlers/ImmortalCastle.cs` — le décor (`0x0056adc8`) | 7 | 4 | deux jumeaux enrichis de corps écrits, deux paires miroir identiques |
+| `WorldMapScript.cs` — des **verbes** (`0x0056aec8`) | 3 | 2 | troisième fois que le piège se présente |
+| `Effects/ImmortalCastleParticles.cs` | 11 (+1 grotte) | 8 | dont les quatre nuages à effet 32 |
+| `Cutscene/ImmortalCastleScenes.cs` | 3 | 3 | trois scènes des sous-zones 5 et 11 |
+
+### Les quatre nuages : 73 lignes qui n'étaient pas dans le nuage
+
+Le tri disait « feuilles écrites, mais ce n'est pas `TickHostStatusCloud`, 73 lignes d'écart ». Les
+73 lignes sont une **gerbe** qui partage le corps, aiguillée par `+0x9a` comme le stroboscope de
+`0x0041FCA0` au Labyrinthe (`StepCastleCloudBurst` : le modèle `0x3f` à plat qui fait naître une
+incantation `0x70` par image pendant vingt images, puis deux `0xdf` à ±200). Retirée la gerbe :
+
+- `0x0042A920` et `0x0042B190` sont **`TrackCarrierOrDie` + `StepStatusCloud(Guarded)`** du
+  Labyrinthe, mot pour mot. Ils ne diffèrent entre eux que par le test d'entrée de la gerbe
+  (`+0x9a == 0` contre `0` ou `1`) ;
+- `0x004271B0` est `StepStatusCloud(GuardedWithFallback)` plus un **tampon de `+0x48`** sur ses
+  semis — ajouté à `StepStatusCloud` en paramètre facultatif —, sans voile noir, avec une gerbe
+  sonore ;
+- `0x004255F0` n'a pas de gerbe, et sa fin diffère : il sème sans condition et meurt à zéro, là où
+  le Labyrinthe cesse de semer à zéro mais ne meurt qu'à `-0x23`.
+
+Les trois « appelées inconnues » du tri (`0x00425710`, `0x00427480`, `0x0042ABB0`) sont
+**`ApplyStatusEffect32IfAllowed_00421D80` à l'octet près**, le `jne` interne excepté — le
+désassembleur imprime les cibles d'appel absolues, la comparaison a donc aussi vérifié les appelées.
+
+### Le routage des sous-types, établi pour de bon
+
+`CallIndexedEntityHandler` indexe la table installée par `table + sous-type * 4` au-delà de `0xc0`,
+et chaque réservoir a sa base : décor (`0x005ff400`) → `0x0056adc8`, incantation (`0x005edee0`,
+`SpawnCastEntity_0047AAE0`) → `0x0056aec8`, effet d'état (`0x005f2d40`,
+`SpawnStatusEffectEntity_0047AC40`) → `0x0056afc8`. Donc **un sous-type `0xc0 + n` va au créneau n
+de `0x0056b0c8`, `b1c8` ou `b2c8` selon la fonction qui le fait naître**. Ce qui a servi ici :
+
+- l'éclair `0x0042D770` (créneau 1 de `b1c8`) se relance lui-même par l'incantation `0xc1` —
+  une chaîne dont chaque maillon décrémente son rang `+0x14` ;
+- la scène `0x0042D4E0` lance trois (puis six) `0xc1` : ce sont ces éclairs ;
+- la scène `0x0042D170` sème 51 `0xc5` : le créneau 5 de `b2c8`, l'étincelle `0x0042D350` ;
+- les deux `0xdf` de la gerbe ne sont **pas** des nuages, contrairement à ce que la première
+  lecture avait écrit : ce sont des incantations, donc le créneau 31 de `b1c8` — `0x0042ABF0` aux
+  sous-zones 5 et 11, un corps du palier 4.
+
+### Les deux jumeaux enrichis du décor
+
+Le tri ne pouvait pas les voir, les nombres d'instructions étant différents :
+
+- `0x00463850` = `0x00465330` (les quatre coins, créneau 45) **plus un son par coin**, une fois
+  dans la vie de l'entité, après dix images d'armement — et il relit l'octet de drapeaux à chaque
+  test là où son miroir le garde ;
+- `0x00464E70` = `0x00466740` (la navette sans vitesse, créneau 26) **plus une frappe pendant la
+  butée et une projection du groupe pendant la course**. Les deux se gênent :
+  `StrikePartyMembers_0045DA40` remet l'octet de contact à zéro, donc la projection ne voit
+  personne pendant la butée.
+
+**Règle** : pour chaque corps d'une table à blocs miroir, comparer au corps **du même créneau de
+l'autre bloc**, même quand les tailles diffèrent du simple au double.
+
+### Les trois verbes
+
+`0x004446F0` / `0x00444AF0` (verbe 10 des blocs `0x00558f28` / `0x005595a8`) sont un seul verbe à
+onze cas — infliger au membre que désigne l'octet 1 de la banque 2 un des six états, rendre ou
+retirer le vingtième des PV ou des PM, ou lever l'état 1 —, le second sans les nombres flottants.
+`0x00444EF0` (verbe 12 de `0x00559c28`) fige chaque membre hors d'un rectangle et lance un script
+quand tous le sont.
+
+### Ce qui est transcrit tel quel
+
+- `0x004271B0` teste `+0x98 == 1` pour un son `0x1c` **avant** de tester `+0x98 == 0` : le temps 2
+  ne dure qu'une image et `+0x98` vient d'être remis à zéro, donc ce son ne part jamais ;
+- `0x00444EF0` lance son script sur le membre `DAT_005de538` **si son emplacement ne porte aucun des
+  bits `0xd0000000`** — un emplacement que sa propre boucle n'aurait pas retenu ;
+- `0x0042DC80` relance le script 1 du membre `DAT_005de538` **à chaque image** de ses 140 ;
+- `0x0042DC80` : la constante que Ghidra écrit `(int)FUN_00514000` est l'immédiate `0x514000`.
+
+### Contrôles
+
+- `dotnet build OpenForesia.sln` : 0 erreur.
+- `check-descriptors.sh` : trois planches neuves lues correctement (`0x005507e0`, `0x00550828`,
+  `0x00551410`), **deux marges courtes prouvées et scellées**. Il reste trois marges à vérifier dans
+  tout le dépôt, toutes antérieures.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
+- **Aucun des 24 corps n'a été exercé en jeu.**

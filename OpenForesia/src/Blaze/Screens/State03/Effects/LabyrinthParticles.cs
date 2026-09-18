@@ -2471,7 +2471,12 @@ public static unsafe partial class Blaze
     /// sous-type seme, <paramref name="gate"/> la facon de porter l'effet 32. Voir
     /// <see cref="EntityHandler_0041D1A0"/>.
     /// </summary>
-    private static void StepStatusCloud(byte* e, byte* host, byte seed, CloudEffectGate gate)
+    /// <param name="stampSeeds">Vrai pour <c>0x004271B0</c> (chateau) : le nuage ecrit en plus
+    /// <c>+0x48</c> — le rang du semis (0 a 10) avant chacun des onze semis de naissance, zero en
+    /// entrant a l'etat 2, puis 1 apres chaque semis de l'etat 2. Le semis copie l'enregistrement
+    /// de son porteur, donc il herite de cette valeur. Aucun nuage du Labyrinthe ne le fait.</param>
+    private static void StepStatusCloud(byte* e, byte* host, byte seed, CloudEffectGate gate,
+                                        bool stampSeeds = false)
     {
         int* position = (int*)(e + 0x1c);
 
@@ -2479,7 +2484,10 @@ public static unsafe partial class Blaze
         {
             *(int*)(e + 0x44) = 0;
             for (int i = 0; i < 0xb; i++)
+            {
+                if (stampSeeds) *(int*)(e + 0x48) = i;
                 SpawnStatusEffectEntity_0047AC40(e, position, null, seed, 0, -1);
+            }
 
             *(short*)(e + 0x12) = 0;
             *(short*)(e + 0x10) = 1;
@@ -2495,6 +2503,7 @@ public static unsafe partial class Blaze
                 *(short*)(e + 0x10) = 2;
                 int roll = CrtRand();                                   // Ghidra: FUN_00547140
                 *(short*)(e + 0x14) = 0;
+                if (stampSeeds) *(int*)(e + 0x48) = 0;
                 *(short*)(e + 0x12) = (short)(roll % 10 + 0xf);
 
                 uint* victim = *(uint**)(e + 0x78);
@@ -2528,7 +2537,10 @@ public static unsafe partial class Blaze
 
         *(short*)(e + 0x14) = 0;
         if (*(short*)(e + 0x12) > 0)
+        {
             SpawnStatusEffectEntity_0047AC40(e, position, null, seed, 0, -1);
+            if (stampSeeds) *(int*)(e + 0x48) = 1;
+        }
 
         (*(short*)(e + 0x12))--;
         if (*(short*)(e + 0x12) < -0x22) *(uint*)e &= 0x7fffffff;

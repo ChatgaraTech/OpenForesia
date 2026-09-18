@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**170 gestionnaires, 125 implementes, 45 a ecrire.**
+**170 gestionnaires, 148 implementes, 22 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,6 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 23 | 20 | 3051 |
 | **D — gros** | pas d'IA, > 250 instr. | 9 | 8 | 3131 |
 | **E — intelligence** | une routine de bete | 13 | 12 | 12624 |
 
@@ -28,34 +27,6 @@ aucune, puisque son corps est deja ecrit.
 
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
-
-## C — moyen (23)
-
-| gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
-|---|---|---|---:|---:|---|---|---|
-| `0x004255F0` | 0,1,2,3,4 | 0056B0C8 | 91 | 0 | oui |  | appelee(s) inconnue(s) : `0x00425710` |
-| `0x00426E80` | 0,1,2,3,4 | 0056B2C8 | 103 | 0 | oui | `0x004296F0` |  |
-| `0x004296F0` | 6,7,8,9,10 | 0056B2C8 | 103 | 0 | oui | `0x00426E80` |  |
-| `0x004646A0` | 0,1,2,3,4 | 0056ADC8 | 106 | 0 | oui | `0x00465FE0` |  |
-| `0x00465FE0` | 6,7,8,9,10 | 0056ADC8 | 106 | 0 | oui | `0x004646A0` |  |
-| `0x0042D9B0` | 5,11 | 0056B2C8 | 114 | 0 | non |  |  |
-| `0x004644F0` | 0,1,2,3,4 | 0056ADC8 | 120 | 0 | oui | `0x00465E30` |  |
-| `0x00465E30` | 6,7,8,9,10 | 0056ADC8 | 120 | 0 | oui | `0x004644F0` |  |
-| `0x00463850` | 0,1,2,3,4 | 0056ADC8 | 123 | 0 | non |  |  |
-| `0x00444EF0` | 5,11 | 0056AEC8 | 125 | 0 | non |  |  |
-| `0x0042D350` | 5,11 | 0056B2C8 | 127 | 0 | non |  |  |
-| `0x004294D0` | 0,1,2,3,4,6,7,8,9,10 | 0056B0C8 | 131 | 0 | oui |  |  |
-| `0x00429010` | 6,7,8,9,10 | 0056B0C8 | 138 | 1 | oui |  |  |
-| `0x0042D170` | 5,11 | 0056B0C8 | 140 | 0 | oui |  |  |
-| `0x00464E70` | 0,1,2,3,4 | 0056ADC8 | 141 | 0 | oui |  |  |
-| `0x0042D770` | 5,11 | 0056B1C8 | 174 | 0 | oui |  |  |
-| `0x0042D4E0` | 5,11 | 0056B0C8 | 181 | 0 | non |  |  |
-| `0x0042A920` | 5,11 | 0056B0C8 | 189 | 0 | non |  | appelee(s) inconnue(s) : `0x0042ABB0` |
-| `0x0042B190` | 5,11 | 0056B0C8 | 192 | 0 | non |  | appelee(s) inconnue(s) : `0x0042ABB0` |
-| `0x00444AF0` | 6,7,8,9,10 | 0056AEC8 | 207 | 1 | non |  |  |
-| `0x0042DC80` | 5,11 | 0056B0C8 | 209 | 0 | oui |  |  |
-| `0x004271B0` | 6,7,8,9,10 | 0056B0C8 | 211 | 0 | oui |  | appelee(s) inconnue(s) : `0x00427480` |
-| `0x004446F0` | 0,1,2,3,4 | 0056AEC8 | 229 | 1 | non |  |  |
 
 ## D — gros (9)
 

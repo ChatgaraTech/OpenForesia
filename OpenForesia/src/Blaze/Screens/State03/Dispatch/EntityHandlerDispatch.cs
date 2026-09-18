@@ -2128,6 +2128,40 @@ public static unsafe partial class Blaze
             case 0x00465D70: EntityHandler_00465D70(record); return;
             case 0x00465FA0: EntityHandler_00465FA0(record); return;
             case 0x00466240: EntityHandler_00466240(record); return;
+
+            // ====================================================================================
+            // ZONE 6 — LE CHATEAU DE L'IMMORTEL, PALIER 3 (2026-09-18) : les « C ».
+            // ====================================================================================
+
+            // Le decor de 0x0056adc8 — Handlers/ImmortalCastle.cs. Deux jumeaux enrichis de corps
+            // deja ecrits (creneaux 45 et 26), et deux paires miroir identiques.
+            case 0x00463850: EntityHandler_00463850(record); return;
+            case 0x00464E70: EntityHandler_00464E70(record); return;
+            case 0x004646A0: EntityHandler_004646A0(record); return;
+            case 0x00465FE0: EntityHandler_00465FE0(record); return;
+            case 0x004644F0: EntityHandler_004644F0(record); return;
+            case 0x00465E30: EntityHandler_00465E30(record); return;
+
+            // Les effets de 0x0056b0c8 / b1c8 / b2c8 — Effects/ImmortalCastleParticles.cs. Les
+            // quatre nuages a effet 32 sont StepStatusCloud (Labyrinthe) plus une gerbe propre au
+            // chateau ; 0x00442AC0 est le jumeau de 0x0042D9B0 dans la grotte scellee.
+            case 0x0042A920: EntityHandler_0042A920(record); return;
+            case 0x0042B190: EntityHandler_0042B190(record); return;
+            case 0x004271B0: EntityHandler_004271B0(record); return;
+            case 0x004255F0: EntityHandler_004255F0(record); return;
+            case 0x00426E80: EntityHandler_00426E80(record); return;
+            case 0x004296F0: EntityHandler_004296F0(record); return;
+            case 0x004294D0: EntityHandler_004294D0(record); return;
+            case 0x00429010: EntityHandler_00429010(record); return;
+            case 0x0042D9B0: EntityHandler_0042D9B0(record); return;
+            case 0x00442AC0: EntityHandler_00442AC0(record); return;
+            case 0x0042D350: EntityHandler_0042D350(record); return;
+            case 0x0042D770: EntityHandler_0042D770(record); return;
+
+            // Trois scenes des sous-zones 5 et 11 — Cutscene/ImmortalCastleScenes.cs.
+            case 0x0042D170: EntityHandler_0042D170(record); return;
+            case 0x0042D4E0: EntityHandler_0042D4E0(record); return;
+            case 0x0042DC80: EntityHandler_0042DC80(record); return;
             case 0x00466350: EntityHandler_00466350(record); return;
             case 0x00466400: EntityHandler_00466400(record); return;
             case 0x00466500: EntityHandler_00466500(record); return;

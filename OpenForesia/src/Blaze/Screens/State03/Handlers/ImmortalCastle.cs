@@ -443,6 +443,82 @@ public static unsafe partial class Blaze
         }
     }
 
+    /// <summary>
+    /// Ghidra: <c>0x00463850</c> — creneau <b>45</b> du bloc <c>0x00558e28</c>, le miroir est de
+    /// <see cref="EntityHandler_00465330"/>. Absent de <c>Blaze.c</c> ; 123 instructions, dump dans
+    /// <c>/tmp/census-duplicates/raw/0x00463850.asm</c>.
+    ///
+    /// <para>
+    /// <b>Les memes quatre coins, et chacun sonne une fois.</b> Les quatre teleportations et les
+    /// quatre naissances du sous-type <c>0x3c</c> sont celles du miroir, dans le meme ordre et aux
+    /// memes coins. Ce que ce corps ajoute : un <b>etat par coin</b>, <c>+0x10</c>, <c>+0x12</c>,
+    /// <c>+0x14</c>, <c>+0x16</c>, tous mis a 1 a l'amorcage ; le premier passage d'un coin pendant
+    /// que son etat vaut 1 joue le son <b><c>0x2d</c> — un numero absolu, pas un creneau de la
+    /// zone</b> — hauteur <c>0x80</c>, gain <c>0x1800</c>, et passe l'etat a 2. Chaque coin ne sonne
+    /// donc qu'une fois dans la vie de l'entite.
+    /// </para>
+    /// <para>
+    /// <b>Le son attend dix images.</b> <c>+0x98</c> compte de 1 a 19 puis retombe a 10, et le son
+    /// n'est permis que strictement au-dessus de 10 : muet pendant les dix premieres images, puis
+    /// muet encore <b>une image sur dix</b>, celle de la retombee. Un bit pose a ce moment-la sonne
+    /// a l'image suivante.
+    /// </para>
+    /// <para>
+    /// Contrairement au miroir, l'octet <c>DAT_005e9702</c> est <b>relu a chaque test</b>
+    /// (<c>mov al,[5E9702h]</c> puis <c>test byte [5E9702h],…</c>) : transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00463850(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 1;
+            *(short*)(e + 0x14) = 1;
+            *(short*)(e + 0x16) = 1;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        (*(short*)(e + 0x98))++;
+        if (*(short*)(e + 0x98) >= 0x14) *(short*)(e + 0x98) = 10;
+
+        *(int*)(e + 0x20) = 0;
+
+        if ((Mem.s_StateBank0_005e96e0[0x22] & 4) != 0)
+        {
+            ChimeCastleCorner_00463850(e, 0x10, unchecked((int)0xff6a0000), 0x00e10000);
+        }
+
+        if ((Mem.s_StateBank0_005e96e0[0x22] & 8) != 0)
+        {
+            ChimeCastleCorner_00463850(e, 0x12, unchecked((int)0xff6a0000), unchecked((int)0xff1f0000));
+        }
+
+        if ((Mem.s_StateBank0_005e96e0[0x22] & 0x10) != 0)
+        {
+            ChimeCastleCorner_00463850(e, 0x14, 0x00960000, unchecked((int)0xff1f0000));
+        }
+
+        if ((Mem.s_StateBank0_005e96e0[0x22] & 0x20) != 0)
+        {
+            ChimeCastleCorner_00463850(e, 0x16, 0x00960000, 0x00e10000);
+        }
+    }
+
+    /// <summary>Un coin de <see cref="EntityHandler_00463850"/> : le binaire deroule quatre fois le
+    /// meme bloc, seuls changent l'etat du coin et sa position.</summary>
+    private static void ChimeCastleCorner_00463850(byte* e, int stateOffset, int x, int z)
+    {
+        *(int*)(e + 0x1c) = x;
+        *(int*)(e + 0x24) = z;
+        SpawnEffectNearCamera_00468110(e, 0x3c, 0, -1);
+
+        if (*(short*)(e + stateOffset) != 1 || *(short*)(e + 0x98) <= 10) return;
+
+        TryPlaySoundNearEntity((uint*)e, 0x2d, 0x80, 0x1800, 0, 0);   // Ghidra: FUN_00468080
+        *(short*)(e + stateOffset) = 2;
+    }
+
     // ---------------------------------------------------------------------
     // LES PLAQUES DE PRESSION
     // ---------------------------------------------------------------------
@@ -1594,4 +1670,285 @@ public static unsafe partial class Blaze
             if (*(short*)(e + 0x10) == 0x50) *(short*)(e + 0x10) = 0;
         }
     }
+
+    /// <summary>
+    /// Ghidra: FUN_00464e70 @ 0x00464e70 — creneau <b>26</b> du bloc <c>0x00558e28</c>, le miroir
+    /// est de <see cref="EntityHandler_00466740"/>. Decompile dans <c>Blaze.c</c>, 141 instructions.
+    ///
+    /// <para>
+    /// <b>La meme navette a horloge de quatre-vingts images, mais celle-ci cogne.</b> Le mouvement
+    /// et les deux claquements sont ceux du miroir, au meme pas de huit fois le sinus et le cosinus
+    /// du cap. Deux choses en plus :
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><b>de l'image 26 a l'image 40</b>, pendant la butee, elle frappe par
+    ///     <see cref="StrikePartyMembers_0045DA40"/> — 1 %, les membres de son demi-octet bas de
+    ///     contact, un verrou de <b>six</b> images ;</item>
+    ///   <item><b>a chaque image</b>, elle <b>projette</b> tout membre vivant dont le bit de contact
+    ///     <c>+9</c> est pose : bit <c>1</c> sur le membre, vitesse verticale <c>0xa000</c>, et une
+    ///     poussee de <c>0x28</c> fois le sinus et le cosinus du cap <b>tourne d'un demi-tour</b>
+    ///     (<c>+0x800</c>) — dans le sens ou elle recule. Elle garde alors le bit <c>0x2000</c> deux
+    ///     images (<c>+0x12</c>), puis le rend.</item>
+    /// </list>
+    /// <para>
+    /// <b>Les deux se genent.</b> <see cref="StrikePartyMembers_0045DA40"/> remet l'octet de contact
+    /// a zero en sortant ; pendant les quinze images de butee, la projection qui suit ne voit donc
+    /// jamais personne. Elle ne projette qu'en course. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00464E70(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);
+
+        (*(short*)(e + 0x10))++;
+
+        int alongX = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32));   // Ghidra: Ordinal_451
+        int alongZ = Winsys3d.GetCosTableEntry(*(short*)(e + 0x32));        // Ghidra: Ordinal_450
+
+        short clock = *(short*)(e + 0x10);
+
+        if (clock < 0x1a)
+        {
+            *(int*)(e + 0x1c) -= alongX * 8;
+            *(int*)(e + 0x24) -= alongZ * 8;
+        }
+        else if (clock < 0x29)
+        {
+            if (clock == 0x1a)
+            {
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x13), 0x400, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+            }
+
+            StrikePartyMembers_0045DA40(e, 1, 0, 0, 6);   // Ghidra: FUN_0045da40
+        }
+
+        clock = *(short*)(e + 0x10);
+
+        if (clock > 0x28 && clock < 0x42)
+        {
+            *(int*)(e + 0x1c) += alongX * 8;
+            *(int*)(e + 0x24) += alongZ * 8;
+        }
+
+        if (clock > 0x42 && clock < 0x51)
+        {
+            if (clock == 0x43)
+            {
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x13), 0x400, 0x1000, 0, 0);
+            }
+
+            if (*(short*)(e + 0x10) == 0x50) *(short*)(e + 0x10) = 0;
+        }
+
+        (*(short*)(e + 0x12))--;
+        if (*(short*)(e + 0x12) < 0)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(uint*)e &= 0xffffdfff;
+        }
+
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+            if (((byte)(1 << i) & e[9]) == 0) continue;
+
+            *(short*)(e + 0x12) = 2;
+            *(uint*)e |= 0x2000;
+
+            *(uint*)member |= 1;
+            *(int*)(member + 0x54) = 0xa000;
+            *(int*)(member + 0x50) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32) + 0x800) * 0x28;
+            *(int*)(member + 0x58) = Winsys3d.GetCosTableEntry(*(short*)(e + 0x32) + 0x800) * 0x28;
+        }
+
+        e[9] = 0;
+    }
+
+    // =====================================================================
+    // PALIER 3 (2026-09-18) — CE QUI BOUGE, SUITE
+    // =====================================================================
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_004646A0"/> et de son miroir. Decompile dans
+    /// <c>Blaze.c</c>, 106 instructions ; les deux exemplaires sont <b>identiques</b>.
+    ///
+    /// <para>
+    /// <b>Une plate-forme qui monte a sa place, puis flotte.</b> Deux vies, choisies par le bit
+    /// <c>0x40000000</c> de l'entite :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>bit eteint — la montee</term><description>a l'amorcage (etat 0 ou 1) elle passe
+    ///     a l'etat 2 avec un elan de <b>dix</b> et allume <c>0x10000000</c>. Elle commence par
+    ///     <b>s'enfoncer</b> de 9, 8, … 0 unites, puis monte de <b>5 par image</b> jusqu'a la hauteur
+    ///     <c>+0x14</c> du placement ; arrivee, elle s'y fixe, allume <c>0x40000000</c> et passe a la
+    ///     seconde vie.</description></item>
+    ///   <item><term>bit allume — le flottement</term><description>a l'etat 0 (une plate-forme
+    ///     placee deja montee) elle prend sa hauteur courante pour plafond. Puis elle oscille d'une
+    ///     unite par image entre ce plafond et <b>vingt unites</b> au-dessous. Chaque image ou
+    ///     personne n'est pose dessus (bit <c>0x10</c>), elle eteint <c>0x10000000</c>.</description></item>
+    /// </list>
+    /// <para>
+    /// Chaque deplacement passe aussi par <see cref="AddEntityVelocity_00454580"/> : ce qui est pose
+    /// dessus est emporte. <c>+0x12</c> recoit 100 a l'arrivee et n'est plus jamais lu.
+    /// </para>
+    /// </summary>
+    private static void TickCastleRisingPlatform_004646A0(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);
+
+        if ((*(uint*)e & 0x40000000) == 0)
+        {
+            if (*(short*)(e + 0x10) == 1 || *(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 10;
+                *(uint*)e |= 0x10000000;
+            }
+
+            if (*(short*)(e + 0x10) != 2) return;
+
+            if (*(short*)(e + 0x12) > 0)
+            {
+                short impetus = (short)(*(short*)(e + 0x12) - 1);
+                *(short*)(e + 0x12) = impetus;
+                *(int*)(e + 0x20) += impetus * -0x1000;
+                AddEntityVelocity_00454580(e, 0, impetus * -0x1000, 0);   // Ghidra: FUN_00454580
+                return;
+            }
+
+            *(int*)(e + 0x20) += 0x5000;
+            AddEntityVelocity_00454580(e, 0, 0x5000, 0);
+
+            int top = *(short*)(e + 0x14) * 0x1000;
+            if (top <= *(int*)(e + 0x20))
+            {
+                *(int*)(e + 0x20) = top;
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x16) = -1;
+                *(uint*)e |= 0x40000000;
+                *(short*)(e + 0x12) = 100;
+            }
+
+            return;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x16) = -1;
+            *(short*)(e + 0x14) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(int*)(e + 0x20) += *(short*)(e + 0x16) * 0x1000;
+            AddEntityVelocity_00454580(e, 0, *(short*)(e + 0x16) << 0xc, 0);
+
+            if (*(short*)(e + 0x14) * 0x1000 <= *(int*)(e + 0x20) ||
+                *(int*)(e + 0x20) <= (*(short*)(e + 0x14) - 0x14) * 0x1000)
+            {
+                *(short*)(e + 0x16) = (short)-*(short*)(e + 0x16);
+            }
+        }
+
+        if ((*(uint*)e & 0x10) == 0) *(uint*)e &= 0xefffffff;
+    }
+
+    /// <summary>Ghidra: FUN_004646a0 @ 0x004646a0 — creneau <b>14</b> du bloc
+    /// <c>0x00558e28</c>.</summary>
+    private static void EntityHandler_004646A0(byte* e) => TickCastleRisingPlatform_004646A0(e);
+
+    /// <summary>Ghidra: FUN_00465fe0 @ 0x00465fe0 — creneau <b>14</b> du bloc <c>0x005594a8</c>.
+    /// <b>Zero difference</b>.</summary>
+    private static void EntityHandler_00465FE0(byte* e) => TickCastleRisingPlatform_004646A0(e);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_004644F0"/> et de son miroir. Decompile dans
+    /// <c>Blaze.c</c>, 120 instructions ; les deux exemplaires sont <b>identiques</b>.
+    ///
+    /// <para>
+    /// <b>Ce qui bascule quand on s'en approche, et fait trembler l'ecran en tombant.</b>
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>etat 0 — l'attente</term><description>il retient son angle <c>+0x34</c> dans
+    ///     <c>+0x14</c>. Des qu'un membre vivant passe a <b>moins de cent unites</b> a plat, il passe
+    ///     a l'etat 1 — le test se fait a chaque image, mais ne change que l'etat 0.</description></item>
+    ///   <item><term>etat 1 — la chute</term><description>l'angle <c>+0x34</c> perd une vitesse qui
+    ///     grandit d'un par image, jusqu'a <b>un quart de tour</b> (<c>0x400</c>) sous son angle de
+    ///     depart. Arrive, il s'y fixe, <b>descend de dix unites</b> le temps d'une image et joue le
+    ///     son <c>0x14</c> de la zone, hauteur <c>0x200</c>, gain <c>0x1800</c>.</description></item>
+    ///   <item><term>etat 2 — l'impact</term><description>a la premiere image il remonte de ces dix
+    ///     unites et frappe par <see cref="StrikePartyMembers_0045DA40"/> — <b>5 %</b>, les membres
+    ///     de son demi-octet bas de contact, verrou par defaut. Puis il secoue la camera par
+    ///     <see cref="TryPublishCameraEffectNearEntity"/> avec une amplitude qui change de signe et
+    ///     perd un a chaque image : -9, 8, -7, … 2, -1, 0 ; a zero, il passe a l'etat 3, ou il ne fait
+    ///     plus rien.</description></item>
+    /// </list>
+    /// </summary>
+    private static void TickCastleToppler_004644F0(byte* e)
+    {
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            int dx = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            if (distance < 100 && *(short*)(e + 0x10) == 0) *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 0;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x14) = *(short*)(e + 0x34);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))++;
+            *(short*)(e + 0x34) -= *(short*)(e + 0x12);
+
+            if (*(short*)(e + 0x34) < *(short*)(e + 0x14) - 0x400)
+            {
+                *(short*)(e + 0x34) = (short)(*(short*)(e + 0x14) - 0x400);
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x14) = 10;
+                *(int*)(e + 0x20) -= 0xa000;
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x14), 0x200, 0x1800, 0, 0);   // Ghidra: FUN_00468080
+                return;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        if (*(short*)(e + 0x14) == 10)
+        {
+            *(int*)(e + 0x20) += 0xa000;
+            StrikePartyMembers_0045DA40(e, 5, 0, 0, 0);   // Ghidra: FUN_0045da40
+        }
+
+        short swing = (short)-*(short*)(e + 0x14);
+        short step = swing < 1 ? (short)1 : (short)-1;
+        *(short*)(e + 0x14) = (short)(swing + step);
+
+        TryPublishCameraEffectNearEntity((uint*)e, 999, (short)(swing + step), 999, 0, 0);   // Ghidra: FUN_0041be60
+
+        if (*(short*)(e + 0x14) == 0) *(short*)(e + 0x10) = 3;
+    }
+
+    /// <summary>Ghidra: FUN_004644f0 @ 0x004644f0 — creneau <b>12</b> du bloc
+    /// <c>0x00558e28</c>.</summary>
+    private static void EntityHandler_004644F0(byte* e) => TickCastleToppler_004644F0(e);
+
+    /// <summary>Ghidra: FUN_00465e30 @ 0x00465e30 — creneau <b>12</b> du bloc <c>0x005594a8</c>.
+    /// <b>Zero difference</b>.</summary>
+    private static void EntityHandler_00465E30(byte* e) => TickCastleToppler_004644F0(e);
 }

@@ -1821,6 +1821,13 @@ public static unsafe partial class Blaze
             // Celui-ci ne lit aucun de ses deux arguments.
             0x004450A0 => AreaVerb_004450A0(),
 
+            // PALIER 3 (2026-09-18). Les deux premiers sont le meme verbe — un effet inflige au
+            // membre que designe la banque 2 —, le second sans nombres flottants ; le troisieme
+            // lance un script quand tout le groupe a quitte le rectangle. Aucun ne lit l'entite.
+            0x004446F0 => AreaVerb_004446F0((short)(s[2] | (s[3] << 8))),
+            0x00444AF0 => AreaVerb_00444AF0((short)(s[2] | (s[3] << 8))),
+            0x00444EF0 => AreaVerb_00444EF0((short)(s[2] | (s[3] << 8))),
+
             0x00442F60 => AreaVerb_00442F60(),
 
             0x00443100 => AreaVerb_00443100(),
@@ -4338,5 +4345,229 @@ public static unsafe partial class Blaze
         }
 
         return (uint)(short)none;
+    }
+
+    // =====================================================================
+    // PALIER 3 (2026-09-18) — TROIS VERBES DE PLUS DU CHATEAU DE L'IMMORTEL
+    //
+    // Encore trois lignes de `GestionnairesEntites.md` qui sont des verbes de 0x0056aec8. Les deux
+    // premiers sont LE MEME VERBE A UN APPEL PRES : infliger au membre que designe la banque 2 l'un
+    // de onze effets, choisi par l'operande. Le second (sous-zones 6 a 10) est le premier sans les
+    // nombres flottants. Le troisieme est la sortie des sous-zones 5 et 11.
+    // =====================================================================
+
+    /// <summary>
+    /// Le corps commun de <see cref="AreaVerb_004446F0"/> et <see cref="AreaVerb_00444AF0"/> — deux
+    /// tables de sauts a <b>onze entrees dans le meme ordre</b>, <c>0x00444a08</c> et
+    /// <c>0x00444dc8</c>, relevees au desassembleur. Les deux sont absents de <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Le membre vise est l'octet 1 de la banque 2</b> (<c>DAT_005e9061</c>) : ni l'entite
+    /// appelante, ni le premier argument. Sa fiche est <c>MainMem + (membre + 0x78) * 0x2000</c>,
+    /// la fiche que les herbes ecrivent directement (voir <c>Combat/HerbEffects.cs</c>).
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>0 a 4, 9</term><description><b>un etat</b> : l'effet de sous-type <c>0x29</c>
+    ///     nait sur le membre avec l'atlas de l'etat, le bit est pose dans <c>+0x140</c>, et la duree
+    ///     est portee <b>a au moins dix</b> — une duree plus longue deja en place est gardee.
+    ///     Les six couples atlas / bit / duree sont ceux de
+    ///     <see cref="SpawnStatusEffectEntity_0047AC40"/> chez les effets d'objet.</description></item>
+    ///   <item><term>5, 6</term><description><b>rendre ou retirer le vingtieme des PV
+    ///     maximum</b>. Le gain est plafonne au maximum ; la perte qui fait tomber a zero ou moins
+    ///     met les PV a zero et pose <c>0x40000000</c>.</description></item>
+    ///   <item><term>7, 8</term><description>la meme chose <b>sur les PM</b> — mais la perte ne
+    ///     pose aucun bit, et ne ramene a zero que strictement en dessous (<c>jge</c> la ou les
+    ///     PV testent <c>jg</c>).</description></item>
+    ///   <item><term>10</term><description><b>lever le bit 1</b> et remettre sa duree
+    ///     <c>+0x1e0</c> a zero — la forme de <see cref="ClearHerbStatus_0053AE20"/>, sans
+    ///     validation.</description></item>
+    /// </list>
+    /// <para>
+    /// L'operande est compare <b>sans signe</b> a dix (<c>cmp ecx,edi ; ja</c>) : une valeur
+    /// negative ne fait rien. Le verbe rend toujours zero.
+    /// </para>
+    /// </summary>
+    /// <param name="showNumbers">Vrai pour <c>0x004446F0</c> : les cas 5 a 8 font partir le montant
+    /// en nombre flottant par <see cref="SpawnParticle_0050F070"/>, genre 1 pour un gain, 0 pour
+    /// une perte. <c>0x00444AF0</c> n'a pas ces quatre appels, et c'est sa seule difference.</param>
+    private static uint AfflictBankMember_004446F0(short effect, bool showNumbers)
+    {
+        uint slot = Mem.s_StateBank2_005e9060[1];
+        byte* member = Inp.s_SlotFlags_005e93c0 + slot * 0x9c;
+        byte* sheet = GetMainMemPtr() + (slot + 0x78) * 0x2000;
+
+        switch ((uint)effect)
+        {
+            case 0: InflictBankMemberStatus(member, sheet, 0x005647d0, 4, 0x18e); break;
+            case 1: InflictBankMemberStatus(member, sheet, 0x005647e0, 8, 0x190); break;
+            case 2: InflictBankMemberStatus(member, sheet, 0x005647f0, 0x20, 0x194); break;
+            case 3: InflictBankMemberStatus(member, sheet, 0x00564848, 0x1000, 0x1a2); break;
+            case 4: InflictBankMemberStatus(member, sheet, 0x005647c0, 1, 0x1e0); break;
+
+            case 5:
+            {
+                int amount = *(short*)(sheet + 0x148) / 20;
+                *(short*)(sheet + 0x14c) += (short)amount;
+                if (showNumbers) SpawnParticle_0050F070((uint*)(member + 0x1c), (uint)amount, 1);
+
+                if (*(short*)(sheet + 0x14c) > *(short*)(sheet + 0x148))
+                {
+                    *(short*)(sheet + 0x14c) = *(short*)(sheet + 0x148);
+                }
+                break;
+            }
+
+            case 6:
+            {
+                int amount = *(short*)(sheet + 0x148) / 20;
+                *(short*)(sheet + 0x14c) -= (short)amount;
+                if (showNumbers) SpawnParticle_0050F070((uint*)(member + 0x1c), (uint)amount, 0);
+
+                if (*(short*)(sheet + 0x14c) <= 0)
+                {
+                    *(short*)(sheet + 0x14c) = 0;
+                    *(uint*)(sheet + 0x140) |= 0x40000000;
+                }
+                break;
+            }
+
+            case 7:
+            {
+                int amount = *(short*)(sheet + 0x14a) / 20;
+                *(short*)(sheet + 0x14e) += (short)amount;
+                if (showNumbers) SpawnParticle_0050F070((uint*)(member + 0x1c), (uint)amount, 1);
+
+                if (*(short*)(sheet + 0x14e) > *(short*)(sheet + 0x14a))
+                {
+                    *(short*)(sheet + 0x14e) = *(short*)(sheet + 0x14a);
+                }
+                break;
+            }
+
+            case 8:
+            {
+                int amount = *(short*)(sheet + 0x14a) / 20;
+                *(short*)(sheet + 0x14e) -= (short)amount;
+                if (showNumbers) SpawnParticle_0050F070((uint*)(member + 0x1c), (uint)amount, 0);
+
+                if (*(short*)(sheet + 0x14e) < 0) *(short*)(sheet + 0x14e) = 0;
+                break;
+            }
+
+            case 9: InflictBankMemberStatus(member, sheet, 0x00564850, 0x400, 0x19e); break;
+
+            case 10:
+                *(ushort*)(sheet + 0x1e0) = 0;
+                *(uint*)(sheet + 0x140) &= 0xfffffffe;
+                break;
+        }
+
+        return 0;
+    }
+
+    /// <summary>Un cas « etat » de <see cref="AfflictBankMember_004446F0"/> : le binaire deroule
+    /// six fois le meme bloc, seuls changent l'atlas, le bit et le champ de duree.</summary>
+    private static void InflictBankMemberStatus(byte* member, byte* sheet, int atlas, uint bit, int durationOffset)
+    {
+        SpawnStatusEffectEntity_0047AC40(member, (int*)(member + 0x1c), SpriteAtlas(atlas), 0x29, 0, 0);   // Ghidra: FUN_0047ac40
+
+        *(uint*)(sheet + 0x140) |= bit;
+        if (*(ushort*)(sheet + durationOffset) < 10) *(ushort*)(sheet + durationOffset) = 10;
+    }
+
+    /// <summary>Ghidra: <c>0x004446f0</c> — verbe <b>10</b> du bloc <c>0x00558f28</c>, sous-zones
+    /// 0 a 4 : l'effet, <b>avec</b> les nombres flottants. 848 octets.</summary>
+    private static uint AreaVerb_004446F0(short effect) => AfflictBankMember_004446F0(effect, true);
+
+    /// <summary>Ghidra: <c>0x00444af0</c> — verbe <b>10</b> du bloc <c>0x005595a8</c>, sous-zones
+    /// 6 a 10 : le meme effet, <b>sans</b> nombre flottant. 784 octets.</summary>
+    private static uint AreaVerb_00444AF0(short effect) => AfflictBankMember_004446F0(effect, false);
+
+    /// <summary>
+    /// Ghidra: <c>0x00444ef0</c> — le verbe <b>12</b> du bloc <c>0x00559c28</c>, sous-zones 5 et
+    /// 11. Absent de <c>Blaze.c</c> ; 125 instructions relevees au desassembleur.
+    ///
+    /// <para>
+    /// <b>« Tout le groupe est-il sorti du rectangle ? » — et si oui, lancer un script.</b> Le verbe
+    /// ne fait rien si l'octet <c>DAT_005de058</c> ne vaut pas 2, ni si le bit 2 de
+    /// <c>DAT_005e9706</c> (banque 0, octet <c>0x26</c>) est pose.
+    /// </para>
+    /// <para>
+    /// Il parcourt les quatre membres. Chaque membre debout (<c>0x80000000</c> sans
+    /// <c>0x50010000</c>) est compte ; s'il est <b>hors</b> du rectangle
+    /// <c>x ∈ [0x8fc000, 0xbea000]</c>, <c>z ∈ [0xfff24000, 0x26c000]</c>, il est compte une
+    /// seconde fois, et, s'il ne porte ni <c>1</c> ni <c>0x04000000</c>, il est <b>fige</b> : ses
+    /// trois octets <c>+0x38</c> a <c>+0x3a</c> a <c>0xff</c>, le bit 4 de <c>+0x36</c> leve, son
+    /// verrou <c>+0x96</c> a zero, le bit <c>0x04000000</c> pose, et un effet de sous-type
+    /// <b><c>0x9d</c></b> nait sur lui, sans atlas.
+    /// </para>
+    /// <para>
+    /// Quand les deux comptes sont egaux et non nuls — tous les membres debout sont dehors — le
+    /// script d'indice <paramref name="scriptIndex"/> part. Il part sur le membre designe par
+    /// <c>DAT_005de538</c> <b>si son emplacement ne porte aucun des bits <c>0xd0000000</c></b> ;
+    /// sinon sur le premier membre debout. La premiere branche lance donc le script sur un
+    /// emplacement que la boucle n'aurait pas retenu : transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// Le verbe rend toujours zero. Ce qui l'empeche de relancer le script a chaque image n'est pas
+    /// ici : c'est vraisemblablement le script lui-meme qui pose le bit de <c>0x005e9706</c>.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00444EF0(short scriptIndex)
+    {
+        if ((byte)*Mem.Camera(0x005de058) != 2) return 0;
+        if ((Mem.s_StateBank0_005e96e0[0x26] & 2) != 0) return 0;
+
+        int standing = 0;
+        int outside = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50010000) != 0) continue;
+
+            standing++;
+
+            int x = *(int*)(member + 0x1c);
+            int z = *(int*)(member + 0x24);
+            if (x >= 0x8fc000 && x <= 0xbea000 && z >= unchecked((int)0xfff24000) && z <= 0x26c000) continue;
+
+            outside++;
+
+            if ((flags & 0x04000001) != 0) continue;
+
+            member[0x38] = 0xff;
+            member[0x39] = 0xff;
+            member[0x3a] = 0xff;
+            *(ushort*)(member + 0x36) &= 0xfffb;
+            *(ushort*)(member + 0x96) = 0;
+            *(uint*)member |= 0x04000000;
+
+            SpawnStatusEffectEntity_0047AC40(member, (int*)(member + 0x1c), null, 0x9d, 0, -1);   // Ghidra: FUN_0047ac40
+        }
+
+        if ((short)standing != (short)outside || (short)standing == 0 || (short)outside == 0) return 0;
+
+        byte* leader = Inp.s_SlotFlags_005e93c0 + (byte)Mem.s_Unknown_005de538 * 0x9c;
+
+        if ((*(uint*)leader & 0xd0000000) == 0)
+        {
+            RunEntityScript(s_Unknown_005e97cc, leader, (uint)scriptIndex);   // Ghidra: FUN_00513dd0
+            return 0;
+        }
+
+        member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50010000) != 0) continue;
+
+            RunEntityScript(s_Unknown_005e97cc, member, (uint)scriptIndex);
+            break;
+        }
+
+        return 0;
     }
 }

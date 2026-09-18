@@ -112,3 +112,7 @@ EntityHandler_00442C20 | 0x00551408 | +0x00 | EntityHandler_00442C20,TickCastleF
 
 # ---- Ajoute le 2026-09-18 (palier 2 du chateau de l'immortel, zone 6)
 EntityHandler_00429270 | 0x005506E8 | +0x00 | EntityHandler_00429270 | 58f554d43924 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (releve 0x00429270, un seul `mov [esi+40h]` jusqu au ret 0x0042932d)
+
+# ---- Ajoute le 2026-09-18 (palier 3 du chateau de l'immortel, zone 6)
+EntityHandler_0042D9B0 | 0x005507E0 | +0x00 | EntityHandler_0042D9B0,TickCastleDriftSpark_0042D9B0 | 6f089e28c7f9 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (releve 0x0042d9b0, un seul `mov [esi+40h]` jusqu au ret 0x0042db0a)
+EntityHandler_00442AC0 | 0x00551410 | +0x00 | EntityHandler_00442AC0,TickCastleDriftSpark_0042D9B0 | 96929d8341c7 | jumeau du precedent a la planche et a la hauteur pres (grotte scellee)

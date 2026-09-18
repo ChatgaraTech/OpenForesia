@@ -3366,3 +3366,27 @@ placer **ailleurs que juste après** la planche principale de la gerbe.
 `0x005508b8` et `0x005510f8` portent les mêmes octets que `0x00550460` (Labyrinthe) : la même
 luciole à quatre images, trois fois dans `.data`.
 
+
+## `0x005507e0`, `0x00551410`, `0x00550828` — les trois planches du palier 3 du château (2026-09-18)
+
+```
+0x005507e0: 4800 1010 0102 1000                       <- 0x0042D9B0 (un enregistrement)
+--- 0x005507e8 : 0030 1f1f 0102 0a00, tuile 0x1f x 0x1f de la couche 0x0a
+0x00550828: 00b0 1f1f 0102 0a00 ... a0b0 1f1f 0102 0a00   (six, au pas de 0x20 en X)
+0x00550858: 00d0 1f1f 0102 0a00 ... a0d0 1f1f 0102 0a00   (six)
+--- 0x00550888 : 0808 1010, la planche de 0x0042DB10 (palier 1)
+```
+
+| plage | enregistrements | borne haute | corps | marge |
+|---|---:|---|---|---|
+| `0x005507e0` | 1 | `0x005507e8` | `0x0042D9B0` | prouvée : `+0x40` posé à 0, jamais avancé |
+| `0x00551410` | 1, mêmes octets | `0x00551418` (`0000 2f2f`) | `0x00442AC0` (grotte scellée) | idem |
+| `0x00550828` | 12 | `0x00550888` | `0x0042D350` | 12 restants : le corps plafonne `+0x40` à 11 |
+
+**Le « changement de famille » est aussi une planche.** Les trois plages de groupe du palier 1
+(`0x00550480`, `0x005505d0`, `0x00550740`) s'arrêtent sur `48 00 10 10 01 02 10 00` ; pour le
+groupe des sous-zones 5 et 11, cet enregistrement-là, `0x005507e0`, est la planche de l'éclat qui
+dérive. La grotte scellée a le même motif juste après `0x00551408`.
+
+Les huit enregistrements `0x005507e8`..`0x00550827` (même couche `0x0a`, rangée `y = 0x30`)
+n'appartiennent à aucun corps écrit au 2026-09-18.

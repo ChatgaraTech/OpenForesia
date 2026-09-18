@@ -169,18 +169,28 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
 5. ~~**La zone 5, le Labyrinthe**~~ — **complète le 2026-09-18** (160 / 160), voir le point 4.
-   **La zone 6, le château, est en cours : 125 / 170.** Le tri est dans `Zone6ParComplexite.md`
+   **La zone 6, le château, est en cours : 148 / 170.** Le tri est dans `Zone6ParComplexite.md`
    (2026-09-18, suite 10) et le classement en cinq paliers dans `REVERSE_STATUS.md`.
    - ~~**palier 1**, les 32 corps déjà écrits ou presque~~ — **fait le 2026-09-18 (suite 11)**,
      plus deux gestionnaires de la grotte scellée en prime.
    - ~~**palier 2**, les 62 corps « simples » pour 49 formes~~ — **fait le 2026-09-18 (suite 12)**,
      plus un de la grotte. **Les catégories A et B du tri sont vides.**
-   - **La suite est le palier 3** : les 23 « C » pour ~20 lectures — quatre paires miroir
-     (`0x00426E80`/`0x004296F0`, `0x0042A920`/`0x0042B190`, `0x004644F0`/`0x00465E30`,
-     `0x004646A0`/`0x00465FE0`), `0x0042D9B0` qui ferme aussi `0x00442AC0` (grotte), et 15 isolés.
-     Les quatre nuages à effet 32 ont leurs feuilles écrites mais **ne sont pas**
-     `TickHostStatusCloud` (73 lignes d'écart au plus proche). Puis ~8 lectures grosses et
-     12 routines d'intelligence.
+   - ~~**palier 3**, les 23 « C »~~ — **fait le 2026-09-18 (suite 13)**, plus un de la grotte
+     (`0x00442AC0`). **Les catégories A, B et C du tri sont vides.** Les quatre nuages étaient
+     `StepStatusCloud` du Labyrinthe plus une gerbe propre au château.
+   - **La suite est le palier 4** : les 9 « D » pour ~8 lectures — `0x00425E50` / `0x00428420` /
+     `0x0042B9A0` (372, une famille, garde → `0053B730`), `0x00425750` / `0x00427CE0` (548/565),
+     `0x00463EF0` / `0x00465820` (270, parents mais pas copies), et les deux tables de sauts
+     `0x004274C0` et `0x0042ABF0` — **ce sont les incantations `0xdf` que la gerbe des nuages fait
+     naître** (créneau 31 de `0x0056b1c8`). Puis les 13 routines d'intelligence (palier 5).
+   - **Ce que le palier 3 a appris** :
+     - **un sous-type `0xc0 + n` va au créneau n de `0x0056b0c8`, `b1c8` ou `b2c8` selon la
+       fonction qui le fait naître** — décor, `SpawnCastEntity_0047AAE0`,
+       `SpawnStatusEffectEntity_0047AC40`. C'est ce qui dit qui sème quoi ;
+     - **comparer au même créneau de l'autre bloc miroir même quand les tailles diffèrent** :
+       `0x00463850` et `0x00464E70` sont des corps écrits plus un ajout, invisibles au tri ;
+     - un écart de 73 lignes peut être **un second corps sous le même toit** (aiguillé par
+       `+0x9a`), pas un corps différent.
    - **Ce que les deux premiers paliers ont appris** :
      - la normalisation qui apparie deux corps **masque les cibles d'appel** — les résoudre à part,
        sauts internes retirés, avant de conclure qu'un corps est une copie ;

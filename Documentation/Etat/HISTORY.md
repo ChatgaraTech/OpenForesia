@@ -6,6 +6,20 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le palier 3 du château de l'immortel est écrit — 125 sur 170 devient 148 sur 170**, et
+  la catégorie C du tri est vide comme la A et la B ; la grotte scellée gagne `0x00442AC0`
+- feat : les quatre nuages à effet 32 du château — `StepStatusCloud` du Labyrinthe plus une gerbe
+  propre au château (`StepCastleCloudBurst`), et les trois « appelées inconnues » étaient
+  `ApplyStatusEffect32IfAllowed_00421D80` à l'octet près
+- feat : trois scènes des sous-zones 5 et 11 (`Cutscene/ImmortalCastleScenes.cs`), l'éclair qui se
+  relance maillon par maillon (`0x0042D770`), et deux verbes de script de plus — un effet infligé au
+  membre désigné, et la sortie du rectangle
+- doc : **un sous-type `0xc0 + n` va au créneau n de `0x0056b0c8`, `b1c8` ou `b2c8` selon la
+  fonction qui le fait naître** — c'est ce qui dit qui sème quoi
+- doc : deux corps du décor (`0x00463850`, `0x00464E70`) sont des corps déjà écrits **plus un
+  ajout**, invisibles au tri : comparer au même créneau de l'autre bloc miroir
+- doc : trois planches relevées (`0x005507e0`, `0x00550828`, `0x00551410`), deux marges courtes
+  scellées
 - feat : **le palier 2 du château de l'immortel est écrit — 63 sur 170 devient 125 sur 170**, et la
   catégorie B du tri est vide comme la A
 - feat : la **famille de six** des créneaux 22, 23 et 24 — six navettes pour une lecture, à un
