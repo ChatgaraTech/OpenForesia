@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le Vampire et le Petit vampire** (`0x004CF3A0`, `0x004D8F70`) — la charpente du Rampant,
+  et une posture 12 qui invoque le nuage à effet 32 du château. Zone 6 : 159 sur 170 ; nouveau
+  fichier `Ai/ImmortalCastle/Vampire.cs`
 - feat : **le palier 4 du château de l'immortel est écrit — 148 sur 170 devient 157 sur 170** ;
   il ne reste que les 13 routines d'intelligence
 - feat : la famille à trois vies (feu follet, projectile qui rebondit, éclair rouge), les semis

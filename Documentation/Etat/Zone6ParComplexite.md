@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**170 gestionnaires, 157 implementes, 13 a ecrire.**
+**170 gestionnaires, 159 implementes, 11 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,7 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **E — intelligence** | une routine de bete | 13 | 12 | 12624 |
+| **E — intelligence** | une routine de bete | 11 | 11 | 11585 |
 
 La colonne « instructions » additionne une seule fois chaque forme ; la categorie A n'en compte
 aucune, puisque son corps est deja ecrit.
@@ -27,20 +27,18 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## E — intelligence (13)
+## E — intelligence (11)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
 | `0x004DACC0` | 5,11 | 0056AD48 | 682 | 2 | non |  | **Nocturio** |
 | `0x004C9E00` | 0,1,2,3,4 | 0056AD48 | 861 | 1 | non |  | **Fantôme** |
 | `0x004CC650` | 0,1,2,3,4 | 0056AD48 | 934 | 1 | non |  | **Loup, Loup gris** |
-| `0x004D4E10` | 5,11 | 0056AD48 | 934 | 1 | non | (+2 ailleurs) | **Loup gris** ; appelee(s) inconnue(s) : `0x004D5A20` |
-| `0x004CF3A0` | 6,7,8,9,10 | 0056AD48 | 1039 | 1 | non | `0x004D8F70` | **Petit vampire, Vampire** |
-| `0x004D8F70` | 5,11 | 0056AD48 | 1039 | 1 | non | `0x004CF3A0` | appelee(s) inconnue(s) : `0x004D5A20` |
-| `0x004D80D0` | 5,11 | 0056AD48 | 1075 | 1 | non |  | **Tigre** ; appelee(s) inconnue(s) : `0x004D5A20` |
-| `0x004D7200` | 5,11 | 0056AD48 | 1106 | 1 | non |  | **Loup-garou** ; appelee(s) inconnue(s) : `0x004D5A20` |
+| `0x004D4E10` | 5,11 | 0056AD48 | 934 | 1 | non | (+2 ailleurs) | **Loup gris** |
+| `0x004D80D0` | 5,11 | 0056AD48 | 1075 | 1 | non |  | **Tigre** |
+| `0x004D7200` | 5,11 | 0056AD48 | 1106 | 1 | non |  | **Loup-garou** |
 | `0x004D2FC0` | 6,7,8,9,10 | 0056AD48 | 1122 | 1 | non |  | **Chimère** |
-| `0x004D9D90` | 5,11 | 0056AD48 | 1126 | 1 | non | (+1 ailleurs) | **Sacuba** ; appelee(s) inconnue(s) : `0x004D5A20` |
+| `0x004D9D90` | 5,11 | 0056AD48 | 1126 | 1 | non | (+1 ailleurs) | **Sacuba** |
 | `0x004D3EE0` | 6,7,8,9,10 | 0056AD48 | 1129 | 1 | non |  | **Sacuba** ; appelee(s) inconnue(s) : `0x004D4DD0` |
 | `0x004CB4F0` | 0,1,2,3,4 | 0056AD48 | 1308 | 1 | non | (+1 ailleurs) | **Harpie** |
-| `0x004D60A0` | 5,11 | 0056AD48 | 1308 | 1 | non |  | **Harpie** ; appelee(s) inconnue(s) : `0x004D5A20` |
+| `0x004D60A0` | 5,11 | 0056AD48 | 1308 | 1 | non |  | **Harpie** |

@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **326** |
-| implementes, jamais appeles | **727** |
-| a transcrire | **377** |
+| implementes, jamais appeles | **729** |
+| a transcrire | **375** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -68,7 +68,7 @@ et n'est pas un comportement.
 | 3 | La foret | 136 | 136 | 90 |
 | 4 | La vieille tour | 176 | 176 | 2 |
 | 5 | Le Labyrinthe des morts | 160 | 160 | 0 |
-| 6 | Le chateau de l'immortel | 170 | 157 | 0 |
+| 6 | Le chateau de l'immortel | 170 | 159 | 0 |
 | 7 | Les ruines souterraines | 35 | 19 | 0 |
 | 8 | La vallee d'argent | 46 | 18 | 0 |
 | 9 | Les ruines dans le lac | 41 | 18 | 0 |
@@ -1127,21 +1127,19 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 6 — Le chateau de l'immortel
 
-170 gestionnaires, 157 implementes, 0 testes.
+170 gestionnaires, 159 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
 | `0x004C9E00` | 0,1,2,3,4 | 0056AD48 | **non** | **non** |
 | `0x004CB4F0` | 0,1,2,3,4 | 0056AD48 | **non** | **non** |
 | `0x004CC650` | 0,1,2,3,4 | 0056AD48 | **non** | **non** |
-| `0x004CF3A0` | 10,6,7,8,9 | 0056AD48 | **non** | **non** |
 | `0x004D2FC0` | 10,6,7,8,9 | 0056AD48 | **non** | **non** |
 | `0x004D3EE0` | 10,6,7,8,9 | 0056AD48 | **non** | **non** |
 | `0x004D4E10` | 11,5 | 0056AD48 | **non** | **non** |
 | `0x004D60A0` | 11,5 | 0056AD48 | **non** | **non** |
 | `0x004D7200` | 11,5 | 0056AD48 | **non** | **non** |
 | `0x004D80D0` | 11,5 | 0056AD48 | **non** | **non** |
-| `0x004D8F70` | 11,5 | 0056AD48 | **non** | **non** |
 | `0x004D9D90` | 11,5 | 0056AD48 | **non** | **non** |
 | `0x004DACC0` | 11,5 | 0056AD48 | **non** | **non** |
 | `0x0040A600` | 0,1,10,2,3,4,6,7,8,9 | 0056ADC8 | oui | **non** |
@@ -1297,9 +1295,11 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004CA9C0` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
 | `0x004CD260` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
 | `0x004CE120` | 10,6,7,8,9 | 0056AD48 | oui | **non** |
+| `0x004CF3A0` | 10,6,7,8,9 | 0056AD48 | oui | **non** |
 | `0x004D01C0` | 10,6,7,8,9 | 0056AD48 | oui | **non** |
 | `0x004D12A0` | 10,6,7,8,9 | 0056AD48 | oui | **non** |
 | `0x004D1F70` | 10,6,7,8,9 | 0056AD48 | oui | **non** |
+| `0x004D8F70` | 11,5 | 0056AD48 | oui | **non** |
 | `0x005413E0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | **non** |
 
 ## Zone 7 — Les ruines souterraines

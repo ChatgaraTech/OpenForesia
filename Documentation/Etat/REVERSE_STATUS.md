@@ -24715,3 +24715,40 @@ routines de bêtes (palier 5).
   scellées. 74 marges prouvées, 3 à vérifier, toutes antérieures.
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
 - **Aucun des 9 corps n'a été exercé en jeu.**
+
+## 2026-09-18 (suite 15) — Zone 6, palier 5 : le Vampire et le Petit vampire
+
+**157 sur 170 devient 159 sur 170.** `0x004CF3A0` (sous-zones 6 à 10) et `0x004D8F70` (5 et 11),
+absents de `Blaze.c`, 1 039 instructions chacun, table de sauts à treize entrées ; relevés sous
+`Legacy/Raw/Blaze/ImmortalCastle/`. Nouveau fichier, proposé et accepté :
+`Ai/ImmortalCastle/Vampire.cs`.
+
+### Le parent : le Rampant
+
+Le relevé contre les 114 routines d'intelligence déjà écrites (fenêtre ±25 %) a donné le Rampant
+(`0x004ADAE0`, vieille tour) à 267 lignes d'écart ; les suivants sont au-delà de 700. La tête (sonde,
+lecture de situation, distance à trois dimensions) et la queue (intégration `FUN_00488160` — la
+vitesse verticale y est `v54 - (v54 >> 8) + (b >> 8) - b`, les registres seuls changent —, pose au
+sol, heurt de mur au masque `0x2000ad82`, retour de stun) sont celles du Rampant ; les écarts sont
+dans les gestes et la replanification, et sont listés dans le bandeau du fichier.
+
+### La posture 12, l'invocation du nuage
+
+Le geste que le Rampant n'a pas, et qui ferme la boucle du palier 3 : sur l'animation 3, à l'image 9,
+le Vampire pose sa cible en `+0x78`, choisit un mode en `+0x9a` (variante 0 : 0 ou 2 ; variante 1 :
+1 ou 2) et fait naître l'effet `0xdf` par `SpawnEffectEntity` — donc dans la table du décor,
+`0x0056adc8 + 0xdf * 4` = **le créneau 31 de `0x0056b0c8`**, c'est-à-dire `0x004271B0` aux
+sous-zones 6 à 10 et `0x0042B190` aux sous-zones 5 et 11 : **les nuages à effet 32**. L'effet copie
+l'enregistrement du Vampire, donc naît avec ce mode et cette cible ; le mode 2 est le nuage, 0 ou 1
+la gerbe. Le Vampire rend ensuite à `+0x9a` sa valeur.
+
+**Un seul vampire à la fois** : l'armement balaie l'octet `+0x42` des 32 entités de `0x005ecaa0`
+(`mov ecx,5ECAE2h` = `0x005ecaa0 + 0x42`) et renonce si une autre que lui (rang `+0x08`) est déjà en
+posture 12. Il renonce aussi au-delà de 1000 unités de sa cible.
+
+### Contrôles
+
+- `dotnet build OpenForesia.sln` : 0 erreur.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés ; `Comportement.md` complété
+  (section du château).
+- **Non exercé en jeu.**

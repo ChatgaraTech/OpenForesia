@@ -169,7 +169,7 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
 5. ~~**La zone 5, le Labyrinthe**~~ — **complète le 2026-09-18** (160 / 160), voir le point 4.
-   **La zone 6, le château, est en cours : 157 / 170.** Le tri est dans `Zone6ParComplexite.md`
+   **La zone 6, le château, est en cours : 159 / 170.** Le tri est dans `Zone6ParComplexite.md`
    (2026-09-18, suite 10) et le classement en cinq paliers dans `REVERSE_STATUS.md`.
    - ~~**palier 1**, les 32 corps déjà écrits ou presque~~ — **fait le 2026-09-18 (suite 11)**,
      plus deux gestionnaires de la grotte scellée en prime.
@@ -182,9 +182,10 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      étaient des corps du Labyrinthe (`TickCloudSeed`, `TickOwnerFrontSweep`) à un détail près.
      **Les catégories A à D du tri sont vides.**
    - **La suite est le palier 5** : les 13 routines d'intelligence pour 10 lectures (voir le
-     tableau du palier 5 dans `REVERSE_STATUS.md`, suite 10). Commencer par la paire Vampire /
-     Petit vampire (`0x004CF3A0` + `0x004D8F70`, zéro ligne d'écart), puis les bêtes qui ferment
-     aussi un corps d'une autre zone (Loup, Harpie, Sacuba, Chimère).
+     tableau du palier 5 dans `REVERSE_STATUS.md`, suite 10). ~~Vampire / Petit vampire~~ —
+     **fait le 2026-09-18 (suite 15)**, `Ai/ImmortalCastle/Vampire.cs`. Restent les bêtes qui
+     ferment aussi un corps d'une autre zone (Loup, Harpie, Sacuba, Chimère), puis Tigre,
+     Loup-garou, Fantôme, Nocturio.
    - **Ce que le palier 3 a appris** :
      - **un sous-type `0xc0 + n` va au créneau n de `0x0056b0c8`, `b1c8` ou `b2c8` selon la
        fonction qui le fait naître** — décor, `SpawnCastEntity_0047AAE0`,

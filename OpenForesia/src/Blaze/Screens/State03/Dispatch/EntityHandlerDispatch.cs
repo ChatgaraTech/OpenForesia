@@ -1233,6 +1233,12 @@ public static unsafe partial class Blaze
             case 0x004C7D00:
                 TickSceneEntityAi_004D1F70(record); return;
 
+            // LE VAMPIRE ET LE PETIT VAMPIRE (chateau, sous-zones 6 a 10 ; et 5 et 11) — la charpente
+            // du Rampant, et une posture 12 qui invoque le nuage du chateau. Ai/ImmortalCastle/Vampire.cs.
+            case 0x004CF3A0:
+            case 0x004D8F70:
+                TickSceneEntityAi_004CF3A0(record); return;
+
             // LE CHEVALIER NOIR (vieille tour, sous-zones 5, 6, 8, 10) ET LE PLATINUM (3, 7, 9) — le Pourpre
             // preux retouche : poussee 0x7000, coups speciaux au quart, charge refusee a la variante 0.
             // Ai/OldTower/BlackKnight.cs.

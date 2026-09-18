@@ -1037,6 +1037,18 @@ Varan appliquée à un combattant** : aucune feuille nouvelle, tout est dans les
 * **Deux fins de posture inhabituelles** : le coup (0x0b) rend la posture 0 au lieu de passer par le
   rebours, et la parade ne décompte que sur les images où l'animation est au bout.
 
+### Le Vampire et le Petit vampire (2026-09-18)
+
+`0x004CF3A0` (sous-zones 6 à 10) et `0x004D8F70` (5 et 11), zéro ligne d'écart hors de la table de
+sauts — `Ai/ImmortalCastle/Vampire.cs`. **La charpente du Rampant** (`0x004ADAE0`, vieille tour),
+267 lignes d'écart sur 1 050, toutes dans les gestes : coup à l'image 9, virages plus lents, sorts
+de feu et de glace (Feu d'enfer, Mur de flammes, Congèlo, Assaut magique ; Coup de jus, Lumière,
+Boule de feu), et **une treizième posture, la 12 : l'invocation du nuage**. Il fait naître un effet
+`0xdf` dans la table du décor — le créneau 31 de `0x0056b0c8`, les nuages à effet 32 du château —
+après lui avoir donné sa cible et son mode. Un seul vampire à la fois : il renonce si une autre
+entité de scène est déjà en posture 12. **Premier ennemi relevé dont l'attaque passe par un
+gestionnaire d'effet de zone** : la bête et son nuage se lisent ensemble.
+
 ## Trois espèces, un comportement : la Crapouille, la Gargouille, le Crapaud (2026-09-15)
 
 `0x004ACC20` (vieille tour), `0x004CE120` (château), `0x004DB610` (ruines souterraines) : trois
