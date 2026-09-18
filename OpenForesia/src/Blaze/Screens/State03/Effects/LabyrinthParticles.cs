@@ -2631,6 +2631,41 @@ public static unsafe partial class Blaze
         => TickCloudSeed(e, Descriptors00550460(), AbsentHost.FallBackOnEntityList);
 
     /// <summary>
+    /// Ghidra: <c>&amp;DAT_005510f8</c> — <b>la planche du semis de la grotte scellee</b>, quatre
+    /// enregistrements. Memes octets que <see cref="s_Descriptors_00550460"/> ; bornee par
+    /// <c>0x00551118</c>, ou les memes trois tuiles recommencent pour une autre table. Les quatre
+    /// sont necessaires : le mode 0 fait tourner <c>+0x40</c> de 0 a 2, le mode 1 le pose a 3.
+    /// </summary>
+    private static readonly byte[] s_Descriptors_005510F8 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005510f8  <- 0x00439170
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551100
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551108
+        0x60, 0x48, 0x1f, 0x1f, 0x01, 0x02, 0x10, 0x00,   // 0x00551110
+    ];
+
+    private static byte* s_Descriptors005510F8Storage;
+
+    private static byte* Descriptors005510F8() => NativeCopy(s_Descriptors_005510F8, ref s_Descriptors005510F8Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00439170 @ 0x00439170 — creneau <b>45</b> du bloc <c>0x0055d428</c>
+    /// (<c>0x0056b2c8</c>, sous-zones 6 et 7 de la <b>grotte scellee</b>). Decompilee dans
+    /// <c>Blaze.c</c>, 441 instructions. Ecrite le 2026-09-18 avec le palier 1 du chateau, parce
+    /// qu'elle est <b>le meme corps que <see cref="EntityHandler_0042B430"/></b> a la planche pres
+    /// — 441 instructions comparees une a une, un seul <c>diff</c> de deux lignes.
+    ///
+    /// <para>
+    /// <b>Elle protege donc les memes pointeurs que le chateau, et pas ceux du Labyrinthe</b> :
+    /// pas de repli a la relecture de <c>+0x78</c> apres le contact, mais un repli sur le porteur
+    /// du mode 1. Voir <see cref="EntityHandler_0042B430"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00439170(byte* e)
+        => TickCloudSeed(e, Descriptors005510F8(), AbsentHost.FallBackOnEntityList,
+                         guardRereadAfterHit: false, guardReturnCarrier: true);
+
+    /// <summary>
     /// Le corps des quatre semis. <b>Deux vies</b>, choisies par <c>+0x44</c> — que le nuage
     /// parent a pose avant de les faire naitre et que l'enfant herite.
     ///
@@ -2660,7 +2695,9 @@ public static unsafe partial class Blaze
     /// <c>+0x44</c> a 0 ou 1 avant chaque naissance.
     /// </para>
     /// </summary>
-    private static void TickCloudSeed(byte* e, byte* descriptors, AbsentHost absent)
+    private static void TickCloudSeed(
+        byte* e, byte* descriptors, AbsentHost absent,
+        bool guardRereadAfterHit = true, bool guardReturnCarrier = false)
     {
         byte* target = *(byte**)(e + 0x78);
         if (target == null)
@@ -2671,7 +2708,7 @@ public static unsafe partial class Blaze
 
         if (*(int*)(e + 0x44) == 0)
         {
-            StepSeekingSeed(e, descriptors, target, absent);
+            StepSeekingSeed(e, descriptors, target, absent, guardRereadAfterHit);
 
             e[0x40]++;
             if (e[0x40] == 3) e[0x40] = 0;
@@ -2680,7 +2717,7 @@ public static unsafe partial class Blaze
             if ((*(uint*)(e + 0x90) & 0x8800) != 0) *(uint*)e &= 0x7fffffff;
         }
 
-        if (*(int*)(e + 0x44) == 1) StepReturningSeed(e, descriptors, target);
+        if (*(int*)(e + 0x44) == 1) StepReturningSeed(e, descriptors, target, absent, guardReturnCarrier);
     }
 
     /// <summary>Relit <c>+0x78</c> comme le fait le binaire, avec le repli de son bloc.</summary>
@@ -2721,7 +2758,8 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Le mode 0 de <see cref="TickCloudSeed"/>, ses quatre etats.</summary>
-    private static void StepSeekingSeed(byte* e, byte* descriptors, byte* target, AbsentHost absent)
+    private static void StepSeekingSeed(
+        byte* e, byte* descriptors, byte* target, AbsentHost absent, bool guardRereadAfterHit)
     {
         if (*(short*)(e + 0x10) == 0)
         {
@@ -2770,7 +2808,8 @@ public static unsafe partial class Blaze
                     if (carrier == null && absent == AbsentHost.FallBackOnEntityList) carrier = Res.s_EntityList_005de558;
                     *(int*)(carrier + 0x44) = 1;
 
-                    target = RereadSeedTarget(e, absent);
+                    // Ghidra: 0x0042B430 et 0x00439170 relisent +0x78 SANS repli ici.
+                    target = guardRereadAfterHit ? RereadSeedTarget(e, absent) : *(byte**)(e + 0x78);
                     *(short*)(e + 0x10) = 3;
                     *(short*)(e + 0x12) = (short)(CrtRand() % 5 + 3);
                     *(short*)(e + 0x16) = (short)(CrtRand() % 0x1000);   // Ghidra: signe-module
@@ -2815,8 +2854,10 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Le mode 1 de <see cref="TickCloudSeed"/>, ses trois etats. Le porteur y est lu
-    /// sans test, dans les quatre copies.</summary>
-    private static void StepReturningSeed(byte* e, byte* descriptors, byte* target)
+    /// sans test dans les quatre copies du Labyrinthe ; <b>le chateau et la grotte scellee le
+    /// protegent</b>, et c'est leur seul ecart avec elles en plus de la planche.</summary>
+    private static void StepReturningSeed(
+        byte* e, byte* descriptors, byte* target, AbsentHost absent, bool guardReturnCarrier)
     {
         if (*(short*)(e + 0x10) == 0)
         {
@@ -2850,6 +2891,9 @@ public static unsafe partial class Blaze
         if (*(short*)(e + 0x10) != 2) return;
 
         byte* carrier = *(byte**)(e + 0x6c);
+        // Ghidra: seuls 0x0042B430 (chateau) et 0x00439170 (grotte) protegent CETTE lecture-ci.
+        if (carrier == null && guardReturnCarrier && absent == AbsentHost.FallBackOnEntityList)
+            carrier = Res.s_EntityList_005de558;
         *(int*)(e + 0x50) = *(int*)(carrier + 0x1c);
         *(int*)(e + 0x54) = *(int*)(carrier + 0x20) + 0x3c000;
         *(int*)(e + 0x58) = *(int*)(carrier + 0x24);
@@ -2919,7 +2963,7 @@ public static unsafe partial class Blaze
     /// les lots 8 a 10.
     /// </para>
     /// </summary>
-    private static void TickShockwaveOrSpray(byte* e, AbsentHost absent)
+    private static void TickShockwaveOrSpray(byte* e, AbsentHost absent, bool clearFlagBit0 = true)
     {
         byte* host = *(byte**)(e + 0x6c);
         if (host == null && absent == AbsentHost.FallBackOnEntityList) host = Res.s_EntityList_005de558;
@@ -2944,7 +2988,8 @@ public static unsafe partial class Blaze
                 *(short*)(e + 0x12) = 0;
                 *(short*)(e + 0x14) = 0;
                 *(short*)(e + 0x2e) = -0x3c;                          // Ghidra: 0xffc4
-                e[0x36] = (byte)((e[0x36] & 0xfe) | 2);
+                // Ghidra: 0x0042A540 (chateau) fait `or byte [esi+36h],2` — il NE nettoie PAS le bit 0.
+                e[0x36] = clearFlagBit0 ? (byte)((e[0x36] & 0xfe) | 2) : (byte)(e[0x36] | 2);
             }
 
             if (*(short*)(e + 0x10) == 1) StepShockwave(e, caster);

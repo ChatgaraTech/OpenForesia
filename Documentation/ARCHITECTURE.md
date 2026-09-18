@@ -266,6 +266,15 @@ fichiers sont la même classe partielle, et les aides partagées (`ZoneSound`,
 `AddEntityVelocity_00454580`, `EmitJetPair`, `ScrapeSoundTick`) restent dans `<Zone>.cs` —
 **rien n'est dupliqué**.
 
+**Une zone neuve s'ouvre avec trois fichiers, pas un.** Le château de l'immortel (zone 6) les a
+reçus le 2026-09-18, au palier 1 : `Effects/ImmortalCastleParticles.cs`,
+`Handlers/ImmortalCastle.cs` et `Cutscene/ImmortalCastleScenes.cs`. C'est le découpage qu'ont déjà
+la mine, le Labyrinthe et la vieille tour, et il se décide **avant** d'écrire — pas quand un
+fichier grossit. Son `<Zone>Mecanismes.cs` n'existe pas encore et n'existera que le jour où un
+corps du château prendra le groupe en charge : la coupure est de rôle, et un rôle absent n'ouvre
+pas de fichier.
+
+
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son
 appelant » (branche 4) que ce tableau tranche, **par le test d'appartenance, pas par le sujet

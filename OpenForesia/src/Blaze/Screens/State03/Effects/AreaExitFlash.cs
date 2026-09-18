@@ -313,4 +313,29 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_00407FE0(byte* e) => EntityHandler_004060C0(e);
+
+    /// <summary>
+    /// Ghidra: <c>0x004263b0</c> — <b>l'amorce du chateau de l'immortel</b>, creneau <b>42</b> du
+    /// bloc <c>0x00559128</c> (table <c>0x0056b0c8</c>, sous-zones 0 a 4). Absente de
+    /// <c>Blaze.c</c> ; dix-huit instructions.
+    ///
+    /// <para>
+    /// <b>La forme de <see cref="EntityHandler_004060C0"/></b>, a deux immediates pres : le genre
+    /// vaut <c>0x3d</c>, et l'ancre est l'enregistrement <b>1</b> de la table <c>0x005fa5e0</c> —
+    /// <c>0x005fa698 - 0x1c - 0x005fa5e0 = 0x9c</c>, tout juste. Aucun decalage : le flash se joue
+    /// exactement ou se tient l'entite 1, la ou la tour poussait Z et le Labyrinthe X.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004263B0(byte* e) => EnterAreaExitFlash(e, 0x3d, 1, 0);
+
+    /// <summary>Ghidra: <c>0x00428990</c> — la meme amorce pour les sous-zones 6 a 10, creneau
+    /// <b>42</b> du bloc <c>0x005597a8</c>. Comparee instruction par instruction a
+    /// <see cref="EntityHandler_004263B0"/> : <b>zero difference</b>.</summary>
+    private static void EntityHandler_00428990(byte* e) => EnterAreaExitFlash(e, 0x3d, 1, 0);
+
+    /// <summary>Ghidra: <c>0x0042bf10</c> — la meme amorce pour les sous-zones 5 et 11, creneau
+    /// <b>63</b> du bloc <c>0x00559e28</c>. <b>Zero difference</b> elle aussi. Le chateau emet donc
+    /// son amorce TROIS fois, une par groupe de sous-zones, la ou la mine et la foret l'emettaient
+    /// deux fois.</summary>
+    private static void EntityHandler_0042BF10(byte* e) => EnterAreaExitFlash(e, 0x3d, 1, 0);
 }

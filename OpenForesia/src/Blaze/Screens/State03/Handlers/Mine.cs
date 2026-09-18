@@ -508,9 +508,9 @@ public static unsafe partial class Blaze
     /// <c>0x1000</c>, test signe.
     /// </para>
     /// </summary>
-    private static void TickFlickeringGlow(byte* e)
+    private static void TickFlickeringGlow(byte* e, bool clearVelocity = true)
     {
-        ClearEntityVelocity_00460FC0(e);
+        if (clearVelocity) ClearEntityVelocity_00460FC0(e);   // absent de 0x00466A10, chateau
 
         if (*(short*)(e + 0x10) == 0)
         {

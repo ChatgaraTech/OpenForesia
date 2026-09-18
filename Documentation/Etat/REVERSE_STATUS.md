@@ -24304,3 +24304,190 @@ pour 17 lectures**. Ce qui a payé :
   dans une seule zone (`AbsentHost`).
 
 **Aucun des 160 n'a été exercé en jeu.** La zone est à 160 implémentés pour 0 testés.
+
+## 2026-09-18 (suite 10) — Zone 6, le château de l'immortel : le tri, avant tout lot
+
+**31 sur 170 implémentés, 139 à écrire.** Tri brut généré dans `Zone6ParComplexite.md`
+(`census-zone-complexity.sh 6`) : A 15 · B 70 · C 26 · D 12 · E 16. Puis, comme la méthode du
+Labyrinthe l'a appris, **chaque corps restant comparé à tous les corps déjà écrits** (diff
+« super-LOOSE », fenêtre de taille ±4 %) et à ses frères non écrits, et **chaque appelée inconnue
+lue avant tout**.
+
+### Aucune appelée n'est réellement inconnue
+
+- 21 des 22 « appelées inconnues » du tri sont **la garde** `IsEffectPairBlocked_004364B0` devant un
+  effet d'état déjà écrit (`0053B3C0`…`0053C510`, `0053BB20`/`0053BC60`, `0053B730`, `0053C5E0`) —
+  la forme `FUN_00421d80` du Labyrinthe ;
+- la 22e, `0x004D5A20` (appelée par six bêtes du bloc 5/11), est **`PickChasedPartyMember_004A1020`
+  instruction pour instruction** (202 sur 202) — une copie de zone de plus.
+
+### Palier 1 — déjà écrit ou presque (33 corps)
+
+- **A, les 15 renvois** du tri (amorces de scène, copies LOOSE de `0x004079E0`, `0x004070F0`,
+  `0x00452A90`) ;
+- **15 corps à quelques lignes d'un corps écrit** :
+
+| corps | écart | parent écrit |
+|---|---:|---|
+| `0x004263B0` `0x00428990` `0x0042BF10` (18) | 2 | `0x004060C0` (`AreaExitFlash.cs`) |
+| `0x00463C80` (6) | 2 | `0x004508B0` (`Forest.cs`) |
+| `0x00465180` (49) | 2 | `0x0045A310` (`OldTower.cs`) |
+| `0x00466A10` (44) | 3 | `0x00452A90` (`Mine.cs`) |
+| `0x00463E80` `0x004657B0` (31) | 6 | `0x00453000` (`Mine.cs`) |
+| `0x0042DB10` (116) | 11 | `0x0040C460` (`MineParticles.cs`) — et ferme `0x00442C20` (grotte) |
+| `0x00426940` `0x00428E40` (149) | 27 | `0x004217E0`, la braise du Labyrinthe |
+| `0x0042B430` (441) | 6 | `0x00421DC0` → `TickCloudSeed` — et ferme `0x00439170` (grotte) |
+| `0x00429BE0` (389) | 26 | `0x004224F0` → `TickOwnerFrontSweep` |
+| `0x0042A540` (263) | 22 | `0x00420480` → `TickShockwaveOrSpray` |
+
+- **3 routines d'intelligence** : l'Ombre `0x004D12A0` ← l'Ombre rouge `0x004C5A30` (6 lignes sur
+  970, `TickSceneEntityAi_004BFE90`) ; le Sanguinaire `0x004C9140` ← `0x004B8540` (15 sur 928) ;
+  `0x004C7D00` ← le Pourpre preux `0x004D1F70` (24 sur 1 226).
+
+### Palier 2 — simple (B restants : 62 corps, ~42 lectures)
+
+Dix-sept paires miroir sous-zones 0-4 / 6-10 (0 à 4 lignes d'écart), dont **une famille de six**
+(`0x00464C30` / `0x00464CF0` / `0x00464DB0` et leurs miroirs, 62 instr., 4 lignes entre eux), plus
+28 corps isolés de 12 à 94 instructions. `0x0042A350` (71) a un parent probable,
+`TickTwoHostOrbitMote` (21 lignes).
+
+### Palier 3 — moyen (C restants : 23 corps, ~19 lectures)
+
+Quatre paires (`0x00426E80`/`0x004296F0`, `0x0042A920`/`0x0042B190`, `0x004644F0`/`0x00465E30`,
+`0x004646A0`/`0x00465FE0`), `0x0042D9B0` qui ferme aussi `0x00442AC0` (grotte), et 15 isolés. Les
+quatre nuages à effet 32 (`0x004255F0`, `0x0042A920`, `0x0042B190`, `0x004271B0`) ont leurs
+feuilles écrites mais **ne sont pas** `TickHostStatusCloud` (73 lignes d'écart au plus proche).
+
+### Palier 4 — gros (D restants : 9 corps, ~5 lectures)
+
+`0x00425E50` / `0x00428420` / `0x0042B9A0` (372, une famille, garde → `0053B730`) ;
+`0x00425750` / `0x00427CE0` (548/565, 23 lignes) ; `0x00463EF0` / `0x00465820` (270, 75 lignes,
+parents mais pas copies) ; `0x004274C0` et `0x0042ABF0`, deux tables de sauts dont les feuilles sont
+écrites mais qui **ne sont pas** `TickOwnerFrontSweep`.
+
+### Palier 5 — intelligence (13 corps, 10 lectures, et 4 corps d'autres zones en prime)
+
+| bête | corps | ferme aussi |
+|---|---|---|
+| Vampire / Petit vampire | `0x004CF3A0` + `0x004D8F70` (0 ligne) | — |
+| Loup, Loup gris | `0x004CC650` + `0x004D4E10` (28) | `0x004DDE30` |
+| Harpie | `0x004CB4F0` + `0x004D60A0` (10) | `0x004FDFE0` (grotte, exact) |
+| Sacuba | `0x004D9D90` | `0x004F40A0` (exact) |
+| Sacuba (6-10) | `0x004D3EE0` | `0x004FBA80` (18 lignes) |
+| Chimère | `0x004D2FC0` | `0x004DCF10` (22 lignes) |
+| Tigre, Loup-garou, Fantôme, Nocturio | un corps chacun | — |
+
+## 2026-09-18 (suite 11) — Zone 6, palier 1 : les 32 corps « déjà écrits ou presque »
+
+**31 sur 170 devient 63 sur 170**, et la grotte scellée passe de 48 à 50 : deux de ses
+gestionnaires sont le même corps qu'un corps du château à la planche près, et tombent en prime
+(`0x00439170`, `0x00442C20`). Il reste 107 corps à la zone, exactement les paliers 2 à 5 du tri
+(B 62 · C 23 · D 9 · E 13) — la catégorie A est vide.
+
+### Ce que le palier contenait, et ce qu'il a coûté
+
+| ce que c'est | corps | lectures réelles |
+|---|---:|---|
+| les 15 renvois de la catégorie A | 15 | 0 corps écrit, 10 planches relevées |
+| les 14 presque-copies | 14 | 4 corps neufs, 3 corps paramétrés |
+| les 3 routines d'intelligence | 3 | 0 ligne — trois `case` |
+
+Trois fichiers ont été ouverts, proposés à l'utilisateur avant d'être créés :
+`Effects/ImmortalCastleParticles.cs`, `Handlers/ImmortalCastle.cs`,
+`Cutscene/ImmortalCastleScenes.cs`. Le décor et les mécanismes ne sont pas encore séparés — la zone
+n'a pas encore de mécanisme écrit ; la coupure se fera quand il s'en présentera un, comme au
+Labyrinthe.
+
+### La zone se lit en trois groupes, et les trois groupes sont le même bloc
+
+    sous-zones 0 à 4    bloc 0x00559328   planches à partir de 0x00550480
+    sous-zones 6 à 10   bloc 0x005599a8   planches à partir de 0x005505d0   (+0x150)
+    sous-zones 5 et 11  bloc 0x0055a028   planches à partir de 0x00550740   (+0x2c0)
+
+**Les trois plages de `0xa0` octets sont identiques octet pour octet**, et les trois se terminent
+sur le même changement de famille (`48 00 10 10 01 02 10 00`). Vingt enregistrements chacune, et
+elles portent à elles seules la spirale triple (`+0`), la bulle (`+0x78`) et le grain (`+0x80`) —
+trois corps de la mine, réémis une fois par groupe sans rien changer d'autre que cette immédiate.
+La borne basse est prouvée par le code déjà écrit : `s_Descriptors_00550460`
+(`LabyrinthParticles.cs`) s'arrête exactement sur `0x00550480` et sa note disait déjà que
+« 0x00550480 change de forme ».
+
+`EntityHandler_00406130` (mine) a été sorti en `TickTripleSpiral_00406130(e, plate)` pour que les
+trois amorces du château l'appellent — l'idiome déjà en place dans le fichier (`TickPurpleSmoke`,
+`TickMineSpeck_004070F0`…), et non une recopie de 480 lignes.
+
+### LE PIÈGE DU LOT : la normalisation masque les cibles d'appel
+
+`0x00463E80` et `0x00453000` (mine) se ressemblent à **six lignes** près, et ces six lignes ne
+disent rien de l'essentiel : l'une appelle `0x004580e0`, le son de proximité à **portée variable**,
+non positionnel, atténué linéairement ; l'autre `0x00468080`, dont le rayon est **figé à 2000**, qui
+joue un son **positionnel** et **double le gain**. La normalisation LOOSE/STRICT qui sert à apparier
+deux corps recompilés masque les cibles de saut *et d'appel* — c'est ce qui la rend utile, et c'est
+exactement ce qui cache un changement de callee.
+
+**Règle, désormais appliquée à chaque paire du lot : résoudre les cibles d'appel à part**, en
+retirant les sauts internes au corps, et comparer les ensembles. Les dix-sept paires du palier y
+sont passées ; c'est ce contrôle qui a aussi établi que `0x00464B30` et `0x00466470` sont des
+doublons **complets** de `0x00452A90` (47 instructions, trois cibles d'appel identiques), donc deux
+`case` et pas une ligne de corps.
+
+### Ce que chaque presque-copie avait de propre
+
+- **`0x004263B0` / `0x00428990` / `0x0042BF10`** — le flash de sortie de zone, `EnterAreaExitFlash`
+  avec le genre `0x3d` et l'ancre **1** de `0x005fa5e0` (`0x005fa698 - 0x1c - 0x005fa5e0 = 0x9c`).
+  Aucun décalage, là où la tour poussait Z et le Labyrinthe X. **Le château émet son amorce trois
+  fois**, une par groupe, quand la mine et la forêt l'émettaient deux fois.
+- **`0x00463C80`** — l'échelle est posée en `+0x2a` et non `+0x2c`, et vaut `0x2328` (9000) contre
+  `0x320` : ce n'est pas le décor de la forêt à l'échelle près, c'est un décor très haut.
+- **`0x00465180`** — le son au hasard de la vieille tour, au créneau sonore près : `0x28` au lieu
+  de `0x30`.
+- **`0x00466A10`** — `TickFlickeringGlow` **moins son appel de tête** : le château n'annule pas la
+  vitesse de l'entité avant de commencer. Trois instructions de moins, et rien d'autre.
+- **`0x0042DB10`** (et son jumeau `0x00442C20`, grotte) — la braise qui retombe de la mine, à
+  treize lignes près. Deux comptent : la variante non nulle **affecte** sa hauteur
+  (`+0x20 = (+0x14 & ~0x1f) * 0x80`) au lieu de l'ajouter — elle naît à une altitude absolue —, et
+  **le seuil de noircissement est le même des deux côtés (`-10`)**, ce qui rend mort le second
+  étage de tests que le binaire émet quand même. La mine y séparait `-5` de `-10`.
+- **`0x00426940` / `0x00428E40`** — la braise du Labyrinthe, sept constantes plus loin, dont deux
+  ne sont pas des réglages : le cap dévie de `rand % 0x200 + 0x700` (le Labyrinthe : `- 0x100`),
+  donc la braise part **à l'opposé** de sa pose ; et la descente de naissance a disparu, remplacée
+  par une couche de dessin `+0x2e = -0x1e`.
+- **`0x0042B430`** (et `0x00439170`, grotte) — `TickCloudSeed`, et **la leçon du lot 8 du
+  Labyrinthe se vérifie une zone plus loin** : ce qu'un corps fait d'un pointeur nul n'est pas une
+  règle de bloc. Le château relit `+0x78` **sans repli** après le contact, là où le Labyrinthe le
+  protège, et c'est lui en revanche qui **protège le porteur du mode 1**, que le Labyrinthe lit nu.
+  Quatre sites de repli, deux lectures différentes ; `TickCloudSeed` prend désormais les deux
+  drapeaux.
+- **`0x00429BE0`** — `TickOwnerFrontSweep` au sous-type semé près : `0xe1` et non `0xee`. Les
+  vingt-cinq autres lignes du diff sont de l'ordonnancement de registres.
+- **`0x0042A540`** — comparé au **modèle nu** (`0x00420480`) il faisait 22 lignes ; comparé à la
+  jumelle **gardée** (`0x00422E50`), il tombe à **une instruction** : le Labyrinthe écrit `+0x36`
+  par `and ecx,0xfffffffe ; or ecx,2`, le château par un `or byte [esi+36h],2` nu, qui laisse le
+  bit 0 tel quel. *Comparer au bon parent avant de compter les écarts.*
+
+### Les trois routines d'intelligence : zéro ligne, et pourquoi
+
+Les trois sont **sémantiquement identiques** à un corps déjà écrit. Ce qui les faisait paraître
+différentes est deux fois une **fusion par la queue** :
+
+- **`0x004C7D00`** (Pourpre preux, sous-zones 0 à 4) — le compilateur a émis **deux fois** le bloc
+  de posture 2 ici, une seule fois dans `0x004D1F70` où il l'a fusionné. D'où quinze lignes de diff
+  et un tirage de plus *dans le corps*, pour la même partie jouée.
+- **`0x004C9140`** (Sanguinaire) — la même chose dans l'autre sens : c'est le Labyrinthe qui émet
+  le bloc en double.
+- **`0x004D12A0`** (l'Ombre, sous-zones 6 à 10) — le seul à porter une donnée propre : sa liste de
+  sorts est `0x00552c28` (mêmes dix-sept mots) et **le mot égaré lu seize places plus loin vaut
+  `0x0102`**, une cinquième valeur après `0x0000`, `0x0200` et `0x000d` deux fois.
+
+Les trois tables de sauts ont été vérifiées entrée par entrée **en relatif depuis la tête du
+corps** — onze, douze et quatorze entrées, tous les décalages identiques — et les trois copies de
+`PickChasedPartyMember_004A1020` (`0x004CEFE0`, `0x004C8D80`) confirmées conformes.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur.
+- `check-descriptors.sh` : les dix planches neuves lues correctement, **quatre marges courtes
+  prouvées et scellées** (les deux tuiles de rôle 2 de la gerbe, les deux braises qui retombent).
+  Il reste trois marges à vérifier dans tout le dépôt, toutes antérieures à ce lot.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
+

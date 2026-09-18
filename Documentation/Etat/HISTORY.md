@@ -6,6 +6,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le palier 1 du château de l'immortel est écrit — 31 sur 170 devient 63 sur 170**, et
+  deux gestionnaires de la grotte scellée tombent en prime (`0x00439170`, `0x00442C20`)
+- feat : trois fichiers neufs pour la zone 6 — `Effects/ImmortalCastleParticles.cs`,
+  `Handlers/ImmortalCastle.cs`, `Cutscene/ImmortalCastleScenes.cs` — et l'enregistrement de caméra
+  `0x005714e0`, le cinquième de la suite au pas de `0x30` ouverte par la forêt
+- doc : dix planches relevées (`0x00550480`, `0x005505d0`, `0x00550740` — vingt enregistrements
+  chacune et identiques octet pour octet —, plus sept autres), quatre marges courtes scellées
+- fix : `0x00463E80` appelle `0x00468080` et non `0x004580e0` — **la normalisation qui apparie deux
+  corps masque les cibles d'appel**, et deux sons différents s'y ressemblaient à six lignes près
+- doc : **la zone 6, le château de l'immortel, est triée** — `Zone6ParComplexite.md` généré, et
+  les 139 corps restants classés en cinq paliers dans `REVERSE_STATUS.md` : 33 déjà écrits ou
+  presque, aucune appelée réellement inconnue
 - feat : **LA ZONE 5, LE LABYRINTHE DES MORTS, EST COMPLÈTE — 160 sur 160**, le septième ensemble
   entièrement implémenté
 - feat : le lot 13 — le projectile à tête chercheuse (`0x00484190`) et le battant qui bascule en

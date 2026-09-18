@@ -3116,7 +3116,7 @@ indépendamment — *« ok 0x0054F180 40 octets = 5 enregistrements, fin 0x54F1A
 dans aucune des trois variantes. Les quatre autres sont relevés parce que la règle le veut — on
 relève la plage, jamais le descripteur —, pas parce qu'ils servent ici.
 
-## `0x00552B60` — les sorts de l'Ombre, et le mot qui départage ses quatre copies (2026-09-17)
+## `0x00552B60` — les sorts de l’Ombre, et le mot qui départage ses CINQ copies (2026-09-17, complété le 2026-09-18)
 
 ```
 0x00552b60: 0600 0802 0600 0802   0600 0802 0600 0802
@@ -3129,7 +3129,7 @@ premiers (`SignedMask(hasard, 1)`), la variante 1 sur les dix-sept (`hasard % 0x
 
 **Au-delà de la variante 1, l'indice n'est jamais chargé** : le registre garde le compte de la boucle
 de refus, `32`, et la lecture tombe donc seize mots après la fin de la liste. C'est **la seule chose
-qui distingue les quatre copies du corps**, dont les dix-sept mots utiles portent par ailleurs les
+qui distingue les cinq copies du corps**, dont les dix-sept mots utiles portent par ailleurs les
 mêmes octets :
 
 | corps | liste | mot à l'indice 32 | valeur |
@@ -3138,8 +3138,9 @@ mêmes octets :
 | `0x004C5A30` — l'Ombre rouge | `0x00552BB0` | `0x00552BF0` | `0x0200` |
 | `0x004E7810` — grotte scellée, sous-zone 0 | `0x00552E58` | `0x00552E98` | `0x000d` |
 | `0x004EC580` — grotte scellée, sous-zones 2 et 3 | `0x00552EB8` | `0x00552EF8` | `0x000d` |
+| `0x004D12A0` — château de l’immortel, sous-zones 6 à 10 | `0x00552C28` | `0x00552C68` | `0x0102` |
 
-Le C# passe ce mot en paramètre plutôt que de porter quatre corps (`strayCast`).
+Le C# passe ce mot en paramètre plutôt que de porter cinq corps (`strayCast`).
 
 **`0x00552BA0` n'est pas un vide** : c'est le premier mot de la troisième sonde du Durahan, ci-dessous.
 Les deux tables se touchent, et c'est ce voisinage que le registre non chargé va lire.
@@ -3296,3 +3297,72 @@ d'autorisation.
 TODO(REVERSE) : qui écrit `0x005e9065`, et ce que la plage `0x005e9060`..`0x005e909f` porte
 réellement — quatre offsets y ont déjà un rôle établi (`+0x02`, `+0x05`, `+0x0a`, `+0x3f`) sans que
 la structure d'ensemble soit lue.
+
+## `0x00550480`, `0x005505d0`, `0x00550740` — les trois planches de groupe du château, identiques (2026-09-18)
+
+```
+0x00550480: 0000 0808 0102 1000   c0c0 3f3f 0102 0900     <- +0x00 : la spirale triple
+0x00550490: 6088 2020 0101 1000   8088 2020 0101 1000
+0x005504a0: a088 2020 0101 1000   4830 1818 0003 1000
+0x005504b0: 6030 1818 0003 1000   7830 1818 0003 1000
+0x005504c0: 9030 1818 0003 1000   0030 1818 0001 1000
+0x005504d0: 1830 1818 0001 1000   3030 1818 0001 1000
+0x005504e0: 0080 2020 0101 0300   2080 2020 0101 0300
+0x005504f0: 4080 2020 0101 0300   0000 0808 0103 1000     <- +0x78 : la bulle
+0x00550500: 0808 0808 0103 1000   1008 0808 0103 1000     <- +0x80 : le grain, 4 images
+0x00550510: 0810 0808 0103 1000   1010 0808 0103 1000
+--- 0x00550520 : 4800 1010 0102 1000, changement de famille
+```
+
+**Vingt enregistrements**, `0xa0` octets, et **les trois plages portent exactement les mêmes
+octets** — vérifiées une à une. Le château installe ses tables par trois groupes de sous-zones
+(0 à 4, 6 à 10, puis 5 et 11), et le compilateur a recopié la plage à `+0x150` puis `+0x2c0` :
+
+| groupe | bloc de vtables | planche | spirale | bulle | grain |
+|---|---|---|---|---|---|
+| sous-zones 0 à 4 | `0x00559328` | `0x00550480` | `0x00426410` | `0x004270C0` | `0x00426FD0` |
+| sous-zones 6 à 10 | `0x005599a8` | `0x005505d0` | `0x004289F0` | `0x00429930` | `0x00429840` |
+| sous-zones 5 et 11 | `0x0055a028` | `0x00550740` | `0x0042BF70` | `0x0042E060` | `0x0042DF70` |
+
+**Les deux bornes sont prouvées, pas supposées.** En bas, `s_Descriptors_00550460`
+(`LabyrinthParticles.cs`, relevée le 2026-09-18) s'arrête exactement sur `0x00550480` et sa note
+disait déjà que « `0x00550480` change de forme (`00 00 08 08`) ». En haut, à `+0xa0`, le cinquième
+octet, la page et la tuile changent ensemble — et les trois plages s'arrêtent sur le **même** motif
+`48 00 10 10 01 02 10 00`.
+
+**Les enregistrements 5 à 14 n'appartiennent à aucun des trois corps ci-dessus.** Ce sont les
+planches de gestionnaires des paliers suivants. Ils sont relevés ici parce que la plage se relève
+d'un bloc — *« relever la plage, pas le descripteur »* —, et c'est ce qui évite de recommencer le
+travail trois fois quand le palier 2 viendra.
+
+## `0x00550570`, `0x005506c0` — la braise du château, cinq images (2026-09-18)
+
+```
+0x00550570: 60d0 1818 0102 1000   78d0 1818 0102 1000
+0x00550580: 90d0 1818 0102 1000   a8d0 1818 0102 1000
+0x00550590: c0d0 1818 0102 1000
+--- 0x00550598 : c0a8 0f0f, la tuile passe en 0x0f x 0x0f
+```
+
+**Cinq enregistrements**, exactement ce que `+0x40` parcourt (0 à 4). `0x005506c0` porte les mêmes
+octets pour les sous-zones 6 à 10, et sa borne est `0x005506e8` (`3000 1717`, tuile `0x17 x 0x17`).
+Corps : `0x00426940` et `0x00428E40`.
+
+## `0x00550888`, `0x00551408`, `0x00550890`, `0x005508b8`, `0x005510f8` — les cinq petites plages du palier 1 (2026-09-18)
+
+| plage | enregistrements | borne haute | corps | marge |
+|---|---:|---|---|---|
+| `0x00550888` | 1 (`0808 1010 0102 1000`) | `0x00550890` | `0x0042DB10` | prouvée : `+0x40` posé à 0, jamais avancé |
+| `0x00551408` | 1, mêmes octets | `0x00551410` | `0x00442C20` (grotte scellée) | idem |
+| `0x00550890` | 2 (`70f0 0f0f` / `80f0 0f0f`, page `0x09`) | `0x005508a0` | `0x0042C9E0` / `0x0042D130` | prouvée : rôle 2, `TickFivePhaseBurst` n'écrit que des zéros dans `+0x40` |
+| `0x005508b8` | 4 (`00d0` / `10d0` / `20d0` / `6048`) | `0x005508d8` | `0x0042B430` | les 4 servent : mode 0 tourne 0→2, mode 1 pose 3 |
+| `0x005510f8` | 4, mêmes octets | `0x00551118` | `0x00439170` (grotte scellée) | idem |
+
+`0x00550890` est la **troisième** occurrence de la planche de rôle 2 de la gerbe à cinq phases,
+après `0x0054f620` (mine) et `0x00550438` (Labyrinthe) : même forme, deux tuiles `0x0f x 0x0f` de
+la page `0x09` prises à `y = 0xf0` et qui se suivent de `0x10` en X. Le château est le premier à la
+placer **ailleurs que juste après** la planche principale de la gerbe.
+
+`0x005508b8` et `0x005510f8` portent les mêmes octets que `0x00550460` (Labyrinthe) : la même
+luciole à quatre images, trois fois dans `.data`.
+

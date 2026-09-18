@@ -1224,6 +1224,13 @@ public static unsafe partial class Blaze
             // L AGONISANT du Labyrinthe des morts (sous-zones 5 a 8) : le Pourpre preux, integration
             // reordonnee, tables de sauts identiques en relatif, chercheur 0x004BDE40 conforme.
             case 0x004BEE40:
+            // ... et 0x004C7D00, le creneau des sous-zones 0 a 4 du MEME chateau (palier 1,
+            // 2026-09-18). Le compilateur a EMIS DEUX FOIS le bloc de posture 2 ici et une seule
+            // fois dans 0x004D1F70, qu'il a fusionne par la queue : d'ou quinze lignes de `diff`
+            // et un tirage de plus dans le corps, pour la meme partie jouee. Hors ces quinze
+            // lignes, la seule immediate de donnee qui change est l'adresse de la table de sauts —
+            // quatorze entrees de part et d'autre, aux memes decalages depuis la tete du corps.
+            case 0x004C7D00:
                 TickSceneEntityAi_004D1F70(record); return;
 
             // LE CHEVALIER NOIR (vieille tour, sous-zones 5, 6, 8, 10) ET LE PLATINUM (3, 7, 9) — le Pourpre
@@ -1313,6 +1320,11 @@ public static unsafe partial class Blaze
             // Ai/Labyrinth/Sanguinaire.cs.
             case 0x004B8540:
             case 0x004C2770:
+            // ... et 0x004C9140, le chateau de l'immortel (palier 1, 2026-09-18) : MEME CORPS, a
+            // l'adresse de sa table de sauts pres — douze entrees aux memes decalages. Ses quinze
+            // lignes de `diff` sont une fusion par la queue des DEUX blocs de posture 2, que le
+            // Labyrinthe emet en double ; aucune immediate de donnee ne change.
+            case 0x004C9140:
                 TickSceneEntityAi_004B8540(record); return;
 
             // LE MORT-VIVANT (Labyrinthe des morts, sous-zones 0 a 3 pour 0x004BB860, 5 a 8 pour
@@ -1529,6 +1541,11 @@ public static unsafe partial class Blaze
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98
             case 0x004EC580: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552ef8
+            // ... et celle du chateau de l'immortel (palier 1, 2026-09-18), sous-zones 6 a 10 :
+            // meme corps, table de sauts a onze entrees aux memes decalages, chercheur 0x004CEFE0
+            // conforme a 0x004A1020. Sa liste de sorts est 0x00552c28 — memes dix-sept mots — et
+            // le mot egare qui la suit de seize places vaut 0x0102.
+            case 0x004D12A0: TickSceneEntityAi_004BFE90(record, 0x0102); return;   // &DAT_00552c68
 
             // Le sous-type 11 du bloc B — LA FLEUR DU MAL, seconde routine de la charpente du
             // Varan : memes feuilles propres, meme sonde au mot pres, et un geste qui seme des
@@ -1981,6 +1998,73 @@ public static unsafe partial class Blaze
             case 0x00483760: EntityHandler_00483760(record); return;
             case 0x00459840: EntityHandler_00459840(record); return;
             case 0x00459FA0: EntityHandler_00459FA0(record); return;
+
+            // ====================================================================================
+            // ZONE 6 — LE CHATEAU DE L'IMMORTEL, PALIER 1 (2026-09-18) : deja ecrit, ou presque.
+            //
+            // Le chateau se lit en TROIS groupes de sous-zones — 0 a 4, 6 a 10, puis 5 et 11 — et
+            // le compilateur a emis chaque corps une fois par groupe. Presque tout ce palier est
+            // donc un renvoi vers un corps de la mine, de la foret ou de la tour, a une immediate
+            // pres.
+            // ====================================================================================
+
+            // La spirale triple (creneau 61), la bulle (63) et le grain (62), un jeu par groupe :
+            // neuf adresses pour trois corps deja ecrits, a la planche pres.
+            // Effects/ImmortalCastleParticles.cs.
+            case 0x00426410: EntityHandler_00426410(record); return;
+            case 0x004289F0: EntityHandler_004289F0(record); return;
+            case 0x0042BF70: EntityHandler_0042BF70(record); return;
+            case 0x004270C0: EntityHandler_004270C0(record); return;
+            case 0x00429930: EntityHandler_00429930(record); return;
+            case 0x0042E060: EntityHandler_0042E060(record); return;
+            case 0x00426FD0: EntityHandler_00426FD0(record); return;
+            case 0x00429840: EntityHandler_00429840(record); return;
+            case 0x0042DF70: EntityHandler_0042DF70(record); return;
+
+            // La gerbe a cinq phases, creneaux 10 et 11 du bloc des sous-zones 5 et 11.
+            case 0x0042C9E0: EntityHandler_0042C9E0(record); return;
+            case 0x0042D130: EntityHandler_0042D130(record); return;
+
+            // Le flash blanc de sortie de zone : le chateau emet SON amorce trois fois, une par
+            // groupe, et les trois sont identiques. Effects/AreaExitFlash.cs.
+            case 0x004263B0: EntityHandler_004263B0(record); return;
+            case 0x00428990: EntityHandler_00428990(record); return;
+            case 0x0042BF10: EntityHandler_0042BF10(record); return;
+
+            // Les deux amorces de la scene parlante, enregistrement prive 0x005714e0 —
+            // le suivant de celui du Labyrinthe au pas de 0x30. Cutscene/ImmortalCastleScenes.cs.
+            case 0x0042C3C0: EntityHandler_0042C3C0(record); return;
+            case 0x0042D100: EntityHandler_0042D100(record); return;
+
+            // Le decor : quatre corps, quatre variantes d'un corps ecrit ailleurs.
+            // Handlers/ImmortalCastle.cs.
+            case 0x00463C80: EntityHandler_00463C80(record); return;
+            case 0x00465180: EntityHandler_00465180(record); return;
+            case 0x00466A10: EntityHandler_00466A10(record); return;
+            case 0x00463E80: EntityHandler_00463E80(record); return;
+            case 0x004657B0: EntityHandler_004657B0(record); return;
+
+            // 0x00464B30 et 0x00466470 sont des DOUBLONS de 0x00452A90 (le halo vacillant de la
+            // mine) : 47 instructions comparees une a une, zero ecart, et les trois cibles d'appel
+            // resolvent au meme endroit. Le compilateur a emis le meme corps trois fois. Deux
+            // renvois suffisent — voir la regle « verifier s'il y a un doublon avant de
+            // transcrire » dans CLAUDE.md.
+            case 0x00464B30: EntityHandler_00452A90(record); return;
+            case 0x00466470: EntityHandler_00452A90(record); return;
+
+            // Les cinq corps « presque ecrits » du palier 1, plus les DEUX gestionnaires de la
+            // GROTTE SCELLEE (zone 10) qu'ils ferment en prime — meme corps, autre planche.
+            // Effects/ImmortalCastleParticles.cs, sauf 0x00439170 (Effects/LabyrinthParticles.cs,
+            // avec son parent du Labyrinthe).
+            case 0x00426940: EntityHandler_00426940(record); return;
+            case 0x00428E40: EntityHandler_00428E40(record); return;
+            case 0x0042DB10: EntityHandler_0042DB10(record); return;
+            case 0x00442C20: EntityHandler_00442C20(record); return;
+            case 0x0042B430: EntityHandler_0042B430(record); return;
+            case 0x00439170: EntityHandler_00439170(record); return;
+            case 0x00429BE0: EntityHandler_00429BE0(record); return;
+            case 0x0042A540: EntityHandler_0042A540(record); return;
+
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un

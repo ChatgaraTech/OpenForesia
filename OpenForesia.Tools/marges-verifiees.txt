@@ -103,3 +103,9 @@ EntityHandler_004249D0 | 0x00550350 | +0x08 | EntityHandler_004249D0 | 66d6c3652
 
 # ---- Ajoute le 2026-09-18 (lot 8 du labyrinthe)
 EntityHandler_00424C70 | 0x00550430 | +0x00 | EntityHandler_00424C70 | ad30a4eef84d | pose 0 a la naissance dans la meme branche que +0x3c, et ne reecrit jamais +0x40 (Blaze.c FUN_00424c70, releve jusqu au ret)
+
+# ---- Ajoute le 2026-09-18 (palier 1 du chateau de l'immortel, zone 6)
+EntityHandler_0042C9E0 | 0x00550890 | +0x00 | EntityHandler_0042C9E0,TickFivePhaseBurst | 2d83f6093d41 | role 2 : l'amorce pose la planche et TickFivePhaseBurst n'ecrit que des zeros dans +0x40 — la forme exacte de 0x0040B1B0 sur 0x0054F620
+EntityHandler_0042D130 | 0x00550890 | +0x08 | EntityHandler_0042D130,TickFivePhaseBurst | 11aad8a53140 | idem, second enregistrement — la forme de 0x0040B900
+EntityHandler_0042DB10 | 0x00550888 | +0x00 | EntityHandler_0042DB10,TickCastleFallingEmber | cd2f7ab9c161 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (releve 0x0042db10, un seul `mov [esi+40h]` jusqu au ret 0x0042dc7a)
+EntityHandler_00442C20 | 0x00551408 | +0x00 | EntityHandler_00442C20,TickCastleFallingEmber | f39da6f2ea31 | jumeau du precedent a la planche pres (grotte scellee)

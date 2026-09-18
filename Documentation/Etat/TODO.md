@@ -1,9 +1,11 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (lots 4 à 13 du Labyrinthe :
-**la zone 5 est complète, 160 sur 160** — le septième ensemble entièrement implémenté). La veille
-avait fermé la mine, la montagne du dragon de feu et la vieille tour. L'historique détaillé est dans
-`REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (palier 1 du château de
+l’immortel : **la zone 6 passe de 31 à 63 sur 170**, et la grotte scellée de 48 à 50). La zone 5,
+le Labyrinthe, a été fermée le même jour — **160 sur 160**, le septième ensemble entièrement
+implémenté —, et la veille avaient fermé la mine, la montagne du dragon de feu et la vieille tour.
+L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
+l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
@@ -50,8 +52,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **597** |
-| à transcrire | **507** |
+| implémentés, jamais appelés | **631** |
+| à transcrire | **473** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -62,11 +64,11 @@ socle commun, et il est entier.
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
 | 5 | **Le Labyrinthe des morts** | **160 / 160** |
-| 6 | Le château de l’immortel | 31 / 170 |
+| 6 | Le château de l’immortel | 63 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 48 / 349 |
+| 10 | La grotte scellée | 50 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -167,9 +169,19 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
 5. ~~**La zone 5, le Labyrinthe**~~ — **complète le 2026-09-18** (160 / 160), voir le point 4.
-   **La zone 6, le château (31 / 170), reste à trier de la même façon** —
-   `census-zone-complexity.sh 6` —, et c'est la voisine naturelle : le lot 3 du Labyrinthe a montré
-   que les corps des sous-zones 4 et 9 ont leurs parents au château et dans la grotte scellée.
+   **La zone 6, le château, est en cours : 63 / 170.** Le tri est dans `Zone6ParComplexite.md`
+   (2026-09-18, suite 10) et le classement en cinq paliers dans `REVERSE_STATUS.md`.
+   - ~~**palier 1**, les 32 corps déjà écrits ou presque~~ — **fait le 2026-09-18 (suite 11)**,
+     plus deux gestionnaires de la grotte scellée en prime. La catégorie A du tri est vide.
+   - **La suite est le palier 2** : les 62 « B » restants pour ~49 lectures, dont dix-sept paires
+     miroir sous-zones 0-4 / 6-10 (0 à 4 lignes d'écart) et **une famille de six** (`0x00464C30`,
+     `0x00464CF0`, `0x00464DB0` et leurs miroirs, 62 instructions, 4 lignes entre eux). Puis
+     ~20 lectures moyennes, ~8 grosses et 12 routines d'intelligence.
+   - **Ce que le palier 1 a appris, et qui vaut pour les suivants** : la normalisation qui apparie
+     deux corps **masque les cibles d'appel**. Résoudre celles-ci à part, sauts internes retirés,
+     avant de conclure qu'un corps est une copie — c'est ce qui a séparé deux sons différents que
+     six lignes de `diff` donnaient pour identiques. Et **comparer au bon parent** : `0x0042A540`
+     faisait 22 lignes contre le modèle nu et **une seule instruction** contre la jumelle gardée.
 6. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et
@@ -177,6 +189,12 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
 deux noms au 2026-09-17, donc rien ne casse — mais `MemoryLayoutTests` ne le detecte pas. Le correctif
 naturel est une seule arene `0x00571270..0x00571a38` (voir `REVERSE_STATUS.md`, 2026-09-17 suite 4),
 a mener comme changement delibere.
+
+**La marge a fondu le 2026-09-18** : l'enregistrement de camera du chateau de l'immortel est
+`0x005714e0`, le cinquieme de la suite au pas de `0x30`, et il est le premier a FRANCHIR
+`0x00571500` — son `+0x20` tombe dessus, son `+0x28` sur `0x00571508`. Les trois adresses
+qu'`EntityState` sert reellement (`0x00571528`, `0x00571540`, `0x00571570`) restent hors de
+portee, donc le recouvrement est toujours latent ; le suivant ne le sera peut-etre pas.
 
 **La dette d’épreuve, elle, grandit** : 451 corps écrits n’ont jamais tourné, et **la mine et la
 vieille tour y entrent presque entières** — 157 créneaux pour l’une, 176 pour l’autre, et 2 seulement

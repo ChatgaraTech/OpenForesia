@@ -133,6 +133,15 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_00406130(byte* e)
+        => TickTripleSpiral_00406130(e, Descriptors0054F180());   // Ghidra: &DAT_0054f180
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00406130"/>, <b>la planche prise en argument</b>.
+    /// Extrait le 2026-09-18, sans toucher au texte : le chateau de l'immortel (zone 6) emet le
+    /// meme corps <b>trois fois de plus</b>, une par groupe de sous-zones, et n'en change que cette
+    /// immediate — voir <c>Effects/ImmortalCastleParticles.cs</c>.
+    /// </summary>
+    private static void TickTripleSpiral_00406130(byte* e, byte* plate)
     {
         // ---------------------------------------------------------------- variante 0
         if (*(short*)(e + 0x14) == 0)
@@ -140,7 +149,7 @@ public static unsafe partial class Blaze
             if (*(short*)(e + 0x10) == 0)
             {
                 *(short*)(e + 0x10) = 1;
-                *(byte**)(e + 0x3c) = Descriptors0054F180();   // Ghidra: &DAT_0054f180
+                *(byte**)(e + 0x3c) = plate;   // Ghidra: &DAT_0054f180 pour la mine
                 e[0x40] = 0;
 
                 // Le Y de naissance sert DEUX fois : la position et l'ancre.
@@ -195,7 +204,7 @@ public static unsafe partial class Blaze
             if (*(short*)(e + 0x10) == 0)
             {
                 *(short*)(e + 0x10) = 1;
-                *(byte**)(e + 0x3c) = Descriptors0054F180();   // Ghidra: &DAT_0054f180
+                *(byte**)(e + 0x3c) = plate;   // Ghidra: &DAT_0054f180 pour la mine
                 e[0x40] = 0;
 
                 int born = *(int*)(e + 0x20);
@@ -246,7 +255,7 @@ public static unsafe partial class Blaze
             if (*(short*)(e + 0x10) == 0)
             {
                 *(short*)(e + 0x10) = 1;
-                *(byte**)(e + 0x3c) = Descriptors0054F180();   // Ghidra: &DAT_0054f180
+                *(byte**)(e + 0x3c) = plate;   // Ghidra: &DAT_0054f180 pour la mine
                 e[0x40] = 0;
 
                 *(ushort*)(e + 0x32) = (ushort)(CrtRand() % 0x1000);
