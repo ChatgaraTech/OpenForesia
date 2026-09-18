@@ -24781,3 +24781,34 @@ Ce qui le distingue est dans le bandeau du fichier ; les points qui méritent d'
 - `dotnet build OpenForesia.sln` : 0 erreur.
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
 - **Non exercé en jeu.**
+
+## 2026-09-18 (suite 17) — Zone 6, palier 5 : la Harpie
+
+**161 sur 170 devient 163 sur 170**, et la grotte scellée gagne `0x004FDFE0` (53 sur 349).
+`0x004CB4F0` (château, 0 à 4), `0x004D60A0` (5 et 11) et `0x004FDFE0` (grotte) : un seul corps,
+1 308 instructions, table de sauts à quinze entrées. Les trois copies lisent chacune leur mot de
+sort (`0x00552c08`, `0x00552c80`, `0x00553018`), et les trois valent `0x0015`, Ventilo. Nouveau
+fichier `Ai/ImmortalCastle/Harpy.cs` (création des fichiers de bêtes du château autorisée pour la
+série par l'utilisateur).
+
+**La charpente de la Crapouille**, pas du Rampant : naissance sur `+0x16`, vol stationnaire autour
+de `+0x48` (`HoverCrapouille_004AD452` réutilisé tel quel), intégration volante, et la même queue —
+pose et heurt au masque `0x2000a882`, **sortie en `SettleCrapouilleFlight`** dans `Amphibians.cs`
+(comportement de la Crapouille inchangé). Le relevé automatique la plaçait à 795 lignes de la
+Gargouille : les gestes pèsent plus que la charpente dans ce décompte.
+
+**Ce qui la relie au palier 4** : ses naissances de sous-type `0xe0` vont au créneau 32 de
+`0x0056b2c8`, **la famille à trois vies**. Le cri (posture 13) en sème en vie 0 — des feux
+follets — une image sur deux, puis un dernier en vie 2 — **l'éclair rouge**, qui porte l'effet 11
+à tout le groupe. En approche, la variante 0 lâche une fois sur quarante un `0xe0` en vie 1 — le
+projectile qui rebondit. La vie est passée par `+0x14`, posé le temps de l'appel puis rendu.
+
+**Sa morsure n'a pas d'image** : la sonde frappe à chaque image où le bit d'attaque est posé, là
+où la Crapouille attend l'image 8. Et dans la sous-zone 5 du château, chaque image, quatre champs
+de placement à `0xa000` et `TryPlaceEntity` au masque `0x8000`.
+
+### Contrôles
+
+- `dotnet build OpenForesia.sln` : 0 erreur.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
+- **Non exercé en jeu.**

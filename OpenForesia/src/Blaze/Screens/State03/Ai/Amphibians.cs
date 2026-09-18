@@ -124,6 +124,29 @@ public static unsafe partial class Blaze
         IntegrateFlyingEntityMotion_0049A8E0(e, speed);
         FinalizeEntityPlacement2((uint*)e);                        // Ghidra: FUN_00533940
 
+        SettleCrapouilleFlight(e, boldness, &keep);
+
+        ResetSceneEntityOnStun_004C3810(e);
+
+        // ---------------------------------------------------------------- 3. replanifier
+        if (speed == 0)
+        {
+            *(short*)(e + 0x32) = keep.Heading;
+            return;
+        }
+
+        if (e[0x43] != 0) return;
+
+        ReplanCrapouilleAction_004ACC20(e, boldness, timid);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004ad5b8..0x004ad716</c> — <b>la pose et le heurt</b> de la Crapouille, sortis
+    /// en fonction le 2026-09-18 parce que la Harpie (<c>0x004CB4F0</c>, <c>Ai/ImmortalCastle/Harpy.cs</c>)
+    /// porte la meme queue instruction pour instruction, masques et champs restaures compris.
+    /// </summary>
+    private static void SettleCrapouilleFlight(byte* e, int boldness, SceneEntityPlacement* keep)
+    {
         uint contact = *(uint*)(e + 0x90);
 
         // Ghidra: 0x004ad5b8 — posee (posture 10), un contact de cette famille rend la hauteur
@@ -131,7 +154,7 @@ public static unsafe partial class Blaze
         if ((contact & 0x20002000) != 0 && e[0x42] == 0x0a)
         {
             e[0x43] = 0;
-            *(int*)(e + 0x20) = keep.Y;
+            *(int*)(e + 0x20) = keep->Y;
         }
 
         contact &= 0xfffff8ff;
@@ -162,35 +185,22 @@ public static unsafe partial class Blaze
             *(uint*)e &= 0xfffffffd;
 
             // Les dix champs, sans la hauteur — comme le Gremlin.
-            *(int*)(e + 0x24) = keep.Z;
-            *(int*)(e + 0x7c) = keep.At7c;
-            *(uint*)(e + 0x90) = keep.At90;
-            *(int*)(e + 0x1c) = keep.X;
-            *(int*)(e + 0x80) = keep.At80;
-            *(int*)(e + 0x84) = keep.At84;
-            *(int*)(e + 0x88) = keep.At88;
-            *(int*)(e + 0x8c) = keep.At8c;
-            *(int*)(e + 0x64) = keep.At64;
-            *(int*)(e + 0x60) = keep.At60;
+            *(int*)(e + 0x24) = keep->Z;
+            *(int*)(e + 0x7c) = keep->At7c;
+            *(uint*)(e + 0x90) = keep->At90;
+            *(int*)(e + 0x1c) = keep->X;
+            *(int*)(e + 0x80) = keep->At80;
+            *(int*)(e + 0x84) = keep->At84;
+            *(int*)(e + 0x88) = keep->At88;
+            *(int*)(e + 0x8c) = keep->At8c;
+            *(int*)(e + 0x64) = keep->At64;
+            *(int*)(e + 0x60) = keep->At60;
 
             int side = ProbeClearSide_004D5E60(e, 0x2000a882);
             if ((short)side == 0) side = (CrtRand() % 2) * 2 - 1;   // Ghidra: FUN_00547140
 
             *(ushort*)(e + 0x32) += (ushort)((boldness + 0x40) * side);
         }
-
-        ResetSceneEntityOnStun_004C3810(e);
-
-        // ---------------------------------------------------------------- 3. replanifier
-        if (speed == 0)
-        {
-            *(short*)(e + 0x32) = keep.Heading;
-            return;
-        }
-
-        if (e[0x43] != 0) return;
-
-        ReplanCrapouilleAction_004ACC20(e, boldness, timid);
     }
 
     /// <summary>

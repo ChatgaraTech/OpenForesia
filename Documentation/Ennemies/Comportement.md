@@ -1057,6 +1057,15 @@ commune : il **vire sans s'arrêter**, **court** (poussée `0xc000`), attaque à
 **ou par le bond** (posture 6, bit d'attaque posé en l'air), et **tourne autour de sa cible** sous
 100 unités. Sa queue porte un test d'espèce : la marche n'est gardée au heurt que pour l'espèce 11.
 
+### La Harpie (2026-09-18)
+
+`0x004CB4F0` (sous-zones 0 à 4), `0x004D60A0` (5 et 11), et `0x004FDFE0` à la **grotte scellée** —
+un seul corps, `Ai/ImmortalCastle/Harpy.cs`. **La charpente de la Crapouille** (vol stationnaire et
+queue réutilisés), avec une morsure sans image, un sort (Ventilo), et **un cri** (posture 13) qui
+sème la famille à trois vies du château : des feux follets, puis l'éclair rouge qui porte l'effet
+d'état 11 à tout le groupe. Deuxième bête du château, après le Vampire, dont l'attaque passe par un
+gestionnaire d'effet de zone.
+
 ## Trois espèces, un comportement : la Crapouille, la Gargouille, le Crapaud (2026-09-15)
 
 `0x004ACC20` (vieille tour), `0x004CE120` (château), `0x004DB610` (ruines souterraines) : trois

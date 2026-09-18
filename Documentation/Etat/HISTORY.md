@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **la Harpie** (`0x004CB4F0`, `0x004D60A0`) et sa copie de la grotte scellée
+  (`0x004FDFE0`) — la charpente de la Crapouille, un sort, et un cri qui sème la famille à trois
+  vies du château jusqu'à l'éclair rouge. Zone 6 : 163 sur 170 ; `Ai/ImmortalCastle/Harpy.cs`
+- feat : la queue volante de la Crapouille sortie en `SettleCrapouilleFlight`, partagée avec la
+  Harpie
 - feat : **le Loup et le Loup gris** (`0x004CC650`, `0x004D4E10`) et leur copie des ruines
   souterraines (`0x004DDE30`) — une lecture neuve : il court, vire sans s'arrêter, attaque en
   bondissant et tourne autour de sa cible. Zone 6 : 161 sur 170 ; nouveau fichier

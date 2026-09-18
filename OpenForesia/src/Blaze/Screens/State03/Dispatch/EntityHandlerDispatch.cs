@@ -1246,6 +1246,13 @@ public static unsafe partial class Blaze
             case 0x004DDE30:
                 TickSceneEntityAi_004CC650(record); return;
 
+            // LA HARPIE (chateau, sous-zones 0 a 4 ; 5 et 11 ; et la grotte scellee) — la charpente de
+            // la Crapouille, un cri qui seme la famille a trois vies, un sort. Chaque copie lit son
+            // propre mot de sort ; les trois valent 0x0015. Ai/ImmortalCastle/Harpy.cs.
+            case 0x004CB4F0: TickSceneEntityAi_004CB4F0(record, 0x0015); return;   // &DAT_00552c08
+            case 0x004D60A0: TickSceneEntityAi_004CB4F0(record, 0x0015); return;   // &DAT_00552c80
+            case 0x004FDFE0: TickSceneEntityAi_004CB4F0(record, 0x0015); return;   // &DAT_00553018
+
             // LE CHEVALIER NOIR (vieille tour, sous-zones 5, 6, 8, 10) ET LE PLATINUM (3, 7, 9) — le Pourpre
             // preux retouche : poussee 0x7000, coups speciaux au quart, charge refusee a la variante 0.
             // Ai/OldTower/BlackKnight.cs.
