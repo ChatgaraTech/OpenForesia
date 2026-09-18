@@ -1766,6 +1766,13 @@ internal sealed unsafe class UiText
                             Blaze.StoreItemInInventory_005312D0((uint*)subject);
                             break;
 
+                        // Le rappel du don d'objet du chateau de l'immortel (verbe 0x00444a40,
+                        // palier 2, 2026-09-18) : la forme de ChestPickupDone, avec sa propre
+                        // porte de validation (0x005e987f) et son propre drapeau d'achevement.
+                        case 0x00444ab0:
+                            Blaze.CastleGiftDone_00444AB0((uint*)subject);
+                            break;
+
                         default:
                             throw new NotImplementedException(
                                 $"Rappel de fin de texte 0x{completion:X8}, appele avec " +

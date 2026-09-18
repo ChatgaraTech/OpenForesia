@@ -622,4 +622,424 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void EntityHandler_0042A540(byte* e)
         => TickShockwaveOrSpray(e, AbsentHost.FallBackOnEntityList, clearFlagBit0: false);
+
+    // =====================================================================
+    // PALIER 2, LOT 1 (2026-09-18) — LES EFFETS DU CHATEAU
+    //
+    // Les huit formes des tables 0x0056b0c8 / 0x0056b1c8 / 0x0056b2c8 que le palier 2 laissait, et
+    // qui ne decident de rien. Les quatre qui lancent un script de zone sont ailleurs
+    // (Handlers/ImmortalCastleMecanismes.cs) : elles prennent la partie en charge.
+    //
+    // Aucune n'avait de parent deja ecrit — le releve LOOSE contre les 957 corps du depot est
+    // revenu vide, sauf pour 0x0042A350. Ce sont donc de vraies lectures, mais courtes.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550728</c> — <b>la planche de l'etincelle qui tourne autour de
+    /// son porteur</b>, sous-zones 6 a 10. <b>Trois</b> enregistrements, exactement ce que
+    /// <c>+0x40</c> parcourt. Bornee par <c>0x00550740</c>, la planche de groupe du palier 1 :
+    /// une borne deja prouvee.</summary>
+    private static readonly byte[] s_Descriptors_00550728 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550728  <- 0x00427C10
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550730
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550738
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_005508d8</c> — la meme planche pour les sous-zones 5 et 11, et
+    /// **deux** corps s'en servent : <see cref="EntityHandler_0042B0C0"/> et
+    /// <see cref="EntityHandler_0042A350"/>. Trois enregistrements ; bornee par <c>0x005508f0</c>,
+    /// ou la tuile passe en <c>0x20 x 0x20</c>. Elle commence exactement ou
+    /// <see cref="s_Descriptors_005508B8"/> s'arrete — les deux plages se touchent.</summary>
+    private static readonly byte[] s_Descriptors_005508D8 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005508d8  <- 0x0042B0C0, 0x0042A350
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005508e0
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005508e8
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00551118</c> — la meme planche pour la <b>grotte scellee</b>,
+    /// sous-zones 6 et 7. Trois enregistrements ; bornee par <c>0x00551130</c>
+    /// (<c>0x18 0x00 0x18 0x18</c>). Elle commence exactement ou
+    /// <see cref="s_Descriptors_005510F8"/> s'arrete.</summary>
+    private static readonly byte[] s_Descriptors_00551118 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551118  <- 0x00439B00
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551120
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551128
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_005506e8</c> — <b>la planche du bloc qui tombe</b>, une seule
+    /// tuile <c>0x17 x 0x17</c>. Le corps pose <c>+0x40 = 0</c> et ne l'avance jamais. Elle
+    /// commence exactement ou <see cref="s_Descriptors_005506C0"/> s'arrete, et se ferme sur
+    /// <c>0x005506f0</c> ou la tuile passe en <c>0x0f x 0x0f</c>.</summary>
+    private static readonly byte[] s_Descriptors_005506E8 =
+    [
+        0x30, 0x00, 0x17, 0x17, 0x01, 0x02, 0x10, 0x00,   // 0x005506e8  <- 0x00429270
+    ];
+
+    private static byte* s_Descriptors00550728Storage;
+    private static byte* s_Descriptors005508D8Storage;
+    private static byte* s_Descriptors00551118Storage;
+    private static byte* s_Descriptors005506E8Storage;
+
+    private static byte* Descriptors00550728() => NativeCopy(s_Descriptors_00550728, ref s_Descriptors00550728Storage);
+    private static byte* Descriptors005508D8() => NativeCopy(s_Descriptors_005508D8, ref s_Descriptors005508D8Storage);
+    private static byte* Descriptors00551118() => NativeCopy(s_Descriptors_00551118, ref s_Descriptors00551118Storage);
+    private static byte* Descriptors005506E8() => NativeCopy(s_Descriptors_005506E8, ref s_Descriptors005506E8Storage);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00426C40"/> et de son miroir. Decompile dans
+    /// <c>Blaze.c</c>, 60 instructions.
+    ///
+    /// <para>
+    /// <b>Un grain qui traverse la cour, et sa position n'est PAS relative.</b> A la naissance il
+    /// s'ecrit directement dans <c>+0x1c</c>, <c>+0x20</c> et <c>+0x24</c> — pas de <c>+=</c> — :
+    /// <c>±1000</c> unites en X, <c>-1800</c> a <c>+2200</c> en Z, <c>0</c> a <c>599</c> de haut.
+    /// C'est un point du monde, pas un decalage autour d'un porteur.
+    /// </para>
+    /// <para>
+    /// Ensuite il avance en <b>Z seulement</b>, de <c>0x50</c> a <c>0x63</c> unites par image, et
+    /// meurt de deux facons : son decompte <c>+0x12</c> (40 a 99 images) passe sous zero, <b>ou</b>
+    /// il sort par le fond, au-dela de <c>0x898000</c>. Le test de sortie masque les douze bits bas
+    /// avant de comparer — le binaire compare des cases entieres, pas des seiziemes.
+    /// </para>
+    /// </summary>
+    private static void TickCastleCrossingMote_00426C40(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = plate;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = 0x1000;
+            *(short*)(e + 0x2a) = 0x1000;
+
+            *(int*)(e + 0x1c) = (CrtRand() % 2000 - 1000) * 0x1000;
+            *(int*)(e + 0x24) = (CrtRand() % 4000 - 0x708) * 0x1000;
+            *(int*)(e + 0x20) = (CrtRand() % 600) << 0xc;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x3c + 0x28);
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0x14 + 0x50);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))--;
+
+        uint z = (uint)(*(int*)(e + 0x24) + *(short*)(e + 0x14) * 0x1000);
+        *(int*)(e + 0x24) = (int)z;
+
+        if (*(short*)(e + 0x12) < 0 || (int)(z & 0xfffff000) > 0x898000) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: FUN_00426c40 @ 0x00426c40 — creneau <b>7</b> du bloc <c>0x00559328</c>
+    /// (sous-zones 0 a 4). Sa planche est <c>0x005504f8</c>, c'est-a-dire l'enregistrement de la
+    /// bulle dans <see cref="s_Descriptors_00550480"/> : le grain et la bulle partagent leur
+    /// tuile.</summary>
+    private static void EntityHandler_00426C40(byte* e)
+        => TickCastleCrossingMote_00426C40(e, Descriptors00550480() + 0x78);   // Ghidra: &DAT_005504f8
+
+    /// <summary>Ghidra: FUN_004293f0 @ 0x004293f0 — creneau <b>7</b> du bloc <c>0x005599a8</c>
+    /// (sous-zones 6 a 10). La copie conforme, planche <c>0x00550648</c>.</summary>
+    private static void EntityHandler_004293F0(byte* e)
+        => TickCastleCrossingMote_00426C40(e, Descriptors005505D0() + 0x78);   // Ghidra: &DAT_00550648
+
+    /// <summary>
+    /// Ghidra: FUN_00426d20 @ 0x00426d20 — creneau <b>3</b> du bloc <c>0x00559228</c>
+    /// (table <c>0x0056b1c8</c>, sous-zones 0 a 4). Decompilee dans <c>Blaze.c</c>, 69 instructions.
+    ///
+    /// <para>
+    /// <b>Le meme trajet que <see cref="TickCastleCrossingMote_00426C40"/>, mais en volume.</b> La
+    /// naissance et la traversee sont identiques au mot pres ; ce qui change est ce qui est
+    /// dessine : <b>aucune planche n'est posee</b>, <c>+0x04</c> (le modele) est mis a zero, et
+    /// l'entite recoit trois echelles — <c>+0x28</c> et <c>+0x2c</c> a 300, <c>+0x2a</c> tiree
+    /// entre 6000 et 8999 — plus deux angles a <c>0x400</c>. C'est un objet long et fin, etire sur
+    /// un seul axe, qui traverse la cour.
+    /// </para>
+    /// <para>
+    /// Son decompte de vitesse est <c>rand % 0x1e + 0x50</c> au lieu de <c>rand % 0x14 + 0x50</c> :
+    /// il va un peu plus vite, ou un peu moins.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00426D20(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            e[0x04] = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x28) = 300;
+            *(short*)(e + 0x2c) = 300;
+
+            int stretch = CrtRand();
+            *(short*)(e + 0x32) = 0x400;
+            *(short*)(e + 0x34) = 0x400;
+            *(short*)(e + 0x2a) = (short)(stretch % 3000 + 6000);
+
+            *(int*)(e + 0x1c) = (CrtRand() % 2000 - 1000) * 0x1000;
+            *(int*)(e + 0x24) = (CrtRand() % 4000 - 0x708) * 0x1000;
+            *(int*)(e + 0x20) = (CrtRand() % 600) << 0xc;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x3c + 0x28);
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0x1e + 0x50);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))--;
+
+        uint z = (uint)(*(int*)(e + 0x24) + *(short*)(e + 0x14) * 0x1000);
+        *(int*)(e + 0x24) = (int)z;
+
+        if (*(short*)(e + 0x12) < 0 || (int)(z & 0xfffff000) > 0x898000) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00426E20"/> et de son miroir. Absent de <c>Blaze.c</c> ;
+    /// 27 et 28 instructions, relevees au desassembleur.
+    ///
+    /// <para>
+    /// <b>Un decor qui n'existe que si le scenario le veut.</b> Il se pose une fois — angles a
+    /// zero, <c>+0x34</c> a <c>0x400</c>, echelles <c>0x12c</c> / <c>0x157c</c> / <c>0x12c</c>,
+    /// modele <c>+0x0b = 0xf3</c> — puis, <b>a chaque image</b>, il recopie le bit <c>0x40</c> de
+    /// <c>DAT_005e9702</c> dans le bit <c>0x4000</c> de son mot d'etat. Il ne fait rien d'autre :
+    /// il apparait et disparait avec un drapeau de la banque de script, et n'y touche jamais.
+    /// </para>
+    /// <para>
+    /// C'est la seule chose qui le separe d'un decor de <c>0x0056adc8</c> : il vit dans une table
+    /// d'effets. La regle de rangement suit le <b>role</b>, et ce corps ne decide de rien.
+    /// </para>
+    /// </summary>
+    /// <param name="kind">Le genre pose en <c>+0x0a</c> : <c>0x0e</c> pour la copie des sous-zones
+    /// 0 a 4, <c>0</c> pour celle des sous-zones 6 a 10.</param>
+    /// <param name="clearContactBit">Vrai pour la seconde copie seulement, qui efface en plus le
+    /// bit 0 de <c>+0x36</c> a la naissance — l'unique instruction qui les separe.</param>
+    private static void TickCastleFlaggedProp_00426E20(byte* e, byte kind, bool clearContactBit)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            if (clearContactBit) e[0x36] &= 0xfe;
+
+            *(short*)(e + 0x12) = 0;
+            e[0x04] = 0;
+            e[0x0a] = kind;
+            *(short*)(e + 0x32) = 0;
+            *(short*)(e + 0x10) = 1;
+            e[0x0b] = 0xf3;
+            *(short*)(e + 0x34) = 0x400;
+            *(short*)(e + 0x28) = 0x12c;
+            *(short*)(e + 0x2c) = 0x12c;
+            *(short*)(e + 0x2a) = 0x157c;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        // Ghidra: `test byte [5E9702h],40h` — DAT_005e96e0 + 0x22, la banque de script 0.
+        if ((Mem.s_StateBank0_005e96e0[0x22] & 0x40) != 0) *(uint*)e |= 0x4000;
+        else *(uint*)e &= 0xffffbfff;
+    }
+
+    /// <summary>Ghidra: <c>0x00426e20</c> — creneau <b>2</b> du bloc <c>0x00559228</c>
+    /// (sous-zones 0 a 4). Genre <c>0x0e</c>, et il ne touche pas a <c>+0x36</c>.</summary>
+    private static void EntityHandler_00426E20(byte* e)
+        => TickCastleFlaggedProp_00426E20(e, 0x0e, clearContactBit: false);
+
+    /// <summary>Ghidra: <c>0x00429680</c> — creneau <b>2</b> du bloc <c>0x005598a8</c>
+    /// (sous-zones 6 a 10). Genre <c>0</c>, et il efface le bit 0 de <c>+0x36</c>.</summary>
+    private static void EntityHandler_00429680(byte* e)
+        => TickCastleFlaggedProp_00426E20(e, 0, clearContactBit: true);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00427C10"/> et de ses deux copies. Decompile dans
+    /// <c>Blaze.c</c>, 62 instructions.
+    ///
+    /// <para>
+    /// <b>Une etincelle qui tourne autour de son porteur, et sa position est refaite a chaque
+    /// image</b> — avant meme le test d'etat, donc y compris a l'image de sa mort. Elle se tient
+    /// <c>0x73000</c> au-dessus du porteur <c>+0x74</c>, et a <b>quatorze unites</b> de lui dans le
+    /// cap <c>+0x5c + +0x32 - 0xc00</c>, un cap dont une part vient d'elle et l'autre du porteur.
+    /// </para>
+    /// <para>
+    /// <b>Elle vit onze images</b>, son image de planche est tiree au hasard (<c>rand % 3</c>) puis
+    /// tourne d'un cran par image en boucle sur trois — d'ou les trois enregistrements. L'echelle
+    /// est <c>4000</c> sur les deux axes.
+    /// </para>
+    /// <para>
+    /// <b>Le porteur n'est jamais teste.</b> Un <c>+0x74</c> nul serait une faute de page dans le
+    /// binaire et une violation d'acces ici, a la meme lecture — comme chez ses cousines des
+    /// sous-zones 5 a 8 du Labyrinthe.
+    /// </para>
+    /// </summary>
+    private static void TickCastleHostOrbitSpark_00427C10(byte* e, byte* plate)
+    {
+        byte* host = *(byte**)(e + 0x74);
+
+        *(int*)(e + 0x20) = *(int*)(host + 0x20) + 0x73000;
+
+        int heading = *(int*)(e + 0x5c) - 0xc00 + *(short*)(e + 0x32);
+        *(int*)(e + 0x1c) = *(int*)(host + 0x1c) + (int)Winsys3d.GetSinTableEntry(heading) * 0x0e;
+        *(int*)(e + 0x24) = *(int*)(host + 0x24) + Winsys3d.GetCosTableEntry(heading) * 0x0e;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = plate;
+            int frame = CrtRand();
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = 4000;
+            *(short*)(e + 0x2a) = 4000;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0x0b;
+            e[0x40] = (byte)(sbyte)(frame % 3);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))--;
+
+        byte next = (byte)(e[0x40] + 1);
+        e[0x40] = next;
+        if (next > 2) e[0x40] = 0;
+
+        if (*(short*)(e + 0x12) < 1) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: FUN_00427c10 @ 0x00427c10 — creneau <b>30</b> du bloc <c>0x005599a8</c>
+    /// (sous-zones 6 a 10), planche <c>0x00550728</c>.</summary>
+    private static void EntityHandler_00427C10(byte* e)
+        => TickCastleHostOrbitSpark_00427C10(e, Descriptors00550728());   // Ghidra: &DAT_00550728
+
+    /// <summary>Ghidra: FUN_0042b0c0 @ 0x0042b0c0 — creneau <b>30</b> du bloc <c>0x0055a028</c>
+    /// (sous-zones 5 et 11), planche <c>0x005508d8</c>.</summary>
+    private static void EntityHandler_0042B0C0(byte* e)
+        => TickCastleHostOrbitSpark_00427C10(e, Descriptors005508D8());   // Ghidra: &DAT_005508d8
+
+    /// <summary>Ghidra: FUN_00439b00 @ 0x00439b00 — creneau <b>44</b> du bloc <c>0x0055d428</c>,
+    /// sous-zones 6 et 7 de la <b>grotte scellee</b>. Le meme corps a la planche pres :
+    /// <c>0x00551118</c>. Ecrit ici, avec son parent du chateau.</summary>
+    private static void EntityHandler_00439B00(byte* e)
+        => TickCastleHostOrbitSpark_00427C10(e, Descriptors00551118());   // Ghidra: &DAT_00551118
+
+    /// <summary>
+    /// Ghidra: <c>0x00429270</c> — creneau <b>58</b> du bloc <c>0x005599a8</c>
+    /// (table <c>0x0056b2c8</c>, sous-zones 6 a 10). Absente de <c>Blaze.c</c> ; 67 instructions,
+    /// relevees au desassembleur.
+    ///
+    /// <para>
+    /// <b>Un bloc qui tombe et qui blesse la ou il passe.</b> Il part avec la vitesse deja posee
+    /// dans <c>+0x50</c> / <c>+0x54</c> / <c>+0x58</c> par ce qui l'a fait naitre, et <c>+0x54</c>
+    /// perd <c>0x2000</c> par image : c'est la pesanteur. Sous <c>0xfa000</c> de hauteur il passe a
+    /// l'etat 2.
+    /// </para>
+    /// <para>
+    /// <b>A CHAQUE IMAGE DE SA CHUTE il appelle <see cref="DamagePartyNearPoint_00418F50"/></b> sur
+    /// sa propre position, avec un rayon qui est <b>son echelle divisee par 50</b> — plus il est
+    /// gros, plus il fait mal loin — pour <c>2 %</c> des points de vie maximum. Le site empile huit
+    /// arguments et le corps appele n'en lit que six, comme partout ailleurs.
+    /// </para>
+    /// <para>
+    /// L'etat 2 est l'extinction : la teinte perd 10 par canal et par image, et le bloc disparait
+    /// quand son canal rouge atteint zero. Il ne s'arrete pas de tomber pour autant — rien ne
+    /// touche plus a sa position.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00429270(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors005506E8();   // Ghidra: &DAT_005506e8
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int x = *(int*)(e + 0x1c) + *(int*)(e + 0x50);
+            int y = *(int*)(e + 0x20) + *(int*)(e + 0x54);
+            int z = *(int*)(e + 0x24) + *(int*)(e + 0x58);
+
+            *(int*)(e + 0x1c) = x;
+            *(int*)(e + 0x20) = y;
+            *(int*)(e + 0x24) = z;
+            *(int*)(e + 0x54) += -0x2000;                 // Ghidra: add eax,0FFFFE000h
+
+            if (y < 0xfa000) *(short*)(e + 0x10) = 2;
+
+            // Ghidra: `imul 51EB851Fh ; sar edx,4` puis report du signe — une division par 50.
+            short radius = (short)(*(short*)(e + 0x28) / 50);
+            DamagePartyNearPoint_00418F50(x, y, z, radius, 2, 2);   // Ghidra: FUN_00418f50
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        BrightenEntityTint_00404DE0(e, -10, -10, -10);     // Ghidra: FUN_00404de0
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0042a350</c> — creneau <b>33</b> du bloc <c>0x0055a028</c>
+    /// (sous-zones 5 et 11). Absente de <c>Blaze.c</c> ; 71 instructions.
+    ///
+    /// <para>
+    /// <b><see cref="TickTwoHostOrbitMote"/> a deux choses pres</b>, et le corps du Labyrinthe est
+    /// le seul de tout le depot dont elle soit proche (21 lignes). La planche est
+    /// <c>0x005508d8</c>, celle que <see cref="EntityHandler_0042B0C0"/> emploie deja. Et
+    /// <b>le second porteur n'est pas protege</b> : le Labyrinthe fait retomber <c>+0x6c</c> nul
+    /// sur <c>Res.s_EntityList_005de558</c>, le chateau ne teste que <c>+0x74</c>.
+    /// </para>
+    /// <para>
+    /// Le reste du <c>diff</c> est de l'ordonnancement : les deux porteurs y vivent dans les
+    /// registres <b>echanges</b> (<c>ebp</c> et <c>edi</c>), ce qui donne dix lignes qui ne disent
+    /// rien.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0042A350(byte* e)
+        => TickTwoHostOrbitMote(e, Descriptors005508D8(), guardOffset: false);   // Ghidra: &DAT_005508d8
+
+    /// <summary>
+    /// Ghidra: FUN_00429330 @ 0x00429330 — creneau <b>14</b> du bloc <c>0x005597a8</c>
+    /// (table <c>0x0056b0c8</c>, sous-zones 6 a 10). Decompilee dans <c>Blaze.c</c>, 60
+    /// instructions.
+    ///
+    /// <para>
+    /// <b>Une source, et rien d'autre.</b> A chaque image elle fait naitre <b>six</b> entites sur
+    /// sa propre position — trois du sous-type <c>199</c> par
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> et trois du sous-type <c>0xc3</c> par
+    /// <see cref="SpawnCastEntity_0047AAE0"/> — puis s'eteint au bout de quarante images. Elle ne
+    /// regarde rien : ni le groupe, ni un drapeau, ni sa cible.
+    /// </para>
+    /// <para>
+    /// <b>C'est la moitie de <see cref="EntityHandler_00426B10"/></b>, son cousin des sous-zones
+    /// 0 a 4, qui seme les memes six entites mais y ajoute quatre sons et un script de zone. Celui-
+    /// la est un mecanisme et vit dans <c>Handlers/ImmortalCastleMecanismes.cs</c> ; celui-ci ne
+    /// decide de rien et reste ici. Les deux corps ne sont pas des copies : trente-quatre
+    /// instructions les separent.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00429330(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))++;
+
+        int* position = (int*)(e + 0x1c);
+        SpawnStatusEffectEntity_0047AC40(e, position, null, 199, 0, -1);
+        SpawnStatusEffectEntity_0047AC40(e, position, null, 199, 0, -1);
+        SpawnStatusEffectEntity_0047AC40(e, position, null, 199, 0, -1);
+        SpawnCastEntity_0047AAE0(e, 0xc3, 0, -1);
+        SpawnCastEntity_0047AAE0(e, 0xc3, 0, -1);
+        SpawnCastEntity_0047AAE0(e, 0xc3, 0, -1);
+
+        if (*(short*)(e + 0x12) > 0x28) *(uint*)e &= 0x7fffffff;
+    }
 }

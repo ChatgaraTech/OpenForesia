@@ -2066,6 +2066,79 @@ public static unsafe partial class Blaze
             case 0x0042A540: EntityHandler_0042A540(record); return;
 
 
+            // ====================================================================================
+            // ZONE 6 — LE CHATEAU DE L'IMMORTEL, PALIER 2 (2026-09-18) : les 62 corps « simples »,
+            // 49 formes distinctes, et AUCUNE n'avait de parent deja ecrit dans le depot.
+            // ====================================================================================
+
+            // Les effets des tables 0x0056b0c8 / b1c8 / b2c8 — Effects/ImmortalCastleParticles.cs,
+            // plus 0x00439B00, le meme corps dans la grotte scellee.
+            case 0x00426C40: EntityHandler_00426C40(record); return;
+            case 0x004293F0: EntityHandler_004293F0(record); return;
+            case 0x00426D20: EntityHandler_00426D20(record); return;
+            case 0x00426E20: EntityHandler_00426E20(record); return;
+            case 0x00429680: EntityHandler_00429680(record); return;
+            case 0x00427C10: EntityHandler_00427C10(record); return;
+            case 0x0042B0C0: EntityHandler_0042B0C0(record); return;
+            case 0x00439B00: EntityHandler_00439B00(record); return;
+            case 0x00429270: EntityHandler_00429270(record); return;
+            case 0x0042A350: EntityHandler_0042A350(record); return;
+            case 0x00429330: EntityHandler_00429330(record); return;
+
+            // Les quatre qui LANCENT UN SCRIPT — Handlers/ImmortalCastleMecanismes.cs.
+            case 0x00426860: EntityHandler_00426860(record); return;
+            case 0x00426B10: EntityHandler_00426B10(record); return;
+            case 0x004647F0: EntityHandler_004647F0(record); return;
+            case 0x00466130: EntityHandler_00466130(record); return;
+
+            // Le decor de la table 0x0056adc8 — Handlers/ImmortalCastle.cs. Quatorze paires
+            // miroir (bloc 0x00558e28 pour les sous-zones 0 a 4, 0x005594a8 pour 6 a 10, au meme
+            // numero de creneau), dont la FAMILLE DE SIX des creneaux 22, 23 et 24.
+            case 0x00463770: EntityHandler_00463770(record); return;
+            case 0x00463A10: EntityHandler_00463A10(record); return;
+            case 0x00463AE0: EntityHandler_00463AE0(record); return;
+            case 0x00463B30: EntityHandler_00463B30(record); return;
+            case 0x00463CA0: EntityHandler_00463CA0(record); return;
+            case 0x00463D90: EntityHandler_00463D90(record); return;
+            case 0x004642C0: EntityHandler_004642C0(record); return;
+            case 0x004643B0: EntityHandler_004643B0(record); return;
+            case 0x00464440: EntityHandler_00464440(record); return;
+            case 0x00464660: EntityHandler_00464660(record); return;
+            case 0x00464900: EntityHandler_00464900(record); return;
+            case 0x00464A10: EntityHandler_00464A10(record); return;
+            case 0x00464AC0: EntityHandler_00464AC0(record); return;
+            case 0x00464BC0: EntityHandler_00464BC0(record); return;
+            case 0x00464C30: EntityHandler_00464C30(record); return;
+            case 0x00464CF0: EntityHandler_00464CF0(record); return;
+            case 0x00464DB0: EntityHandler_00464DB0(record); return;
+            case 0x00465020: EntityHandler_00465020(record); return;
+            case 0x00465070: EntityHandler_00465070(record); return;
+            case 0x00465150: EntityHandler_00465150(record); return;
+            case 0x00465220: EntityHandler_00465220(record); return;
+            case 0x00465290: EntityHandler_00465290(record); return;
+            case 0x00465330: EntityHandler_00465330(record); return;
+            case 0x004653F0: EntityHandler_004653F0(record); return;
+            case 0x004654C0: EntityHandler_004654C0(record); return;
+            case 0x00465610: EntityHandler_00465610(record); return;
+            case 0x00465640: EntityHandler_00465640(record); return;
+            case 0x00465670: EntityHandler_00465670(record); return;
+            case 0x004656C0: EntityHandler_004656C0(record); return;
+            case 0x00465BF0: EntityHandler_00465BF0(record); return;
+            case 0x00465CE0: EntityHandler_00465CE0(record); return;
+            case 0x00465D70: EntityHandler_00465D70(record); return;
+            case 0x00465FA0: EntityHandler_00465FA0(record); return;
+            case 0x00466240: EntityHandler_00466240(record); return;
+            case 0x00466350: EntityHandler_00466350(record); return;
+            case 0x00466400: EntityHandler_00466400(record); return;
+            case 0x00466500: EntityHandler_00466500(record); return;
+            case 0x004665C0: EntityHandler_004665C0(record); return;
+            case 0x00466680: EntityHandler_00466680(record); return;
+            case 0x00466740: EntityHandler_00466740(record); return;
+            case 0x00466840: EntityHandler_00466840(record); return;
+            case 0x00466890: EntityHandler_00466890(record); return;
+            case 0x00466970: EntityHandler_00466970(record); return;
+            case 0x00466AA0: EntityHandler_00466AA0(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de

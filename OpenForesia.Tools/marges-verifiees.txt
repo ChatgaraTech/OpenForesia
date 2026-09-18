@@ -109,3 +109,6 @@ EntityHandler_0042C9E0 | 0x00550890 | +0x00 | EntityHandler_0042C9E0,TickFivePha
 EntityHandler_0042D130 | 0x00550890 | +0x08 | EntityHandler_0042D130,TickFivePhaseBurst | 11aad8a53140 | idem, second enregistrement — la forme de 0x0040B900
 EntityHandler_0042DB10 | 0x00550888 | +0x00 | EntityHandler_0042DB10,TickCastleFallingEmber | cd2f7ab9c161 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (releve 0x0042db10, un seul `mov [esi+40h]` jusqu au ret 0x0042dc7a)
 EntityHandler_00442C20 | 0x00551408 | +0x00 | EntityHandler_00442C20,TickCastleFallingEmber | f39da6f2ea31 | jumeau du precedent a la planche pres (grotte scellee)
+
+# ---- Ajoute le 2026-09-18 (palier 2 du chateau de l'immortel, zone 6)
+EntityHandler_00429270 | 0x005506E8 | +0x00 | EntityHandler_00429270 | 58f554d43924 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (releve 0x00429270, un seul `mov [esi+40h]` jusqu au ret 0x0042932d)

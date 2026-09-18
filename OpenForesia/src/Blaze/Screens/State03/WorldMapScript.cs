@@ -1812,6 +1812,15 @@ public static unsafe partial class Blaze
             0x004443D0 => AreaVerb_004443D0(),
             0x004444A0 => AreaVerb_004444A0((short)(s[2] | (s[3] << 8))),
 
+            // LES QUATRE VERBES DU CHATEAU DE L'IMMORTEL (palier 2, 2026-09-18). Les deux premiers
+            // sont le meme don d'objet, a un rappel de fin de boite pres.
+            0x00444670 => AreaVerb_00444670(ent, (short)(s[2] | (s[3] << 8))),
+            0x00444A40 => AreaVerb_00444A40(ent, (short)(s[2] | (s[3] << 8))),
+            0x00444E00 => AreaVerb_00444E00((short)(s[2] | (s[3] << 8))),
+
+            // Celui-ci ne lit aucun de ses deux arguments.
+            0x004450A0 => AreaVerb_004450A0(),
+
             0x00442F60 => AreaVerb_00442F60(),
 
             0x00443100 => AreaVerb_00443100(),
@@ -4096,5 +4105,238 @@ public static unsafe partial class Blaze
         }
 
         return result;
+    }
+
+    // =====================================================================
+    // PALIER 2, LOT 2 (2026-09-18) — LES QUATRE VERBES DU CHATEAU DE L'IMMORTEL
+    //
+    // Quatre lignes de `GestionnairesEntites.md` qui ne sont PAS des gestionnaires d'entite : ce
+    // sont des creneaux de la table 0x0056aec8, donc des verbes de script, et ils vivent ici. C'est
+    // le meme cas que 0x00444340 au lot 8 du Labyrinthe, et ils en sont les voisins d'adresse — la
+    // table range les verbes par zone.
+    //
+    // DEUX D'ENTRE EUX SONT LE MEME VERBE, A UN RAPPEL PRES : « donner au groupe un objet tire au
+    // sort dans la table de la zone ». Le premier range l'objet tout de suite, le second differe le
+    // rangement jusqu'a la fermeture de la boite de dialogue. C'est la seule difference, et elle se
+    // lit a l'`add esp` du site d'appel : 8 octets contre 12.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x005e9704</c> — <b>l'octet 0x24 de la banque de script 0</b>. Son bit
+    /// <c>0x40</c> est le drapeau « c'est fait » des deux verbes de don du chateau : tant qu'il
+    /// n'est pas pose, le verbe rend zero et le script reste sur place.
+    /// </summary>
+    private static byte* s_CastleGiftDone_005e9704 => Mem.s_StateBank0_005e96e0 + 0x24;
+
+    /// <summary>
+    /// Ghidra: <c>0x005e986c</c> — <b>la fiche en attente</b>, plus un. Zero veut dire « rien en
+    /// attente » ; c'est ce <c>+1</c> qui permet a la fiche d'indice 0 d'exister. Les deux verbes
+    /// de don s'en servent pour <b>reessayer la meme fiche a l'image suivante</b> quand
+    /// l'inventaire du groupe est plein.
+    /// </summary>
+    private static byte* s_CastleGiftPending_005e986c => Mem.Arena(0x005e986c);
+
+    /// <summary>
+    /// Ghidra: <c>0x00444670</c> — <b>« donner au groupe un objet tire au sort »</b>, sous-zones
+    /// 0 a 4 et 6 a 10. Absent de <c>Blaze.c</c> ; 41 instructions relevees au desassembleur.
+    ///
+    /// <para>
+    /// Le verbe rend <c>1</c> — donc le script avance — <b>uniquement</b> quand le drapeau
+    /// <see cref="s_CastleGiftDone_005e9704"/> est pose. Tant qu'il ne l'est pas, il rend zero et
+    /// recommence a l'image suivante :
+    /// </para>
+    /// <list type="number">
+    ///   <item>rien en attente : <see cref="PickWeightedTableEntry"/> choisit une fiche dans la
+    ///     ligne <paramref name="row"/> de la table <c>+0xb4</c> de la zone, borne 100, et
+    ///     <see cref="GrantChestContents_00530F20"/> la remet au groupe <b>sans rappel de fin de
+    ///     boite</b> ;</item>
+    ///   <item>si la remise passe (retour nul), le drapeau est pose et l'attente effacee ;</item>
+    ///   <item>sinon le retour est <c>fiche + 1</c>, garde tel quel dans
+    ///     <see cref="s_CastleGiftPending_005e986c"/> ;</item>
+    ///   <item>a l'image suivante, l'attente non nulle fait rejouer <b>la meme fiche</b>
+    ///     (<c>attente - 1</c>) sans nouveau tirage.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le second passage ne remet pas l'attente a zero quand il reussit</b> : il pose le drapeau
+    /// et laisse <c>0x005e986c</c> tel quel. Transcrit tel quel — le drapeau suffit a ce que le
+    /// verbe ne repasse plus.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00444670(byte* entity, short row)
+    {
+        if ((*s_CastleGiftDone_005e9704 & 0x40) != 0) return 1;
+
+        byte pending = *s_CastleGiftPending_005e986c;
+
+        if (pending == 0)
+        {
+            int sheet = PickWeightedTableEntry(row, 100);                     // Ghidra: FUN_0053a920
+            int left = GrantChestContents_00530F20((uint*)entity, sheet, 0);  // Ghidra: FUN_00530f20
+
+            if ((short)left == 0)
+            {
+                *s_CastleGiftPending_005e986c = 0;
+                *s_CastleGiftDone_005e9704 |= 0x40;
+                return 0;
+            }
+
+            *s_CastleGiftPending_005e986c = (byte)left;
+            return 0;
+        }
+
+        int again = GrantChestContents_00530F20((uint*)entity, pending - 1, 0);
+        if ((short)again == 0) *s_CastleGiftDone_005e9704 |= 0x40;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00444a40</c> — <b>le meme verbe, rangement differe</b>, sous-zones 6 a 10.
+    /// Absent de <c>Blaze.c</c> ; 59 instructions.
+    ///
+    /// <para>
+    /// Il empile <c>0x00444ab0</c> comme <b>rappel de fin de boite</b> — d'ou l'<c>add esp,0Ch</c>
+    /// la ou <see cref="AreaVerb_00444670"/> fait <c>add esp,8</c> — et c'est le rappel, non le
+    /// verbe, qui pose le drapeau. Voir <see cref="CastleGiftDone_00444AB0"/>.
+    /// </para>
+    /// <para>
+    /// <b>Et le sens du test est inverse par rapport a son jumeau.</b> Ici le retour NUL de
+    /// <see cref="GrantChestContents_00530F20"/> ne fait rien du tout : le verbe ne garde l'attente
+    /// que lorsque la remise echoue. C'est coherent — quand elle passe, c'est le rappel qui
+    /// conclura.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00444A40(byte* entity, short row)
+    {
+        if ((*s_CastleGiftDone_005e9704 & 0x40) != 0) return 1;
+
+        byte pending = *s_CastleGiftPending_005e986c;
+
+        if (pending == 0)
+        {
+            int sheet = PickWeightedTableEntry(row, 100);                            // Ghidra: FUN_0053a920
+            int left = GrantChestContents_00530F20((uint*)entity, sheet, 0x00444ab0);
+            if ((short)left != 0) *s_CastleGiftPending_005e986c = (byte)left;
+            return 0;
+        }
+
+        int again = GrantChestContents_00530F20((uint*)entity, pending - 1, 0x00444ab0);
+        if ((short)again != 0) *s_CastleGiftPending_005e986c = (byte)again;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00444ab0</c> — <b>le rappel de fin de boite</b> de
+    /// <see cref="AreaVerb_00444A40"/>. Absent de <c>Blaze.c</c> ; quatorze instructions, relevees
+    /// au desassembleur dans la foulee du verbe.
+    ///
+    /// <para>
+    /// La forme exacte de <see cref="ChestPickupDone_00450700"/> — le porteur du script est
+    /// dedesigne (<c>+0x6c = 0</c>), la porte de validation des boites est rabaissee, et
+    /// <see cref="StoreItemInInventory_005312D0"/> range enfin l'objet — mais la ou le coffre
+    /// reporte le reliquat dans sa table de butin, celui-ci le garde dans l'attente du verbe et,
+    /// s'il n'y a pas de reliquat, <b>pose le drapeau « c'est fait »</b>.
+    /// </para>
+    /// <para>
+    /// <b>La porte n'est pas la meme que celle du coffre</b> : <c>0x005e987f</c> ici,
+    /// <c>0x005e9060</c> la-bas. Deux octets voisins de la meme arene, deux portes distinctes.
+    /// </para>
+    /// </summary>
+    internal static void CastleGiftDone_00444AB0(uint* entity)
+    {
+        *(uint*)((byte*)entity + 0x6c) = 0;
+        *Mem.Arena(0x005e987f) = 0;                            // Ghidra: DAT_005e987f
+
+        int remaining = StoreItemInInventory_005312D0(entity);
+
+        if (remaining != 0)
+        {
+            *s_CastleGiftPending_005e986c = (byte)remaining;
+            return;
+        }
+
+        *s_CastleGiftPending_005e986c = 0;
+        *s_CastleGiftDone_005e9704 |= 0x40;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00444e00 @ 0x00444e00 — <b>« allumer ou eteindre toutes les entites de scene
+    /// d'espece 4 »</b>, toutes sous-zones sauf 5 et 11. Decompile dans <c>Blaze.c</c>,
+    /// 33 instructions.
+    ///
+    /// <para>
+    /// Il balaie les <b>trente-deux</b> entites de scene de <c>0x005ecaa0</c>, au pas de
+    /// <c>0x9c</c>, et ne retient que celles dont l'espece <c>+0x0c</c> vaut <c>4</c> et qui sont
+    /// vivantes. Sur celles-la, l'argument decide :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term><c>0</c></term><description>l'entite <b>s'allume</b> : posture <c>+0x18 = 3</c>,
+    ///     <c>+0x1a = 1</c>, et les bits <c>0x2008</c> du mot d'etat sont poses ;</description></item>
+    ///   <item><term>autre</term><description>les memes bits sont <b>retires</b>, et rien d'autre
+    ///     n'est touche — ni la posture, ni le compteur.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le balayage ne consulte pas le compte d'entites de la sous-zone</b> : il fait toujours
+    /// ses trente-deux tours. C'est la meme boucle en dur que les autres verbes de zone.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00444E00(short off)
+    {
+        byte* scene = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0x20; i != 0; i--, scene += 0x9c)
+        {
+            if (scene[0x0c] != 4 || (*(uint*)scene & 0x80000000) == 0) continue;
+
+            if (off == 0)
+            {
+                *(short*)(scene + 0x18) = 3;
+                *(short*)(scene + 0x1a) = 1;
+                *(uint*)scene |= 0x2008;
+            }
+            else
+            {
+                *(uint*)scene &= 0xffffdff7;
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004450a0</c> — <b>« plus personne n'est en etat d'agir ? »</b>, sous-zones 5
+    /// et 11. Absent de <c>Blaze.c</c> ; dix-huit instructions.
+    ///
+    /// <para>
+    /// Il rend <c>1</c> tant qu'<b>aucun</b> des quatre emplacements ne porte a la fois le bit
+    /// <c>0x80000000</c> (vivant), aucun bit de <c>0x50000000</c>, et un <c>+0x12</c> nul. Le
+    /// premier emplacement qui remplit les trois conditions fait tomber le resultat a zero — la
+    /// boucle continue quand meme ses quatre tours, sans pouvoir remonter.
+    /// </para>
+    /// <para>
+    /// <b>Le masque interdit est <c>0x50000000</c>, pas <c>0x50010000</c></b> : c'est le meme piege
+    /// que <c>0x004618B0</c> au Labyrinthe, ou deux comptes d'emplacements voisins ne refusaient
+    /// pas les memes etats. Ce verbe-ci n'est donc pas
+    /// <see cref="ActivePartySlotCount_00466D70"/> retourne.
+    /// </para>
+    /// <para>
+    /// Il ne lit <b>aucun</b> de ses deux arguments.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_004450A0()
+    {
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        int none = 1;
+
+        for (int i = 4; i != 0; i--, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50000000) != 0) continue;
+            if (*(short*)(slot + 0x12) != 0) continue;
+            none = 0;
+        }
+
+        return (uint)(short)none;
     }
 }

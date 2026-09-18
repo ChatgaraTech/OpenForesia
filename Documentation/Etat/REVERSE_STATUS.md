@@ -24491,3 +24491,88 @@ corps** — onze, douze et quatorze entrées, tous les décalages identiques —
   Il reste trois marges à vérifier dans tout le dépôt, toutes antérieures à ce lot.
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
 
+
+## 2026-09-18 (suite 12) — Zone 6, palier 2 : les 62 corps « simples », et ce qu'ils ont coûté
+
+**63 sur 170 devient 125 sur 170**, et la grotte scellée gagne un corps de plus (`0x00439B00`). Les
+catégories **A et B du tri sont vides** ; il reste 45 corps à la zone — C 23, D 9, E 13.
+
+### Le relevé qui a décidé du lot, et son résultat négatif
+
+Avant d'en lire un seul : les 62 corps normalisés, groupés par forme LOOSE — **49 formes
+distinctes** — puis chaque forme comparée aux **957 corps déjà écrits** du dépôt, avec une fenêtre
+de taille de ±12 instructions.
+
+**Aucune n'avait de parent.** Une seule était proche : `0x0042A350`, à 21 lignes de
+`TickTwoHostOrbitMote`. Le palier 1 était « déjà écrit ou presque » ; celui-ci ne l'était pas du
+tout, et c'est ce que le tri appelle « simple » — court, pas connu. Le contrôle a quand même payé :
+il a trouvé `0x00439B00`, une copie du palier dans la grotte scellée, et il a écarté d'emblée
+l'idée de chercher un parent pour chacun.
+
+### Le classement par rôle, et le fichier qu'il a ouvert
+
+| destination | formes | corps |
+|---|---:|---:|
+| `Handlers/ImmortalCastle.cs` — le décor (`0x0056adc8`) | 34 | 44 |
+| `Effects/ImmortalCastleParticles.cs` — `0x0056b0c8` / `b1c8` / `b2c8` | 8 | 10 (+1 grotte) |
+| `Handlers/ImmortalCastleMecanismes.cs` — **fichier neuf** | 3 | 4 |
+| `WorldMapScript.cs` — des **verbes**, pas des gestionnaires (`0x0056aec8`) | 4 | 4 |
+
+Le fichier de mécanismes a été ouvert sur le test d'appartenance d'`ARCHITECTURE.md`, et sur un seul
+critère lisible dans le corps : **`RunEntityScript`**. Quatre corps l'appellent — `0x00426860`,
+`0x00426B10`, `0x004647F0`, `0x00466130` — et aucun autre du palier. Le fichier du Labyrinthe était
+né à trois corps ; celui-ci naît à quatre.
+
+**Les quatre « gestionnaires » de `0x0056aec8` n'en sont pas.** Ce sont des créneaux de la table des
+verbes, comme `0x00444340` au lot 8 du Labyrinthe, et ils en sont les voisins d'adresse : la table
+range ses verbes par zone. Leur ligne dans `GestionnairesEntites.md` est trompeuse, et c'est la
+deuxième fois que le piège se présente.
+
+### La famille de six, et les treize autres paires
+
+**Le château se lit en deux blocs miroir** — `0x00558e28` pour les sous-zones 0 à 4, `0x005594a8`
+pour 6 à 10 — et le **numéro de créneau est le même des deux côtés**. C'est ce qui apparie les
+corps sans rien lire : quatorze paires en sortent.
+
+Onze sont identiques instruction pour instruction. Les trois autres tiennent en une constante, et
+cette constante dit quelque chose :
+
+| créneau | ce qui change entre les deux moitiés du château |
+|---:|---|
+| 35 | le craquement part une fois sur **20** à l'est, une fois sur **5** à l'ouest, et d'un demi-ton plus haut |
+| 41 | la dalle à verrou pose le bit **8** à l'est, **0x80** à l'ouest |
+| 42 | la dalle se déclenche **à l'approche** à l'est (couronne `0x20` et personne dans `0x10`), **sous le pied** à l'ouest |
+| 10 | le panneau qui bascule **revient** à son angle de départ à l'est, s'arrête un **demi-tour plus loin** à l'ouest |
+| 18 | la plate-forme flottante se relance sous `+0xc8` à l'est, sous `+0xa0` à l'ouest |
+
+Et **la famille de six** : les créneaux 22, 23 et 24 des deux blocs portent le même corps à un
+nombre près — `0x19`, `0x29`, `0x39`, l'image où la navette commence à freiner, donc la longueur de
+sa course. Six gestionnaires, une lecture, et le nombre est lisible comme une donnée de niveau.
+
+### Ce que le palier a appris
+
+- **Un corps peut porter deux rôles, choisis par un champ de placement.** `0x00463B30` est *la
+  dalle* quand `+0x16` vaut zéro et *le verrou* sinon — deux comportements sans rapport dans le même
+  corps, et rien dans le désassemblage ne le signale avant le `cmp word [esi+16h],0`.
+- **Le champ `+0x14` n'est pas toujours un drapeau.** Il l'est pour les plaques (`ScriptFlagSet`),
+  mais `0x00465640` et `0x00463B30` s'en servent comme d'un **écart en rangs** pour lire ou écrire
+  l'entité voisine — `[e + n * 0x9c]`. Troisième et quatrième cas du dépôt après `0x00463150`.
+- **Trois gardes mortes, transcrites telles quelles.** `0x00465020` écrit
+  `0x42 < n && n < 0x51 && n == 0x50` ; `0x00466970` garde son son derrière `hauteur != 200` alors
+  que la hauteur vaut 512 ou 712 ; `0x00426B10` teste `+0x12 == 0` après l'avoir incrémenté. Aucune
+  ne refuse jamais rien.
+- **Un tirage perdu par image.** `0x004643B0` appelle `rand()` juste avant de rendre la main et ne
+  lit pas le résultat — le troisième du dépôt après les deux braises. Il décale le flux de tout ce
+  qui suit dans l'image, donc il est reproduit.
+- **Le chemin le plus court pour un déclencheur n'est pas toujours un drapeau.** `0x00466AA0`
+  attend que la **première entrée de la palette animée** de la sous-zone vaille `0x835a` —
+  l'adresse se calcule par la même formule que la rotation de CLUT de `WorldMap.cs`. C'est la carte
+  elle-même qui donne le signal de l'orage.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur.
+- `check-descriptors.sh` : les quatre planches neuves lues correctement, **une marge courte prouvée
+  et scellée** (`0x005506e8`). Il reste trois marges à vérifier dans tout le dépôt, toutes
+  antérieures.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.

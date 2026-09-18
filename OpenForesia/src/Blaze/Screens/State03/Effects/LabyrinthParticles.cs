@@ -1349,13 +1349,14 @@ public static unsafe partial class Blaze
     /// puis la planche tourne d'un cran par image en boucle sur trois. L'echelle est <c>0xfa0</c>.
     /// </para>
     /// </summary>
-    private static void TickTwoHostOrbitMote(byte* e, byte* plate)
+    private static void TickTwoHostOrbitMote(byte* e, byte* plate, bool guardOffset = true)
     {
         byte* anchor = *(byte**)(e + 0x74);
         if (anchor == null) anchor = Res.s_EntityList_005de558;       // Ghidra: 5de558h
 
         byte* offset = *(byte**)(e + 0x6c);
-        if (offset == null) offset = Res.s_EntityList_005de558;
+        // Ghidra: 0x0042A350 (chateau) NE protege PAS cette lecture-ci — seulement celle de +0x74.
+        if (offset == null && guardOffset) offset = Res.s_EntityList_005de558;
 
         *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + *(int*)(offset + 0x54);
 

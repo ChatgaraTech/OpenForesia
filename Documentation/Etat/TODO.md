@@ -1,7 +1,7 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (palier 1 du château de
-l’immortel : **la zone 6 passe de 31 à 63 sur 170**, et la grotte scellée de 48 à 50). La zone 5,
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (paliers 1 et 2 du château de
+l’immortel : **la zone 6 passe de 31 à 125 sur 170**, et la grotte scellée de 48 à 51). La zone 5,
 le Labyrinthe, a été fermée le même jour — **160 sur 160**, le septième ensemble entièrement
 implémenté —, et la veille avaient fermé la mine, la montagne du dragon de feu et la vieille tour.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
@@ -52,8 +52,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **631** |
-| à transcrire | **473** |
+| implémentés, jamais appelés | **694** |
+| à transcrire | **410** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -64,11 +64,11 @@ socle commun, et il est entier.
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
 | 5 | **Le Labyrinthe des morts** | **160 / 160** |
-| 6 | Le château de l’immortel | 63 / 170 |
+| 6 | Le château de l’immortel | 125 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
-| 10 | La grotte scellée | 50 / 349 |
+| 10 | La grotte scellée | 51 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -169,19 +169,31 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
 5. ~~**La zone 5, le Labyrinthe**~~ — **complète le 2026-09-18** (160 / 160), voir le point 4.
-   **La zone 6, le château, est en cours : 63 / 170.** Le tri est dans `Zone6ParComplexite.md`
+   **La zone 6, le château, est en cours : 125 / 170.** Le tri est dans `Zone6ParComplexite.md`
    (2026-09-18, suite 10) et le classement en cinq paliers dans `REVERSE_STATUS.md`.
    - ~~**palier 1**, les 32 corps déjà écrits ou presque~~ — **fait le 2026-09-18 (suite 11)**,
-     plus deux gestionnaires de la grotte scellée en prime. La catégorie A du tri est vide.
-   - **La suite est le palier 2** : les 62 « B » restants pour ~49 lectures, dont dix-sept paires
-     miroir sous-zones 0-4 / 6-10 (0 à 4 lignes d'écart) et **une famille de six** (`0x00464C30`,
-     `0x00464CF0`, `0x00464DB0` et leurs miroirs, 62 instructions, 4 lignes entre eux). Puis
-     ~20 lectures moyennes, ~8 grosses et 12 routines d'intelligence.
-   - **Ce que le palier 1 a appris, et qui vaut pour les suivants** : la normalisation qui apparie
-     deux corps **masque les cibles d'appel**. Résoudre celles-ci à part, sauts internes retirés,
-     avant de conclure qu'un corps est une copie — c'est ce qui a séparé deux sons différents que
-     six lignes de `diff` donnaient pour identiques. Et **comparer au bon parent** : `0x0042A540`
-     faisait 22 lignes contre le modèle nu et **une seule instruction** contre la jumelle gardée.
+     plus deux gestionnaires de la grotte scellée en prime.
+   - ~~**palier 2**, les 62 corps « simples » pour 49 formes~~ — **fait le 2026-09-18 (suite 12)**,
+     plus un de la grotte. **Les catégories A et B du tri sont vides.**
+   - **La suite est le palier 3** : les 23 « C » pour ~20 lectures — quatre paires miroir
+     (`0x00426E80`/`0x004296F0`, `0x0042A920`/`0x0042B190`, `0x004644F0`/`0x00465E30`,
+     `0x004646A0`/`0x00465FE0`), `0x0042D9B0` qui ferme aussi `0x00442AC0` (grotte), et 15 isolés.
+     Les quatre nuages à effet 32 ont leurs feuilles écrites mais **ne sont pas**
+     `TickHostStatusCloud` (73 lignes d'écart au plus proche). Puis ~8 lectures grosses et
+     12 routines d'intelligence.
+   - **Ce que les deux premiers paliers ont appris** :
+     - la normalisation qui apparie deux corps **masque les cibles d'appel** — les résoudre à part,
+       sauts internes retirés, avant de conclure qu'un corps est une copie ;
+     - **comparer au bon parent** : `0x0042A540` faisait 22 lignes contre le modèle nu et une seule
+       instruction contre la jumelle gardée ;
+     - **le château se lit en deux blocs miroir au même numéro de créneau** (`0x00558e28` pour les
+       sous-zones 0 à 4, `0x005594a8` pour 6 à 10). C'est ce qui apparie les corps sans rien lire,
+       et la différence entre deux miroirs tient presque toujours en une constante ;
+     - **« simple » ne veut pas dire « gratuit »** : aucune des 49 formes du palier 2 n'avait de
+       parent dans le dépôt. Faire le relevé quand même — il a rendu un corps de la grotte scellée
+       et évité 49 recherches à la main ;
+     - **une ligne de `GestionnairesEntites.md` n'est pas toujours un gestionnaire d'entité** : les
+       créneaux de `0x0056aec8` sont des **verbes de script**. Deuxième fois.
 6. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et

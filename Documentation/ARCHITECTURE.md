@@ -251,8 +251,10 @@ les répertoires sont le niveau « ce que l'écran atteint ».
 **Une zone peut avoir deux fichiers dans `Handlers/`, et la coupure a son propre test.** La mine
 en a deux depuis le 2026-09-16 : `Mine.cs` (2 079 l.) et `MineMecanismes.cs` (1 694 l.) ; le
 labyrinthe des morts depuis le 2026-09-18 : `Labyrinth.cs` (2 212 l.) et `LabyrinthMecanismes.cs`
-(950 l.). Ce n'est pas une coupure de taille — le second a été ouvert à trois corps, bien avant que
-le premier ne grossisse —, c'est une coupure de rôle, et elle se lit **dans le corps** :
+(950 l.) ; le château de l'immortel le même jour, `ImmortalCastle.cs` et
+`ImmortalCastleMecanismes.cs`, celui-ci ouvert à **quatre** corps. Ce n'est pas une coupure de
+taille — le second a toujours été ouvert bien avant que le premier ne grossisse —, c'est une
+coupure de rôle, et elle se lit **dans le corps** :
 
 | fichier | ce qui y va | test d'appartenance |
 |---|---|---|
@@ -270,9 +272,11 @@ fichiers sont la même classe partielle, et les aides partagées (`ZoneSound`,
 reçus le 2026-09-18, au palier 1 : `Effects/ImmortalCastleParticles.cs`,
 `Handlers/ImmortalCastle.cs` et `Cutscene/ImmortalCastleScenes.cs`. C'est le découpage qu'ont déjà
 la mine, le Labyrinthe et la vieille tour, et il se décide **avant** d'écrire — pas quand un
-fichier grossit. Son `<Zone>Mecanismes.cs` n'existe pas encore et n'existera que le jour où un
-corps du château prendra le groupe en charge : la coupure est de rôle, et un rôle absent n'ouvre
-pas de fichier.
+fichier grossit. **Son `<Zone>Mecanismes.cs` est venu au palier 2, le même jour** : quatre corps
+appellent `RunEntityScript` et aucun autre du palier ne le fait — le critère se lit dans le corps,
+pas dans la table d'origine, et deux de ces quatre viennent d'une table d'effets. La coupure est
+de rôle ; un rôle absent n'ouvre pas de fichier, un rôle présent l'ouvre tout de suite, fût-ce à
+quatre corps.
 
 
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique

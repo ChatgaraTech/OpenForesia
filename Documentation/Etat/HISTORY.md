@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le palier 2 du château de l'immortel est écrit — 63 sur 170 devient 125 sur 170**, et la
+  catégorie B du tri est vide comme la A
+- feat : la **famille de six** des créneaux 22, 23 et 24 — six navettes pour une lecture, à un
+  nombre près : l'image où le freinage commence (`0x19`, `0x29`, `0x39`)
+- feat : `Handlers/ImmortalCastleMecanismes.cs`, ouvert à quatre corps — ceux qui lancent un script
+  de zone ; et quatre **verbes de script** de la table `0x0056aec8` dans `WorldMapScript.cs`, dont
+  un don d'objet à rappel de fin de boîte (`0x00444AB0`, branché dans `UiText.cs`)
+- doc : **aucune des 49 formes du palier n'avait de parent déjà écrit** — la recherche LOOSE contre
+  les 957 corps du dépôt est revenue vide, sauf `0x0042A350`. Un palier « simple » n'est pas un
+  palier gratuit
 - feat : **le palier 1 du château de l'immortel est écrit — 31 sur 170 devient 63 sur 170**, et
   deux gestionnaires de la grotte scellée tombent en prime (`0x00439170`, `0x00442C20`)
 - feat : trois fichiers neufs pour la zone 6 — `Effects/ImmortalCastleParticles.cs`,
