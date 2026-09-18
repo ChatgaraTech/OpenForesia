@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **326** |
-| implementes, jamais appeles | **589** |
-| a transcrire | **515** |
+| implementes, jamais appeles | **597** |
+| a transcrire | **507** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -67,7 +67,7 @@ et n'est pas un comportement.
 | 2 | La montagne du dragon de feu | 42 | 42 | 0 |
 | 3 | La foret | 136 | 136 | 90 |
 | 4 | La vieille tour | 176 | 176 | 2 |
-| 5 | Le Labyrinthe des morts | 160 | 152 | 0 |
+| 5 | Le Labyrinthe des morts | 160 | 160 | 0 |
 | 6 | Le chateau de l'immortel | 170 | 31 | 0 |
 | 7 | Les ruines souterraines | 35 | 19 | 0 |
 | 8 | La vallee d'argent | 46 | 18 | 0 |
@@ -960,23 +960,16 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 5 — Le Labyrinthe des morts
 
-160 gestionnaires, 152 implementes, 0 testes.
+160 gestionnaires, 160 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x0041D310` | 0,1,2,3 | 0056B2C8 | **non** | **non** |
-| `0x0041F760` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
-| `0x0041FF40` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
-| `0x00420480` | 5,6,7,8 | 0056B1C8 | **non** | **non** |
-| `0x00421DC0` | 4,9 | 0056B2C8 | **non** | **non** |
-| `0x00422E50` | 4,9 | 0056B1C8 | **non** | **non** |
-| `0x00462A80` | 4,9 | 0056ADC8 | **non** | **non** |
-| `0x00484190` | 4,9 | 0056B1C8 | **non** | **non** |
 | `0x0040A600` | 0,1,2,3,0,1,2,3,5,6,7,8,0,1,2,3,5,6,7,8 | 0056ADC8 0056B0C8 0056B2C8 | oui | **non** |
 | `0x0041C740` | 0,1,2,3 | 0056B0C8 | oui | **non** |
 | `0x0041C900` | 0,1,2,3 | 0056B1C8 | oui | **non** |
 | `0x0041D090` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041D1A0` | 0,1,2,3 | 0056B0C8 | oui | **non** |
+| `0x0041D310` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041D860` | 0,1,2,3 | 0056B0C8 | oui | **non** |
 | `0x0041D920` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041DA80` | 0,1,2,3 | 0056B2C8 | oui | **non** |
@@ -996,7 +989,10 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0041EDD0` | 5,6,7,8 | 0056B1C8 | oui | **non** |
 | `0x0041F520` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x0041F600` | 5,6,7,8 | 0056B0C8 | oui | **non** |
+| `0x0041F760` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x0041FCA0` | 5,6,7,8 | 0056B0C8 | oui | **non** |
+| `0x0041FF40` | 5,6,7,8 | 0056B2C8 | oui | **non** |
+| `0x00420480` | 5,6,7,8 | 0056B1C8 | oui | **non** |
 | `0x00420860` | 5,6,7,8 | 0056B0C8 | oui | **non** |
 | `0x00420910` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00420A70` | 5,6,7,8 | 0056B2C8 | oui | **non** |
@@ -1013,10 +1009,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004219C0` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00421AE0` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00421C10` | 4,9 | 0056B0C8 | oui | **non** |
+| `0x00421DC0` | 4,9 | 0056B2C8 | oui | **non** |
 | `0x00422330` | 4,9 | 0056B0C8 | oui | **non** |
 | `0x004224F0` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x00422C60` | 4,9 | 0056B2C8 | oui | **non** |
 | `0x00422D50` | 4,9 | 0056B0C8 | oui | **non** |
+| `0x00422E50` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x00423240` | 4,9 | 0056B0C8 | oui | **non** |
 | `0x004232A0` | 4,9 | 0056B2C8 | oui | **non** |
 | `0x004236F0` | 4,9 | 0056B0C8 | oui | **non** |
@@ -1085,6 +1083,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004625B0` | 5,6,7,8 | 0056ADC8 | oui | **non** |
 | `0x00462860` | 5,6,7,8 | 0056ADC8 | oui | **non** |
 | `0x00462990` | 4,9 | 0056ADC8 | oui | **non** |
+| `0x00462A80` | 4,9 | 0056ADC8 | oui | **non** |
 | `0x00463150` | 4,9 | 0056ADC8 | oui | **non** |
 | `0x00463300` | 4,9 | 0056ADC8 | oui | **non** |
 | `0x004633C0` | 4,9 | 0056ADC8 | oui | **non** |
@@ -1104,6 +1103,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00483E90` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x00483F30` | 4,9 | 0056B0C8 | oui | **non** |
 | `0x004840E0` | 4,9 | 0056B1C8 | oui | **non** |
+| `0x00484190` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x004B8540` | 0,1,2,3 | 0056AD48 | oui | **non** |
 | `0x004B95E0` | 0,1,2,3 | 0056AD48 | oui | **non** |
 | `0x004BA110` | 0,1,2,3 | 0056AD48 | oui | **non** |

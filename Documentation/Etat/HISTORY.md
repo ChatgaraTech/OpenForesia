@@ -6,6 +6,23 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **LA ZONE 5, LE LABYRINTHE DES MORTS, EST COMPLÈTE — 160 sur 160**, le septième ensemble
+  entièrement implémenté
+- feat : le lot 13 — le projectile à tête chercheuse (`0x00484190`) et le battant qui bascule en
+  entraînant sa voisine (`0x00462A80`), les deux derniers corps de la zone
+- doc : **LB-031** — le projectile déréférence la cible qu'il vient d'effacer quand elle meurt en
+  vol ; tracé, pas observé, transcrit tel quel
+- doc : LB-030 s'étend au Labyrinthe — `0x0041FCA0` porte le même stroboscope rouge que la forêt
+- feat : **le lot 12 du Labyrinthe des morts** — `0x00420480` et `0x00422E50`, deux corps pour une
+  lecture : l'onde qui s'étale et frappe une fois chaque membre dans son rayon, ou sa gerbe qui
+  tourne et s'éteint. Zone 5 : 158 sur 160
+- feat : **le lot 11 du Labyrinthe des morts** — les quatre semis des nuages (`0xed` et `0xdf`),
+  quatre corps pour une lecture : l'étincelle qui va chercher la cible, ou qui revient sur son
+  porteur. Zone 5 : 156 sur 160
+- doc : **ce qui déclenche l'effet 32 des nuages** — leurs propres semis, qui posent `+0x44 = 1`
+  sur le nuage quand ils atteignent la cible
+- doc : l'étincelle vise au-dessus de la cible mais mesure sa distance vers un point au-dessous —
+  un `add` de 1998, transcrit tel quel
 - feat : **le lot 10 du Labyrinthe des morts** — `0x0041C900` et `0x0041EDD0` sont le corps du lot
   9 à leur repli près (un tampon nul sur la pile, aucun repli) : deux corps sans lecture neuve. Zone
   5 : 152 sur 160

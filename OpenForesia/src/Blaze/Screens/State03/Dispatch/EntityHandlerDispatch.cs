@@ -1511,6 +1511,20 @@ public static unsafe partial class Blaze
             case 0x0041C900: EntityHandler_0041C900(record); return;   //   la meme, repli sur un tampon nul
             case 0x0041EDD0: EntityHandler_0041EDD0(record); return;   //   la meme, sans repli
 
+            // LE LABYRINTHE DES MORTS, lot 11 : les semis des nuages du lot 8, quatre corps pour un.
+            case 0x0041D310: EntityHandler_0041D310(record); return;   // 0xed, 0-3 : l'etincelle qui va chercher la cible
+            case 0x0041F760: EntityHandler_0041F760(record); return;   //   0xed, 5-8
+            case 0x0041FF40: EntityHandler_0041FF40(record); return;   //   0xdf, 5-8 — le semis du stroboscope
+            case 0x00421DC0: EntityHandler_00421DC0(record); return;   //   0xed, 4 et 9, avec les replis
+
+            // LE LABYRINTHE DES MORTS, lot 12 : l'onde qui frappe une fois chacun, ou sa gerbe.
+            case 0x00420480: EntityHandler_00420480(record); return;   // 5-8, sans test
+            case 0x00422E50: EntityHandler_00422E50(record); return;   //   4 et 9, avec les replis
+
+            // LE LABYRINTHE DES MORTS, lot 13 : les deux derniers.
+            case 0x00484190: EntityHandler_00484190(record); return;   // le projectile a tete chercheuse (0xda)
+            case 0x00462A80: EntityHandler_00462A80(record); return;   // le battant qui bascule et entraine sa voisine
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98

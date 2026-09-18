@@ -24204,3 +24204,103 @@ Mesuré au diff « super-LOOSE » entre eux :
 | B | `0x00420480`, `0x00422E50` | 43 lignes | leurs quatre « appelées inconnues » sont encore la garde : `IsEffectPairBlocked_004364B0` puis `ApplyStatusEffect_0053BB20` / `0053BC60`, tous deux écrits |
 | — | `0x00484190` | — | 252 instr., isolé |
 | — | `0x00462A80` | — | 536 instr., le dernier du décor |
+
+## 2026-09-18 (suite 7) — Labyrinthe des morts, lot 11 : les semis des nuages, quatre corps pour un
+
+Zone 5 : **152 → 156 sur 160**. `0x0041D310`, `0x0041F760`, `0x0041FF40`, `0x00421DC0` (tous dans
+`Blaze.c`, table `0x0056b2c8`) sont un seul corps, `TickCloudSeed(e, planche, AbsentHost)`. Leurs
+créneaux disent ce qu'ils sont : **45 dans les trois blocs**, soit le sous-type `0xed`, et **31** en
+5-8 pour `0x0041FF40`, soit `0xdf` — **exactement les deux sous-types que sèment les nuages du lot 8**
+(`0xed` pour `0x0041D1A0` et ses sœurs, `0xdf` pour `0x0041FCA0`).
+
+### La question du lot 8 est résolue
+
+Le nuage attend que son `+0x44` passe à 1 pour porter l'effet 32, et ne l'écrit jamais lui-même.
+**Ce sont ses semis qui le posent** : en mode 0, une étincelle monte, fond sur la cible `+0x78`, et
+si elle arrive à moins de `0x8c` unités elle écrit `+0x44 = 1` sur son **porteur** `+0x6c` — le
+nuage — puis tourne autour de la cible en violet. Le mode de l'étincelle est son propre `+0x44`,
+hérité du parent : le nuage le met à 0 avant de semer, le stroboscope (`StepCarrierStrobe`) le tire
+à 0 ou 1 — d'où le **mode 1**, une étincelle née sur la cible qui revient s'éteindre sur son
+porteur sans rien déclencher.
+
+### Ce qui distingue les quatre
+
+| corps | planche | un pointeur nul |
+|---|---|---|
+| `0x0041F760` (5-8, `0xed`) | `0x00550248` | aucun test |
+| `0x0041FF40` (5-8, `0xdf`) | `0x00550228` | aucun test — **identique** au précédent à la planche près |
+| `0x0041D310` (0-3) | `0x00550040` | cible nulle : **sortie** immédiate |
+| `0x00421DC0` (4, 9) | `0x00550460` | cible nulle → `s_EntityList_005de558` à chaque relecture ; porteur nul → idem là où il est **écrit**, mais **pas** là où le mode 1 le lit |
+
+Les quatre planches portent les mêmes 32 octets (trois tuiles `0x0f` que le mode 0 fait tourner, une
+tuile `0x1f` que le mode 1 pose). `AbsentHost` gagne `Abandon` — la sortie —, qui était jusqu'ici
+codée à la main dans le nuage.
+
+### Une bizarrerie de 1998, transcrite
+
+L'étincelle **vise** `cible + 0x3c000` en hauteur mais **mesure** `(y - cible.y) + 0x3c000` — un
+`add` et non un `sub` (`0x0041f928`, vérifié au désassembleur ; Ghidra le rend fidèlement). Arrivée
+sur son point, elle est à `0x78` unités de ce que la mesure croit, sous un seuil de `0x8c` : le
+déclenchement marche, mais dans un rayon réel bien plus étroit que le seuil ne le laisse penser.
+Transcrit tel quel.
+
+**Reste dans la zone : 4 « D »** — la famille B (`0x00420480` / `0x00422E50`, appelées déjà
+écrites), `0x00484190` et `0x00462A80`.
+
+## 2026-09-18 (suite 8) — Labyrinthe des morts, lot 12 : l'onde et sa gerbe, deux corps pour un
+
+Zone 5 : **156 → 158 sur 160**. `0x00420480` (créneau 31 de `0x00558528`, sous-zones 5 à 8) et
+`0x00422E50` (créneau 31 de `0x00558ba8`, sous-zones 4 et 9), tous deux absents de `Blaze.c`, sont
+un seul corps, `TickShockwaveOrSpray(e, AbsentHost)`. 43 lignes d'écart, toutes dans le prologue :
+`0x00422E50` replie sur `s_EntityList_005de558` le porteur `+0x6c`, puis le porteur du porteur ;
+`0x00420480` lit les deux sans test.
+
+Deux vies, choisies par `+0x5c` :
+
+- **mode 0, l'onde** : le modèle 7 naît plat et s'étale jusqu'à `0x7530` par huitièmes en pâlissant ;
+  tant que son échelle reste sous `0x6978` et que `+0x16` est nul, chaque membre vivant à moins de
+  `échelle / 50` unités à plat est frappé **une seule fois** (un bit par emplacement dans `+0x14`),
+  au nom du **porteur du porteur** — `ApplyStatusEffect_0053BB20` si `+0x44` est nul,
+  `0053BC60` sinon. Les deux « appelées inconnues » du tri étaient, une fois de plus, la garde
+  `IsEffectPairBlocked_004364B0` devant un effet écrit ;
+- **mode 1, la gerbe** : le modèle `0x30`, qui tourne, grossit de 100 par image, s'allume cinq
+  images et s'éteint vingt.
+
+Le porteur du porteur est rangé **dans l'emplacement de l'argument** (`[esp+18h]`) : le cinquième
+corps de la zone à le faire depuis le lot 8.
+
+**Reste dans la zone : 2 « D »**, isolés — `0x00484190` (252 instr., hors de `Blaze.c`) et
+`0x00462A80` (536, dans `Blaze.c`, le dernier du décor).
+
+## 2026-09-18 (suite 9) — Labyrinthe des morts, lot 13 : les deux derniers — LA ZONE 5 EST COMPLÈTE
+
+Zone 5 : **158 → 160 sur 160**. Septième ensemble entièrement implémenté, après les trois tables
+statiques, l'auberge, la forêt, la mine, la montagne du dragon de feu et la vieille tour.
+
+| corps | quoi | fichier |
+|---|---|---|
+| `0x00484190` (créneau 26 de `0x00558ba8`, `0xda`, absent de `Blaze.c`, 252 instr.) | le **projectile à tête chercheuse** : vise le haut de `+0x78`, se verrouille à ±`0x80`, frappe au contact, éclate au sol ou vingt images après avoir perdu sa cible | `Effects/LabyrinthParticles.cs` |
+| `0x00462A80` (créneau 43 de `0x005587a8`, dans `Blaze.c`, 536 instr.) | le **battant** à quatre orientations qui bascule et entraîne l'enregistrement voisin `+0x14 × 0x9c` — ouverture, fermeture, deux secousses, et un état 99 qui rejoue soixante pas d'un coup | `Handlers/LabyrinthMecanismes.cs` |
+
+**LB-031** (`legacy-bug.md`) : dans `0x00484190`, le chemin « la cible est morte » défait les deux
+liens, met `ebp` à zéro, puis saute **dans** le calcul de visée au lieu du chemin « pas de cible »
+voisin : lecture de `[0 + 0x1c]`. Tracé, pas observé ; transcrit tel quel, comme LB-007.
+
+**LB-030 s'étend au Labyrinthe** : `0x0041FCA0` porte le même stroboscope rouge que la forêt.
+
+### Le bilan de la journée sur la zone 5
+
+133 → 160 en six lots (8 à 13), **27 corps de la zone — 28 avec le jumeau de la grotte scellée —
+pour 17 lectures**. Ce qui a payé :
+
+- **comparer chaque corps restant aux corps DÉJÀ ÉCRITS**, pas seulement entre eux : les trois
+  « charpentes » étaient une seule (lot 10), et l'écart entre elles cachait leur parenté au modèle ;
+- **lire les « appelées inconnues » avant tout** : toutes celles du tri étaient déjà
+  écrites — une souche de DLL (`Ordinal_762`), une copie octet pour octet, et des dizaines de fois la
+  même garde `IsEffectPairBlocked_004364B0` devant un effet d'état existant ;
+- **suivre les sous-types semés** : les créneaux 45 et 31 de `0x0056b2c8` sont `0xed` et `0xdf`,
+  les semis des nuages — c'est ce qui a résolu la question que le lot 8 laissait ouverte ;
+- **ce qu'un corps fait d'un pointeur nul ne se déduit pas de son bloc** : cinq conduites relevées
+  dans une seule zone (`AbsentHost`).
+
+**Aucun des 160 n'a été exercé en jeu.** La zone est à 160 implémentés pour 0 testés.

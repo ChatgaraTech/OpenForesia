@@ -1633,6 +1633,11 @@ fondu de transition (`EntityHandler_0040EDF0`), les éclairs clairs (`0x01b4c896
 sombre `0x019696ff`. Le stroboscope du Méchant ours est simplement le seul relevé qui **alterne**
 d'une image à l'autre, et c'est l'alternance qui rend l'opacité insupportable.
 
+**Le Labyrinthe des morts porte le même stroboscope** (relevé le 2026-09-18) : `0x0041FCA0`
+(sous-zones 5 à 8), quand son `+0x9a` vaut 0, exécute la même branche — sortie de
+`EntityHandler_00413330` en `StepCarrierStrobe(e, spawn)` pour servir aux deux. Le symptôme y est
+donc attendu à l'identique, et la déviation éventuelle se ferait en un seul endroit.
+
 ### Ce que ce port en fait
 
 **Il le reproduit tel quel** : la transcription de `0x00413330` et de `FUN_0051f940` est fidèle, et
@@ -1656,3 +1661,50 @@ Deux endroits possibles, du plus au moins fidèle :
 
 Indépendamment, un limiteur à 60 images par seconde dans `Present` supprimerait l'aggravation liée
 aux écrans rapides.
+
+---
+
+## LB-031 — Le projectile à tête chercheuse du Labyrinthe déréférence la cible qu'il vient d'effacer
+
+**Repéré le 2026-09-18**, en transcrivant `0x00484190` (le sous-type `0xda`, créneau 26 du bloc
+`0x00558ba8`, table `0x0056b1c8`, Labyrinthe des morts, sous-zones 4 et 9). La fonction est
+**absente de `Blaze.c`** ; le défaut ne se voit qu'au désassemblage.
+
+### Ce que fait le binaire
+
+À chaque image, tant qu'il n'est pas verrouillé, le projectile relit sa cible `+0x78` et vérifie
+qu'elle est encore en vie :
+
+```
+004841df  mov   ebp,[esi+78h]           ; ebp = la cible
+004841ec  cmp   ebp,eax                 ; eax = 0
+004841fa  je    00484281                ; pas de cible : on file droit
+00484205  test  dword [ebp],50000000h
+0048420c  je    0048421C                ; vivante : on s'inscrit chez elle
+0048420e  mov   [ebp+74h],eax           ; morte : on défait son lien vers nous,
+00484211  xor   ebp,ebp                 ;         on oublie la cible,
+00484213  mov   [esi+78h],eax           ;         on défait notre lien vers elle,
+00484216  mov   [esp+44h],ebp
+0048421a  jmp   0048421F                ; ... et on saute DANS le calcul de visée
+LAB_0048421c:
+0048421c  mov   [ebp+74h],esi
+LAB_0048421f:
+0048421f  mov   edi,[ebp+1Ch]           ; lecture a l'adresse 0x1c quand ebp vaut 0
+```
+
+Le chemin « cible morte » fait tout ce qu'il faut pour oublier la cible, puis rejoint le chemin
+« cible vivante » **au lieu du chemin « pas de cible »** (`0x00484281`), qui était juste à côté. Le
+calcul de visée lit alors `[0 + 0x1c]`, puis appelle `FUN_00538bc0` sur un pointeur nul.
+
+### Portée
+
+Le chemin demande qu'une cible meure — bit `0x40000000` ou `0x10000000` — pendant que le
+projectile vole encore vers elle **sans l’avoir verrouillée**. Rien ne l’empêche en jeu. Sous
+Windows 9x comme sous NT, la page zéro n’est en principe pas lisible : le jeu d’origine devrait tomber sur une
+violation d'accès. Le défaut est **tracé, pas observé**.
+
+### Dans OpenForesia
+
+`EntityHandler_00484190` le transcrit tel quel : la cible est mise à `null`, puis la visée la
+déréférence. Comme pour LB-007 : **ne pas rediriger le saut vers le chemin sans cible**. Le faire
+serait probablement l'intention de l'auteur, mais c'est une déviation, et elle se déclarerait ici.

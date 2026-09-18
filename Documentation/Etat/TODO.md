@@ -1,9 +1,8 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (lots 4 à 8 du Labyrinthe :
-cinquante-sept corps de plus, `Handlers/LabyrinthMecanismes.cs` ouvert, **les catégories « B » et
-« C » de la zone 5 sont vides** — il ne reste que onze « D »). La veille avait fermé
-la mine, la montagne du dragon de feu et la vieille tour. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-18** (lots 4 à 13 du Labyrinthe :
+**la zone 5 est complète, 160 sur 160** — le septième ensemble entièrement implémenté). La veille
+avait fermé la mine, la montagne du dragon de feu et la vieille tour. L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -14,6 +13,13 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# SEPT ENSEMBLES COMPLETS — LE LABYRINTHE DES MORTS FERMÉ (2026-09-18)
+
+**La zone 5, le Labyrinthe des morts, est complète : 160 sur 160**, fermée le 2026-09-18 en treize
+lots — ses dix-neuf routines d'intelligence la veille, tout son décor et ses effets ce jour-là. Les
+six derniers lots (8 à 13) ont écrit 27 corps pour 17 lectures ; leur bilan de méthode est dans
+`REVERSE_STATUS.md`, 2026-09-18 suite 9.
 
 # SIX ENSEMBLES COMPLETS, ET TOUTE L'INTELLIGENCE DU LABYRINTHE (2026-09-17)
 
@@ -44,8 +50,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **589** |
-| à transcrire | **515** |
+| implémentés, jamais appelés | **597** |
+| à transcrire | **507** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -55,7 +61,7 @@ socle commun, et il est entier.
 | 1 | **La mine abandonnée** | **157 / 157** |
 | 2 | **La montagne du dragon de feu** | **42 / 42** |
 | 4 | **La vieille tour** | **176 / 176** |
-| 5 | Le Labyrinthe des morts — **toutes ses bêtes écrites, huit « D » en quatre lectures** | 152 / 160 |
+| 5 | **Le Labyrinthe des morts** | **160 / 160** |
 | 6 | Le château de l’immortel | 31 / 170 |
 | 7 | Les ruines souterraines | 19 / 35 |
 | 8 | La vallée d'argent | 18 / 46 |
@@ -88,10 +94,10 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. **La zone 7 (19 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
    2026-09-17.
-4. **Le décor du Labyrinthe des morts** : **8 corps restants, tous « D », pour 4 lectures** —
+4. ~~**Le décor du Labyrinthe des morts**~~ — **complet le 2026-09-18** (160 / 160) —
    plus un seul « B » ni « C ». Le tri est à jour dans `Zone5ParComplexite.md`. La
    table `0x0056adc8` n'a plus que son unique « D » (`0x00462A80`, 536 instr.), et `0x0056aec8` n'a
-   plus aucun verbe à écrire. Trois lots faits le 2026-09-17, sept le 2026-09-18 :
+   plus aucun verbe à écrire. Trois lots faits le 2026-09-17, neuf le 2026-09-18 :
    - **lot 1** (suite 17) : les dix plus simples — sept décors de `0x0056adc8` dans le fichier neuf
      `Handlers/Labyrinth.cs`, trois **verbes de script** de `0x0056aec8` dans `WorldMapScript.cs` ;
    - **lot 2** (suite 18) : les **neuf paires miroir** de `0x0056b2c8` (bloc 5-8 = bloc 0-3 à
@@ -142,14 +148,15 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      à leur repli près (un tampon nul sur la pile ; aucun repli). La « charpente commune mais pas des
      copies » de la suite 19 était vraie entre eux et fausse contre le modèle : **mesurer contre un
      corps écrit, pas seulement entre non-écrits**.
-   Pour la suite, dans cet ordre de rendement — **huit corps, quatre lectures** :
-   - la **famille A**, `0x0041F760` / `0x0041FF40` / `0x0041D310` / `0x00421DC0` (430 à 441
-     instr., les quatre dans `Blaze.c`, table `0x0056b2c8`) : 0 / 7 / 25 / 20 lignes d'écart —
-     **quatre corps pour une lecture** ;
-   - la **famille B**, `0x00420480` / `0x00422E50` (261 / 266 instr.), 43 lignes d'écart ; leurs
-     quatre « appelées inconnues » sont la garde vers `ApplyStatusEffect_0053BB20` / `0053BC60`,
-     **déjà écrits** ;
-   - `0x00484190` (252) et `0x00462A80` (536, le dernier du décor), isolés ;
+   - **lot 11** (2026-09-18, suite 7) : **les semis des nuages** — `0x0041D310` / `0x0041F760` /
+     `0x0041FF40` / `0x00421DC0`, quatre corps pour une lecture (`TickCloudSeed`). Ce sont eux qui
+     posent le `+0x44` que le nuage du lot 8 attend : la question qu'il laissait ouverte est close.
+   - **lot 12** (2026-09-18, suite 8) : **la famille B**, `0x00420480` / `0x00422E50`, deux corps
+     pour une lecture (`TickShockwaveOrSpray`) — l'onde qui frappe une fois chacun, ou sa gerbe.
+   - **lot 13** (2026-09-18, suite 9) : **les deux derniers** — le projectile à tête chercheuse
+     `0x00484190`, qui porte **LB-031** (il déréférence la cible qu'il vient d'effacer), et le
+     battant `0x00462A80`. **La zone est complète.**
+   Ce qui vaut pour la zone suivante :
    - **la méthode qui a payé trois fois** : normaliser le désassemblage en neutralisant *toute*
      constante hexadécimale à six chiffres (pas seulement les cibles de saut — c'est ce qui rend un
      échange de planche invisible), puis apparier par nombre d'instructions égal. Les parentés qui
@@ -159,9 +166,10 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    tous les corps déjà écrits** (diff LOOSE de `census-duplicates.sh`, cache régénéré) avant d'en
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
-5. ~~**La zone 5, le Labyrinthe**~~ — remplacé par le point 4 ci-dessus : la zone est triée, toute
-   son intelligence est écrite, et deux lots de décor sont passés. **La zone 6, le château (29 / 170),
-   reste à trier de la même façon** — `census-zone-complexity.sh 6`.
+5. ~~**La zone 5, le Labyrinthe**~~ — **complète le 2026-09-18** (160 / 160), voir le point 4.
+   **La zone 6, le château (31 / 170), reste à trier de la même façon** —
+   `census-zone-complexity.sh 6` —, et c'est la voisine naturelle : le lot 3 du Labyrinthe a montré
+   que les corps des sous-zones 4 et 9 ont leurs parents au château et dans la grotte scellée.
 6. Le reste. La grotte scellée (349) est le dernier gros morceau.
 
 **Un recouvrement latent a traiter a part** : `s_ForestSceneBlock_00571420` et
@@ -172,7 +180,7 @@ a mener comme changement delibere.
 
 **La dette d’épreuve, elle, grandit** : 451 corps écrits n’ont jamais tourné, et **la mine et la
 vieille tour y entrent presque entières** — 157 créneaux pour l’une, 176 pour l’autre, et 2 seulement
-vus passer dans la tour. Six ensembles sont complets. Une séance de
+vus passer dans la tour, et le Labyrinthe (160) n’en a vu passer aucun. Sept ensembles sont complets. Une séance de
 test sur l’auberge ou sur la mine se lirait désormais comme une mesure, pas comme une chasse au
 plantage.
 

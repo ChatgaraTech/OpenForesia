@@ -1665,6 +1665,10 @@ public static unsafe partial class Blaze
         /// enregistrement de <c>0x9c</c> octets <b>mis a zero sur la pile</b> a chaque image
         /// (<c>rep stosd</c>) — la conduite des fins de la vieille tour. Ajoute au lot 10.</summary>
         FallBackOnBlankRecord,
+
+        /// <summary><c>0x0041D310</c> (sous-zones 0 a 3) : un pointeur nul fait <b>sortir</b> le
+        /// corps sans rien faire — la conduite des nuages de ces sous-zones. Ajoute au lot 11.</summary>
+        Abandon,
     }
 
     // =====================================================================
@@ -2322,7 +2326,9 @@ public static unsafe partial class Blaze
     /// <c>+0x78</c>.</b> Il reprend chaque image la position du porteur. A la naissance il seme
     /// <b>onze</b> sous-types <c>0xed</c> d'un coup, puis attend au plus <b>cinquante</b> images que
     /// <c>+0x44</c> passe a 1 — ce corps ne l'ecrit jamais, il le remet seulement a zero a la
-    /// naissance ; qui le pose n'est pas etabli. A ce moment il porte
+    /// naissance. <b>Ce sont ses propres semis qui le posent</b> (etabli au lot 11) : un
+    /// <c>0xed</c> qui atteint la cible ecrit <c>+0x44 = 1</c> sur son porteur — voir
+    /// <see cref="TickCloudSeed"/>. A ce moment il porte
     /// <see cref="ApplyStatusEffect_0053C5E0"/> (le porteur en attaquant) et, si l'effet est
     /// refuse, meurt sur-le-champ. Sinon il continue de semer un <c>0xed</c> <b>toutes les trois
     /// images</b>, pour <c>15 + rand() % 10</c> semis, et s'eteint quand ce compte, qui continue
@@ -2525,6 +2531,523 @@ public static unsafe partial class Blaze
 
         (*(short*)(e + 0x12))--;
         if (*(short*)(e + 0x12) < -0x22) *(uint*)e &= 0x7fffffff;
+    }
+
+    // ---------------------------------------------------------------------
+    // CRENEAU 45 (ET 31) DE 0x0056b2c8 — LES SEMIS DES NUAGES
+    // ---------------------------------------------------------------------
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550040</c> — la planche de <see cref="EntityHandler_0041D310"/>
+    /// (sous-zones 0 a 3). <b>Quatre</b> enregistrements : trois tuiles <c>0x0f</c>, que le mode 0
+    /// fait tourner (<c>+0x40</c> de 0 a 2), puis une tuile <c>0x1f</c>, que le mode 1 pose
+    /// (<c>+0x40 = 3</c>). Bornee par <c>0x00550060</c>, deja releve.</summary>
+    private static readonly byte[] s_Descriptors_00550040 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550040  <- 0x0041D310
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550048
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550050
+        0x60, 0x48, 0x1f, 0x1f, 0x01, 0x02, 0x10, 0x00,   // 0x00550058
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550228</c> — la planche de <see cref="EntityHandler_0041FF40"/>
+    /// (sous-zones 5 a 8, le semis <c>0xdf</c>). Memes octets que
+    /// <see cref="s_Descriptors_00550040"/> ; bornee par <c>0x00550248</c>.</summary>
+    private static readonly byte[] s_Descriptors_00550228 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550228  <- 0x0041FF40
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550230
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550238
+        0x60, 0x48, 0x1f, 0x1f, 0x01, 0x02, 0x10, 0x00,   // 0x00550240
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550248</c> — la planche de <see cref="EntityHandler_0041F760"/>
+    /// (sous-zones 5 a 8, le semis <c>0xed</c>). Memes octets ; bornee par <c>0x00550268</c>,
+    /// deja releve.</summary>
+    private static readonly byte[] s_Descriptors_00550248 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550248  <- 0x0041F760
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550250
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550258
+        0x60, 0x48, 0x1f, 0x1f, 0x01, 0x02, 0x10, 0x00,   // 0x00550260
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550460</c> — la planche de <see cref="EntityHandler_00421DC0"/>
+    /// (sous-zones 4 et 9). Memes octets ; <c>0x00550480</c> change de forme
+    /// (<c>00 00 08 08</c>).</summary>
+    private static readonly byte[] s_Descriptors_00550460 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550460  <- 0x00421DC0
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550468
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550470
+        0x60, 0x48, 0x1f, 0x1f, 0x01, 0x02, 0x10, 0x00,   // 0x00550478
+    ];
+
+    private static byte* s_Descriptors00550040Storage;
+    private static byte* s_Descriptors00550228Storage;
+    private static byte* s_Descriptors00550248Storage;
+    private static byte* s_Descriptors00550460Storage;
+
+    private static byte* Descriptors00550040() => NativeCopy(s_Descriptors_00550040, ref s_Descriptors00550040Storage);
+    private static byte* Descriptors00550228() => NativeCopy(s_Descriptors_00550228, ref s_Descriptors00550228Storage);
+    private static byte* Descriptors00550248() => NativeCopy(s_Descriptors_00550248, ref s_Descriptors00550248Storage);
+    private static byte* Descriptors00550460() => NativeCopy(s_Descriptors_00550460, ref s_Descriptors00550460Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_0041d310 @ 0x0041d310 — creneau <b>45</b> du bloc <c>0x00557fa8</c>
+    /// (<c>0x0056b2c8</c>, sous-zones 0 a 3), soit le sous-type <b><c>0xed</c></b>. Decompilee
+    /// dans <c>Blaze.c</c>, 431 instructions ; dump sous <c>Legacy/Raw/Blaze/FUN_0041D310.asm</c>.
+    /// Lot 11, 2026-09-18. <b>Une cible <c>+0x78</c> nulle fait sortir le corps</b> avant tout
+    /// (<c>je near 0041D850h</c>, le <c>ret</c>).
+    /// </summary>
+    private static void EntityHandler_0041D310(byte* e)
+        => TickCloudSeed(e, Descriptors00550040(), AbsentHost.Abandon);
+
+    /// <summary>
+    /// Ghidra: FUN_0041f760 @ 0x0041f760 — creneau <b>45</b> du bloc <c>0x00558628</c>
+    /// (<c>0x0056b2c8</c>, sous-zones 5 a 8), sous-type <b><c>0xed</c></b>. Decompilee dans
+    /// <c>Blaze.c</c>, 430 instructions ; dump sous <c>Legacy/Raw/Blaze/FUN_0041F760.asm</c>. Le
+    /// modele de la famille : aucun test de pointeur.
+    /// </summary>
+    private static void EntityHandler_0041F760(byte* e)
+        => TickCloudSeed(e, Descriptors00550248(), AbsentHost.Unchecked);
+
+    /// <summary>
+    /// Ghidra: FUN_0041ff40 @ 0x0041ff40 — creneau <b>31</b> du bloc <c>0x00558628</c>
+    /// (<c>0x0056b2c8</c>, sous-zones 5 a 8), soit le sous-type <b><c>0xdf</c></b> — celui que seme
+    /// <see cref="EntityHandler_0041FCA0"/>. Decompilee dans <c>Blaze.c</c>. <b>Identique</b> a
+    /// <see cref="EntityHandler_0041F760"/> a la planche pres.
+    /// </summary>
+    private static void EntityHandler_0041FF40(byte* e)
+        => TickCloudSeed(e, Descriptors00550228(), AbsentHost.Unchecked);
+
+    /// <summary>
+    /// Ghidra: FUN_00421dc0 @ 0x00421dc0 — creneau <b>45</b> du bloc <c>0x00558ca8</c>
+    /// (<c>0x0056b2c8</c>, sous-zones 4 et 9), sous-type <b><c>0xed</c></b>. Decompilee dans
+    /// <c>Blaze.c</c>, 441 instructions. <b>Les pointeurs nuls y retombent sur
+    /// <c>Res.s_EntityList_005de558</c></b> : la cible a l'entree et a chacune de ses relectures,
+    /// le porteur la ou il est ecrit — mais pas la ou le mode 1 le lit, qui reste sans test.
+    /// </summary>
+    private static void EntityHandler_00421DC0(byte* e)
+        => TickCloudSeed(e, Descriptors00550460(), AbsentHost.FallBackOnEntityList);
+
+    /// <summary>
+    /// Le corps des quatre semis. <b>Deux vies</b>, choisies par <c>+0x44</c> — que le nuage
+    /// parent a pose avant de les faire naitre et que l'enfant herite.
+    ///
+    /// <para>
+    /// <b>Mode 0 : l'etincelle qui va chercher sa cible.</b> Elle s'eleve d'abord vers un point
+    /// tire autour d'elle (<c>±150</c> unites a plat, <c>80</c> a <c>380</c> plus haut) en
+    /// grandissant et en s'allumant, dix images ; puis elle fond sur la cible <c>+0x78</c> — un
+    /// point <c>0x3c</c> unites au-dessus d'elle — en s'assombrissant. Dix-huit images plus tard,
+    /// si elle est a moins de <c>0x8c</c> unites, elle <b>pose <c>+0x44 = 1</c> sur son porteur
+    /// <c>+0x6c</c></b> — c'est ce qui declenche l'effet 32 du nuage,
+    /// <see cref="EntityHandler_0041D1A0"/> — et se met a <b>tourner autour de la cible</b> en
+    /// violet, rayon croissant vers <c>40..70</c>, pendant <c>30..50</c> images. Manquee, elle
+    /// s'eteint quinze images plus tard. Sa planche tourne sur trois images tout du long.
+    /// </para>
+    /// <para>
+    /// <b>La distance est mesuree vers un point SOUS la cible</b> : le binaire vise
+    /// <c>cible + 0x3c000</c> mais calcule <c>(y - cible.y) + 0x3c000</c> — un <c>add</c>, pas un
+    /// <c>sub</c>, verifie au desassembleur (<c>0x0041f928</c>). Arrivee sur son point, l'etincelle
+    /// est donc a <c>0x78</c> unites de ce que la mesure croit, sous un seuil de <c>0x8c</c>. Transcrit
+    /// tel quel.
+    /// </para>
+    /// <para>
+    /// <b>Mode 1 : l'etincelle qui revient.</b> Nee sur la cible, elle monte vers un point au-dessus
+    /// d'elle, puis revient sur son <b>porteur</b> et s'eteint au bout de vingt images, sans rien
+    /// declencher. Le binaire calcule encore une distance a la cible au moment de s'eteindre, et
+    /// n'en fait rien. Ce mode vient du stroboscope (<see cref="StepCarrierStrobe"/>), qui tire
+    /// <c>+0x44</c> a 0 ou 1 avant chaque naissance.
+    /// </para>
+    /// </summary>
+    private static void TickCloudSeed(byte* e, byte* descriptors, AbsentHost absent)
+    {
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null)
+        {
+            if (absent == AbsentHost.Abandon) return;
+            if (absent == AbsentHost.FallBackOnEntityList) target = Res.s_EntityList_005de558;
+        }
+
+        if (*(int*)(e + 0x44) == 0)
+        {
+            StepSeekingSeed(e, descriptors, target, absent);
+
+            e[0x40]++;
+            if (e[0x40] == 3) e[0x40] = 0;
+
+            FinalizeEntityPlacement2((uint*)e);                   // Ghidra: FUN_00533940
+            if ((*(uint*)(e + 0x90) & 0x8800) != 0) *(uint*)e &= 0x7fffffff;
+        }
+
+        if (*(int*)(e + 0x44) == 1) StepReturningSeed(e, descriptors, target);
+    }
+
+    /// <summary>Relit <c>+0x78</c> comme le fait le binaire, avec le repli de son bloc.</summary>
+    private static byte* RereadSeedTarget(byte* e, AbsentHost absent)
+    {
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null && absent == AbsentHost.FallBackOnEntityList) target = Res.s_EntityList_005de558;
+        return target;
+    }
+
+    /// <summary>Le pas d'approche au huitieme, commun aux deux modes : position vers
+    /// <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>.</summary>
+    private static void ApproachSeedPoint(byte* e)
+    {
+        *(int*)(e + 0x1c) += (*(int*)(e + 0x50) - *(int*)(e + 0x1c)) >> 3;
+        *(int*)(e + 0x20) += (*(int*)(e + 0x54) - *(int*)(e + 0x20)) >> 3;
+        *(int*)(e + 0x24) += (*(int*)(e + 0x58) - *(int*)(e + 0x24)) >> 3;
+    }
+
+    /// <summary>L'etat 1 des deux modes : l'approche, les deux echelles vers <c>+0x16</c> au
+    /// huitieme, et l'allumage de 10 par canal. <paramref name="nextCount"/> est le compte de
+    /// l'etat 2 : 18 en mode 0, 20 en mode 1.</summary>
+    private static void StepRisingSeed(byte* e, short nextCount)
+    {
+        ApproachSeedPoint(e);
+
+        *(short*)(e + 0x28) = (short)((*(short*)(e + 0x16) - *(short*)(e + 0x28) >> 3) + *(short*)(e + 0x28));
+        (*(short*)(e + 0x12))--;
+        *(short*)(e + 0x2a) = (short)((*(short*)(e + 0x16) - *(short*)(e + 0x2a) >> 3) + *(short*)(e + 0x2a));
+
+        if (*(short*)(e + 0x12) < 1)
+        {
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x12) = nextCount;
+        }
+
+        BrightenEntityTint_00404DE0(e, 10, 10, 10);
+    }
+
+    /// <summary>Le mode 0 de <see cref="TickCloudSeed"/>, ses quatre etats.</summary>
+    private static void StepSeekingSeed(byte* e, byte* descriptors, byte* target, AbsentHost absent)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = descriptors;
+            int frame = CrtRand();                                  // Ghidra: FUN_00547140
+            e[0x0a] = 0x0d;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            e[0x40] = (byte)(frame % 3);
+
+            *(int*)(e + 0x50) = (CrtRand() % 300 - 0x96) * 0x1000 + *(int*)(e + 0x1c);
+            *(int*)(e + 0x58) = (CrtRand() % 300 - 0x96) * 0x1000 + *(int*)(e + 0x24);
+            int rise = CrtRand();
+            *(short*)(e + 0x12) = 10;
+            *(int*)(e + 0x54) = (rise % 300 + 0x50) * 0x1000 + *(int*)(e + 0x20);
+
+            int size = CrtRand() % 0x800;                          // Ghidra: le reste signe, en signe-module
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x16) = (short)(size + 0x1000);
+        }
+
+        if (*(short*)(e + 0x10) == 1) StepRisingSeed(e, 0x12);
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(int*)(e + 0x50) = *(int*)(target + 0x1c);
+            *(int*)(e + 0x54) = *(int*)(target + 0x20) + 0x3c000;
+            *(int*)(e + 0x58) = *(int*)(target + 0x24);
+            ApproachSeedPoint(e);
+            (*(short*)(e + 0x12))--;
+
+            if (*(short*)(e + 0x12) < 1)
+            {
+                int dx = (*(int*)(e + 0x1c) - *(int*)(target + 0x1c)) >> 0xc;
+                int dy = (*(int*)(e + 0x20) - *(int*)(target + 0x20) + 0x3c000) >> 0xc;   // Ghidra: `add`, voir le resume
+                int dz = (*(int*)(e + 0x24) - *(int*)(target + 0x24)) >> 0xc;
+                int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));   // Ghidra: 0x00545a10
+
+                if (distance < 0x8c)
+                {
+                    byte* carrier = *(byte**)(e + 0x6c);
+                    if (carrier == null && absent == AbsentHost.FallBackOnEntityList) carrier = Res.s_EntityList_005de558;
+                    *(int*)(carrier + 0x44) = 1;
+
+                    target = RereadSeedTarget(e, absent);
+                    *(short*)(e + 0x10) = 3;
+                    *(short*)(e + 0x12) = (short)(CrtRand() % 5 + 3);
+                    *(short*)(e + 0x16) = (short)(CrtRand() % 0x1000);   // Ghidra: signe-module
+                    int spread = CrtRand();
+                    *(int*)(e + 0x48) = 0;
+                    *(short*)(e + 0x14) = (short)(spread % 0x1e + 0x28);
+                    *(int*)(e + 0x5c) = CrtRand() % 0x14 + 0x1e;
+
+                    *(int*)(e + 0x50) = *(int*)(target + 0x1c);
+                    *(int*)(e + 0x58) = *(int*)(target + 0x24);
+                    *(int*)(e + 0x20) = *(int*)(target + 0x20) + 0x1e000;
+                    e[0x38] = 100;
+                    e[0x39] = 0x3c;
+                    e[0x3a] = 100;
+                }
+                else if (*(short*)(e + 0x12) < -0xf)
+                {
+                    *(uint*)e &= 0x7fffffff;
+                }
+            }
+
+            BrightenEntityTint_00404DE0(e, -3, -4, -3);
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        target = RereadSeedTarget(e, absent);
+        *(int*)(e + 0x50) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x58) = *(int*)(target + 0x24);
+
+        int radius = *(int*)(e + 0x48);
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x16)) * radius + *(int*)(e + 0x50);   // Ghidra: Ordinal_451
+        int cos = Winsys3d.GetCosTableEntry(*(short*)(e + 0x16));                                               // Ghidra: Ordinal_450
+        *(short*)(e + 0x16) += 0x96;
+        *(int*)(e + 0x24) = cos * radius + *(int*)(e + 0x58);
+        *(int*)(e + 0x20) += *(short*)(e + 0x12) * 0x1000;
+        *(int*)(e + 0x48) = ((*(short*)(e + 0x14) - radius) >> 3) + radius;
+
+        int life = *(int*)(e + 0x5c) - 1;
+        *(int*)(e + 0x5c) = life;
+        if (life < 1) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Le mode 1 de <see cref="TickCloudSeed"/>, ses trois etats. Le porteur y est lu
+    /// sans test, dans les quatre copies.</summary>
+    private static void StepReturningSeed(byte* e, byte* descriptors, byte* target)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = descriptors;
+            e[0x40] = 3;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(target + 0x20);
+            *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+            *(int*)(e + 0x50) = (CrtRand() % 0xa0 - 0x50) * 0x1000 + *(int*)(target + 0x1c);
+            *(int*)(e + 0x58) = (CrtRand() % 0xa0 - 0x50) * 0x1000 + *(int*)(target + 0x24);
+            int rise = CrtRand();
+            *(short*)(e + 0x12) = 10;
+            *(int*)(e + 0x54) = (rise % 200 + 0xb4) * 0x1000 + *(int*)(target + 0x20);
+
+            int size = CrtRand() % 1000;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x16) = (short)(size + 2000);
+        }
+
+        if (*(short*)(e + 0x10) == 1) StepRisingSeed(e, 0x14);
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        byte* carrier = *(byte**)(e + 0x6c);
+        *(int*)(e + 0x50) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(carrier + 0x20) + 0x3c000;
+        *(int*)(e + 0x58) = *(int*)(carrier + 0x24);
+        ApproachSeedPoint(e);
+        (*(short*)(e + 0x12))--;
+
+        if (*(short*)(e + 0x12) < 1)
+        {
+            *(uint*)e &= 0x7fffffff;
+
+            // Ghidra: une distance a la cible calculee et jetee — la racine est pure, on l'appelle
+            // quand meme pour garder l'appel a la DLL a sa place.
+            int dx = (*(int*)(e + 0x1c) - *(int*)(target + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(target + 0x20) + 0x3c000) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(target + 0x24)) >> 0xc;
+            Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+        }
+
+        BrightenEntityTint_00404DE0(e, -6, -10, -6);
+    }
+
+    // ---------------------------------------------------------------------
+    // CRENEAU 31 DE 0x0056b1c8 (SOUS-ZONES 5 A 8, ET 4 ET 9) — L'ONDE ET SA GERBE
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Ghidra: <c>0x00420480</c> — creneau <b>31</b> du bloc <c>0x00558528</c> (<c>0x0056b1c8</c>,
+    /// sous-zones 5 a 8). <b>Absente de <c>Blaze.c</c></b>, 261 instructions ; dump sous
+    /// <c>Legacy/Raw/Blaze/FUN_00420480.asm</c>. Lot 12, 2026-09-18. Aucun test de pointeur.
+    /// </summary>
+    private static void EntityHandler_00420480(byte* e) => TickShockwaveOrSpray(e, AbsentHost.Unchecked);
+
+    /// <summary>
+    /// Ghidra: <c>0x00422e50</c> — creneau <b>31</b> du bloc <c>0x00558ba8</c> (<c>0x0056b1c8</c>,
+    /// sous-zones 4 et 9). <b>Absente de <c>Blaze.c</c></b>, 266 instructions ; dump sous
+    /// <c>Legacy/Raw/Blaze/FUN_00422E50.asm</c>. <see cref="EntityHandler_00420480"/> avec les
+    /// replis de son bloc : le porteur nul, puis le porteur du porteur nul, deviennent chacun
+    /// <c>Res.s_EntityList_005de558</c>. Ses deux feuilles (<c>0x004231c0</c>,
+    /// <c>0x00423200</c>) sont les memes, dans le meme ordre.
+    /// </summary>
+    private static void EntityHandler_00422E50(byte* e) => TickShockwaveOrSpray(e, AbsentHost.FallBackOnEntityList);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00420480"/> et de <see cref="EntityHandler_00422E50"/>.
+    /// Deux vies, choisies par <c>+0x5c</c>.
+    ///
+    /// <para>
+    /// <b>Mode 0 : l'onde.</b> Le modele <c>7</c>, blanc (<c>0xfa</c>), nait plat — echelles
+    /// horizontales a zero, profondeur <c>(0x19 - +0x12) × 400</c> — et s'etale : ses deux echelles
+    /// rejoignent <c>0x7530</c> par huitiemes pendant qu'elle palit (<c>-7, -7, -5</c>) ; elle
+    /// meurt au bleu nul. <b>Tant que son echelle reste sous <c>0x6978</c></b> et que <c>+0x16</c>
+    /// est nul, chaque membre vivant a moins de <c>echelle / 50</c> unites a plat — le rayon
+    /// grandit avec l'onde — est frappe <b>une seule fois</b> (un bit par emplacement dans
+    /// <c>+0x14</c>) au nom du <b>porteur du porteur</b> (<c>+0x6c</c> puis <c>+0x6c</c>) :
+    /// l'effet <c>0x0053BB20</c> si <c>+0x44</c> est nul, <c>0x0053BC60</c> sinon, chacun garde
+    /// par <see cref="IsEffectPairBlocked_004364B0"/>.
+    /// </para>
+    /// <para>
+    /// <b>Mode 1 : la gerbe.</b> Le modele <c>0x30</c>, trois echelles tirees dans
+    /// <c>[200, 400[</c>, un cap et un <c>+0x30</c> tires, une hauteur relevee de
+    /// <c>rand() % 200</c>. Il tourne de <c>-0x96</c> par image et grossit de 100 sur les trois
+    /// axes : cinq images a s'allumer vers <c>0xfa</c> par moities, vingt a s'eteindre par
+    /// huitiemes.
+    /// </para>
+    /// <para>
+    /// <b>La cible est rangee dans l'emplacement de l'argument</b> (<c>[esp+18h]</c>), comme dans
+    /// les lots 8 a 10.
+    /// </para>
+    /// </summary>
+    private static void TickShockwaveOrSpray(byte* e, AbsentHost absent)
+    {
+        byte* host = *(byte**)(e + 0x6c);
+        if (host == null && absent == AbsentHost.FallBackOnEntityList) host = Res.s_EntityList_005de558;
+        byte* caster = *(byte**)(host + 0x6c);
+        if (caster == null && absent == AbsentHost.FallBackOnEntityList) caster = Res.s_EntityList_005de558;
+
+        if (*(int*)(e + 0x5c) == 0)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                short depth = (short)((0x19 - *(short*)(e + 0x12)) * 400);   // Ghidra: lea ×5, lea ×5, shl 4
+                e[0x04] = 7;
+                e[0x0a] = 2;
+                e[0x0b] = 0;
+                e[0x38] = 0xfa;
+                e[0x39] = 0xfa;
+                e[0x3a] = 0xfa;
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x2a) = depth;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x2e) = -0x3c;                          // Ghidra: 0xffc4
+                e[0x36] = (byte)((e[0x36] & 0xfe) | 2);
+            }
+
+            if (*(short*)(e + 0x10) == 1) StepShockwave(e, caster);
+        }
+
+        if (*(int*)(e + 0x5c) != 1) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x30;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = (short)(CrtRand() % 200 + 200);   // Ghidra: FUN_00547140
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 200 + 200);
+            *(short*)(e + 0x2c) = (short)(CrtRand() % 200 + 200);
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);      // Ghidra: signe-module
+            int spin = CrtRand() % 500;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x30) = (short)spin;
+            int lift = CrtRand() % 200;
+            *(short*)(e + 0x2e) = -0x3c;
+            *(int*)(e + 0x20) += lift << 0xc;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) -= 0x96;
+            e[0x38] = (byte)(e[0x38] + ((0xfa - e[0x38]) >> 1));
+            e[0x39] = (byte)(e[0x39] + ((0xfa - e[0x39]) >> 1));
+            e[0x3a] = (byte)(e[0x3a] + ((0xfa - e[0x3a]) >> 1));
+
+            (*(short*)(e + 0x12))++;
+            if (*(short*)(e + 0x12) > 5)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+
+            *(short*)(e + 0x28) += 100;
+            *(short*)(e + 0x2a) += 100;
+            *(short*)(e + 0x2c) += 100;
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x32) -= 0x96;
+        e[0x38] = (byte)(e[0x38] + (-e[0x38] >> 3));
+        e[0x39] = (byte)(e[0x39] + (-e[0x39] >> 3));
+        e[0x3a] = (byte)(e[0x3a] + (-e[0x3a] >> 3));
+
+        (*(short*)(e + 0x12))++;
+        if (*(short*)(e + 0x12) > 0x14) *(uint*)e &= 0x7fffffff;
+
+        *(short*)(e + 0x28) += 100;
+        *(short*)(e + 0x2a) += 100;
+        *(short*)(e + 0x2c) += 100;
+    }
+
+    /// <summary>L'etat 1 du mode 0 de <see cref="TickShockwaveOrSpray"/> : l'onde s'etale et
+    /// frappe.</summary>
+    private static void StepShockwave(byte* e, byte* caster)
+    {
+        BrightenEntityTint_00404DE0(e, -7, -7, -5);
+
+        short width = *(short*)(e + 0x28);
+        width = (short)(((0x7530 - width) >> 3) + width);
+        *(short*)(e + 0x28) = width;
+        short length = *(short*)(e + 0x2c);
+        *(short*)(e + 0x2c) = (short)(((0x7530 - length) >> 3) + length);
+
+        if (e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+
+        if (*(short*)(e + 0x16) != 0) return;
+        if (width >= 0x6978) return;
+
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            int dx = (*(int*)(slot + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            int dz = (*(int*)(slot + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));   // Ghidra: 0x00545a10
+
+            // Ghidra: `imul 51EB851Fh ; sar edx,4` — la division signee par 50, relue a chaque tour.
+            if (distance >= *(short*)(e + 0x28) / 50) continue;
+
+            int bit = 1 << i;
+            if ((*(short*)(e + 0x14) & bit) != 0) continue;
+            *(ushort*)(e + 0x14) |= (ushort)bit;
+
+            uint* attacker = (uint*)caster;
+            uint* victim = (uint*)slot;
+            if (IsEffectPairBlocked_004364B0(attacker, victim) != 0) continue;   // les deux feuilles
+
+            if (*(int*)(e + 0x44) == 0) ApplyStatusEffect_0053BB20(attacker, victim, 0);   // Ghidra: FUN_004207e0
+            else ApplyStatusEffect_0053BC60(attacker, victim, 0);                          // Ghidra: FUN_00420820
+        }
     }
 
     /// <summary>
@@ -3393,6 +3916,184 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x20) = keptY;
         *(int*)(e + 0x24) = keptZ;
         *(short*)(e + 0x32) = keptHeading;
+    }
+
+    // ---------------------------------------------------------------------
+    // CRENEAU 26 DE 0x00558ba8 (0x0056b1c8, SOUS-ZONES 4 ET 9) — LE PROJECTILE A TETE CHERCHEUSE
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Ghidra: <c>0x00484190</c> — creneau <b>26</b> du bloc <c>0x00558ba8</c> (<c>0x0056b1c8</c>,
+    /// sous-zones 4 et 9), soit le sous-type <c>0xda</c>. <b>Absente de <c>Blaze.c</c></b> ;
+    /// relevee au desassembleur, <b>252 instructions</b>, dump sous
+    /// <c>Legacy/Raw/Blaze/FUN_00484190.asm</c>. Lot 13, 2026-09-18.
+    ///
+    /// <para>
+    /// <b>Un projectile qui se guide sur le haut de sa cible <c>+0x78</c></b> —
+    /// <see cref="StatusBubbleHeight_00538BC0"/>, comme le tireur
+    /// <see cref="EntityHandler_00483F30"/>. Chaque image il tire une poussee de 12 dans la
+    /// direction visee (<see cref="SetVectorFromAngles_00532AD0"/>), l'ajoute a sa vitesse
+    /// <c>+0x50</c>..<c>+0x58</c>, freine d'un huitieme, avance, puis <b>reprend comme cap et
+    /// tangage la direction de son propre deplacement</b> (plus <c>0x400</c> au cap). Quand ce
+    /// deplacement tombe a <c>±0x80</c> pres sur la direction visee, dans les deux plans, il
+    /// pose <c>0x10</c> sur son mot de tete : il est <b>verrouille</b> et ne vise plus.
+    /// </para>
+    /// <para>
+    /// <b>Sans cible, ou verrouille</b>, il file dans son cap moins <c>0x400</c> et son tangage,
+    /// et compte : a vingt images, il se marque <c>0x40000000</c>. Avec une cible vivante, il
+    /// s'inscrit dans son <c>+0x74</c>.
+    /// </para>
+    /// <para>
+    /// <b>Sa fin</b> : au contact d'un membre — la boite <c>{-0x400, -0x80, 50, 200, 0, 0x80}</c>
+    /// de <see cref="ProbeMeleeTarget_00474CA0"/> —, il le frappe au nom de <c>+0x74</c>
+    /// (<see cref="ResolveMeleeHit_00539B80"/>, <c>0x40</c>, <c>+0x96 = 8</c>) et s'efface. Au sol
+    /// (<c>+0x60</c>), sur un bit <c>0x802</c> de <c>+0x90</c> sans <c>0xa000</c>, ou marque
+    /// <c>0x40000000</c>, il <b>eclate</b> : le sous-type <c>0x6c</c> nait de lui avec une echelle de
+    /// <c>0x1800</c>, le son <c>0x21</c> part a sa position, sa cible perd son <c>+0x74</c>, et il
+    /// s'efface.
+    /// </para>
+    /// <para>
+    /// <b>Un defaut de 1998, reproduit — LB-031.</b> Si la cible porte un bit de
+    /// <c>0x50000000</c>, le corps defait les deux liens (<c>cible+0x74</c>, <c>+0x78</c>), met
+    /// <c>ebp</c> a zero… puis saute dans le calcul de visee, qui lit <c>[ebp+1Ch]</c>. Le chemin
+    /// « cible morte » dereference le pointeur qu'il vient de mettre a nul. Transcrit tel quel,
+    /// comme LB-007 : ne pas le reparer.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00484190(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = -0x400;
+        probe[1] = -0x80;
+        probe[2] = 0x32;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x80;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            e[0x36] |= 6;
+            *(uint*)e |= 0x80;
+        }
+
+        int startX = *(int*)(e + 0x1c);
+        int startY = *(int*)(e + 0x20);
+        int startZ = *(int*)(e + 0x24);
+
+        // Ghidra: la cible est rangee dans l'emplacement de l'argument ([esp+44h]) et relue a
+        // l'eclatement ; c'est elle, pas +0x78, qui perd son +0x74 a la fin.
+        byte* target = *(byte**)(e + 0x78);
+
+        int aimYaw;
+        int aimPitch;
+
+        if (target != null && (*(uint*)e & 0x10) == 0)
+        {
+            if ((*(uint*)target & 0x50000000) != 0)
+            {
+                *(byte**)(target + 0x74) = null;
+                *(byte**)(e + 0x78) = null;
+                target = null;                                      // Ghidra: `xor ebp,ebp` — voir LB-031
+            }
+            else
+            {
+                *(byte**)(target + 0x74) = e;
+            }
+
+            // Ghidra: `mov edi,[ebp+1Ch]` — sur le chemin de la cible morte, ebp vaut zero ici.
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            uint bubble = (uint)StatusBubbleHeight_00538BC0((uint*)target);
+            int dy = (int)((bubble & 0xfffffffe) * 0x800 + (uint)*(int*)(target + 0x20) - (uint)*(int*)(e + 0x20)) >> 0xc;
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));   // Ghidra: 0x00545a10
+            aimYaw = Winsys3d.Ordinal_457(dx, dz);                                   // Ghidra: 0x00545a22
+            aimPitch = Winsys3d.Ordinal_457(dy, distance);
+        }
+        else
+        {
+            (*(short*)(e + 0x10))++;
+            if (*(short*)(e + 0x10) >= 0x14) *(uint*)e |= 0x40000000;
+
+            aimYaw = *(short*)(e + 0x32) - 0x400;
+            aimPitch = *(short*)(e + 0x34);
+        }
+
+        int* thrust = stackalloc int[3];
+        SetVectorFromAngles_00532AD0(thrust, aimYaw, aimPitch, 0x0c);
+
+        int vx = *(int*)(e + 0x50) + thrust[0];
+        int vy = *(int*)(e + 0x54) + thrust[1];
+        int vz = *(int*)(e + 0x58) + thrust[2];
+        vx -= vx >> 3;
+        vy -= vy >> 3;
+        vz -= vz >> 3;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x58) = vz;
+        *(int*)(e + 0x24) += vz;
+
+        int mx = (*(int*)(e + 0x1c) - startX) >> 0xc;
+        int my = (*(int*)(e + 0x20) - startY) >> 0xc;
+        int mz = (*(int*)(e + 0x24) - startZ) >> 0xc;
+
+        int travel = (int)Winsys3d.Ordinal_442((uint)(mx * mx + mz * mz));
+        *(short*)(e + 0x32) = (short)(Winsys3d.Ordinal_457(mx, mz) + 0x400);
+        *(short*)(e + 0x34) = (short)Winsys3d.Ordinal_457(my, travel);
+
+        // Ghidra: `add edi,480h ; and edi,0FFFh ; cmp edi,100h` — a ±0x80 pres, modulo un tour.
+        if (((aimYaw - *(short*)(e + 0x32) + 0x480) & 0xfff) < 0x100 &&
+            ((aimPitch - *(short*)(e + 0x34) + 0x80) & 0xfff) < 0x100)
+        {
+            *(uint*)e |= 0x10;
+        }
+
+        FinalizeEntityPlacement2((uint*)e);                          // Ghidra: FUN_00533940
+
+        if (*(int*)(e + 0x20) <= *(int*)(e + 0x60))
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        uint contact = *(uint*)(e + 0x90);
+        bool burst = (*(uint*)e & 0x40000000) != 0
+                     || ((contact & 0xa000) == 0 && (contact & 0x802) != 0);
+
+        if (!burst)
+        {
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);        // Ghidra: FUN_00474ca0
+            if (victim == null) return;
+
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);
+            *(short*)(victim + 0x96) = 8;
+            *(uint*)victim |= 0x40;
+            *(uint*)e = 0;
+            return;
+        }
+
+        *(byte**)(e + 0x70) = null;
+        *(int*)(e + 0x44) = 0;
+        *(int*)(e + 0x48) = 0;
+        *(int*)(e + 0x4c) = 0;
+        *(int*)(e + 0x50) = 0x1800;
+        *(int*)(e + 0x54) = 0x1400;
+        *(int*)(e + 0x58) = 0x1800;
+        *(uint*)(e + 0x38) = 0x808080;
+        *(int*)(e + 0x28) = 0;                                       // Ghidra: ecriture de 32 bits
+        *(short*)(e + 0x2c) = 0;
+        *(short*)(e + 0x34) = 0;
+        e[0x04] = 1;
+
+        SpawnCastEntity_0047AAE0(e, 0x6c, 0, 2);                     // Ghidra: FUN_0047aae0
+        Aud.PlayPositionalSound(0x21, 0x302, 0x1800, (int*)(e + 0x1c));   // Ghidra: FUN_0053db20
+
+        if (target != null) *(byte**)(target + 0x74) = null;
+        *(uint*)e = 0;
     }
 
     /// <summary>Le cycle de sons de <see cref="EntityHandler_00424800"/>, que le binaire ecrit deux

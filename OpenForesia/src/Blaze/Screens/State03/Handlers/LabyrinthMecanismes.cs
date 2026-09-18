@@ -947,4 +947,181 @@ public static unsafe partial class Blaze
 
         if (*(short*)(e + 0x10) == 2) *(uint*)e &= 0xffffdfff;
     }
+
+    // =====================================================================
+    // CRENEAU 43 DU BLOC 0x005587a8 — LE BATTANT QUI BASCULE ET ENTRAINE SA VOISINE
+    // =====================================================================
+
+    /// <summary>L'enregistrement voisin que <see cref="EntityHandler_00462A80"/> entraine :
+    /// <c>e + (short)+0x14 × 0x9c</c>, dans le meme pool. Relu a chaque emploi, comme le fait le
+    /// binaire — les scripts lances en cours de corps pourraient le changer.</summary>
+    private static byte* HingeNeighbour(byte* e) => e + *(short*)(e + 0x14) * 0x9c;
+
+    /// <summary>
+    /// Ghidra: FUN_00462a80 @ 0x00462a80 — creneau <b>43</b> du bloc <c>0x005587a8</c>
+    /// (<c>0x0056adc8</c>, sous-zones 4 et 9). Decompilee dans <c>Blaze.c</c>, 536 instructions ;
+    /// dump sous <c>Legacy/Raw/Blaze/FUN_00462A80.asm</c>. Lot 13, 2026-09-18 : <b>le dernier
+    /// corps de la zone 5</b>.
+    ///
+    /// <para>
+    /// <b>Un battant qui bascule et entraine une voisine.</b> Il pivote sur son tangage
+    /// <c>+0x34</c> ; la voisine — l'enregistrement a <c>+0x14</c> rangs de <c>0x9c</c>, le meme
+    /// adressage relatif que <see cref="EntityHandler_00463150"/> — glisse avec lui selon
+    /// l'orientation <c>+0x32</c> (0, <c>0x400</c>, <c>0x800</c> ou <c>0xc00</c> : X+, Z-, X-, Z+),
+    /// tangue de son cote et monte ou descend avec le cosinus.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>0</term><description>la voisine prend <c>0x4000</c>, le script 1 part —
+    ///     sans avancer l'etat : c'est le script qui fait la suite.</description></item>
+    ///   <item><term>1, l'ouverture</term><description><c>+0x34</c> monte de <c>0x11</c> par
+    ///     image jusqu'a zero, en sonnant (son de zone <c>0x1d</c>) une image sur huit ; a zero, le
+    ///     son <c>0x27</c> et l'etat 2.</description></item>
+    ///   <item><term>2 et <c>0xc9</c>, la secousse</term><description><c>+0x12</c> change de signe
+    ///     et se rapproche de zero d'un cran par image, publie par
+    ///     <see cref="TryPublishCameraEffectNearEntity"/> ; a zero, l'etat suivant (3,
+    ///     <c>0xca</c>). L'etat 2 relance a chaque image les scripts 2 et 4.</description></item>
+    ///   <item><term>99, le rattrapage</term><description>la voisine perd <c>0x4000</c>, sa hauteur
+    ///     est posee a <c>0xffe63000</c>, les scripts 2 et 4 partent, et <b>soixante pas</b>
+    ///     d'ouverture sont joues d'un coup, avec d'autres coefficients et sans mouvement
+    ///     vertical ; puis l'etat 100. C'est la position « deja ouvert » qu'un script impose.</description></item>
+    ///   <item><term>200, la fermeture</term><description>les scripts 1 et 3 a chaque image, le
+    ///     son <c>0x1d</c> une image sur trois, <c>+0x34</c> descend de <c>0x22</c> jusqu'a
+    ///     <c>-0x400</c>, la voisine repart en sens inverse, deux fois plus vite ; puis le son
+    ///     <c>0x27</c> et la secousse <c>0xc9</c>.</description></item>
+    /// </list>
+    /// <para>
+    /// Les coefficients se lisent dans <c>Blaze.c</c> tels quels : <c>Ordinal_451</c> (le sinus) y
+    /// est appele deux ou trois fois sur le <b>meme</b> angle dans une meme expression ; la table
+    /// est pure, les appels sont gardes a leur place pour la lecture cote a cote.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00462A80(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)HingeNeighbour(e) |= 0x4000;
+            *(short*)(e + 0x98) = 0;
+            RunEntityScript(s_Unknown_005e97cc, null, 1);            // Ghidra: FUN_00513dd0
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            if (*(short*)(e + 0x98) == 0)
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x1d], 0x600, 0xb00, 0, 0);   // Ghidra: FUN_00468080
+            (*(short*)(e + 0x98))++;
+            if (*(short*)(e + 0x98) == 8) *(short*)(e + 0x98) = 0;
+
+            *(short*)(e + 0x34) += 0x11;
+            if (*(short*)(e + 0x34) >= 0)
+            {
+                *(short*)(e + 0x34) = 0;
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 10;
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x27], 0x400, 0x1000, 0, 0);
+            }
+
+            short heading = *(short*)(e + 0x32);
+            if (heading == 0)
+                *(int*)(HingeNeighbour(e) + 0x1c) += (Sin(e) >> 1) + Sin(e) * 6;
+            if (*(short*)(e + 0x32) == 0x400)
+                *(int*)(HingeNeighbour(e) + 0x24) = *(int*)(HingeNeighbour(e) + 0x24) + Sin(e) * -6 - (Sin(e) >> 1);
+            if (*(short*)(e + 0x32) == 0x800)
+                *(int*)(HingeNeighbour(e) + 0x1c) = *(int*)(HingeNeighbour(e) + 0x1c) + Sin(e) * -6 - (Sin(e) >> 1);
+            if (*(short*)(e + 0x32) == 0xc00)
+                *(int*)(HingeNeighbour(e) + 0x24) += (Sin(e) >> 1) + Sin(e) * 6;
+
+            *(short*)(HingeNeighbour(e) + 0x34) += 5;
+            *(int*)(HingeNeighbour(e) + 0x20) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x34)) * 6;   // Ghidra: Ordinal_450
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            RunEntityScript(s_Unknown_005e97cc, null, 2);
+            RunEntityScript(s_Unknown_005e97cc, null, 4);
+            StepHingeJolt(e, 3);
+        }
+
+        if (*(short*)(e + 0x10) == 99)
+        {
+            *(uint*)HingeNeighbour(e) &= 0xffffbfff;
+            *(int*)(HingeNeighbour(e) + 0x20) = unchecked((int)0xffe63000);
+            RunEntityScript(s_Unknown_005e97cc, null, 2);
+            RunEntityScript(s_Unknown_005e97cc, null, 4);
+
+            for (int step = 0x3c; step != 0; step--)
+            {
+                *(short*)(e + 0x34) += 0x11;
+
+                if (*(short*)(e + 0x32) == 0)
+                    *(int*)(HingeNeighbour(e) + 0x1c) += (Sin(e) >> 2) + Sin(e) * 6 + (Sin(e) >> 1);
+                if (*(short*)(e + 0x32) == 0x400)
+                    *(int*)(HingeNeighbour(e) + 0x24) = *(int*)(HingeNeighbour(e) + 0x24) + Sin(e) * -6 - (Sin(e) >> 2) - (Sin(e) >> 1);
+                if (*(short*)(e + 0x32) == 0x800)
+                    *(int*)(HingeNeighbour(e) + 0x1c) = *(int*)(HingeNeighbour(e) + 0x1c) + Sin(e) * -6 - (Sin(e) >> 2) - (Sin(e) >> 1);
+                if (*(short*)(e + 0x32) == 0xc00)
+                    *(int*)(HingeNeighbour(e) + 0x24) += (Sin(e) >> 1) + (Sin(e) >> 2) + Sin(e) * 6;
+
+                *(short*)(HingeNeighbour(e) + 0x34) += 5;
+            }
+
+            *(short*)(e + 0x34) = 0;
+            *(short*)(e + 0x10) = 100;
+        }
+
+        if (*(short*)(e + 0x10) == 200)
+        {
+            RunEntityScript(s_Unknown_005e97cc, null, 1);
+            RunEntityScript(s_Unknown_005e97cc, null, 3);
+
+            if (*(short*)(e + 0x98) == 0)
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x1d], 0x600, 0xb00, 0, 0);
+            (*(short*)(e + 0x98))++;
+            if (*(short*)(e + 0x98) > 2) *(short*)(e + 0x98) = 0;
+
+            *(short*)(e + 0x34) -= 0x22;
+            if (*(short*)(e + 0x34) < -0x3ff)
+            {
+                *(short*)(e + 0x34) = -0x400;                        // Ghidra: 0xfc00
+                *(short*)(e + 0x10) = 0xc9;
+                *(short*)(e + 0x12) = 0x14;
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x27], 0x500, 0x1800, 0, 0);
+            }
+
+            if (*(short*)(e + 0x32) == 0)
+                *(int*)(HingeNeighbour(e) + 0x1c) = *(int*)(HingeNeighbour(e) + 0x1c) + Sin(e) * -0xc - Sin(e);
+            if (*(short*)(e + 0x32) == 0x400)
+                *(int*)(HingeNeighbour(e) + 0x24) += Sin(e) + Sin(e) * 0xc;
+            if (*(short*)(e + 0x32) == 0x800)
+                *(int*)(HingeNeighbour(e) + 0x1c) += Sin(e) + Sin(e) * 0xc;
+            if (*(short*)(e + 0x32) == 0xc00)
+                *(int*)(HingeNeighbour(e) + 0x24) = *(int*)(HingeNeighbour(e) + 0x24) + Sin(e) * -0xc - Sin(e);
+
+            *(short*)(HingeNeighbour(e) + 0x34) -= 10;
+            *(int*)(HingeNeighbour(e) + 0x20) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x34)) * -0xc;
+        }
+
+        if (*(short*)(e + 0x10) == 0xc9) StepHingeJolt(e, 0xca);
+
+        // Ghidra: Ordinal_451 sur le tangage courant du battant, relu a chaque appel.
+        static int Sin(byte* hinge) => (int)Winsys3d.GetSinTableEntry(*(short*)(hinge + 0x34));
+    }
+
+    /// <summary>La secousse des etats 2 et <c>0xc9</c> de <see cref="EntityHandler_00462A80"/>,
+    /// ecrite deux fois a l'identique : <c>+0x12</c> change de signe et se rapproche de zero d'un
+    /// cran, la camera est publiee a <c>(999, +0x12, 999)</c>, et a zero l'etat passe a
+    /// <paramref name="next"/>.</summary>
+    private static void StepHingeJolt(byte* e, short next)
+    {
+        short flipped = (short)-*(short*)(e + 0x12);
+        short jolt = (short)(flipped + (flipped < 1 ? 1 : -1));
+        *(short*)(e + 0x12) = jolt;
+
+        TryPublishCameraEffectNearEntity((uint*)e, 999, jolt, 999, 0, 0);   // Ghidra: FUN_0041be60
+
+        if (*(short*)(e + 0x12) == 0)
+        {
+            *(short*)(e + 0x10) = next;
+            *(short*)(e + 0x12) = 0;
+        }
+    }
 }
