@@ -1419,6 +1419,22 @@ public static unsafe partial class Blaze
             case 0x00461BE0: EntityHandler_00461BE0(record); return;   // le balancement a phase tiree au hasard
             case 0x00461E00: EntityHandler_00461E00(record); return;   // la chute de dix images
 
+            // LE DECOR DU LABYRINTHE DES MORTS — table 0x0056adc8, lot 4 : les sept corps de decor
+            // des dix plus simples qui restaient. Handlers/Labyrinth.cs.
+            case 0x00460260: EntityHandler_00460260(record); return;   // la lueur rouge que son drapeau eteint
+            case 0x00463300: EntityHandler_00463300(record); return;   // la porte a un battant, 4 et 9
+            case 0x00461B00: EntityHandler_00461B00(record); return;   // ce qui descend une fois et se tait
+            case 0x00461E80: EntityHandler_00461E80(record); return;   // la chute au contact, et ses deux voisines
+            case 0x00460FD0: EntityHandler_00460FD0(record); return;   // la respiration, puis quarante images de clignotement
+            case 0x00462250: EntityHandler_00462250(record); return;   // le bloc qu'on pousse, son propre a la sous-zone 6
+            case 0x00460310: EntityHandler_00460310(record); return;   // la source d'effets qui seme a cote d'elle
+
+            // LES MECANISMES DU LABYRINTHE DES MORTS — table 0x0056adc8, lot 4 : les trois corps du
+            // lot qui consultent le groupe ou la table des emplacements. Handlers/LabyrinthMecanismes.cs.
+            case 0x004618B0: EntityHandler_004618B0(record); return;   // ne part que si le groupe entier est a bord
+            case 0x00460990: EntityHandler_00460990(record); return;   // la porte tenue ouverte a la manette
+            case 0x00462990: EntityHandler_00462990(record); return;   // le panneau qui tourne puis s'eteint
+
             case 0x004BFE90: TickSceneEntityAi_004BFE90(record, 0x0000); return;   // &DAT_00552ba0
             case 0x004C5A30: TickSceneEntityAi_004BFE90(record, 0x0200); return;   // &DAT_00552bf0
             case 0x004E7810: TickSceneEntityAi_004BFE90(record, 0x000d); return;   // &DAT_00552e98

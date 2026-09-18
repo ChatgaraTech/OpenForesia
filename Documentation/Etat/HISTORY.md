@@ -4,6 +4,24 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-18
+
+- feat : **le lot 4 du Labyrinthe des morts — les dix plus simples qui restaient** : zone 5, 92 → 102
+  sur 160, et la catégorie B du tri par complexité passe de 29 à 19 corps
+- feat : sept corps de décor dans `Handlers/Labyrinth.cs` — la lueur rouge que son drapeau éteint,
+  la porte à un battant des sous-zones 4 et 9, ce qui descend une fois et se tait, la chute
+  déclenchée au contact qui marque deux voisines, la respiration suivie de quarante images de
+  clignotement, le bloc qu'on pousse (son propre à la sous-zone 6), et la source d'effets qui sème
+  à ±100 cases autour d'elle sans bouger
+- feat : **`Handlers/LabyrinthMecanismes.cs` ouvert** pour les trois corps du lot qui consultent le
+  groupe — ce qui ne part que si le groupe entier est à bord, la porte tenue ouverte à la manette,
+  et le panneau qui dit une phrase, tourne neuf images et meurt
+- doc : quatre corps absents de `Blaze.c` relevés au désassembleur et conservés sous
+  `Legacy/Raw/Blaze/` — `FUN_00460310`, `FUN_004618B0`, `FUN_00462990`, `FUN_00460990`
+- doc : `0x004618B0` compte les emplacements **en clair dans son corps**, avec le masque interdit
+  `0x50010000` et non le `0x50000000` d'`ActivePartySlotCount_00466D70` ; le bit `0x10000` de
+  différence est le cœur de sa condition — avec un membre à terre, elle ne part jamais
+
 ## 2026-09-17 (suite 13)
 
 - feat : **le lot 3 du Labyrinthe — le banc des sous-zones 4 et 9**, 12 corps pour 4 lectures,

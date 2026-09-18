@@ -23632,3 +23632,112 @@ deux corps pour une lecture, et il ouvre la grotte scellée par la même occasio
 | 10 — Grotte scellée | 44 / 349 | **47 / 349** |
 
 Zone 5, il reste 68 : catégorie B 29 corps (29 lectures), C 28 (28), D 11 (10).
+
+## 2026-09-18 — Labyrinthe des morts, lot 4 : les dix plus simples qui restaient
+
+Zone 5 : **92 → 102 sur 160**. La catégorie B du tri par complexité passe de **29 à 19** corps, et
+1 341 instructions restent à lire dans cette catégorie contre 1 945 avant le lot.
+
+Le choix du lot : les **dix plus simples de la table `0x0056adc8`** — le décor de sous-zone — plutôt
+que les dix plus courts toutes tables confondues. Les dix plus courts en absolu s'étalaient sur
+quatre tables (`0056ADC8`, `0056B0C8`, `0056B1C8`, `0056AEC8`) et donc sur quatre fichiers de
+destination, dont `WorldMapScript.cs` pour les verbes de `0056AEC8` qui ne sont même pas des
+gestionnaires d'entité. Prendre une table entière garde le lot lisible et prolonge le lot 1.
+
+### Ce que le lot a coupé en deux fichiers
+
+Sept corps ne consultent jamais le groupe : ils restent dans `Handlers/Labyrinth.cs`. **Trois le
+consultent**, et le test d'appartenance d'`ARCHITECTURE.md` a donc ouvert
+`Handlers/LabyrinthMecanismes.cs` — à trois corps, bien avant que `Labyrinth.cs` ne grossisse. La
+coupure est de rôle, pas de taille : c'est exactement ce que l'en-tête du lot 1 annonçait comme
+« pas encore » nécessaire.
+
+| adresse | bloc / créneau | sous-zones | `Blaze.c` | ce qu'il fait | fichier |
+|---|---|---|---|---|---|
+| `0x00460260` | `0x00557aa8` / 46 | 0-3 | oui | la lueur rouge que son drapeau éteint | `Labyrinth.cs` |
+| `0x00463300` | `0x005587a8` / 34 | 4,9 | oui | la porte à un battant | `Labyrinth.cs` |
+| `0x00461B00` | `0x00558128` / 20 | 5-8 | oui | ce qui descend une fois et se tait | `Labyrinth.cs` |
+| `0x00461E80` | `0x00558128` / 54 | 5-8 | oui | la chute au contact, et ses deux voisines | `Labyrinth.cs` |
+| `0x00460FD0` | `0x00557aa8` / 31 | 0-3 | oui | la respiration, puis le clignotement | `Labyrinth.cs` |
+| `0x00462250` | `0x00558128` / 14 | 5-8 | oui | le bloc qu'on pousse | `Labyrinth.cs` |
+| `0x00460310` | `0x00557aa8` / 45 | 0-3 | **non** | la source d'effets qui sème à côté d'elle | `Labyrinth.cs` |
+| `0x004618B0` | `0x00558128` / 35 | 5-8 | **non** | ne part que si le groupe entier est à bord | `LabyrinthMecanismes.cs` |
+| `0x00460990` | `0x00557aa8` / 32 | 0-3 | **non** | la porte tenue ouverte à la manette | `LabyrinthMecanismes.cs` |
+| `0x00462990` | `0x005587a8` / 48 | 4,9 | **non** | le panneau qui tourne puis s'éteint | `LabyrinthMecanismes.cs` |
+
+Les quatre corps absents de `Blaze.c` ont été relevés au désassembleur et les dumps conservés sous
+`Legacy/Raw/Blaze/FUN_00460310.asm`, `FUN_004618B0.asm`, `FUN_00462990.asm`, `FUN_00460990.asm`.
+
+### Le piège du lot : un comptage d'emplacements qui **ressemble** à la fonction commune
+
+`0x004618B0` ouvre par une boucle de quatre tours sur `0x005e93c0`, au pas de `0x9c`, qui compte les
+emplacements portant `0x80000000` et aucun bit d'un masque interdit. C'est mot pour mot la forme
+d'`ActivePartySlotCount_00466D70` — **et ce n'est pas elle** :
+
+| | masque requis | masque interdit |
+|---|---|---|
+| `ActivePartySlotCount_00466D70` | `0x80000000` | `0x50000000` |
+| la boucle inline de `0x004618B0` | `0x80000000` | `0x50010000` |
+
+Le bit `0x10000` de différence est le **membre à terre**. Et les deux comptes sont confrontés l'un à
+l'autre dans la même image : la boucle inline exige au moins deux emplacements, puis
+`CountPartyMembersMatching(e, 0x10, 0x40000000)` — les membres rattachés — doit égaler
+`ActivePartySlotCount_00466D70()`. Avec un membre à terre, le second compte l'inclut et le premier
+non : **la condition ne peut plus tomber juste, et le mécanisme ne part jamais**. Remplacer la
+boucle par un appel à la fonction commune aurait effacé précisément cela, sans erreur de
+compilation et sans exception.
+
+Le déclenchement est par ailleurs **hors de toute garde d'état** et repose `+0x10` à 1 à chaque
+image où la condition tient : une entité arrivée à l'état 2, groupe toujours à bord, repart donc à
+l'état 1 avec ses échelles à zéro. C'est ce que le binaire fait ; transcrit tel quel.
+
+### Deux réutilisations qui ont évité deux duplications
+
+- `0x00460990` est la **cousine de labyrinthe de `0x00451790`**, la porte de la mine qu'on tient
+  ouverte : mêmes quatre états, même attente sur les bits `0xa000` de la manette du membre `+0x14`,
+  mêmes rampes de dix images. Elle réutilise `DoorHolderPadState` (`MineMecanismes.cs`) tel quel —
+  la triple indirection emplacement → personnage → manette est identique. Trois différences, toutes
+  côté labyrinthe : **un seul battant**, un **son** au départ de l'ouverture (le `0x10` de la
+  sous-zone), et un **état 10** qui n'est pas une rampe mais un calage à `+0x9a + 0x44c`, soit une
+  pose grande ouverte au-delà de la course normale (`0x3e8`).
+- `0x00462250` est le **quatrième rocher qui roule**, après les trois de la forêt : même charpente
+  `MoveSceneEntity_00455B30` / `Rolling` / `TestTriggerVolumes_00534CD0` / remise à zéro des trois
+  vitesses. Deux paramètres lui sont propres : le masque de refus `0x840`, le plus étroit des
+  quatre, et un son **par sous-zone** — la `6` joue le `0x1e` à hauteur `0x400` et gain `0xb00`,
+  partout ailleurs c'est le `0x16` à `0x800` et gain plein. C'est le seul décor du labyrinthe qui
+  lise `s_Unknown_005de52c` pour choisir un son.
+
+### Trois observations sur les corps eux-mêmes
+
+**`0x00460260` est le seul site connu où `BrightenEntityTint_00404DE0` reçoit des arguments
+négatifs.** Son état 2 appelle `(-20, -20, -20)` à chaque image : la fonction « éclaircit » donc
+vers le noir, et sa **borne basse** — dont la documentation notait qu'elle « ne peut pas se
+déclencher avec des arguments positifs » — sert ici pour de bon. La teinte se pose sur `(0, 0, 0)`
+en une dizaine d'images et y reste, l'état 2 ne revenant jamais à 1.
+
+**`0x00460FD0` fait dériver sa hauteur, et ce n'est pas une oscillation.** Le binaire écrit
+`+0x20 += sinus`, pas `+0x20 = base + sinus`. La somme du sinus échantillonné au pas de `0x28` n'est
+pas nulle sur un tour, si bien que l'entité monte ou descend lentement sans jamais revenir. La
+tentation de « corriger » en posant une base était forte ; c'est l'accumulation qui est dans le
+binaire.
+
+**Le compteur `+0x12` de `0x00462990` est mort-né.** Il avance d'un par image et boucle de 20 à 200,
+mais l'état `+0x10` avance aussi d'un par image sans condition et pose `0x40002000` dès qu'il
+atteint 10 — après quoi la garde d'entrée renvoie tout de suite. L'entité n'atteint jamais sa 15e
+image : le seul emploi réel de `+0x12` est le garde `< 0x0f` du libellé, toujours vrai à la première
+image, et la boucle à 200 ne sert jamais. Transcrite telle quelle.
+
+Son numéro de libellé, lui, vient du **champ de pose consommé** : `+0x30` est lu comme un demi-mot
+signé, `>> 8` est rangé dans `+0x44`, et `+0x30` est remis à zéro — l'angle qu'il portera ensuite
+part donc de zéro. Le **locuteur** de la boîte de dialogue n'est pas le membre qui l'a touchée mais
+l'emplacement que `Mem.s_Unknown_005de538` désigne, le joueur qui tient la main.
+
+### Reste à faire dans la zone
+
+58 corps, aucun d'intelligence : 19 en B, 28 en C, 11 en D (10 lectures). Le tri à jour est dans
+`Documentation/Etat/Zone5ParComplexite.md`. Les six adresses de `0x0056AEC8` restent le piège de la
+zone — ce sont des **verbes de script**, pas des gestionnaires d'entité, et elles vont dans
+`WorldMapScript.cs`.
+
+**Aucun des dix corps n'a été exercé en jeu** : la colonne `teste` de la zone 5 est toujours à
+zéro sur les 160. Dix dettes de plus, et c'est la sonde qui les lèvera.
