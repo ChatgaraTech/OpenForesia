@@ -169,7 +169,7 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    lire un seul. Les « appelées inconnues » du tri se lisent d'abord : `0x00514020` n'était qu'une
    enveloppe.
 5. ~~**La zone 5, le Labyrinthe**~~ — **complète le 2026-09-18** (160 / 160), voir le point 4.
-   **La zone 6, le château, est en cours : 148 / 170.** Le tri est dans `Zone6ParComplexite.md`
+   **La zone 6, le château, est en cours : 157 / 170.** Le tri est dans `Zone6ParComplexite.md`
    (2026-09-18, suite 10) et le classement en cinq paliers dans `REVERSE_STATUS.md`.
    - ~~**palier 1**, les 32 corps déjà écrits ou presque~~ — **fait le 2026-09-18 (suite 11)**,
      plus deux gestionnaires de la grotte scellée en prime.
@@ -178,11 +178,13 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    - ~~**palier 3**, les 23 « C »~~ — **fait le 2026-09-18 (suite 13)**, plus un de la grotte
      (`0x00442AC0`). **Les catégories A, B et C du tri sont vides.** Les quatre nuages étaient
      `StepStatusCloud` du Labyrinthe plus une gerbe propre au château.
-   - **La suite est le palier 4** : les 9 « D » pour ~8 lectures — `0x00425E50` / `0x00428420` /
-     `0x0042B9A0` (372, une famille, garde → `0053B730`), `0x00425750` / `0x00427CE0` (548/565),
-     `0x00463EF0` / `0x00465820` (270, parents mais pas copies), et les deux tables de sauts
-     `0x004274C0` et `0x0042ABF0` — **ce sont les incantations `0xdf` que la gerbe des nuages fait
-     naître** (créneau 31 de `0x0056b1c8`). Puis les 13 routines d'intelligence (palier 5).
+   - ~~**palier 4**, les 9 « D »~~ — **fait le 2026-09-18 (suite 14)**. Trois des quatre formes
+     étaient des corps du Labyrinthe (`TickCloudSeed`, `TickOwnerFrontSweep`) à un détail près.
+     **Les catégories A à D du tri sont vides.**
+   - **La suite est le palier 5** : les 13 routines d'intelligence pour 10 lectures (voir le
+     tableau du palier 5 dans `REVERSE_STATUS.md`, suite 10). Commencer par la paire Vampire /
+     Petit vampire (`0x004CF3A0` + `0x004D8F70`, zéro ligne d'écart), puis les bêtes qui ferment
+     aussi un corps d'une autre zone (Loup, Harpie, Sacuba, Chimère).
    - **Ce que le palier 3 a appris** :
      - **un sous-type `0xc0 + n` va au créneau n de `0x0056b0c8`, `b1c8` ou `b2c8` selon la
        fonction qui le fait naître** — décor, `SpawnCastEntity_0047AAE0`,

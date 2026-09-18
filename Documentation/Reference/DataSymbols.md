@@ -3390,3 +3390,24 @@ dérive. La grotte scellée a le même motif juste après `0x00551408`.
 
 Les huit enregistrements `0x005507e8`..`0x00550827` (même couche `0x0a`, rangée `y = 0x30`)
 n'appartiennent à aucun corps écrit au 2026-09-18.
+
+## `0x00550598`, `0x005506f0`, `0x005508a0`, `0x005505b0`, `0x00550708` — les planches du palier 4 du château (2026-09-18)
+
+```
+0x00550598: c0a8 0f0f 0102 1000   d0a8 0f0f 0102 1000   8048 0f0f 0001 1000
+0x005505b0: 00d0 0f0f 0102 1000   10d0 0f0f 0102 1000   20d0 0f0f 0102 1000   6048 1f1f 0102 1000
+--- 0x005505d0 : la planche de groupe des sous-zones 6 à 10
+```
+
+| plage | enregistrements | borne haute | corps | marge |
+|---|---:|---|---|---|
+| `0x00550598` | 3 | `0x005505b0` | `0x00425E50` (vie 0 à `+0`, vie 1 à `+0x10`) | vie 0 : `+0x40` tiré dans {0, 1} ; vie 1 : prouvée, `+0x40` posé à 0 |
+| `0x005506f0` | 3, mêmes octets | `0x00550708` | `0x00428420` | idem |
+| `0x005508a0` | 3, mêmes octets | `0x005508b8` | `0x0042B9A0` | idem |
+| `0x005505b0` | 4 | `0x005505d0` | `0x00425750` | mode 0 tourne 0→2, mode 1 pose 3 |
+| `0x00550708` | 4, mêmes octets | `0x00550728` | `0x00427CE0` | idem |
+
+`0x005505b0` et `0x00550708` sont la **quatrième et la cinquième** occurrence de la luciole à quatre
+images (`0x00550460` au Labyrinthe, `0x005508b8`, `0x005510f8`). Avec ce palier, la plage
+`0x00550570`..`0x005505d0` du groupe des sous-zones 0 à 4 est relevée d'un bout à l'autre, et de
+même `0x005506c0`..`0x00550728` pour les sous-zones 6 à 10.

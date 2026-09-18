@@ -6,6 +6,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-18
 
+- feat : **le palier 4 du château de l'immortel est écrit — 148 sur 170 devient 157 sur 170** ;
+  il ne reste que les 13 routines d'intelligence
+- feat : la famille à trois vies (feu follet, projectile qui rebondit, éclair rouge), les semis
+  qui chantent (`TickCloudSeed` plus des sons) et les nappes enfants de la gerbe des nuages
+  (`TickOwnerFrontSweep` à la mise en place du château)
+- feat : le battant à trois positions du créneau 29, et `WriteScriptFlag`, l'écriture d'un
+  drapeau de banque 0 dont `ScriptFlagSet` était la lecture
+- doc : le tampon `+0x48` du nuage `0x004271B0` sert à ce que **seul le premier des onze semis
+  chante** ; et le cas 2 des nappes n'existe que là où la gerbe marque ses enfants `+0x9a = 2`
+- doc : cinq planches relevées, trois marges courtes scellées ; la famille reçoit ses deux planches
+  séparément pour que `check-descriptors.sh` les mesure
 - feat : **le palier 3 du château de l'immortel est écrit — 125 sur 170 devient 148 sur 170**, et
   la catégorie C du tri est vide comme la A et la B ; la grotte scellée gagne `0x00442AC0`
 - feat : les quatre nuages à effet 32 du château — `StepStatusCloud` du Labyrinthe plus une gerbe

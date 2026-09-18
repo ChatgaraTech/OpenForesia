@@ -2162,6 +2162,25 @@ public static unsafe partial class Blaze
             case 0x0042D170: EntityHandler_0042D170(record); return;
             case 0x0042D4E0: EntityHandler_0042D4E0(record); return;
             case 0x0042DC80: EntityHandler_0042DC80(record); return;
+
+            // ====================================================================================
+            // ZONE 6 — LE CHATEAU DE L'IMMORTEL, PALIER 4 (2026-09-18) : les « D ».
+            // ====================================================================================
+
+            // La famille a trois vies (feu follet, projectile qui rebondit, eclair rouge), les
+            // semis qui chantent (TickCloudSeed plus des sons) et la nappe devant le proprietaire
+            // (TickOwnerFrontSweep a la mise en place du chateau) — Effects/ImmortalCastleParticles.cs.
+            case 0x00425E50: EntityHandler_00425E50(record); return;
+            case 0x00428420: EntityHandler_00428420(record); return;
+            case 0x0042B9A0: EntityHandler_0042B9A0(record); return;
+            case 0x00425750: EntityHandler_00425750(record); return;
+            case 0x00427CE0: EntityHandler_00427CE0(record); return;
+            case 0x004274C0: EntityHandler_004274C0(record); return;
+            case 0x0042ABF0: EntityHandler_0042ABF0(record); return;
+
+            // Le battant a trois positions du creneau 29 — Handlers/ImmortalCastle.cs.
+            case 0x00463EF0: EntityHandler_00463EF0(record); return;
+            case 0x00465820: EntityHandler_00465820(record); return;
             case 0x00466350: EntityHandler_00466350(record); return;
             case 0x00466400: EntityHandler_00466400(record); return;
             case 0x00466500: EntityHandler_00466500(record); return;

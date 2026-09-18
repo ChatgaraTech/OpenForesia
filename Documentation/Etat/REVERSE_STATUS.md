@@ -24667,3 +24667,51 @@ quand tous le sont.
   tout le dépôt, toutes antérieures.
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
 - **Aucun des 24 corps n'a été exercé en jeu.**
+
+## 2026-09-18 (suite 14) — Zone 6, palier 4 : les 9 « D », et il ne reste que l'intelligence
+
+**148 sur 170 devient 157 sur 170.** Les catégories A à D du tri sont vides ; il reste les 13
+routines de bêtes (palier 5).
+
+| corps | ce que c'est | lecture |
+|---|---|---|
+| `0x00425E50` / `0x00428420` / `0x0042B9A0` (créneau 32 de `b2c8`, sous-type `0xe0`) | **trois vies** choisies par `+0x14` : le feu follet, le projectile qui rebondit (`ResolveMeleeHit_00539B80`, deux rebonds), l'éclair rouge (voile `0x005de024` en quatre crans, puis l'effet 11 gardé sur tout le groupe) | un corps neuf, `TickCastleThreeLives_00425E50` |
+| `0x00425750` / `0x00427CE0` (créneau 31 de `b2c8`, sous-type `0xdf`) | **les semis des nuages des sous-zones 0 à 4 et 6 à 10** | `TickCloudSeed` du Labyrinthe, plus des sons |
+| `0x004274C0` / `0x0042ABF0` (créneau 31 de `b1c8`, incantation `0xdf`) | **les enfants de la gerbe des nuages** | `TickOwnerFrontSweep` du Labyrinthe, à la mise en place du château |
+| `0x00463EF0` / `0x00465820` (créneau 29 de `0x0056adc8`) | **un battant à trois positions** piloté par script, qui tient deux drapeaux de banque 0 | un corps neuf, deux variantes |
+
+### « Parents mais pas copies » : ce que le tri voyait, et ce qu'il y avait
+
+- **La famille à trois vies** ne diffère que par sa tête : `0x00425E50` laisse un feu follet dont
+  le porteur est mort **faire encore un pas** ; les deux autres rendent la main. Relu au
+  désassembleur — Ghidra rend les deux têtes de façons différentes, et c'est ce qui a d'abord fait
+  croire à un écart de logique plus large. La garde `0x00426370` (et `0x00428950`, `0x0042BED0`) est
+  la forme de `ApplyStatusEffect32IfAllowed_00421D80` avec l'effet **11** (`0053B730`).
+- **Les semis** : `0x00425750` et `0x00427CE0` sont le semis du Labyrinthe avec `+0x98` et quatre
+  voix. Le son ne part que si `+0x48` est nul — le rang que `0x004271B0` tamponne sur ses onze
+  semis au palier 3 : **des onze, seul le premier chante**. Le tampon du palier 3 prend ici son
+  sens. Et `0x00425750` **ne renonce jamais** : la branche « quinze images après la fin du compte,
+  s'éteindre » de son miroir et du Labyrinthe n'existe pas chez lui.
+- **Les nappes** : le tri disait « feuilles écrites mais pas `TickOwnerFrontSweep` ». C'est lui,
+  moins l'ancre `+0x6c` — la hauteur est celle du propriétaire plus `0x73000`, et le rayon 14 au
+  lieu de 15. Les feuilles sont celles du Labyrinthe dans le même ordre, vérifiées une à une sur
+  leurs cibles d'appel. `0x004274C0` tire parmi les neuf feuilles et n'a pas de cas 2 ;
+  `0x0042ABF0` tire parmi les **sept premières** et a le cas 2. **Et c'est cohérent avec le
+  palier 3** : la gerbe de `0x0042A920`/`0x0042B190` fait naître ses `0xdf` avec `+0x9a = 2`,
+  donc ses enfants exécutent le cas 2 de `0x0042ABF0` ; celle de `0x004271B0` ne marque pas les
+  siens, et `0x004274C0` n'a pas de cas 2.
+- **Le battant** : même machine à états, mais `0x00463EF0` écrit ses drapeaux **à l'arrivée** et
+  `0x00465820` **au départ, à chaque image du mouvement** — l'un dit où est la porte, l'autre où
+  elle va. L'état 4 de `0x00465820` n'écrit rien : si un script pose l'état 4 directement, les
+  drapeaux restent tels quels. `WriteScriptFlag` est ajouté, l'écriture dont `ScriptFlagSet` était
+  la lecture.
+
+### Contrôles
+
+- `dotnet build OpenForesia.sln` : 0 erreur.
+- `check-descriptors.sh` : cinq planches neuves lues correctement ; la famille reçoit désormais
+  ses deux planches **séparément depuis le site d'appel** (le vérificateur ne mesure pas
+  `plate + 0x10` dans un corps), et les trois marges courtes du projectile sont prouvées et
+  scellées. 74 marges prouvées, 3 à vérifier, toutes antérieures.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés.
+- **Aucun des 9 corps n'a été exercé en jeu.**

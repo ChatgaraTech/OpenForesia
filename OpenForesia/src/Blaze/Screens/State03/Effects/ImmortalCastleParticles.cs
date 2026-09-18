@@ -1868,4 +1868,802 @@ public static unsafe partial class Blaze
         e[0x39] = g;
         e[0x3a] = b;
     }
+
+    // =====================================================================
+    // PALIER 4 (2026-09-18) — LES « D »
+    // =====================================================================
+
+    // ---------------------------------------------------------------------
+    // CRENEAU 32 DE 0x0056b2c8 (SOUS-TYPE 0xe0), AUX TROIS GROUPES — LA FAMILLE A TROIS VIES
+    // ---------------------------------------------------------------------
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550598</c> — <b>la planche des trois vies</b>, sous-zones 0 a
+    /// 4. Trois enregistrements : les deux premiers pour le feu follet (<c>+0x40</c> tire a pile ou
+    /// face), le troisieme (<c>0x005505a8</c>, couche 1) pour le projectile, qui pose
+    /// <c>+0x40 = 0</c> et ne l'avance jamais. Bornee en bas par la braise
+    /// (<c>s_Descriptors_00550570</c>, qui s'arrete ici), en haut par <c>0x005505b0</c>, ou
+    /// commence une luciole <c>00d0 / 10d0</c> sur le patron de <see cref="s_Descriptors_005508B8"/>.</summary>
+    private static readonly byte[] s_Descriptors_00550598 =
+    [
+        0xc0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550598  <- 0x00425E50, vie 0
+        0xd0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005505a0
+        0x80, 0x48, 0x0f, 0x0f, 0x00, 0x01, 0x10, 0x00,   // 0x005505a8  <- 0x00425E50, vie 1
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_005506f0</c> — la meme planche pour les sous-zones 6 a 10,
+    /// memes octets. Bornee en bas par <see cref="s_Descriptors_005506E8"/>, en haut par
+    /// <c>0x00550708</c> (<c>00d0</c>).</summary>
+    private static readonly byte[] s_Descriptors_005506F0 =
+    [
+        0xc0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005506f0  <- 0x00428420, vie 0
+        0xd0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005506f8
+        0x80, 0x48, 0x0f, 0x0f, 0x00, 0x01, 0x10, 0x00,   // 0x00550700  <- 0x00428420, vie 1
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_005508a0</c> — la meme planche pour les sous-zones 5 et 11,
+    /// memes octets. Bornee en bas par <see cref="s_Descriptors_00550890"/>, en haut par
+    /// <see cref="s_Descriptors_005508B8"/> : les deux bornes sont deja des planches ecrites.</summary>
+    private static readonly byte[] s_Descriptors_005508A0 =
+    [
+        0xc0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005508a0  <- 0x0042B9A0, vie 0
+        0xd0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005508a8
+        0x80, 0x48, 0x0f, 0x0f, 0x00, 0x01, 0x10, 0x00,   // 0x005508b0  <- 0x0042B9A0, vie 1
+    ];
+
+    private static byte* s_Descriptors00550598Storage;
+    private static byte* s_Descriptors005506F0Storage;
+    private static byte* s_Descriptors005508A0Storage;
+
+    private static byte* Descriptors00550598() => NativeCopy(s_Descriptors_00550598, ref s_Descriptors00550598Storage);
+    private static byte* Descriptors005506F0() => NativeCopy(s_Descriptors_005506F0, ref s_Descriptors005506F0Storage);
+    private static byte* Descriptors005508A0() => NativeCopy(s_Descriptors_005508A0, ref s_Descriptors005508A0Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00426370 @ 0x00426370 — <b>l'effet d'etat 11, garde</b>. Et ses deux copies
+    /// <c>FUN_00428950</c> et <c>FUN_0042bed0</c>, une par groupe de sous-zones : 64 octets chacune,
+    /// identiques au <c>jne</c> interne pres, cibles d'appel comprises.
+    ///
+    /// <para>
+    /// La forme exacte de <see cref="ApplyStatusEffect32IfAllowed_00421D80"/> (Labyrinthe), a
+    /// l'appelee pres : <see cref="IsEffectPairBlocked_004364B0"/> d'abord, puis
+    /// <see cref="ApplyStatusEffect_0053B730"/> — l'effet 11, le bit <c>0x40</c> — au lieu de
+    /// <c>0053C5E0</c>. Rend vrai si la paire est bloquee ou si l'effet a refuse.
+    /// </para>
+    /// </summary>
+    private static bool ApplyStatusEffect11IfAllowed_00426370(uint* attacker, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(attacker, victim) != 0) return true;
+
+        return ApplyStatusEffect_0053B730(attacker, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00425E50"/>, <see cref="EntityHandler_00428420"/> et
+    /// <see cref="EntityHandler_0042B9A0"/>. Decompile dans <c>Blaze.c</c>, 372 instructions aux
+    /// trois adresses.
+    ///
+    /// <para>
+    /// <b>Trois vies sans rapport, choisies par <c>+0x14</c></b>, sous un meme corps :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>0 — le feu follet</term><description>il monte de cent unites, tourne sur un
+    ///     cercle dont le rayon <c>+0x5c</c> part de 20 a 49 et grandit de 20 a 39 par image, au
+    ///     pas angulaire <c>+0x16</c> de 100 a 149, en s'elevant de huit unites par image et en
+    ///     grossissant de 200 jusqu'a 5000. Il vit cinquante images au plus, et chaque image passe
+    ///     la trentieme, une chance sur cinquante de s'eteindre.</description></item>
+    ///   <item><term>1 — le projectile qui rebondit</term><description>il part de 120 unites plus
+    ///     haut, devie son cap de ±100, et roule en ligne droite (rayon <c>+0x12</c> qui grandit de
+    ///     <c>+0x5c</c>, 15 a 24) sous une gravite de deux par image, plafonnee a trente. Un mur
+    ///     (<c>+0x90 &amp; 0x8802</c> apres <see cref="FinalizeEntityPlacement2"/>) le fait revenir
+    ///     sur sa position. Au sol <c>+0x60</c>, il rebondit a la vitesse <c>+0x44</c>, qui part de
+    ///     -20 et gagne dix par rebond, et sa vitesse d'avance est divisee par deux : <b>deux
+    ///     rebonds</b>, et il meurt au troisieme contact. Chaque membre debout, au repos
+    ///     (<c>+0x12 == 0</c>), sans verrou et a moins de trente unites en trois dimensions prend
+    ///     <see cref="ResolveMeleeHit_00539B80"/> au nom du porteur <c>+0x6c</c>, un verrou de seize
+    ///     images et le bit <c>0x40</c>.</description></item>
+    ///   <item><term>2 — l'eclair rouge</term><description>quinze images : aux images 10 a 7 le
+    ///     voile <c>0x005de024</c> passe du rouge vif au noir en quatre crans, a l'image 6 il est
+    ///     noir et <b>chaque membre debout</b> recoit l'effet d'etat 11 garde
+    ///     (<see cref="ApplyStatusEffect11IfAllowed_00426370"/>) au nom du porteur <b>brut</b>
+    ///     <c>+0x6c</c> — nul compris, sans repli. A zero, la mort.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le porteur ne compte qu'aux vies 0 et 2</b> : s'il est mort, l'entite meurt, et a la vie
+    /// 2 elle rallume le voile noir. <b>Les trois adresses ne font pas la meme chose ensuite a la
+    /// vie 0</b> — c'est leur seule difference, relue au desassembleur : <c>0x00425E50</c> continue
+    /// l'image (un feu follet dont le porteur est mort fait encore un pas), les deux autres
+    /// rendent la main.
+    /// </para>
+    /// </summary>
+    private static void TickCastleThreeLives_00425E50(
+        byte* e, byte* wispPlate, byte* bouncerPlate, bool stepAfterHostDeath)
+    {
+        short life = *(short*)(e + 0x14);
+
+        if (life == 0 || life == 2)
+        {
+            byte* host = *(byte**)(e + 0x6c);
+            if (host == null) host = Res.s_EntityList_005de558;
+
+            uint hostFlags = *(uint*)host;
+            if ((hostFlags & 0x40000000) != 0 || (hostFlags & 0x80000000) == 0)
+            {
+                *(uint*)e &= 0x7fffffff;
+
+                if (life == 2)
+                {
+                    Mem.s_Unknown_005de024 = 0x01000000;   // Ghidra: DAT_005de024..27 — (0, 0, 0), mode 1
+                    return;
+                }
+
+                if (!stepAfterHostDeath) return;
+            }
+        }
+
+        if (life == 0) StepCastleWisp(e, wispPlate);
+        if (*(short*)(e + 0x14) == 1) StepCastleBouncer(e, bouncerPlate);
+        if (*(short*)(e + 0x14) == 2) StepCastleRedFlash(e);
+    }
+
+    /// <summary>La vie 0 de <see cref="TickCastleThreeLives_00425E50"/> : le feu follet.</summary>
+    private static void StepCastleWisp(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = plate;
+            int side = CrtRand();                                  // Ghidra: FUN_00547140
+            e[0x0a] = 10;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            e[0x40] = (byte)(side % 2);
+            *(ushort*)(e + 0x12) = (ushort)(CrtRand() % 0x1000);
+            *(int*)(e + 0x5c) = CrtRand() % 0x1e + 0x14;
+            int step = CrtRand();
+            *(short*)(e + 0x9a) = 0;
+
+            int y = *(int*)(e + 0x20);
+            *(short*)(e + 0x28) = 0x400;
+            *(short*)(e + 0x2a) = 0x400;
+            *(int*)(e + 0x20) = y + 0x64000;
+            *(int*)(e + 0x54) = y + 0x64000;
+            *(short*)(e + 0x16) = (short)(step % 0x32 + 100);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            e[0x38] = 0x80;
+            e[0x39] = 0x80;
+            e[0x3a] = 0x80;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12)) * *(int*)(e + 0x5c) + *(int*)(e + 0x50);   // Ghidra: Ordinal_451
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(*(short*)(e + 0x12)) * *(int*)(e + 0x5c) + *(int*)(e + 0x58);          // Ghidra: Ordinal_450
+        *(int*)(e + 0x20) += 0x8000;
+        *(ushort*)(e + 0x12) = (ushort)((*(short*)(e + 0x16) + *(short*)(e + 0x12)) & 0xfff);
+
+        int growth = CrtRand();
+        *(short*)(e + 0x28) += 200;
+        *(short*)(e + 0x2a) += 200;
+        *(int*)(e + 0x5c) += growth % 0x14 + 0x14;
+
+        if (*(short*)(e + 0x28) > 5000)
+        {
+            *(short*)(e + 0x28) = 5000;
+            *(short*)(e + 0x2a) = 5000;
+        }
+
+        (*(short*)(e + 0x9a))++;
+        int fate = CrtRand();
+
+        if (*(short*)(e + 0x9a) > 0x32 || (*(short*)(e + 0x9a) > 0x1e && (short)(fate % 0x32) == 1))
+        {
+            *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>La vie 1 de <see cref="TickCastleThreeLives_00425E50"/> : le projectile qui
+    /// rebondit.</summary>
+    private static void StepCastleBouncer(byte* e, byte* plate)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = plate;
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            int swerve = CrtRand();                                // Ghidra: FUN_00547140
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x28) = 3000;
+            *(short*)(e + 0x2a) = 3000;
+            *(short*)(e + 0x32) += (short)(swerve % 200 - 100);
+
+            int y = *(int*)(e + 0x20);
+            *(int*)(e + 0x20) = y + 0x78000;
+            *(int*)(e + 0x54) = y + 0x78000;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            int speed = CrtRand();
+            *(short*)(e + 0x9a) = 0;
+            *(short*)(e + 0x16) = 0;
+            *(int*)(e + 0x44) = -0x14;
+            *(int*)(e + 0x5c) = speed % 10 + 0xf;
+            *(uint*)e |= 0x680;
+        }
+
+        if ((*(uint*)e & 0x40000000) != 0) *(uint*)e &= 0x7fffffff;
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        byte* member = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+            if (*(short*)(member + 0x12) != 0) continue;
+
+            int dx = (*(int*)(e + 0x1c) - *(int*)(member + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(member + 0x20)) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(member + 0x24)) >> 0xc;
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x1e) continue;
+            if (*(short*)(member + 0x96) != 0) continue;
+
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x6c), (uint*)member);   // Ghidra: FUN_00539b80
+            *(short*)(member + 0x96) = 0x10;
+            *(uint*)member |= 0x40;
+        }
+
+        int x = *(int*)(e + 0x1c);
+        int z = *(int*)(e + 0x24);
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * *(short*)(e + 0x12) + *(int*)(e + 0x50);   // Ghidra: Ordinal_451
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * *(short*)(e + 0x12) + *(int*)(e + 0x58);          // Ghidra: Ordinal_450
+        FinalizeEntityPlacement2((uint*)e);                                                           // Ghidra: FUN_00533940
+
+        if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(int*)(e + 0x1c) = x;
+            *(int*)(e + 0x24) = z;
+            FinalizeEntityPlacement2((uint*)e);
+        }
+
+        *(short*)(e + 0x12) += (short)*(int*)(e + 0x5c);
+        if (*(int*)(e + 0x5c) < 0) *(int*)(e + 0x5c) = 0;
+
+        short fall = *(short*)(e + 0x9a);
+        *(int*)(e + 0x20) += fall * -0x1000;
+        *(short*)(e + 0x9a) = (short)(fall + 2);
+        if (*(short*)(e + 0x9a) > 0x1e) *(short*)(e + 0x9a) = 0x1e;
+
+        if (*(int*)(e + 0x20) < *(int*)(e + 0x60))
+        {
+            int bounce = *(int*)(e + 0x44) + 10;
+            *(int*)(e + 0x44) = bounce;
+            *(int*)(e + 0x5c) >>= 1;
+            if (bounce > 0) *(uint*)e &= 0x7fffffff;
+
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(short*)(e + 0x9a) = (short)*(int*)(e + 0x44);
+        }
+    }
+
+    /// <summary>La vie 2 de <see cref="TickCastleThreeLives_00425E50"/> : l'eclair rouge.</summary>
+    private static void StepCastleRedFlash(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0xf;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))--;
+        short clock = *(short*)(e + 0x12);
+
+        // Ghidra: DAT_005de024..27 — rouge, vert, bleu, puis le mode 1 dans l'octet fort.
+        if (clock == 10) Mem.s_Unknown_005de024 = 0x01000000 | (100u << 16) | (100u << 8) | 0xfa;
+        if (clock == 9) Mem.s_Unknown_005de024 = 0x01000000 | (0x50u << 16) | (0x50u << 8) | 0xb4;
+        if (clock == 8) Mem.s_Unknown_005de024 = 0x01000000 | (0x3cu << 16) | (0x3cu << 8) | 0x78;
+        if (clock == 7) Mem.s_Unknown_005de024 = 0x01000000 | (0x1eu << 16) | (0x1eu << 8) | 0x50;
+
+        if (clock == 6)
+        {
+            Mem.s_Unknown_005de024 = 0x01000000;
+
+            byte* member = Inp.s_SlotFlags_005e93c0;
+            for (int i = 0; i < 4; i++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                ApplyStatusEffect11IfAllowed_00426370(*(uint**)(e + 0x6c), (uint*)member, 0);   // Ghidra: FUN_00426370
+            }
+        }
+
+        if (*(short*)(e + 0x12) == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: FUN_00425e50 @ 0x00425e50 — creneau <b>32</b> du bloc <c>0x00559328</c>
+    /// (<c>0x0056b2c8</c>, sous-zones 0 a 4). Le seul des trois qui continue l'image quand le
+    /// porteur d'un feu follet meurt.</summary>
+    private static void EntityHandler_00425E50(byte* e)
+        => TickCastleThreeLives_00425E50(e, Descriptors00550598(), Descriptors00550598() + 0x10, stepAfterHostDeath: true);   // Ghidra: &DAT_00550598, &DAT_005505a8
+
+    /// <summary>Ghidra: FUN_00428420 @ 0x00428420 — creneau <b>32</b> du bloc <c>0x005599a8</c>,
+    /// sous-zones 6 a 10, planche <c>0x005506f0</c>.</summary>
+    private static void EntityHandler_00428420(byte* e)
+        => TickCastleThreeLives_00425E50(e, Descriptors005506F0(), Descriptors005506F0() + 0x10, stepAfterHostDeath: false);  // Ghidra: &DAT_005506f0, &DAT_00550700
+
+    /// <summary>Ghidra: FUN_0042b9a0 @ 0x0042b9a0 — creneau <b>32</b> du bloc <c>0x0055a028</c>,
+    /// sous-zones 5 et 11, planche <c>0x005508a0</c>.</summary>
+    private static void EntityHandler_0042B9A0(byte* e)
+        => TickCastleThreeLives_00425E50(e, Descriptors005508A0(), Descriptors005508A0() + 0x10, stepAfterHostDeath: false);  // Ghidra: &DAT_005508a0, &DAT_005508b0
+
+    // ---------------------------------------------------------------------
+    // CRENEAU 31 DE 0x0056b2c8 (SOUS-TYPE 0xdf), SOUS-ZONES 0 A 4 ET 6 A 10 — LES SEMIS QUI CHANTENT
+    // ---------------------------------------------------------------------
+
+    /// <summary>Ghidra: <c>&amp;DAT_005505b0</c> — la planche des semis des sous-zones 0 a 4.
+    /// Quatre enregistrements, les memes octets que <see cref="s_Descriptors_005508B8"/> : trois
+    /// tuiles <c>0x0f</c> que le mode 0 fait tourner, une tuile <c>0x1f</c> que le mode 1 pose.
+    /// Bornee par <see cref="s_Descriptors_00550598"/> en bas et <see cref="s_Descriptors_005505D0"/>
+    /// en haut.</summary>
+    private static readonly byte[] s_Descriptors_005505B0 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005505b0  <- 0x00425750
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005505b8
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005505c0
+        0x60, 0x48, 0x1f, 0x1f, 0x01, 0x02, 0x10, 0x00,   // 0x005505c8
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00550708</c> — la meme planche pour les sous-zones 6 a 10,
+    /// memes octets. Bornee par <see cref="s_Descriptors_005506F0"/> en bas et
+    /// <see cref="s_Descriptors_00550728"/> en haut.</summary>
+    private static readonly byte[] s_Descriptors_00550708 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550708  <- 0x00427CE0
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550710
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00550718
+        0x60, 0x48, 0x1f, 0x1f, 0x01, 0x02, 0x10, 0x00,   // 0x00550720
+    ];
+
+    private static byte* s_Descriptors005505B0Storage;
+    private static byte* s_Descriptors00550708Storage;
+
+    private static byte* Descriptors005505B0() => NativeCopy(s_Descriptors_005505B0, ref s_Descriptors005505B0Storage);
+    private static byte* Descriptors00550708() => NativeCopy(s_Descriptors_00550708, ref s_Descriptors00550708Storage);
+
+    /// <summary>
+    /// La voix d'un semis : un son de numero absolu, joue par <see cref="TryPlaySoundNearEntity"/>
+    /// quand <c>+0x98</c> vaut 0, puis <c>+0x98</c> qui compte jusqu'a <paramref name="period"/> et
+    /// revient a zero. <b>Seulement si <c>+0x48</c> est nul</b> — et ce <c>+0x48</c> est le rang que
+    /// le nuage de <c>0x004271B0</c> tamponne sur ses onze semis (voir <see cref="StepStatusCloud"/>) :
+    /// des onze, <b>seul le premier chante</b>.
+    /// </summary>
+    private static void VoiceCastleSeed(byte* e, short sound, short pitch, short gain, short period)
+    {
+        if (*(int*)(e + 0x48) != 0) return;
+
+        if (*(short*)(e + 0x98) == 0) TryPlaySoundNearEntity((uint*)e, sound, pitch, gain, 0, 0);   // Ghidra: FUN_00468080
+
+        (*(short*)(e + 0x98))++;
+        if (*(short*)(e + 0x98) == period) *(short*)(e + 0x98) = 0;
+    }
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00425750"/> et de <see cref="EntityHandler_00427CE0"/>.
+    /// Decompile dans <c>Blaze.c</c>, 548 et 565 instructions.
+    ///
+    /// <para>
+    /// <b>Le semis du Labyrinthe (<see cref="TickCloudSeed"/>), qui chante.</b> Memes deux modes
+    /// choisis par <c>+0x44</c>, memes sept etats, memes tirages dans le meme ordre, memes
+    /// replis : cible <c>+0x78</c> et porteur <c>+0x6c</c> nuls deviennent la liste d'entites
+    /// partout, y compris pour le porteur du mode 1 — comme <c>0x0042B430</c>, son frere des
+    /// sous-zones 5 et 11. Ce que le chateau ajoute, c'est <c>+0x98</c> remis a zero a chaque
+    /// naissance et au contact, et des sons :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>mode 0, montee</term><description>le son <c>0xe</c>, hauteur 300, toutes les
+    ///     dix images.</description></item>
+    ///   <item><term>mode 0, approche</term><description><b>seulement
+    ///     <c>0x00427CE0</c></b> : le meme son, hauteur 400.</description></item>
+    ///   <item><term>mode 0, orbite</term><description>le son <c>0x31</c> a cinq hauteurs selon
+    ///     <c>+0x98</c> (0 a 4) — mais <c>+0x48</c> devient non nul des la premiere image de
+    ///     l'orbite, donc <b>seule la premiere (<c>0x400</c>) part</b>.</description></item>
+    ///   <item><term>mode 1</term><description>le son <c>0x16</c>, gain <c>0x1200</c>, toutes les
+    ///     huit images : hauteur <c>0x200</c> a la montee, <c>0x195</c> au retour.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Et <c>0x00425750</c> ne renonce jamais.</b> Au Labyrinthe comme dans
+    /// <c>0x00427CE0</c>, un semis qui n'a pas atteint sa cible quinze images apres la fin de son
+    /// compte s'eteint. Ici cette branche n'existe pas : le semis continue de suivre sa cible et de
+    /// mesurer sa distance a chaque image, jusqu'a la toucher. Il ne meurt alors que par
+    /// <c>+0x90 &amp; 0x8800</c> — un mur — ou quand elle arrive. Enfin, apres le contact,
+    /// <c>0x00425750</c> relit <c>+0x78</c> avec le repli, <c>0x00427CE0</c> sans.
+    /// </para>
+    /// </summary>
+    private static void TickCastleVoicedSeed(byte* e, byte* plate, bool westWing)
+    {
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        if (*(int*)(e + 0x44) == 0)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(byte**)(e + 0x3c) = plate;
+                int frame = CrtRand();                                  // Ghidra: FUN_00547140
+                e[0x0a] = 0x0d;
+                e[0x0b] = 1;
+                *(short*)(e + 0x10) = 1;
+                e[0x40] = (byte)(frame % 3);
+
+                *(int*)(e + 0x50) = (CrtRand() % 300 - 0x96) * 0x1000 + *(int*)(e + 0x1c);
+                *(int*)(e + 0x58) = (CrtRand() % 300 - 0x96) * 0x1000 + *(int*)(e + 0x24);
+                int rise = CrtRand();
+                *(short*)(e + 0x12) = 10;
+                *(int*)(e + 0x54) = (rise % 300 + 0x50) * 0x1000 + *(int*)(e + 0x20);
+
+                int size = CrtRand() % 0x800;
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                e[0x38] = 0;
+                e[0x39] = 0;
+                e[0x3a] = 0;
+                *(short*)(e + 0x98) = 0;
+                *(short*)(e + 0x16) = (short)(size + 0x1000);
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                VoiceCastleSeed(e, 0xe, 300, 0x1000, 10);
+                StepRisingSeed(e, 0x12);
+            }
+
+            if (*(short*)(e + 0x10) == 2)
+            {
+                if (westWing) VoiceCastleSeed(e, 0xe, 400, 0x1000, 10);
+
+                *(int*)(e + 0x50) = *(int*)(target + 0x1c);
+                *(int*)(e + 0x54) = *(int*)(target + 0x20) + 0x3c000;
+                *(int*)(e + 0x58) = *(int*)(target + 0x24);
+                ApproachSeedPoint(e);
+                (*(short*)(e + 0x12))--;
+
+                if (*(short*)(e + 0x12) < 1)
+                {
+                    int dx = (*(int*)(e + 0x1c) - *(int*)(target + 0x1c)) >> 0xc;
+                    int dy = (*(int*)(e + 0x20) - *(int*)(target + 0x20) + 0x3c000) >> 0xc;   // Ghidra: `add`, comme au Labyrinthe
+                    int dz = (*(int*)(e + 0x24) - *(int*)(target + 0x24)) >> 0xc;
+                    int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+
+                    if (distance < 0x8c)
+                    {
+                        byte* carrier = *(byte**)(e + 0x6c);
+                        if (carrier == null) carrier = Res.s_EntityList_005de558;
+                        *(int*)(carrier + 0x44) = 1;
+
+                        target = *(byte**)(e + 0x78);
+                        if (target == null && !westWing) target = Res.s_EntityList_005de558;   // Ghidra: 0x00427CE0 ne replie pas
+
+                        *(short*)(e + 0x10) = 3;
+                        *(short*)(e + 0x12) = (short)(CrtRand() % 5 + 3);
+                        *(short*)(e + 0x16) = (short)(CrtRand() % 0x1000);
+                        int spread = CrtRand();
+                        *(int*)(e + 0x48) = 0;
+                        *(short*)(e + 0x14) = (short)(spread % 0x1e + 0x28);
+                        *(int*)(e + 0x5c) = CrtRand() % 0x14 + 0x1e;
+
+                        *(int*)(e + 0x50) = *(int*)(target + 0x1c);
+                        *(int*)(e + 0x58) = *(int*)(target + 0x24);
+                        *(int*)(e + 0x20) = *(int*)(target + 0x20) + 0x1e000;
+                        e[0x38] = 100;
+                        e[0x39] = 0x3c;
+                        e[0x3a] = 100;
+                        *(short*)(e + 0x98) = 0;
+                    }
+                    else if (westWing && *(short*)(e + 0x12) < -0xf)
+                    {
+                        *(uint*)e &= 0x7fffffff;
+                    }
+                }
+
+                BrightenEntityTint_00404DE0(e, -3, -4, -3);   // Ghidra: FUN_00404de0
+            }
+
+            if (*(short*)(e + 0x10) == 3)
+            {
+                if (*(int*)(e + 0x48) == 0)
+                {
+                    short pitch = *(short*)(e + 0x98) switch
+                    {
+                        0 => 0x400,
+                        1 => 0x329,
+                        2 => 0x200,
+                        3 => 0x195,
+                        4 => 0x100,
+                        _ => 0,
+                    };
+                    if (pitch != 0) TryPlaySoundNearEntity((uint*)e, 0x31, pitch, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+
+                    (*(short*)(e + 0x98))++;
+                    if (*(short*)(e + 0x98) == 10) *(short*)(e + 0x98) = 0;
+                }
+
+                target = *(byte**)(e + 0x78);
+                if (target == null) target = Res.s_EntityList_005de558;
+                *(int*)(e + 0x50) = *(int*)(target + 0x1c);
+                *(int*)(e + 0x58) = *(int*)(target + 0x24);
+
+                int radius = *(int*)(e + 0x48);
+                *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x16)) * radius + *(int*)(e + 0x50);   // Ghidra: Ordinal_451
+                int cos = Winsys3d.GetCosTableEntry(*(short*)(e + 0x16));                                               // Ghidra: Ordinal_450
+                *(short*)(e + 0x16) += 0x96;
+                *(int*)(e + 0x24) = cos * radius + *(int*)(e + 0x58);
+                *(int*)(e + 0x20) += *(short*)(e + 0x12) * 0x1000;
+                *(int*)(e + 0x48) = ((*(short*)(e + 0x14) - radius) >> 3) + radius;
+
+                int life = *(int*)(e + 0x5c) - 1;
+                *(int*)(e + 0x5c) = life;
+                if (life < 1) *(uint*)e &= 0x7fffffff;
+            }
+
+            e[0x40]++;
+            if (e[0x40] == 3) e[0x40] = 0;
+
+            FinalizeEntityPlacement2((uint*)e);                   // Ghidra: FUN_00533940
+            if ((*(uint*)(e + 0x90) & 0x8800) != 0) *(uint*)e &= 0x7fffffff;
+        }
+
+        if (*(int*)(e + 0x44) != 1) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = plate;
+            e[0x40] = 3;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(target + 0x20);
+            *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+            *(int*)(e + 0x50) = (CrtRand() % 0xa0 - 0x50) * 0x1000 + *(int*)(target + 0x1c);
+            *(int*)(e + 0x58) = (CrtRand() % 0xa0 - 0x50) * 0x1000 + *(int*)(target + 0x24);
+            int rise = CrtRand();
+            *(short*)(e + 0x12) = 10;
+            *(int*)(e + 0x54) = (rise % 200 + 0xb4) * 0x1000 + *(int*)(target + 0x20);
+
+            int size = CrtRand() % 1000;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x98) = 0;
+            *(short*)(e + 0x16) = (short)(size + 2000);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            VoiceCastleSeed(e, 0x16, 0x200, 0x1200, 8);
+            StepRisingSeed(e, 0x14);
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        VoiceCastleSeed(e, 0x16, 0x195, 0x1200, 8);
+
+        byte* home = *(byte**)(e + 0x6c);
+        if (home == null) home = Res.s_EntityList_005de558;
+        *(int*)(e + 0x50) = *(int*)(home + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(home + 0x20) + 0x3c000;
+        *(int*)(e + 0x58) = *(int*)(home + 0x24);
+        ApproachSeedPoint(e);
+        (*(short*)(e + 0x12))--;
+
+        if (*(short*)(e + 0x12) < 1)
+        {
+            *(uint*)e &= 0x7fffffff;
+
+            // Ghidra: la distance a la cible calculee et jetee, comme au Labyrinthe.
+            int dx = (*(int*)(e + 0x1c) - *(int*)(target + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(target + 0x20) + 0x3c000) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(target + 0x24)) >> 0xc;
+            Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+        }
+
+        BrightenEntityTint_00404DE0(e, -6, -10, -6);
+    }
+
+    /// <summary>Ghidra: FUN_00425750 @ 0x00425750 — creneau <b>31</b> du bloc <c>0x00559328</c>
+    /// (<c>0x0056b2c8</c>, sous-zones 0 a 4) : le semis <c>0xdf</c> de
+    /// <see cref="EntityHandler_004255F0"/>.</summary>
+    private static void EntityHandler_00425750(byte* e)
+        => TickCastleVoicedSeed(e, Descriptors005505B0(), westWing: false);   // Ghidra: &DAT_005505b0
+
+    /// <summary>Ghidra: FUN_00427ce0 @ 0x00427ce0 — creneau <b>31</b> du bloc <c>0x005599a8</c>
+    /// (sous-zones 6 a 10) : le semis <c>0xdf</c> de <see cref="EntityHandler_004271B0"/>, celui
+    /// qui recoit le rang en <c>+0x48</c>.</summary>
+    private static void EntityHandler_00427CE0(byte* e)
+        => TickCastleVoicedSeed(e, Descriptors00550708(), westWing: true);    // Ghidra: &DAT_00550708
+
+    // ---------------------------------------------------------------------
+    // CRENEAU 31 DE 0x0056b1c8 (INCANTATION 0xdf), SOUS-ZONES 6 A 10 ET 5 ET 11 — LA NAPPE DEVANT
+    // LE PROPRIETAIRE, CE QUE LA GERBE DES NUAGES FAIT NAITRE
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// La mise en place des nappes du chateau, a comparer a <see cref="PlaceInFrontOfOwner"/>
+    /// (Labyrinthe) : inclinaison <c>0x400</c>, cap du proprietaire plus <c>0xc00</c>, mais
+    /// <b>pas d'ancre</b> — la hauteur est celle du proprietaire plus une constante,
+    /// <c>0x73000</c> (115 unites), et X/Z ne recoivent aucun decalage — et un rayon de
+    /// <b>14</b> fois le sinus et le cosinus, pas 15 (<c>shl 3 ; sub ; lea [eax+edx*2]</c>).
+    /// </summary>
+    private static void PlaceBeforeCastleOwner(byte* e, byte* owner)
+    {
+        *(short*)(e + 0x34) = 0x400;
+        *(short*)(e + 0x32) = (short)(*(short*)(owner + 0x32) + 0xc00);
+        *(int*)(e + 0x20) = *(int*)(owner + 0x20) + 0x73000;
+
+        int angle = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x1c) = *(int*)(owner + 0x1c) + (int)Winsys3d.GetSinTableEntry(angle) * 14;   // Ghidra: 0x00545a1c
+        angle = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x24) = *(int*)(owner + 0x24) + Winsys3d.GetCosTableEntry(angle) * 14;        // Ghidra: 0x00545a16
+    }
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_004274C0"/> et de <see cref="EntityHandler_0042ABF0"/>.
+    /// Absents de <c>Blaze.c</c> ; 373 et 362 instructions.
+    ///
+    /// <para>
+    /// <b><see cref="TickOwnerFrontSweep"/> (Labyrinthe) avec la mise en place du chateau</b>
+    /// (<see cref="PlaceBeforeCastleOwner"/>). Le reste est le meme mot pour mot : la nappe qui
+    /// avance de <c>+0x16</c> dans le cap, le semis <c>0xde</c> a la premiere image, le balayage
+    /// a moins de 200 unites dans le cone de ±<c>0x320</c>, un bit par membre dans <c>+0x44</c>,
+    /// les trois coordonnees rendues apres <see cref="FinalizeEntityPlacement2"/>, les dix images
+    /// d'etat 1 puis les dix d'extinction. <b>Les feuilles aussi sont celles du Labyrinthe, dans le
+    /// meme ordre</b> — verifie feuille par feuille sur leurs cibles d'appel — et passent donc par
+    /// <see cref="SweepLeaf_004224F0"/>.
+    /// </para>
+    /// <para>
+    /// Le proprietaire <c>+0x74</c> est lu <b>sans repli</b>, comme dans <c>0x0041EDD0</c>.
+    /// </para>
+    /// </summary>
+    /// <param name="leafCount">Le tirage du cas 1 : <c>rand() % 9</c> dans <c>0x004274C0</c> (les
+    /// neuf feuilles), <c>rand() % 7</c> dans <c>0x0042ABF0</c> — les sept premieres seulement.</param>
+    /// <param name="hasKind2">Le cas 2 — teinte magenta <c>(0x96, 0, 0xc8)</c> a la naissance et
+    /// la feuille 3 au balayage — n'existe que dans <c>0x0042ABF0</c>. Au Labyrinthe la teinte du
+    /// cas 2 etait <c>(0x96, 0, 0x96)</c>.</param>
+    private static void TickCastleFrontSweep(byte* e, int leafCount, bool hasKind2)
+    {
+        byte* owner = *(byte**)(e + 0x74);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0;
+            *(short*)(e + 0x28) = 0xfa;
+            *(short*)(e + 0x2c) = 0xfa;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x12) = 0x0a;
+
+            short kind = *(short*)(e + 0x9a);
+            if (kind == 0) { e[0x38] = 0; e[0x39] = 0x82; e[0x3a] = 0x96; }
+            if (kind == 1) { e[0x38] = 0x96; e[0x39] = 0; e[0x3a] = 0; }
+            if (kind == 2 && hasKind2) { e[0x38] = 0x96; e[0x39] = 0; e[0x3a] = 0xc8; }
+
+            e[0x36] &= 0xfe;
+            *(short*)(e + 0x16) = 0;
+            *(int*)(e + 0x44) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            PlaceBeforeCastleOwner(e, owner);
+
+            if (*(short*)(e + 0x12) == 0x0a)
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xde, 0, -1);   // Ghidra: FUN_0047ac40
+
+            int keptX = *(int*)(e + 0x1c);
+            int keptY = *(int*)(e + 0x20);
+            int keptZ = *(int*)(e + 0x24);
+
+            StepAlongOwnerCourse(e);
+
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+            for (int i = 0; i < 4; i++, slot += 0x9c)
+            {
+                uint flags = *(uint*)slot;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                int dx = (*(int*)(slot + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                int dy = (*(int*)(slot + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+                int dz = (*(int*)(slot + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                int bearing = (Winsys3d.Ordinal_457(dx, dz) - *(short*)(owner + 0x32)) & 0xfff;   // Ghidra: 0x00545a22
+                int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));      // Ghidra: 0x00545a10
+                if (distance >= 200) continue;
+
+                bool inCone = (bearing < 0x320 && bearing > 0) || (bearing < 0x1000 && bearing > 0xce0);
+                if (!inCone) continue;
+
+                int bit = 1 << i;
+                if ((*(int*)(e + 0x44) & bit) != 0) continue;
+                *(int*)(e + 0x44) |= bit;
+
+                if (*(short*)(e + 0x9a) == 0) SweepLeaf_004224F0(1, owner, slot);
+
+                if (*(short*)(e + 0x9a) == 1)
+                {
+                    int leaf = (short)(CrtRand() % leafCount);                      // Ghidra: FUN_00547140
+                    if ((uint)leaf < (uint)leafCount) SweepLeaf_004224F0(leaf, owner, slot);
+                }
+
+                if (hasKind2 && *(short*)(e + 0x9a) == 2) SweepLeaf_004224F0(3, owner, slot);
+            }
+
+            FinalizeEntityPlacement2((uint*)e);                       // Ghidra: FUN_00533940
+
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x20) = keptY;
+            *(int*)(e + 0x24) = keptZ;
+
+            short scale = *(short*)(e + 0x2a);
+            *(short*)(e + 0x2a) = (short)(((0x4000 - scale) >> 2) + scale);
+            short reach = *(short*)(e + 0x16);
+            *(short*)(e + 0x16) = (short)(((0x258 - reach) >> 2) + reach);
+
+            if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+
+            (*(short*)(e + 0x12))--;
+            if (*(short*)(e + 0x12) <= 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        PlaceBeforeCastleOwner(e, owner);
+        StepAlongOwnerCourse(e);
+        *(short*)(e + 0x34) = 0xc00;
+
+        short fading = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)((-fading >> 2) + fading);
+
+        e[0x38] = (byte)(e[0x38] + (-e[0x38] >> 3));
+        e[0x39] = (byte)(e[0x39] + (-e[0x39] >> 3));
+        e[0x3a] = (byte)(e[0x3a] + (-e[0x3a] >> 3));
+
+        (*(short*)(e + 0x12))--;
+        if (*(short*)(e + 0x12) <= 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004274c0</c> — creneau <b>31</b> du bloc <c>0x005598a8</c> (<c>0x0056b1c8</c>,
+    /// sous-zones 6 a 10), donc l'incantation <c>0xdf</c> de ces sous-zones : l'enfant de la gerbe
+    /// de <see cref="EntityHandler_004271B0"/>. Absent de <c>Blaze.c</c>. Table
+    /// <c>0x004279a4</c>, neuf feuilles <c>0x004279d0</c>..<c>0x00427bd0</c>.
+    /// </summary>
+    private static void EntityHandler_004274C0(byte* e) => TickCastleFrontSweep(e, 9, hasKind2: false);
+
+    /// <summary>
+    /// Ghidra: <c>0x0042abf0</c> — creneau <b>31</b> du bloc <c>0x00559f28</c> (sous-zones 5 et
+    /// 11) : l'enfant de la gerbe de <see cref="EntityHandler_0042A920"/> et de
+    /// <see cref="EntityHandler_0042B190"/>, qui le fait naitre avec <c>+0x9a = 2</c> — c'est donc
+    /// le cas 2, absent du miroir, que ces enfants-la executent. Absent de <c>Blaze.c</c>. Table
+    /// <c>0x0042b0a0</c>, sept feuilles <c>0x0042a110</c>..<c>0x0042a2d0</c>.
+    /// </summary>
+    private static void EntityHandler_0042ABF0(byte* e) => TickCastleFrontSweep(e, 7, hasKind2: true);
 }

@@ -1951,4 +1951,264 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: FUN_00465e30 @ 0x00465e30 — creneau <b>12</b> du bloc <c>0x005594a8</c>.
     /// <b>Zero difference</b>.</summary>
     private static void EntityHandler_00465E30(byte* e) => TickCastleToppler_004644F0(e);
+
+    // =====================================================================
+    // PALIER 4 (2026-09-18) — LE BATTANT A TROIS POSITIONS, CRENEAU 29
+    // =====================================================================
+
+    /// <summary>
+    /// Pose ou leve le bit <paramref name="index"/> de la <b>banque 0</b> (<c>0x005e96e0</c>),
+    /// octet <c>n / 8</c> (division du compilateur, vers zero), bit <c>n % 8</c> masque a cinq bits
+    /// — l'ecriture dont <see cref="ScriptFlagSet"/> est la lecture. Le binaire la deroule a
+    /// chaque site ; la voici une fois.
+    /// </summary>
+    private static void WriteScriptFlag(short index, bool on)
+    {
+        int cell = DivideTowardZeroBy8(index);
+        byte mask = (byte)(1 << ((index - cell * 8) & 0x1f));
+
+        if (on) Mem.s_StateBank0_005e96e0[(short)cell] |= mask;
+        else Mem.s_StateBank0_005e96e0[(short)cell] &= (byte)~mask;
+    }
+
+    /// <summary>
+    /// Ce que les deux battants du creneau 29 ont en commun : l'etat 0 qui ne fait que remettre
+    /// <c>+0x12</c>, <c>+0x5c</c> et <c>+0x98</c> a zero — c'est un script qui pose l'etat —,
+    /// le son d'ouverture <c>0x24</c> de la zone joue une fois par mouvement (<c>+0x98</c>), et les
+    /// trois positions forcees <c>0xb</c>, <c>0xc</c>, <c>0xd</c>, qui posent l'angle et les deux
+    /// drapeaux d'un coup.
+    /// </summary>
+    private static void StepCastleSwingGateCommon(byte* e, bool head)
+    {
+        short a = *(short*)(e + 0x14);
+        short b = *(short*)(e + 0x16);
+
+        if (head)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x12) = 0;
+                *(int*)(e + 0x5c) = 0;
+                *(short*)(e + 0x98) = 0;
+            }
+            return;
+        }
+
+        if (*(short*)(e + 0x10) == 0xb)
+        {
+            *(short*)(e + 0x34) = 600;
+            *(short*)(e + 0x10) = 100;
+            WriteScriptFlag(a, true);
+            WriteScriptFlag(b, false);
+        }
+
+        if (*(short*)(e + 0x10) == 0xc)
+        {
+            *(short*)(e + 0x34) = -600;
+            *(short*)(e + 0x10) = 0x65;
+            WriteScriptFlag(a, false);
+            WriteScriptFlag(b, true);
+        }
+
+        if (*(short*)(e + 0x10) == 0xd)
+        {
+            *(short*)(e + 0x34) = 0;
+            *(short*)(e + 0x10) = 0x66;
+            WriteScriptFlag(a, false);
+            WriteScriptFlag(b, false);
+        }
+    }
+
+    /// <summary>Le son de mouvement d'un battant : une fois, a la premiere image du
+    /// mouvement.</summary>
+    private static void SoundCastleSwingGate(byte* e)
+    {
+        if (*(short*)(e + 0x98) != 0) return;
+
+        TryPlaySoundNearEntity((uint*)e, ZoneSound(0x24), 0x400, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+        *(short*)(e + 0x98) = 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00463ef0 @ 0x00463ef0 — creneau <b>29</b> du bloc <c>0x00558e28</c>
+    /// (sous-zones 0 a 4). Decompile dans <c>Blaze.c</c>, 270 instructions.
+    ///
+    /// <para>
+    /// <b>Un battant a trois positions — <c>-600</c>, 0, <c>+600</c> sur l'angle <c>+0x34</c> —
+    /// que les scripts manoeuvrent par l'etat <c>+0x10</c>, et qui tient deux drapeaux de la
+    /// banque 0</b>, numerotes par le placement en <c>+0x14</c> (A) et <c>+0x16</c> (B) :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>1</term><description>ouvrir vers <c>+600</c> a <c>0x50</c> par image ; arrive :
+    ///     A pose, B leve, etat 100.</description></item>
+    ///   <item><term>2</term><description>ouvrir vers <c>-600</c> ; arrive : A leve, B pose,
+    ///     etat 101.</description></item>
+    ///   <item><term>3</term><description>fermer : l'etat devient 5 si l'angle est positif ou nul,
+    ///     4 sinon.</description></item>
+    ///   <item><term>4, 5</term><description>revenir a zero depuis le cote negatif ou positif ;
+    ///     arrive : A et B leves, etat 102.</description></item>
+    ///   <item><term>0xb, 0xc, 0xd</term><description>les memes trois positions, sans
+    ///     mouvement.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Ici les drapeaux ne changent qu'a l'arrivee.</b> Le miroir,
+    /// <see cref="EntityHandler_00465820"/>, les ecrit au depart — voir la.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00463EF0(byte* e)
+    {
+        short a = *(short*)(e + 0x14);
+        short b = *(short*)(e + 0x16);
+
+        StepCastleSwingGateCommon(e, head: true);
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            SoundCastleSwingGate(e);
+            *(short*)(e + 0x34) += 0x50;
+            if (*(short*)(e + 0x34) > 599)
+            {
+                *(short*)(e + 0x34) = 600;
+                *(short*)(e + 0x10) = 100;
+                WriteScriptFlag(a, true);
+                WriteScriptFlag(b, false);
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            SoundCastleSwingGate(e);
+            *(short*)(e + 0x34) -= 0x50;
+            if (*(short*)(e + 0x34) < -599)
+            {
+                *(short*)(e + 0x34) = -600;
+                *(short*)(e + 0x10) = 0x65;
+                WriteScriptFlag(a, false);
+                WriteScriptFlag(b, true);
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            SoundCastleSwingGate(e);
+            *(short*)(e + 0x10) = (short)((*(short*)(e + 0x34) >= 0 ? 1 : 0) + 4);
+        }
+
+        if (*(short*)(e + 0x10) == 4)
+        {
+            *(short*)(e + 0x34) += 0x50;
+            if (*(short*)(e + 0x34) > 0)
+            {
+                *(short*)(e + 0x34) = 0;
+                *(short*)(e + 0x10) = 0x66;
+                WriteScriptFlag(a, false);
+                WriteScriptFlag(b, false);
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 5)
+        {
+            *(short*)(e + 0x34) -= 0x50;
+            if (*(short*)(e + 0x34) < 0)
+            {
+                *(short*)(e + 0x34) = 0;
+                *(short*)(e + 0x10) = 0x66;
+                WriteScriptFlag(a, false);
+                WriteScriptFlag(b, false);
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        StepCastleSwingGateCommon(e, head: false);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00465820 @ 0x00465820 — creneau <b>29</b> du bloc <c>0x005594a8</c>
+    /// (sous-zones 6 a 10). Decompile dans <c>Blaze.c</c>, 269 instructions.
+    ///
+    /// <para>
+    /// <b>Le meme battant, mais ses drapeaux disent ou il VA, pas ou il EST.</b> Les etats 1, 2, 3
+    /// et 5 ecrivent A et B <b>a chaque image du mouvement, des la premiere</b> ; l'arrivee ne
+    /// touche plus aux drapeaux. Un script qui attend le drapeau voit donc la porte ouverte des
+    /// qu'elle commence a s'ouvrir, et fermee des qu'elle commence a se fermer.
+    /// </para>
+    /// <para>
+    /// <b>Et l'etat 4 n'ecrit rien du tout.</b> L'etat 3 a deja leve les deux drapeaux avant de
+    /// choisir entre 4 et 5, donc la fermeture depuis le cote negatif n'y perd rien — mais un
+    /// script qui poserait l'etat 4 directement laisserait les drapeaux tels quels. L'etat 5, lui,
+    /// les leve encore. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00465820(byte* e)
+    {
+        short a = *(short*)(e + 0x14);
+        short b = *(short*)(e + 0x16);
+
+        StepCastleSwingGateCommon(e, head: true);
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            WriteScriptFlag(a, true);
+            WriteScriptFlag(b, false);
+            SoundCastleSwingGate(e);
+            *(short*)(e + 0x34) += 0x50;
+            if (*(short*)(e + 0x34) > 599)
+            {
+                *(short*)(e + 0x34) = 600;
+                *(short*)(e + 0x10) = 100;
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            WriteScriptFlag(a, false);
+            WriteScriptFlag(b, true);
+            SoundCastleSwingGate(e);
+            *(short*)(e + 0x34) -= 0x50;
+            if (*(short*)(e + 0x34) < -599)
+            {
+                *(short*)(e + 0x34) = -600;
+                *(short*)(e + 0x10) = 0x65;
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            WriteScriptFlag(a, false);
+            WriteScriptFlag(b, false);
+            SoundCastleSwingGate(e);
+            *(short*)(e + 0x10) = (short)((*(short*)(e + 0x34) >= 0 ? 1 : 0) + 4);
+        }
+
+        if (*(short*)(e + 0x10) == 4)
+        {
+            *(short*)(e + 0x34) += 0x50;
+            if (*(short*)(e + 0x34) > 0)
+            {
+                *(short*)(e + 0x34) = 0;
+                *(short*)(e + 0x10) = 0x66;
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 5)
+        {
+            WriteScriptFlag(a, false);
+            WriteScriptFlag(b, false);
+            *(short*)(e + 0x34) -= 0x50;
+            if (*(short*)(e + 0x34) < 0)
+            {
+                *(short*)(e + 0x34) = 0;
+                *(short*)(e + 0x10) = 0x66;
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        StepCastleSwingGateCommon(e, head: false);
+    }
 }

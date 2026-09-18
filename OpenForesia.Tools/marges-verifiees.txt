@@ -116,3 +116,8 @@ EntityHandler_00429270 | 0x005506E8 | +0x00 | EntityHandler_00429270 | 58f554d43
 # ---- Ajoute le 2026-09-18 (palier 3 du chateau de l'immortel, zone 6)
 EntityHandler_0042D9B0 | 0x005507E0 | +0x00 | EntityHandler_0042D9B0,TickCastleDriftSpark_0042D9B0 | 6f089e28c7f9 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (releve 0x0042d9b0, un seul `mov [esi+40h]` jusqu au ret 0x0042db0a)
 EntityHandler_00442AC0 | 0x00551410 | +0x00 | EntityHandler_00442AC0,TickCastleDriftSpark_0042D9B0 | 96929d8341c7 | jumeau du precedent a la planche et a la hauteur pres (grotte scellee)
+
+# ---- Ajoute le 2026-09-18 (palier 4 du chateau de l'immortel, zone 6)
+EntityHandler_00425E50 | 0x00550598 | +0x10 | EntityHandler_00425E50,TickCastleThreeLives_00425E50,StepCastleBouncer | 67292b2a8ca8 | la vie 1 pose +0x40 = 0 dans la meme branche que +0x3c et ne le reecrit jamais ; la vie (+0x14) n est jamais ecrite par le corps (releve 0x00425e50 : deux `mov [esi+40h]`, le tirage de la vie 0 a 0x00425ef4 et le zero de la vie 1 a 0x00426050)
+EntityHandler_00428420 | 0x005506F0 | +0x10 | EntityHandler_00428420,TickCastleThreeLives_00425E50,StepCastleBouncer | 10a764ea235f | jumeau du precedent a la planche pres (0x0042849e / 0x004285fa)
+EntityHandler_0042B9A0 | 0x005508A0 | +0x10 | EntityHandler_0042B9A0,TickCastleThreeLives_00425E50,StepCastleBouncer | 48deea501f12 | jumeau du precedent a la planche pres (0x0042ba1e / 0x0042bb7a)
