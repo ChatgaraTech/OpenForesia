@@ -24946,3 +24946,49 @@ Les fichiers ont été proposés et acceptés avant d'écrire (cinq neufs, un r�
   1 430 distincts, 759 implémentés jamais appelés, **345 à transcrire**.
 - **Non exercé en jeu.** Aucun des 35 n'avait été vu par la sonde : pas de ligne à retirer de
   `handlers-exerces.tsv`.
+
+## 2026-09-19 (suite 2) — Zone 9 fermée en un lot : les ruines dans le lac, 41 sur 41
+
+**18 sur 41 devient 41 sur 41 : les ruines dans le lac sont le dixième ensemble entièrement
+implémenté**, en un lot de vingt-trois gestionnaires. Le tri annonçait 4 A, 7 B, 9 C, 3 E. Quatre
+fichiers neufs, proposés et acceptés avant d'écrire, et le répertoire `Ai/LakeRuins/` :
+
+| fichier | corps |
+|---|---|
+| `Effects/LakeRuinsParticles.cs` | la bulle `0x00430F10` et le grain `0x00430E20` de la mine ; les bulles qui attendent `0x00431000` / `0x00431170` ; les deux gerbes `0x00430C40` / `0x004312E0` (un corps, `TickLakeSplash`) ; la vague `0x00484560` ; sa couronne `0x004844A0` |
+| `Handlers/LakeRuins.cs` | deux sons d'ambiance `0x00467C10` / `0x00467DB0`, le poisson qui saute `0x00467E80`, les cinq piliers `0x004681A0` / `0x00468210` |
+| `Cutscene/LakeRuinsScenes.cs` | l'entité de scène d'espèce 4 qui sombre, `0x00430950` |
+| `Ai/LakeRuins/Kraaken.cs` | le corps `0x004E4F20`, le bras `0x004E40E0`, le pied `0x004E4890` |
+| `WorldMapScript.cs` | quatre verbes `0x004451B0`, `0x00445250`, `0x004452D0`, `0x00445360` |
+| (cas existants) | le Wyrm `0x004E37D0`, le Lézard noir `0x004E2D60` |
+
+### Ce que le lot a appris
+
+- **Le Kraaken est une bête volante qui ne vole pas.** Intégration et interruption de la Coccinelle,
+  mais la hauteur écrasée à `0xffe70000` après chaque intégration, et le bit `0x2000` de `+0x90`
+  basculé. Ses trois routines partagent quatre postures à un écart près (la nage du pied vire vers
+  un cap tiré, celle des deux autres vers la cible) : l'écart a été gardé en paramètre plutôt que de
+  factoriser à tort.
+- **Le tri mesure mal les gros corps à plusieurs `ret`.** Le pied est classé « 0 saut, 356
+  instructions » : il a une table de sauts à quatre entrées (`0x004e4f10`) et en fait environ 510.
+  Pour les routines d'intelligence, lire l'étendue réelle (`spans.tsv`), pas le compte du tri.
+- **Deux « tests » du binaire qui ne testent rien** : la vague compare sa hauteur d'avant la pose à
+  elle-même (`before + 0xa000 > before`), et le pied du Kraaken jette un tirage aléatoire avant de
+  lire son mot de sort — tous deux transcrits tels quels.
+- **Les quatre verbes lisent le bit 8 de l'identité**, le même que la sonde du Sosie et les postures
+  du Chasseur : trois font parler le premier membre debout qui a (ou n'a pas) ce bit, le quatrième
+  demande si l'entité est le seul porteur parmi deux membres debout. Ce qu'est la valeur 1 n'est pas
+  établi ; `MineMecanismes.cs` l'appelle le sexe.
+- **Le mot `0x005717c8` coordonne cinq piliers** : un jeu de bits « armé », un jeu « tombé », et un
+  pilier tombé se replace directement à une position écrite dans le corps — la chute survit au
+  rechargement de la carte tant que le mot n'est pas remis à zéro.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur.
+- `check-descriptors.sh` : 0 tableau en désaccord ; les deux marges courtes de `0x00550b60` prouvées et
+  scellées.
+- `dotnet test OpenForesia.Tests` : les deux rouges connus, aucun ne nomme un symbole du lot.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 9` régénérés : zone 9 **41 / 41** ;
+  1 430 distincts, 782 implémentés jamais appelés, **322 à transcrire**.
+- **Non exercé en jeu.**

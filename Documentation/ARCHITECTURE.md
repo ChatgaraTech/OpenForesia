@@ -286,6 +286,13 @@ groupe dans les modèles « Sosie »), `Cutscene/UndergroundRuinsScenes.cs` (une
 `Ai/UndergroundRuins/Doppelganger.cs`. Fichiers courts, mais chacun à sa place : la zone a été
 fermée en un lot, et un fichier de décor à un corps vaut mieux qu'un corps rangé chez un voisin.
 
+**Les ruines dans le lac (zone 9), le même jour** : `Effects/LakeRuinsParticles.cs`,
+`Handlers/LakeRuins.cs`, `Cutscene/LakeRuinsScenes.cs` et `Ai/LakeRuins/Kraaken.cs` — **sans**
+fichier de mécanismes : aucun corps de la zone ne consulte le groupe pour décider (le pilier qui
+tombe frappe le groupe, mais abîmer n'est pas décider). Le Kraaken est **une créature en trois
+routines** (corps, bras, pied) : un seul fichier, la règle « une créature par fichier » compte les
+créatures, pas les routines.
+
 
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son

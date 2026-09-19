@@ -1207,6 +1207,10 @@ public static unsafe partial class Blaze
             // Le sous-type 12 du bloc B — LE WYRM, cinquieme bete volante et la seule des cinq a
             // porter DEUX gestes : le coup par en dessous et une charge qui ne blesse qu'une fois.
             // Le crible l'annoncait pres du Crabe ; la liste d'appels dit Willie.
+            // Et sa copie des ruines dans le lac (2026-09-19), 0x004E37D0 : zero ecart hors les
+            // deplacements ; ses deux sondes (0x00552dd8 / 0x00552de4) portent les octets de
+            // 0x005529b0 / 0x005529bc.
+            case 0x004E37D0:
             case 0x004A13E0: TickSceneEntityAi_004A13E0(record); return;
 
             // LE GREMLIN — le sous-type 2 de la vieille tour, et cinq copies du meme corps dans
@@ -1635,6 +1639,10 @@ public static unsafe partial class Blaze
             // L'Homme-lezard et le Lezard rouge de la vieille tour, sous-zones 0, 1, 2 et 4 : le
             // desassemblage STRICT est identique a celui de 0x0049D030, table de sauts comprise.
             case 0x004AA070: TickSceneEntityAi_0049D030(record); return;
+
+            // Le LEZARD NOIR des ruines dans le lac (2026-09-19), 0x004E2D60 : le meme corps, sa
+            // propre table de sauts, zero autre ecart.
+            case 0x004E2D60: TickSceneEntityAi_0049D030(record); return;
 
             // Le sous-type 8 — le GOBLIN, la premiere bete qui ATTAQUE DE LOIN : son second geste
             // ne croise aucun gabarit, il fait naitre le projectile 0x49 et rend la main.
@@ -2288,6 +2296,40 @@ public static unsafe partial class Blaze
             // 6/0, exactement comme les postures 4 et 7 du joueur.
             // Ai/UndergroundRuins/Doppelganger.cs.
             case 0x004DF680: TickSceneEntityAi_004DF680(record); return;
+
+            // ====================================================================================
+            // ZONE 9 — LES RUINES DANS LE LAC (2026-09-19), sous-zones 0 et 1. Les dix-sept corps
+            // propres a la zone ; les quatre verbes sont dans WorldMapScript.cs, le Wyrm
+            // (0x004E37D0) et le Lezard noir (0x004E2D60) sur leurs cas existants, plus haut.
+            // ====================================================================================
+
+            // La bulle et le grain de la mine, les bulles qui attendent, les deux gerbes d'eau, la
+            // vague qui eclabousse puis frappe, et sa couronne de sept. Effects/LakeRuinsParticles.cs.
+            case 0x00430F10: EntityHandler_00430F10(record); return;
+            case 0x00430E20: EntityHandler_00430E20(record); return;
+            case 0x00431000: EntityHandler_00431000(record); return;
+            case 0x00431170: EntityHandler_00431170(record); return;
+            case 0x00430C40: EntityHandler_00430C40(record); return;
+            case 0x004312E0: EntityHandler_004312E0(record); return;
+            case 0x00484560: EntityHandler_00484560(record); return;
+            case 0x004844A0: EntityHandler_004844A0(record); return;
+
+            // Les deux sons d'ambiance, le poisson qui saute une fois, et les cinq piliers qui
+            // basculent — Handlers/LakeRuins.cs.
+            case 0x00467C10: EntityHandler_00467C10(record); return;
+            case 0x00467DB0: EntityHandler_00467DB0(record); return;
+            case 0x00467E80: EntityHandler_00467E80(record); return;
+            case 0x004681A0: EntityHandler_004681A0(record); return;
+            case 0x00468210: EntityHandler_00468210(record); return;
+
+            // L'entite de scene d'espece 4 qui sombre — Cutscene/LakeRuinsScenes.cs.
+            case 0x00430950: EntityHandler_00430950(record); return;
+
+            // LE KRAAKEN, en trois routines : le corps, le bras, le pied. Une bete qui nage a la
+            // surface sur la charpente des volantes. Ai/LakeRuins/Kraaken.cs.
+            case 0x004E4F20: TickSceneEntityAi_004E4F20(record); return;
+            case 0x004E40E0: TickSceneEntityAi_004E40E0(record); return;
+            case 0x004E4890: TickSceneEntityAi_004E4890(record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un

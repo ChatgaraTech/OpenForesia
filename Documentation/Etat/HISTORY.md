@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **les ruines dans le lac sont complètes — 41 sur 41**, le dixième ensemble entièrement
+  implémenté, en un lot de vingt-trois gestionnaires
+- feat : **le Kraaken** (`0x004E4F20`, `0x004E40E0`, `0x004E4890`) — le corps, le bras et le pied,
+  une bête qui nage à la surface : ruée, charge, demi-coup qui projette, un sort ; nouveau répertoire
+  `Ai/LakeRuins/`
+- feat : les cinq piliers qui basculent, le poisson qui saute, deux sons, une scène, la vague et sa
+  couronne, les gerbes et les bulles du lac, quatre verbes de dialogue ; le Wyrm et le Lézard noir
+  branchés sur leurs corps existants
+- doc : les planches `0x00550b20` / `0x00550b60` / `0x00550b88`, les sondes et les mots de sort du
+  Kraaken, et le mot des piliers `0x005717c8` relevés dans `DataSymbols.md`
 - feat : **les ruines souterraines sont complètes — 35 sur 35**, le neuvième ensemble entièrement
   implémenté, en un seul lot de quatorze gestionnaires
 - feat : **le Sosie** (`0x004DF680`) — le double d'un membre du groupe : il frappe avec la sonde de

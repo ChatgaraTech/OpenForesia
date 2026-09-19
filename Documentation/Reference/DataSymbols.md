@@ -3439,3 +3439,39 @@ d'identité entier du membre imité (classe sur trois bits, sexe sur le bit `8`)
 place. Bornée en bas par le mot de sort de la Chimère des ruines (`0x00552ce0`), en haut par un
 changement de forme à `0x00552da8` (`0000 3200 7800 6400 80fe 8200`). Transcrite dans
 `Ai/UndergroundRuins/Doppelganger.cs`.
+
+## `0x00550b20`, `0x00550b60`, `0x00550b88`, `0x00552df0`..`0x00552e40`, `0x005717c8` — les ruines dans le lac (2026-09-19)
+
+```
+--- 0x00550b18 : a088 2020, tuile 0x20 x 0x20
+0x00550b20: 4830 / 6030 / 7830 / 9030  1818 0003 1000     <- 0x00431000, 0x00431170 (quatre images)
+--- 0x00550b40 : 4830 1818 0103, meme dessin, octet 4 = 1
+0x00550b60: 0808 1010 0103 1000                           <- 0x004312E0, la gerbe fine
+0x00550b68: 0808 1010 0102 1000                           <- 0x00430C40, la gerbe grosse
+--- 0x00550b70 : 0030 1818 0103 1009
+0x00550b88: 0000 0808 ... 1010 0808 0103 1000 (cinq)      <- 0x00430F10 la bulle, 0x00430E20 le grain
+--- 0x00550bb0 : 00c0 1f1f 0001 1800
+```
+
+| plage | enregistrements | corps | marge |
+|---|---:|---|---|
+| `0x00550b20` | 4 | les deux bulles qui attendent | 4 : `+0x40` de 0 à 3, mort à 4 (égalité) |
+| `0x00550b60` | 2 | les deux gerbes | prouvées et scellées : `+0x40` posé à 0, jamais avancé |
+| `0x00550b88` | 5 | la bulle et le grain | 5 et 4 ; mêmes octets que `0x00550958` (ruines souterraines) |
+
+**Les sondes et les mots de sort du Kraaken**, six mots par sonde (`Ai/LakeRuins/Kraaken.cs`) :
+
+| adresse | contenu | lecteur |
+|---|---|---|
+| `0x00552dd8`, `0x00552de4` | les deux sondes du Wyrm, octet pour octet celles de `0x005529b0` / `0x005529bc` | `0x004E37D0` |
+| `0x00552df0` | `(0, 30, 50, 100, 0, 130)` | le bras, geste 0 |
+| `0x00552dfc` | `(0, 0, 50, 100, 0, 80)` | le bras, geste 1 |
+| `0x00552e08` | `(0, 30, 40, 100, 0, 160)` | le pied |
+| `0x00552e20` | `0x0002` — famille 0, indice 2 | le sort du pied |
+| `0x00552e28` | `(0, 0, 60, 100, 0, 100)` | le corps |
+| `0x00552e40` | `0x000c` — famille 0, indice 12 | le sort du corps |
+
+**`0x005717c8` — le mot des cinq piliers** (`EntityState`, remis à zéro par `Init_00467c00`). Bits
+`0x01`..`0x10` : le pilier *n* est armé (posés par `0x004681A0`) ; bits `0x20`..`0x200` : il est tombé
+(posés par `0x00468210` à la fin de sa chute). Un pilier dont le bit « tombé » est posé se remet
+directement à une position inscrite dans le corps.

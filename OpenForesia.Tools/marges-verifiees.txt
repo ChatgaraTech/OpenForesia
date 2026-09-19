@@ -126,3 +126,7 @@ EntityHandler_0042B9A0 | 0x005508A0 | +0x10 | EntityHandler_0042B9A0,TickCastleT
 EntityHandler_0042E600 | 0x00550980 | +0x00 | EntityHandler_0042E600 | e37eb4c2f9fc | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (releve 0x0042e600, un seul `mov [esi+40h]` jusqu au ret 0x0042e93d)
 EntityHandler_0042E940 | 0x00550980 | +0x00 | EntityHandler_0042E940 | 393b5230740c | idem (un seul `mov [esi+40h]` jusqu au ret 0x0042ec2c)
 EntityHandler_0042EC30 | 0x00550980 | +0x00 | EntityHandler_0042EC30 | 224c63ffc9b0 | idem (un seul `mov [esi+40h]` jusqu au ret 0x0042ed1b)
+
+# ---- Ajoute le 2026-09-19 (ruines dans le lac, zone 9)
+EntityHandler_00430C40 | 0x00550B60 | +0x08 | EntityHandler_00430C40,TickLakeSplash | 223b384a8b98 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (Blaze.c FUN_00430c40, un seul `mov [esi+40h]` jusqu au ret)
+EntityHandler_004312E0 | 0x00550B60 | +0x00 | EntityHandler_004312E0,TickLakeSplash | 976be70dbc3f | idem (Blaze.c FUN_004312e0), jumeau du precedent a cinq constantes pres

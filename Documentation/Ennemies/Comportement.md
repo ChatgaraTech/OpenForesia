@@ -61,7 +61,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | **6** | **Le château de l'immortel** | **21** | **21** | **21 — complète** |
 | **7** | **Les ruines souterraines** | **6** | **6** | **6 — complète** |
 | 8 | La vallée d'argent | 4 | 4 | 0 |
-| 9 | Les ruines dans le lac | 5 | 5 | 0 |
+| **9** | **Les ruines dans le lac** | **5** | **5** | **5 — complète** |
 | 10 | La grotte scellée | 39 | 40 | 13 |
 
 Les totaux par zone dépassent 166 : **plusieurs zones partagent des gestionnaires**, et une même
@@ -1090,6 +1090,32 @@ rang *n* est le double du membre *n*, et sa routine lit **la classe** de ce memb
 La charpente est celle de la Fourmi géante, sans hardiesse, et la replanification ne connaît que deux
 distances (en deçà et au-delà de 300). **Premier cas relevé où une bête se bat comme le joueur** : sa
 sonde de coup vient d'une table indexée par l'identité du personnage, pas par l'espèce.
+
+## Les ruines dans le lac (zone 9) — le Kraaken, une bête en trois routines (2026-09-19)
+
+Cinq routines, dont **deux déjà écrites** : `0x004E37D0` est le Wyrm de la forêt (ses deux sondes,
+`0x00552dd8` et `0x00552de4`, portent les octets de `0x005529b0` et `0x005529bc`) et `0x004E2D60`,
+le Lézard noir, est l'Homme-lézard — zéro écart hors les tables de sauts.
+
+**Le Kraaken** en est les trois autres, un seul fichier (`Ai/LakeRuins/Kraaken.cs`) : le corps
+`0x004E4F20`, le bras `0x004E40E0`, le pied `0x004E4890`. Tous trois sont bâtis sur **la charpente des
+volantes** (l'intégration et l'interruption de la Coccinelle) mais **ne volent pas** : après
+l'intégration, leur hauteur est écrasée par la constante `0xffe70000` à chaque image. Le Kraaken
+nage à la surface.
+
+* Le geste commun est une **ruée** (à une image précise, `0x28000` de vitesse dans le cap) suivie
+  d'une **charge** qui balaie la sonde tant que la vitesse horizontale dépasse 3. L'image de ruée et
+  la sonde changent d'une partie à l'autre (corps 9, pied 13, bras 4 ou 12).
+* Le corps et le pied ont une chance (30 % et 20 %) de porter un **demi-coup qui projette** : la
+  force du modèle `+0x30` est divisée par deux le temps du coup, la proie est lancée à 30 dans la
+  direction de la bête, et l'effet `0x39` naît à sa place.
+* Le **bras** a trois gestes : un coup court, un coup qui pose l'effet d'état 7, et un **appel** qui
+  fait naître un créneau de débordement choisi par la donnée de zone.
+* Le **corps** est le seul à **lancer un sort** posément : une auréole `0xbd`, une attente de la durée
+  que dit la fiche (`+0x13`), puis la fiche 0/12 à l'image 16. Le pied, lui, lance la fiche 0/2 au
+  hasard d'une ruée sur dix.
+* Leurs quatre postures sont les mêmes, **à un écart près** : en nage (posture 3), le pied vire vers
+  un cap tiré au hasard, le bras et le corps vers leur cible.
 
 ## Trois espèces, un comportement : la Crapouille, la Gargouille, le Crapaud (2026-09-15)
 

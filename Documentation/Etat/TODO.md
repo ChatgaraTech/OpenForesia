@@ -1,9 +1,10 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**les ruines souterraines sont
-complètes — 35 sur 35**, le neuvième ensemble, fermé en un lot ; plus tôt le même jour, **le château
-de l’immortel — 170 sur 170**). La zone 5, le Labyrinthe, a été fermée la veille — **160 sur
-160** —, et l’avant-veille la mine, la montagne du dragon de feu et la vieille tour.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**trois zones fermées dans la
+journée** : le château de l’immortel — 170 sur 170 —, puis en un lot chacune les ruines souterraines
+— 35 sur 35 — et **les ruines dans le lac — 41 sur 41**, le dixième ensemble). La zone 5, le
+Labyrinthe, a été fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du
+dragon de feu et la vieille tour.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -15,6 +16,14 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# DIX ENSEMBLES COMPLETS — LES RUINES DANS LE LAC FERMÉES (2026-09-19)
+
+**La zone 9, les ruines dans le lac, est complète : 41 sur 41**, fermée en un lot de vingt-trois
+gestionnaires. La pièce de la zone est **le Kraaken**, une bête en trois routines (corps, bras, pied)
+qui nage à la surface sur la charpente des volantes (`Ai/LakeRuins/Kraaken.cs`), et le décor tient
+**cinq piliers qui basculent** en se parlant par le mot `0x005717c8`. Quatre fichiers neufs, pas de
+fichier de mécanismes. **Rien n'en a été exercé en jeu.**
 
 # NEUF ENSEMBLES COMPLETS — LES RUINES SOUTERRAINES FERMÉES (2026-09-19)
 
@@ -67,8 +76,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **759** |
-| à transcrire | **345** |
+| implémentés, jamais appelés | **782** |
+| à transcrire | **322** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -82,7 +91,7 @@ socle commun, et il est entier.
 | 6 | **Le château de l’immortel** | **170 / 170** |
 | 7 | **Les ruines souterraines** | **35 / 35** |
 | 8 | La vallée d'argent | 18 / 46 |
-| 9 | Les ruines dans le lac | 18 / 41 |
+| 9 | **Les ruines dans le lac** | **41 / 41** |
 | 10 | La grotte scellée | 55 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
@@ -110,10 +119,12 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
 3. ~~**La zone 7 (21 / 35)**~~ — **complète le 2026-09-19** (35 / 35), en un lot ; voir
-   `REVERSE_STATUS.md`, 2026-09-19 (suite). **La plus petite de celles qui restent est maintenant la
-   zone 9, les ruines dans le lac (18 / 41)**, puis la zone 8 (18 / 46). Même méthode :
-   `census-zone-complexity.sh 9`, puis **chercher le premier `ret`** de chaque corps avant de croire
-   son compte d'instructions — le tri de la zone 7 en avait gonflé un de 79 à 356.
+   `REVERSE_STATUS.md`, 2026-09-19 (suite). ~~**La zone 9 (18 / 41)**~~ — **complète le même jour**
+   (41 / 41), voir la suite 2. **Restent la zone 8, la vallée d'argent (18 / 46)**, puis la grotte
+   scellée (55 / 349). Même méthode : `census-zone-complexity.sh 8`, puis **lire l'étendue réelle de
+   chaque corps** (`spans.tsv`, et le premier `ret` pour les petits) avant de croire son compte
+   d'instructions — le tri de la zone 7 en avait gonflé un de 79 à 356, celui de la zone 9 en avait
+   sous-compté un (« 356, zéro saut » pour environ 510 et une table de sauts).
 4. ~~**Le décor du Labyrinthe des morts**~~ — **complet le 2026-09-18** (160 / 160) —
    plus un seul « B » ni « C ». Le tri est à jour dans `Zone5ParComplexite.md`. La
    table `0x0056adc8` n'a plus que son unique « D » (`0x00462A80`, 536 instr.), et `0x0056aec8` n'a

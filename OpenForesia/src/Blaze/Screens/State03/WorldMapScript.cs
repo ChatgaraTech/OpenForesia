@@ -1827,6 +1827,14 @@ public static unsafe partial class Blaze
             0x00445120 => AreaVerb_00445120(),
             0x004450E0 => AreaVerb_004450E0(),
 
+            // LES QUATRE VERBES DES RUINES DANS LE LAC (2026-09-19) : tous lisent le bit 8 de
+            // l'identite des membres. Le premier est une question sur le groupe et l'entite ; les
+            // trois autres font parler le premier membre debout qui a (ou n'a pas) ce bit.
+            0x004451B0 => AreaVerb_004451B0(ent),
+            0x00445250 => AreaVerb_00445250(),
+            0x004452D0 => AreaVerb_004452D0((short)(s[2] | (s[3] << 8))),
+            0x00445360 => AreaVerb_00445360(),
+
             // PALIER 3 (2026-09-18). Les deux premiers sont le meme verbe — un effet inflige au
             // membre que designe la banque 2 —, le second sans nombres flottants ; le troisieme
             // lance un script quand tout le groupe a quitte le rectangle. Aucun ne lit l'entite.
@@ -4414,6 +4422,132 @@ public static unsafe partial class Blaze
 
         Mem.s_StateBank2_005e9060[1] = standing;
         return 0;
+    }
+
+    // =====================================================================
+    // LES QUATRE VERBES DES RUINES DANS LE LAC (2026-09-19)
+    //
+    // Les creneaux de la table 0x0056aec8 propres a la zone 9, voisins d'adresse des deux verbes
+    // des ruines souterraines. Tous les quatre lisent LE BIT 8 DE L'OCTET D'IDENTITE d'un membre
+    // (MainMem + 0xf0150 + rang * 0x2000) — le quatrieme bit, apres les trois de la classe ; celui
+    // que les postures du Chasseur (Tick/PostureAndInput.cs) et la sonde du Sosie lisent aussi, et
+    // que MineMecanismes.cs appelle le sexe. Aucun ne dit quelle valeur est lequel.
+    //
+    // Trois d'entre eux sont LE MEME VERBE A DEUX CONSTANTES PRES : trouver le premier membre debout
+    // (0x80000000 sans 0x50000000, dans l'ordre des emplacements) dont le bit a la valeur voulue, et
+    // lui faire dire un libelle de la zone (`BindMenuLabels`, le meme couple que la boite de
+    // dialogue de MineMecanismes.cs). Ils ne lisent pas l'entite qui les appelle. Dumps :
+    // Legacy/Raw/Blaze/LakeRuins/.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x004451b0</c> — <b>« deux membres debout, dont un seul porte le bit 8, et c'est
+    /// l'entite qui parle ? »</b>. Absent de <c>Blaze.c</c> ; 56 instructions.
+    ///
+    /// <para>
+    /// Il compte les membres debout — <b>au masque <c>0x50010000</c></b>, pas <c>0x50000000</c>
+    /// comme ses trois voisins — et parmi eux ceux qui portent le bit 8. Puis il lit le bit 8 du
+    /// membre que l'entite appelante designe par son octet <c>+8</c>. Il rend <b>0</b> (le script
+    /// avance) si et seulement si les trois conditions tiennent : deux debout, un seul porteur, et
+    /// c'est l'entite. Sinon il rend <b>1</b>.
+    /// </para>
+    /// <para>
+    /// Les deux comptes sont compares en seize bits (<c>cmp di,2</c>, <c>cmp word [esp+10h],1</c>).
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_004451B0(byte* entity)
+    {
+        byte* mainMem = GetMainMemPtr();
+        short standing = 0;
+        short marked = 0;
+
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50010000) != 0) continue;
+
+            standing++;
+            if ((mainMem[0xf0150 + (i << 0xd)] & 8) != 0) marked++;
+        }
+
+        int own = (mainMem[0xf0150 + (entity[8] << 0xd)] >> 3) & 1;
+
+        if (standing == 2 && marked == 1 && own == 1) return 0;
+        return 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00445250</c> — <b>le premier membre debout SANS le bit 8 dit le libelle
+    /// <c>+0x10</c></b> de la table <c>+0x70</c> du repertoire de zone. Absent de <c>Blaze.c</c> ;
+    /// 43 instructions. S'il n'y en a aucun, rien n'est dit. Rend toujours zero.
+    /// </summary>
+    private static uint AreaVerb_00445250()
+    {
+        byte* member = FirstStandingMemberByMark(false);
+        if (member != null)
+        {
+            byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + 0x10);
+            BindMenuLabels(labels, member, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004452d0</c> — <b>le premier membre debout AVEC le bit 8 dit le libelle
+    /// <c>+0x14 + 4 * n</c></b>, <c>n</c> etant l'operande du script : le seul des trois qui
+    /// choisit sa replique. Absent de <c>Blaze.c</c> ; 44 instructions. Rend toujours zero.
+    /// </summary>
+    private static uint AreaVerb_004452D0(short line)
+    {
+        byte* member = FirstStandingMemberByMark(true);
+        if (member != null)
+        {
+            byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + line * 4 + 0x14);
+            BindMenuLabels(labels, member, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00445360</c> — <see cref="AreaVerb_00445250"/> au libelle pres :
+    /// <c>+0x2c</c>. Absent de <c>Blaze.c</c> ; 43 instructions. Rend toujours zero.
+    /// </summary>
+    private static uint AreaVerb_00445360()
+    {
+        byte* member = FirstStandingMemberByMark(false);
+        if (member != null)
+        {
+            byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + 0x2c);
+            BindMenuLabels(labels, member, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: la boucle commune de <c>0x00445250</c>, <c>0x004452d0</c> et <c>0x00445360</c>,
+    /// recopiee en ligne dans les trois : les quatre emplacements dans l'ordre, le premier debout
+    /// (<c>0x80000000</c> sans <c>0x50000000</c>) dont le bit 8 de l'identite vaut
+    /// <paramref name="marked"/>. <c>null</c> si aucun.
+    /// </summary>
+    private static byte* FirstStandingMemberByMark(bool marked)
+    {
+        byte* mainMem = GetMainMemPtr();
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i <= 3; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            bool bit = (mainMem[0xf0150 + (i << 0xd)] & 8) != 0;
+            if (bit == marked) return slot;
+        }
+
+        return null;
     }
 
     // =====================================================================
