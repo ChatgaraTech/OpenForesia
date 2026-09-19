@@ -1195,6 +1195,10 @@ public static unsafe partial class Blaze
             case 0x0048C530:
             case 0x004935F0:
             case 0x004DC890:
+            // Et la MAUDITE de la grotte scellee (2026-09-19), sous-zone 0, avec sa copie des sous-zones
+            // 6 et 7 : zero ecart hors leurs tables de sauts.
+            case 0x004E9DB0:
+            case 0x004F95F0:
             case 0x004A35B0: TickSceneEntityAi_004A35B0(record); return;
 
             // Le sous-type 10 du bloc B — LE TRENT, seconde bete du depot qui LANCE UN SORT : le
@@ -1205,6 +1209,10 @@ public static unsafe partial class Blaze
             // Le sous-type 13 du bloc B — LE VARAN, batie sur une AUTRE charpente : treize
             // postures au lieu de quatre, aucune des quatre feuilles partagees, un heurt de mur
             // qui annule l'image et contourne, et le troisieme lanceur de sort de la foret.
+            // Et le BASIRISK de la grotte scellee (2026-09-19), sous-zones 5, 8 et 10 : son chercheur de
+            // proie 0x004EF860 et sa feuille 0x004F2390 sont FUN_004a1020 et FUN_004a2bf0 instruction
+            // pour instruction, et son dword 0x00552f3c porte les octets de 0x005529c8.
+            case 0x004F14F0:
             case 0x004A1D50: TickSceneEntityAi_004A1D50(record); return;
 
             // Le sous-type 12 du bloc B — LE WYRM, cinquieme bete volante et la seule des cinq a
@@ -1214,6 +1222,12 @@ public static unsafe partial class Blaze
             // deplacements ; ses deux sondes (0x00552dd8 / 0x00552de4) portent les octets de
             // 0x005529b0 / 0x005529bc.
             case 0x004E37D0:
+            // Et les trois BRAS GRIS de la grotte scellee (2026-09-19 — sous-zones 0 ; 2 et 3 ; 5, 8 et
+            // 10) : leurs sondes (0x00552e80, 0x00552ee0, 0x00552f18) portent les 24 octets de
+            // 0x005529b0.
+            case 0x004E84E0:
+            case 0x004ED250:
+            case 0x004EFC20:
             case 0x004A13E0: TickSceneEntityAi_004A13E0(record); return;
 
             // LE GREMLIN — le sous-type 2 de la vieille tour, et cinq copies du meme corps dans
@@ -1657,6 +1671,9 @@ public static unsafe partial class Blaze
             // par un saut ; memes ecritures, meme tirage.
             case 0x004879F0:
             case 0x004A6290:
+            // Et le NOIR GOBLIN de la grotte scellee (2026-09-19), sous-zone 1 : sa table de sauts, rien
+            // d'autre.
+            case 0x004FF500:
             case 0x0049DA40: TickSceneEntityAi_0049DA40(record); return;
 
             // Le sous-type 0xfe de la table installee par zone (0x0056afc8 + 0xfe * 4 deborde
@@ -1820,6 +1837,9 @@ public static unsafe partial class Blaze
             case 0x004092B0: EntityHandler_004092B0(record); return;
             case 0x00408DD0: EntityHandler_00408DD0(record); return;
             case 0x004087E0: EntityHandler_004087E0(record); return;
+            // Et sa copie de la grotte scellee (2026-09-19), sous-zones 4 et 9, 0x00435F70 : aucune
+            // immediate differente.
+            case 0x00435F70:
             case 0x00409E40: EntityHandler_00409E40(record); return;
             case 0x0040C460: EntityHandler_0040C460(record); return;
             case 0x004084F0: EntityHandler_004084F0(record); return;
@@ -2284,6 +2304,9 @@ public static unsafe partial class Blaze
             case 0x0042EC30: EntityHandler_0042EC30(record); return;
             case 0x0042E940: EntityHandler_0042E940(record); return;
             case 0x0042E600: EntityHandler_0042E600(record); return;
+            // Et sa copie de la grotte scellee (2026-09-19), sous-zones 13 a 15 : aucune immediate
+            // differente.
+            case 0x004407B0:
             case 0x0042ED20: EntityHandler_0042ED20(record); return;
 
             // Le son d'ambiance dont la fiche de placement regle le volume — Handlers/UndergroundRuins.cs.
@@ -2354,6 +2377,9 @@ public static unsafe partial class Blaze
             case 0x004301E0: EntityHandler_004301E0(record); return;
             case 0x00430040: EntityHandler_00430040(record); return;
             case 0x00430360: EntityHandler_00430360(record); return;
+            // Et sa copie de la grotte scellee (2026-09-19), sous-zones 11 et 12 : aucune immediate
+            // differente.
+            case 0x0043CE30:
             case 0x0042FC10: EntityHandler_0042FC10(record); return;
             case 0x0042FB50: EntityHandler_0042FB50(record); return;
             case 0x0042F2A0: EntityHandler_0042F2A0(record); return;
@@ -2379,6 +2405,78 @@ public static unsafe partial class Blaze
             // LE GRIFON et FOUGRE, deux volantes sœurs — Ai/SilverValley/.
             case 0x004E1380: TickSceneEntityAi_004E1380(record); return;
             case 0x004E20F0: TickSceneEntityAi_004E20F0(record); return;
+
+            // ====================================================================================
+            // ZONE 10 — LA GROTTE SCELLEE, LOT 1 (2026-09-19) : les copies de corps deja ecrits.
+            // Les dix copies sans ecart sont branchees plus haut, sur les cas de leurs parents.
+            // ====================================================================================
+
+            // Le grain de la mine (cinq blocs) et l'eclat qui tombe (trois blocs), a la planche
+            // pres ; l'emetteur de la vieille tour a son script de sons pres ; une amorce
+            // d'incantation. Effects/SealedCaveParticles.cs.
+            case 0x004328E0: EntityHandler_004328E0(record); return;
+            case 0x00433E10: EntityHandler_00433E10(record); return;
+            case 0x004359B0: EntityHandler_004359B0(record); return;
+            case 0x004389F0: EntityHandler_004389F0(record); return;
+            case 0x0043B310: EntityHandler_0043B310(record); return;
+            case 0x00431870: EntityHandler_00431870(record); return;
+            case 0x00432EA0: EntityHandler_00432EA0(record); return;
+            case 0x00434790: EntityHandler_00434790(record); return;
+            case 0x00484AB0: EntityHandler_00484AB0(record); return;
+            case 0x0043BF20: EntityHandler_0043BF20(record); return;
+
+            // L'amorce qui reste — Handlers/SealedCave.cs.
+            case 0x0046C800: EntityHandler_0046C800(record); return;
+
+            // La copie de l'auberge, sous-zone 1, sur sa propre table de sorts — Ai/Inn.cs.
+            case 0x004FFC50: TickSceneEntityAi_004FFC50(record); return;
+
+            // LOT 2 (2026-09-19) — l'eclat attire (la lueur de la vieille tour a l'echelle 0x700)
+            // et le grain qui monte (celui du Labyrinthe), cinq blocs chacun.
+            case 0x00432D80: EntityHandler_00432D80(record); return;
+            case 0x004342B0: EntityHandler_004342B0(record); return;
+            case 0x00435E50: EntityHandler_00435E50(record); return;
+            case 0x00438BD0: EntityHandler_00438BD0(record); return;
+            case 0x0043B750: EntityHandler_0043B750(record); return;
+            case 0x00432C90: EntityHandler_00432C90(record); return;
+            case 0x004341C0: EntityHandler_004341C0(record); return;
+            case 0x00435D60: EntityHandler_00435D60(record); return;
+            case 0x00438AE0: EntityHandler_00438AE0(record); return;
+            case 0x0043B660: EntityHandler_0043B660(record); return;
+
+            // La salve d'incantation (trois corps identiques), l'eclat qui colle a son porteur, la
+            // fumee qui monte, la poussiere qui s'ecarte, la bulle en arc, les etincelles —
+            // Effects/SealedCaveParticles.cs.
+            case 0x00431A20:
+            case 0x00433050:
+            case 0x00434C80: EntityHandler_00431A20(record); return;
+            case 0x00432190: EntityHandler_00432190(record); return;
+            case 0x00433850: EntityHandler_00433850(record); return;
+            case 0x004353F0: EntityHandler_004353F0(record); return;
+            case 0x004320B0: EntityHandler_004320B0(record); return;
+            case 0x00433770: EntityHandler_00433770(record); return;
+            case 0x00435310: EntityHandler_00435310(record); return;
+            case 0x00432520: EntityHandler_00432520(record); return;
+            case 0x00433A50: EntityHandler_00433A50(record); return;
+            case 0x004355F0: EntityHandler_004355F0(record); return;
+            case 0x004327A0: EntityHandler_004327A0(record); return;
+            case 0x00433CD0: EntityHandler_00433CD0(record); return;
+            case 0x00435870: EntityHandler_00435870(record); return;
+            case 0x00437AA0: EntityHandler_00437AA0(record); return;
+            case 0x0043DE50: EntityHandler_0043DE50(record); return;
+
+            // Le souffle qui dresse et le battant qui frappe, chacun sans aucune immediate
+            // differente d'un bloc a l'autre — Handlers/SealedCave.cs.
+            case 0x00468A20:
+            case 0x0046B570:
+            case 0x0046E6D0: EntityHandler_00468A20(record); return;
+            case 0x0046C020:
+            case 0x0046DE80: EntityHandler_0046C020(record); return;
+
+            // La dalle de pression, qui compte le groupe — Handlers/SealedCaveMecanismes.cs.
+            case 0x00468850:
+            case 0x0046B340:
+            case 0x0046D760: EntityHandler_00468850(record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un

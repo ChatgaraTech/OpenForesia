@@ -299,6 +299,12 @@ créatures, pas les routines.
 **deux** fichiers d'IA dans `Ai/SilverValley/`, `Griffin.cs` et `Fougre.cs` : deux créatures, deux
 fichiers, même si Fougre emprunte les aides que `Griffin.cs` porte.
 
+**La grotte scellée (zone 10) s'ouvre au lot, pas d'un coup** (décision du 2026-09-19) : au lot 1,
+seulement `Effects/SealedCaveParticles.cs` et `Handlers/SealedCave.cs`, à côté de
+`Ai/SealedCave/Gremlin.cs` qui existait déjà. Les scènes et les mécanismes s'ouvriront avec leur
+premier corps — `Handlers/SealedCaveMecanismes.cs` s'est ouvert au lot 2 avec la dalle de pression. À 294 corps, **le fichier d'effets est à couper par bloc de sous-zones passé ~3 000
+lignes** — la coupe se propose alors, elle ne se fait pas d'office.
+
 
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son

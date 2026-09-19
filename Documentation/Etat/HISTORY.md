@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **grotte scellée, lot 2 — 118 sur 349** : onze familles de jumeaux (35 corps) et six verbes,
+  dont la dalle de pression, le battant qui frappe, la fumée qui monte et la sortie vers l'état de
+  jeu 10 ; deux familles de cinq étaient déjà écrites (la lueur de la tour, le grain du Labyrinthe) ;
+  `Handlers/SealedCaveMecanismes.cs` ouvert
+- feat : **grotte scellée, lot 1 — 77 sur 349** : les vingt-deux copies de corps déjà écrits
+  (Maudite, Noir goblin, Bras gris, Basirisk, grains, éclats, ondes, émetteur, deux amorces) ;
+  fichiers `Effects/SealedCaveParticles.cs` et `Handlers/SealedCave.cs` ouverts
+- fix : la ligne de la grotte dans `Comportement.md` portait 40 IA pour 39 gestionnaires — recomptée
+  à 39, dont 24 écrites
 - feat : **la vallée d'argent est complète — 46 sur 46**, le onzième ensemble ; il ne reste que la
   grotte scellée
 - feat : **la luge** (`0x00467440`) — un parcours scripté par portes, virages et pente, qui

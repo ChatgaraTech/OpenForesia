@@ -1838,6 +1838,15 @@ public static unsafe partial class Blaze
             // Le verbe de la vallee d'argent (2026-09-19) : rappeler les membres ecartes.
             0x00445150 => AreaVerb_00445150(),
 
+            // LES SIX VERBES DE LA GROTTE SCELLEE (2026-09-19, lot 2). Trois lisent l'entite
+            // appelante, aucun ne lit l'operande.
+            0x004457E0 => AreaVerb_004457E0(),
+            0x004454C0 => AreaVerb_004454C0(ent),
+            0x00445740 => AreaVerb_00445740(),
+            0x00445810 => AreaVerb_00445810(ent),
+            0x004457A0 => AreaVerb_004457A0(ent),
+            0x00445760 => AreaVerb_00445760(),
+
             // PALIER 3 (2026-09-18). Les deux premiers sont le meme verbe — un effet inflige au
             // membre que designe la banque 2 —, le second sans nombres flottants ; le troisieme
             // lance un script quand tout le groupe a quitte le rectangle. Aucun ne lit l'entite.
@@ -4563,6 +4572,83 @@ public static unsafe partial class Blaze
 
         *(byte*)Mem.Camera(0x005de030) = removed;
         return 0;
+    }
+
+    // =====================================================================
+    // LES SIX VERBES DE LA GROTTE SCELLEE (2026-09-19, lot 2 de la zone)
+    //
+    // Tous absents de Blaze.c, tous de trois a vingt instructions. Dumps :
+    // Legacy/Raw/Blaze/SealedCave/.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>0x004457e0</c> — remet l'octet <see cref="s_Unknown_00566c88"/> a
+    /// <c>0xff</c>, sa valeur au chargement (voir <c>DebugParty.cs</c>), et rend zero. Trois
+    /// instructions.</summary>
+    private static uint AreaVerb_004457E0()
+    {
+        s_Unknown_00566c88 = 0xff;
+        return 0;
+    }
+
+    /// <summary>Ghidra: <c>0x004454c0</c> — <b>« l'entite porte-t-elle le bit <c>0x200</c> de son
+    /// mot de contact <c>+0x90</c> ? »</b> Rend 1 ou 0 : le script avance quand le bit est
+    /// eteint. Cinq instructions.</summary>
+    private static uint AreaVerb_004454C0(byte* entity)
+        => (*(uint*)(entity + 0x90) >> 9) & 1;
+
+    /// <summary>
+    /// Ghidra: <c>0x00445740</c> — <b>quitter la carte du monde vers l'etat de jeu 10</b>. Sept
+    /// instructions : le bit 2 des drapeaux de boucle (<c>Mem.s_WorldFlags_005de02c</c>),
+    /// le pas <c>0xfe</c> qui arrete la boucle de la carte a la fin de l'image — le meme que la
+    /// sortie du sort de <c>School0Wizard.cs</c> —, et l'etat suivant, 10. Rend zero.
+    /// </summary>
+    private static uint AreaVerb_00445740()
+    {
+        uint flags = Mem.s_WorldFlags_005de02c;
+        s_WorldMapStep_005645f8 = -2;                               // 0xfe
+        s_GameStateId_005de510 = 10;
+        Mem.s_WorldFlags_005de02c = flags | 2;
+        return 0;
+    }
+
+    /// <summary>Ghidra: <c>0x00445810</c> — <b>blesser l'entite de 5 pour cent</b>
+    /// (<see cref="ApplyPercentDamage_005397B0"/>), lui poser le bit <c>0x40</c> et un verrou de
+    /// trois images. Rend zero.</summary>
+    private static uint AreaVerb_00445810(byte* entity)
+    {
+        ApplyPercentDamage_005397B0((uint*)entity, 5, 0);           // Ghidra: FUN_005397b0
+        *(ushort*)(entity + 0x96) = 3;
+        *(uint*)entity |= 0x40;
+        return 0;
+    }
+
+    /// <summary>Ghidra: <c>0x004457a0</c> — une fois sur sept (tirage compare sur seize bits), fait
+    /// naitre l'effet <c>0xeb</c> sur l'entite, sans planche. Rend zero.</summary>
+    private static uint AreaVerb_004457A0(byte* entity)
+    {
+        if ((short)(CrtRand() % 7) == 1)
+            SpawnStatusEffectEntity_0047AC40(entity, (int*)(entity + 0x1c), null, 0xeb, 0, -1);   // Ghidra: FUN_0047ac40
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00445760</c> — <b>« plus personne n'est en etat d'agir ? »</b>, le meme sens que
+    /// <see cref="AreaVerb_004450A0"/> du chateau (vivant, sans <c>0x50000000</c>, <c>+0x12</c> nul),
+    /// mais ecrit autrement : il sort des le premier membre qui repond, en rendant 0, au lieu de
+    /// finir la boucle. Rend 1 si aucun.
+    /// </summary>
+    private static uint AreaVerb_00445760()
+    {
+        for (short i = 0; i <= 3; i++)
+        {
+            byte* slot = Inp.s_SlotFlags_005e93c0 + i * 0x9c;
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+            if (*(short*)(slot + 0x12) == 0) return 0;
+        }
+
+        return 1;
     }
 
     /// <summary>

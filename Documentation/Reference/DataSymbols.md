@@ -3511,3 +3511,37 @@ image de course — deux dwords remis à zéro (`0x00571760`, `0x00571764`), une
 `0x5dc` (`0x00571768`), la hauteur de sol retenue (`0x00571790`), et trois shorts (`0x00571798` = 500,
 `0x0057179a` qui suit le cap, `0x0057179c` = 0). La forme est celle d'un placement de caméra ; **le
 lecteur n'est pas trouvé** dans les sources transcrites — `TODO(REVERSE)`.
+
+## La grotte scellée, lot 1 (2026-09-19) — huit planches, un script de sons, une table de sorts
+
+| plage | forme | corps |
+|---|---|---|
+| `0x00550bb0`, `0x00550cc0`, `0x00550db0` | quatre tuiles `0x1f x 0x1f` de la couche `0x18` à `y = 0xc0` | l'éclat qui tombe (blocs 0 ; 2-3 ; 5-8-10) |
+| `0x00550c90`, `0x00550d80`, `0x00550e90`, `0x00550f40`, `0x00551070` | les quatre images `0x08 x 0x08` du grain | le grain (blocs 0 ; 2-3 ; 5-8-10 ; 4-9 ; 6-7) |
+
+Toutes bornées en bas par une tuile `0x10 x 0x10` (grain) ou `0x18 x 0x18` (éclat), en haut par une
+tuile `0x20 x 0x20` ou `0x10 x 0x10` de couche 2.
+
+**`0x005526e0`** — le script de sons différés de l'émetteur de la grotte, six enregistrements jusqu'au
+délai nul de `0x00552708`. Mêmes 48 octets que `0x00552660`.
+
+**`0x00553020`** — la table de sorts de `0x004FFC50` : quatre rangées de trois mots, les mêmes que
+les quatre premières de `0x00552868` ; à `0x00553038` commence une sonde
+(`0000 0000 3c00 9600 0000 9600`).
+
+## La grotte scellée, lot 2 (2026-09-19)
+
+Par bloc de sous-zones (0 / 2-3 / 5-8-10, avec 4-9 et 6-7 pour certaines), la même suite de
+planches, recopiée à `+0xf0` puis `+0x110` :
+
+| planche (bloc 0) | enregistrements | corps |
+|---|---:|---|
+| `0x00550bd0` | 3 | la fumée qui monte — **son octet 5 est réécrit à 2 par le corps** |
+| `0x00550be8` | 4 | la bulle en arc (image = `3 - (+0x16)`) |
+| `0x00550c48` | 4 | la poussière qui s'écarte |
+| `0x00550c68` | 3 | l'éclat attiré et l'éclat collé à son porteur |
+| `0x00550c80` | 1 | le grain qui monte (marge prouvée) |
+
+Et `0x00550f68` / `0x00551220` (sous-zones 4-9 et 11-12) : les étincelles, quatre tuiles
+`0x20 x 0x20` en couche 2. Le bloc 4-9 a `0x00550f18` (éclat attiré, 3) suivi de `0x00550f30`
+(grain qui monte, déjà relevé).

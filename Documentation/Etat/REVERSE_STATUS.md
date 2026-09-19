@@ -25042,3 +25042,91 @@ scellée (55 / 349).** Cinq fichiers neufs, proposés et acceptés avant d'écri
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 8` régénérés : zone 8 **46 / 46** ;
   1 430 distincts, 810 implémentés jamais appelés, **294 à transcrire**.
 - **Non exercé en jeu.**
+
+## 2026-09-19 (suite 4) — Grotte scellée, lot 1 : les vingt-deux copies, 77 sur 349
+
+**55 sur 349 devient 77 sur 349.** La grotte scellée est la dernière zone ouverte, et de loin la plus
+grosse : 294 corps à écrire au tri (`Zone10ParComplexite.md`), 221 lectures. Le lot 1 vide sa
+catégorie A — les vingt-deux corps « déjà écrits ailleurs ».
+
+Fichiers : à la demande, **seulement ce qu'il faut au lot** — `Effects/SealedCaveParticles.cs` et
+`Handlers/SealedCave.cs`. Les scènes et les mécanismes s'ouvriront quand un corps les demandera, et
+le fichier d'effets sera à couper par bloc de sous-zones passé ~3 000 lignes.
+
+| ce que c'est | corps | où |
+|---|---|---|
+| copies sans aucune immédiate différente | l'éclair bleu `0x00435F70`, l'onde `0x004407B0`, l'onde blanche `0x0043CE30` | cas de leurs parents |
+| copies d'IA, tables de sauts vérifiées une à une | Maudite ×2 (Willie), Noir goblin (`0x0049DA40`), Bras gris ×3 (Wyrm), Basirisk (Varan) | cas de leurs parents |
+| copies à la planche près | le grain ×5, l'éclat qui tombe ×3 | `SealedCaveParticles.cs` |
+| copie au script de sons près | l'émetteur `0x00484AB0` | idem |
+| copie à la table de sorts près | `0x004FFC50`, sur `s_Spells_00553020` | `Ai/Inn.cs`, à côté de la copie de la tour |
+| deux « amorces » d'incantation, corps neufs de 13 et 15 instructions | `0x0046C800` (reste), `0x0043BF20` (s'éteint) | `SealedCave.cs`, `SealedCaveParticles.cs` |
+
+### Ce que le lot a appris
+
+- **« Copie LOOSE » ne veut pas dire « même donnée ».** Six des copies lisent une table à une autre
+  adresse ; toutes ont été comparées octet pour octet à celle du parent. Cinq sont identiques ; **la
+  table de sorts de `0x004FFC50` ne l'est que sur ses quatre premières rangées** — les rangées 4 à 7
+  du parent sont, ici, une sonde. Elle a donc sa propre table, bornée à quatre rangées comme celle de
+  la vieille tour.
+- **Les « amorces » du tri ne sont pas des copies** : le tri les rattache à `0x00476950` parce
+  qu'elles appellent la même fonction, mais leurs corps diffèrent (sous-type fixe, extinction ou non).
+- Le Basirisk appelle deux feuilles « inconnues » (`0x004EF860`, `0x004F2390`) : ce sont
+  `FUN_004a1020` et `FUN_004a2bf0`, instruction pour instruction.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur. `check-descriptors.sh` : 0 tableau en désaccord, huit planches neuves à
+  quatre enregistrements chacune. `dotnet test` : les deux rouges connus.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 10` régénérés : **77 / 349**, catégorie A
+  vide ; 1 430 distincts, 832 implémentés jamais appelés, **272 à transcrire**.
+- **Non exercé en jeu.**
+
+### La suite dans la grotte
+
+Il reste 145 « B » (121 lectures), 88 « C » (70), 25 « D » (18) et 14 IA (12). Les B se prennent
+par bloc de sous-zones, comme au château : dix à quinze par lot, en cherchant d'abord les parentés
+entre blocs (le compilateur a émis la plupart des particules une fois par bloc).
+
+## 2026-09-19 (suite 5) — Grotte scellée, lot 2 : les familles de jumeaux, 118 sur 349
+
+**77 sur 349 devient 118 sur 349** : quarante et un corps pour dix-sept lectures. Le lot a pris les
+onze familles de jumeaux que le tri désignait parmi les « B » (trente-cinq corps), plus les six
+petits verbes de script de la zone.
+
+| famille | corps | ce que c'est | fichier |
+|---|---:|---|---|
+| `0x00432D80` | 5 | **la lueur attirée de la vieille tour** (`TickHomingGlint_00417650`), échelle de base `0x700` au lieu de `0xf00` — paramètre ajouté, défaut inchangé | `SealedCaveParticles.cs` |
+| `0x00432C90` | 5 | **le grain qui monte du Labyrinthe** (`TickLabyrinthRisingMote`), à la planche près | idem |
+| `0x00431A20` | 3 | la salve d'incantation (vingt `0xfc`, puis `0xfe`) — identiques | idem |
+| `0x00432190` | 3 | l'éclat collé à son porteur | idem |
+| `0x004320B0` | 3 | la fumée qui monte — **écrit dans sa propre planche** | idem |
+| `0x00432520` | 3 | la poussière qui s'écarte | idem |
+| `0x004327A0` | 3 | la bulle en arc, image tirée du placement | idem |
+| `0x00437AA0` | 2 | les étincelles | idem |
+| `0x00468A20` | 3 | le souffle qui dresse — identiques | `SealedCave.cs` |
+| `0x0046C020` | 2 | le battant qui frappe (et tourne sans fin à `+0x14 = 0x1000`) — identiques | idem |
+| `0x00468850` | 3 | **la dalle de pression** — compte le groupe, pose un bit de la banque 0 | `SealedCaveMecanismes.cs` (ouvert) |
+| verbes | 6 | dont la **sortie vers l'état de jeu 10** (`0x00445740`) | `WorldMapScript.cs` |
+
+### Ce que le lot a appris
+
+- **Deux familles de cinq étaient déjà écrites** ailleurs, et le tri ne pouvait pas le voir : l'une
+  diffère de son parent par une constante (l'échelle), l'autre par la place d'une écriture sans
+  effet. La comparaison **constantes masquées** contre tous les corps écrits les a trouvées —
+  confirmer ensuite, constantes rendues, avant de brancher.
+- **`0x004320B0` écrit dans sa planche** (`mov byte [550BD5h],2`) — le troisième corps du dépôt à le
+  faire après la gerbe à cinq phases. Les planches natives (`NativeCopy`) gardent l'écriture.
+- **Deux branches mortes dans la zone** : les étincelles testent la sous-zone 16, que la grotte
+  n'a pas ; le souffle qui dresse n'a aucun chemin de l'état 0 à l'état 1 dans son propre corps.
+- `0x00445740` quitte la carte du monde vers **l'état de jeu 10** : la grotte scellée est le dernier
+  lieu, c'est vraisemblablement la fin — non établi.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur. `check-descriptors.sh` : 0 tableau en désaccord ; les cinq marges
+  courtes du grain qui monte prouvées et scellées. `dotnet test` : les deux rouges connus.
+- `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **118 / 349**, 104 « B » restants
+  (104 lectures : plus aucun jumeau entre eux), 88 « C », 25 « D », 14 IA ; 873 implémentés
+  jamais appelés, **231 à transcrire**.
+- **Non exercé en jeu.**

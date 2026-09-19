@@ -133,3 +133,10 @@ EntityHandler_004312E0 | 0x00550B60 | +0x00 | EntityHandler_004312E0,TickLakeSpl
 
 # ---- Ajoute le 2026-09-19 (vallee d'argent, zone 8)
 EntityHandler_0042FF50 | 0x00550988 | +0x00 | EntityHandler_0042FF50,TickRisingBubble,SpawnStatusEffectEntity_0047AC40 | d81a65cacb3e | n'ecrit jamais +0x40 (TickRisingBubble, le corps de 0x004079E0) ; creneau 63 de 0x0056b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40 qui le met a 0 — la preuve de 0x004079E0
+
+# ---- Ajoute le 2026-09-19 (grotte scellee, lot 2) : le grain qui monte, cinq blocs
+EntityHandler_00432C90 | 0x00550C68 | +0x18 | EntityHandler_00432C90,TickLabyrinthRisingMote | 9647f3e8d2b6 | pose 0 a la naissance et n'ecrit plus jamais +0x40 (un seul `mov [esi+40h]` jusqu au ret) — la preuve de 0x0041E340
+EntityHandler_004341C0 | 0x00550D58 | +0x18 | EntityHandler_004341C0,TickLabyrinthRisingMote | 9e2cb9bfa2aa | idem
+EntityHandler_00435D60 | 0x00550E68 | +0x18 | EntityHandler_00435D60,TickLabyrinthRisingMote | 576692ceff0e | idem
+EntityHandler_00438AE0 | 0x00550F30 | +0x00 | EntityHandler_00438AE0,TickLabyrinthRisingMote | c747c921aefd | idem
+EntityHandler_0043B660 | 0x00551048 | +0x18 | EntityHandler_0043B660,TickLabyrinthRisingMote | 2d8ab366ce97 | idem

@@ -62,7 +62,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | **7** | **Les ruines souterraines** | **6** | **6** | **6 — complète** |
 | **8** | **La vallée d'argent** | **4** | **4** | **4 — complète** |
 | **9** | **Les ruines dans le lac** | **5** | **5** | **5 — complète** |
-| 10 | La grotte scellée | 39 | 40 | 13 |
+| 10 | La grotte scellée | 39 | 39 | 24 |
 
 Les totaux par zone dépassent 166 : **plusieurs zones partagent des gestionnaires**, et une même
 zone réutilise le même bloc sur plusieurs sous-zones.

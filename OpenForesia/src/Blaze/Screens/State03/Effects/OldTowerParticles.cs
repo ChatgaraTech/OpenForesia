@@ -598,13 +598,15 @@ public static unsafe partial class Blaze
     /// ecrit. Voir <c>check-descriptors.sh</c>.
     /// </para>
     /// </summary>
-    private static void TickHomingGlint_00417650(byte* e, byte* plate)
+    /// <param name="scaleBase">La base des deux echelles tirees : <c>0xf00</c> a la tour, <c>0x700</c>
+    /// pour les cinq copies de la grotte scellee (<c>SealedCaveParticles.cs</c>) — leur seul ecart.</param>
+    private static void TickHomingGlint_00417650(byte* e, byte* plate, int scaleBase = 0xf00)
     {
         *(byte**)(e + 0x3c) = plate;
-        *(short*)(e + 0x28) = (short)(CrtRand() % 0x200 + 0xf00);
+        *(short*)(e + 0x28) = (short)(CrtRand() % 0x200 + scaleBase);
         e[0x0a] = 9;
         e[0x0b] = 0;
-        *(short*)(e + 0x2a) = (short)(CrtRand() % 0x200 + 0xf00);
+        *(short*)(e + 0x2a) = (short)(CrtRand() % 0x200 + scaleBase);
 
         // TODO(REVERSE): le plafond de +0x16 depend du lanceur de ce corps (sous-type 0xf8 de la
         // table 0x0056b2c8, pas encore identifie) ; la planche n'a que trois enregistrements, donc

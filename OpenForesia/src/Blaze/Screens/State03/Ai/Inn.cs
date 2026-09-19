@@ -322,6 +322,32 @@ public static unsafe partial class Blaze
         => TickSpellcasterAi_00487260(record, s_Spells_00552A38, 0);   // Ghidra: &DAT_00552a38
 
     /// <summary>
+    /// Ghidra: <c>0x00553020</c> — <b>la table de sorts de la copie de la grotte scellee</b>,
+    /// quatre rangees de trois, relevees dans <c>.data</c> le 2026-09-19. Memes octets que les
+    /// quatre premieres rangees de <see cref="s_Spells_00552868"/> ; a <c>0x00553038</c> la donnee
+    /// change de nature (<c>0000 0000 3c00 9600 ...</c>, une sonde). Comme pour
+    /// <see cref="s_Spells_00552A38"/>, une fiche de placement dont l'octet 6 depasserait 3 ferait
+    /// lire au binaire les octets qui suivent — et ici, hors du tableau.
+    /// </summary>
+    private static readonly ushort[] s_Spells_00553020 =
+    [
+        0x0000, 0x0003, 0x0008,   // 0x00553020
+        0x000a, 0x0010, 0x020c,   // 0x00553026
+        0x0003, 0x0008, 0x0200,   // 0x0055302c
+        0x0008, 0x0200, 0x0101,   // 0x00553032
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>0x004ffc50</c> — <b>la meme routine dans la grotte scellee</b>, sous-zone 1.
+    /// Absente de <c>Blaze.c</c>. Le desassemblage ne differe de celui de
+    /// <see cref="TickSceneEntityAi_00487260"/> que par l'adresse de la table
+    /// (<c>mov ax,[ecx*2+553020h]</c>) et par ses deux tables de sauts, decalees de
+    /// <c>0x789f0</c> comme le corps.
+    /// </summary>
+    private static void TickSceneEntityAi_004FFC50(byte* record)
+        => TickSpellcasterAi_00487260(record, s_Spells_00553020, 0);   // Ghidra: &DAT_00553020
+
+    /// <summary>
     /// Le corps partage par <see cref="TickSceneEntityAi_00487260"/> (auberge),
     /// <see cref="TickSceneEntityAi_00488210"/> (mine) et <see cref="TickSceneEntityAi_004A6A00"/>
     /// (vieille tour). <paramref name="spells"/> est la table de sorts lue par l'emission, et
