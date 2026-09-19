@@ -3475,3 +3475,39 @@ changement de forme à `0x00552da8` (`0000 3200 7800 6400 80fe 8200`). Transcrit
 `0x01`..`0x10` : le pilier *n* est armé (posés par `0x004681A0`) ; bits `0x20`..`0x200` : il est tombé
 (posés par `0x00468210` à la fin de sa chute). Un pilier dont le bit « tombé » est posé se remet
 directement à une position inscrite dans le corps.
+
+## `0x00550988`..`0x00550b07`, `0x00467b98`, `0x00571760`..`0x0057179c` — la vallée d'argent (2026-09-19)
+
+```
+0x00550988: 0000 0808 0103 1000                          <- 0x0042FF50, la bulle (un enregistrement)
+--- 0x00550990 : 4830 1818 0003, autre forme
+0x005509c8: 30c8 / 48c8 / 60c8 / 78c8  1818 0101 0000    <- les trois bouffees (quatre images)
+0x005509e8: 1800 1818 0103 1000                          <- 0x0042FDB0, le flocon
+0x005509f0: 0808 ... 1010 0808 0103 1000 (quatre)       <- 0x0042FCC0, le grain
+--- 0x00550a10 : 00f0 0f0f 0100 0500, douze tuiles a y = 0xf0 sans consommateur connu
+0x00550a70: 0090 ... 90a0  2f0f 0100 0500 (neuf)         <- 0x0042FA10, le cristal (va-et-vient 0..8)
+--- 0x00550ab8 : 6088 1f1f 0102 1000
+0x00550ad0: 0070 ... c070  1f1f 0102 0500 (sept)         <- 0x0042F970, 0x0042F860, l'etoile de givre
+--- 0x00550b08 : 6088 2020, autre forme
+```
+
+| plage | enregistrements | marge |
+|---|---:|---|
+| `0x00550988` | 1 | prouvée et scellée : la bulle n'écrit jamais `+0x40`, et son créneau n'est atteint que par la piscine `0x005f2d40` |
+| `0x005509c8` | 4 | `+0x40` = compte d'images, mort à 4 |
+| `0x005509e8` | 5 | le flocon ne touche pas `+0x40` ; le grain le mène de 0 à 3 |
+| `0x00550a70` | 9 | `+0x40` fait l'aller-retour entre 0 et 8 |
+| `0x00550ad0` | 7 | `+0x40` de 0 à 6, sortie à 7 |
+
+**`0x00467b98` — le tracé de la luge**, 35 octets : un par porte de 10 à 44, désignant l'un des douze
+créneaux de la table de sauts `0x00467b68` (0 à 8 : virer « + », 9 et 10 : virer « − », 11 : rien).
+Les portes qui virent : 10, 11, 21, 22, 23, 26, 27, 28, 29 (« + ») et 43, 44 (« − »). Deux autres
+tables de sauts, `0x00467bbc` et `0x00467bd8`, donnent pour les portes 23 à 29 le cap de la pente
+(`0x464` à `0x800`) et le plafond de la vitesse de lacet (`0x64` à `0x400`) — transcrites en
+tableaux dans `SilverValleyMecanismes.cs`.
+
+**`0x00571760`..`0x0057179c`** (dans `EntityState`) : des mots que **seule la luge écrit**, à chaque
+image de course — deux dwords remis à zéro (`0x00571760`, `0x00571764`), une distance qui tend vers
+`0x5dc` (`0x00571768`), la hauteur de sol retenue (`0x00571790`), et trois shorts (`0x00571798` = 500,
+`0x0057179a` qui suit le cap, `0x0057179c` = 0). La forme est celle d'un placement de caméra ; **le
+lecteur n'est pas trouvé** dans les sources transcrites — `TODO(REVERSE)`.

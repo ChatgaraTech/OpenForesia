@@ -1062,6 +1062,9 @@ public static unsafe partial class Blaze
             // identiques sur 660, a trois immediates pres — ses deux gabarits, 0x00552898 et
             // 0x005528a4, dont les 24 octets sont ceux de 0x00552960, et sa table de sauts
             // 0x0048e390, dont les quatre entrees sont aux memes decalages que 0x0049c0a0.
+            // Et L'OURS BLANC de la vallee d'argent (2026-09-19), 0x004E0B10 : zero ecart hors ses
+            // deux gabarits, 0x00552dc0 / 0x00552dcc, dont les 24 octets sont ceux de 0x00552960.
+            case 0x004E0B10:
             case 0x00493C70:
             case 0x0048DB30:
             case 0x0049B840: TickSceneEntityAi_0049B840(record); return;
@@ -1248,9 +1251,12 @@ public static unsafe partial class Blaze
 
             // LE LOUP ET LE LOUP GRIS (chateau, sous-zones 0 a 4 ; 5 et 11) — et la meme routine aux
             // ruines souterraines, sous-zones 0 a 2. Ai/ImmortalCastle/Wolf.cs.
+            // Et le LOUP BLANC de la vallee d'argent (2026-09-19), 0x004DFB40 : sa table de sauts, et
+            // un quatrieme chercheur de proie, 0x004E0750, lui aussi copie conforme de FUN_004a1020.
             case 0x004CC650:
             case 0x004D4E10:
             case 0x004DDE30:
+            case 0x004DFB40:
                 TickSceneEntityAi_004CC650(record); return;
 
             // LA HARPIE (chateau, sous-zones 0 a 4 ; 5 et 11 ; et la grotte scellee) — la charpente de
@@ -2330,6 +2336,49 @@ public static unsafe partial class Blaze
             case 0x004E4F20: TickSceneEntityAi_004E4F20(record); return;
             case 0x004E40E0: TickSceneEntityAi_004E40E0(record); return;
             case 0x004E4890: TickSceneEntityAi_004E4890(record); return;
+
+            // ====================================================================================
+            // ZONE 8 — LA VALLEE D'ARGENT (2026-09-19), sous-zones 0 et 1. Les vingt-cinq corps
+            // propres a la zone ; le verbe est dans WorldMapScript.cs, l'Ours blanc (0x004E0B10) et
+            // le Loup blanc (0x004DFB40) sur leurs cas existants, plus haut.
+            // ====================================================================================
+
+            // La neige : bulle, grain, flocon double, etoiles de givre, cristal, bouffees, ondes,
+            // le souffle qui crache et le jet de glace. Effects/SilverValleyParticles.cs.
+            case 0x0042FF50: EntityHandler_0042FF50(record); return;
+            case 0x0042FCC0: EntityHandler_0042FCC0(record); return;
+            case 0x0042FDB0: EntityHandler_0042FDB0(record); return;
+            case 0x0042F970: EntityHandler_0042F970(record); return;
+            case 0x0042F860: EntityHandler_0042F860(record); return;
+            case 0x0042FA10: EntityHandler_0042FA10(record); return;
+            case 0x004301E0: EntityHandler_004301E0(record); return;
+            case 0x00430040: EntityHandler_00430040(record); return;
+            case 0x00430360: EntityHandler_00430360(record); return;
+            case 0x0042FC10: EntityHandler_0042FC10(record); return;
+            case 0x0042FB50: EntityHandler_0042FB50(record); return;
+            case 0x0042F2A0: EntityHandler_0042F2A0(record); return;
+            case 0x0042F3B0: EntityHandler_0042F3B0(record); return;
+
+            // Le decor : la neige qui tombe, les gerbes, deux sons, le balancier, l'eclat qui suit
+            // un voisin — Handlers/SilverValley.cs.
+            case 0x00466C30: EntityHandler_00466C30(record); return;
+            case 0x00466DB0: EntityHandler_00466DB0(record); return;
+            case 0x00466E60: EntityHandler_00466E60(record); return;
+            case 0x00466DF0: EntityHandler_00466DF0(record); return;
+            case 0x00466ED0: EntityHandler_00466ED0(record); return;
+            case 0x00467280: EntityHandler_00467280(record); return;
+
+            // Ce qui compte le groupe : la tempete, LE RADEAU, LA LUGE — Handlers/SilverValleyMecanismes.cs.
+            case 0x00466C70: EntityHandler_00466C70(record); return;
+            case 0x00466F50: EntityHandler_00466F50(record); return;
+            case 0x00467440: EntityHandler_00467440(record); return;
+
+            // L'entite de scene d'espece 1 qui recule et s'efface — Cutscene/SilverValleyScenes.cs.
+            case 0x0042F620: EntityHandler_0042F620(record); return;
+
+            // LE GRIFON et FOUGRE, deux volantes sœurs — Ai/SilverValley/.
+            case 0x004E1380: TickSceneEntityAi_004E1380(record); return;
+            case 0x004E20F0: TickSceneEntityAi_004E20F0(record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un

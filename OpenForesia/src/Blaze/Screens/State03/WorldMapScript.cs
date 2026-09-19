@@ -1835,6 +1835,9 @@ public static unsafe partial class Blaze
             0x004452D0 => AreaVerb_004452D0((short)(s[2] | (s[3] << 8))),
             0x00445360 => AreaVerb_00445360(),
 
+            // Le verbe de la vallee d'argent (2026-09-19) : rappeler les membres ecartes.
+            0x00445150 => AreaVerb_00445150(),
+
             // PALIER 3 (2026-09-18). Les deux premiers sont le meme verbe — un effet inflige au
             // membre que designe la banque 2 —, le second sans nombres flottants ; le troisieme
             // lance un script quand tout le groupe a quitte le rectangle. Aucun ne lit l'entite.
@@ -4524,6 +4527,41 @@ public static unsafe partial class Blaze
             BindMenuLabels(labels, member, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
         }
 
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00445150</c> — <b>rappeler les membres ecartes</b>, le verbe de la vallee
+    /// d'argent. Absent de <c>Blaze.c</c> ; 30 instructions.
+    ///
+    /// <para>
+    /// Chaque emplacement qui porte <c>0x10000000</c> le perd, avec <c>0x6000</c>
+    /// (<c>and 0xefff9fff</c>) ; son <c>+0x12</c> revient a zero et ses trois echelles a
+    /// <c>0x1000</c>. Et les deux compteurs du tri de groupe (<see cref="PrepareLeaderAndPartyFlags"/>)
+    /// perdent un chacun : l'octet <c>0x005de030</c> et <see cref="s_Unknown_005de544"/>, les
+    /// membres ecartes. Il ne lit aucun argument et rend zero.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00445150()
+    {
+        byte removed = *(byte*)Mem.Camera(0x005de030);            // Ghidra: DAT_005de030
+
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 4; i != 0; i--, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x10000000) == 0) continue;
+
+            removed--;
+            *(uint*)slot = flags & 0xefff9fff;
+            *(short*)(slot + 0x12) = 0;
+            *(short*)(slot + 0x28) = 0x1000;
+            *(short*)(slot + 0x2a) = 0x1000;
+            *(short*)(slot + 0x2c) = 0x1000;
+            s_Unknown_005de544--;                                  // Ghidra: DAT_005de544
+        }
+
+        *(byte*)Mem.Camera(0x005de030) = removed;
         return 0;
     }
 

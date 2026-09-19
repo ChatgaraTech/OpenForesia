@@ -60,7 +60,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | **5** | **Le Labyrinthe des morts** | **19** | **19** | **19 — complète** |
 | **6** | **Le château de l'immortel** | **21** | **21** | **21 — complète** |
 | **7** | **Les ruines souterraines** | **6** | **6** | **6 — complète** |
-| 8 | La vallée d'argent | 4 | 4 | 0 |
+| **8** | **La vallée d'argent** | **4** | **4** | **4 — complète** |
 | **9** | **Les ruines dans le lac** | **5** | **5** | **5 — complète** |
 | 10 | La grotte scellée | 39 | 40 | 13 |
 
@@ -1090,6 +1090,26 @@ rang *n* est le double du membre *n*, et sa routine lit **la classe** de ce memb
 La charpente est celle de la Fourmi géante, sans hardiesse, et la replanification ne connaît que deux
 distances (en deçà et au-delà de 300). **Premier cas relevé où une bête se bat comme le joueur** : sa
 sonde de coup vient d'une table indexée par l'identité du personnage, pas par l'espèce.
+
+## La vallée d'argent (zone 8) — le Grifon et Fougre, deux volantes sœurs (2026-09-19)
+
+Quatre routines, dont **deux déjà écrites** : l'**Ours blanc** (`0x004E0B10`) est le Grizzly (ses
+deux gabarits portent les octets de `0x00552960`), le **Loup blanc** (`0x004DFB40`) est le Loup du
+château — avec un quatrième chercheur de proie, `0x004E0750`, lui aussi copie conforme de
+`FUN_004a1020`.
+
+**Le Grifon** (`0x004E1380`, `Ai/SilverValley/Griffin.cs`) et **Fougre** (`0x004E20F0`,
+`Ai/SilverValley/Fougre.cs`) sont deux volantes **sœurs l'une de l'autre** — 522 lignes d'écart sur
+environ 1 900, quand la plus proche routine déjà écrite, le Gremlin, en compte près de 800. Elles
+en ont la charpente (ancre de hauteur `+0x48`, ondulation par le sinus de `+0x14`, heurt qui fait
+contourner), avec une queue plus simple : un seul masque de contact, `0x8882`.
+
+* Le **Grifon** a deux attaques : l'**accroche** (posture `0x0b`) qui frappe une image sur deux au
+  quart de sa force, et le **piqué** (posture `0x0c`) : monter à 200 au-dessus du sol, fondre
+  trente-trois images, frapper à moitié de sa force en projetant la proie.
+* **Fougre** a sa **hardiesse écrasée par `0x40`** (comme le Loup-garou et le Tigre), un piqué plus
+  court, une accroche **qui ne frappe pas**, et une posture de plus, `0x0d` : un souffle qui fait
+  naître l'effet `0xc4`.
 
 ## Les ruines dans le lac (zone 9) — le Kraaken, une bête en trois routines (2026-09-19)
 

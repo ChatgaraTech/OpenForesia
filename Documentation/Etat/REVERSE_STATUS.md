@@ -24992,3 +24992,53 @@ fichiers neufs, proposés et acceptés avant d'écrire, et le répertoire `Ai/La
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 9` régénérés : zone 9 **41 / 41** ;
   1 430 distincts, 782 implémentés jamais appelés, **322 à transcrire**.
 - **Non exercé en jeu.**
+
+## 2026-09-19 (suite 3) — Zone 8 fermée en un lot : la vallée d'argent, 46 sur 46
+
+**18 sur 46 devient 46 sur 46 : la vallée d'argent est le onzième ensemble entièrement
+implémenté**, en un lot de vingt-huit gestionnaires. **Il ne reste plus qu'une zone, la grotte
+scellée (55 / 349).** Cinq fichiers neufs, proposés et acceptés avant d'écrire, et le répertoire
+`Ai/SilverValley/` :
+
+| fichier | corps |
+|---|---|
+| `Effects/SilverValleyParticles.cs` | treize : la bulle, le grain, le flocon double, deux étoiles de givre, le cristal, trois bouffées (dont celle qui se pose sur une étoile à cinq branches), deux ondes, le souffle, le jet de glace |
+| `Handlers/SilverValley.cs` | six : la neige, les gerbes, deux sons, le balancier, l'éclat qui suit un voisin |
+| `Handlers/SilverValleyMecanismes.cs` | trois : la tempête (600 images d'attente commune), **le radeau**, **la luge** |
+| `Cutscene/SilverValleyScenes.cs` | une scène |
+| `Ai/SilverValley/Griffin.cs`, `Fougre.cs` | le Grifon et Fougre, et leurs aides communes |
+| `WorldMapScript.cs` | le verbe `0x00445150`, qui rappelle les membres écartés |
+| (cas existants) | l'Ours blanc sur le Grizzly, le Loup blanc sur le Loup |
+
+### Ce que le lot a appris
+
+- **La luge est un parcours scripté par portes.** Chaque fois que le maillage change sous elle, un
+  compteur avance, et trois tables de sauts donnent pour chaque porte le virage, le cap de la
+  pente et la vitesse de lacet. Elle écrit à chaque image un bloc de mots de `EntityState`
+  (`0x00571760`..`0x0057179c`) dont la forme est celle d'un placement de caméra ; **leur lecteur
+  n'est pas trouvé** — `TODO(REVERSE)` dans `SilverValleyMecanismes.cs` et `DataSymbols.md`.
+- **Deux curiosités de la luge**, transcrites : une boucle de tête lit le mot de contact des quatre
+  membres et n'en fait rien ; et la dérive latérale, amortie de deux par image, reste bloquée
+  à 1 quand elle part impaire (1 devient -1, puis 1, dans la même image).
+- **Un décor passe à `0x0047AC40` un pointeur dans sa propre pile** (`0x00466C30`, `lea
+  edx,[esp+8]` sur un local jamais écrit) comme planche de l'enfant. Sans conséquence : l'enfant,
+  le flocon `0x0042FDB0`, pose sa propre planche à la naissance. Transcrit avec un tampon local.
+- **Une bouffée pose son rayon à 5 par un registre resté chargé** (`mov [esi+14h],cx` après
+  `mov ecx,5` pour un modulo), là où sa jumelle écrit `0x28` en immédiat.
+- **Le Grifon et Fougre sont sœurs, pas copies du Gremlin** : le diff contre le plus proche corps
+  écrit était à 800 lignes, entre elles à 522. Les écrire ensemble, avec les écarts en paramètres
+  (animations, seuils du piqué, masque de drapeaux à l'entrée du piqué), a coûté une lecture et
+  demie au lieu de deux. Fougre a la hardiesse écrasée par `0x40` et une accroche qui ne frappe
+  pas — son prélude range `+0x1a` dans un emplacement de pile que personne ne relit.
+- **Un quatrième chercheur de proie**, `0x004E0750`, copie conforme de `FUN_004a1020`.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur.
+- `check-descriptors.sh` : 0 tableau en désaccord ; la marge courte de la bulle `0x00550988` prouvée
+  et scellée. Les trois marges courtes de la vieille tour qui restent signalées l'étaient déjà
+  avant la séance.
+- `dotnet test OpenForesia.Tests` : les deux rouges connus, aucun ne nomme un symbole du lot.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 8` régénérés : zone 8 **46 / 46** ;
+  1 430 distincts, 810 implémentés jamais appelés, **294 à transcrire**.
+- **Non exercé en jeu.**

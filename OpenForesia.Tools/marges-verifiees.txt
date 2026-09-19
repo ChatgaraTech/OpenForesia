@@ -130,3 +130,6 @@ EntityHandler_0042EC30 | 0x00550980 | +0x00 | EntityHandler_0042EC30 | 224c63ffc
 # ---- Ajoute le 2026-09-19 (ruines dans le lac, zone 9)
 EntityHandler_00430C40 | 0x00550B60 | +0x08 | EntityHandler_00430C40,TickLakeSplash | 223b384a8b98 | pose 0 a la naissance dans la meme branche que +0x3c et ne reecrit jamais +0x40 (Blaze.c FUN_00430c40, un seul `mov [esi+40h]` jusqu au ret)
 EntityHandler_004312E0 | 0x00550B60 | +0x00 | EntityHandler_004312E0,TickLakeSplash | 976be70dbc3f | idem (Blaze.c FUN_004312e0), jumeau du precedent a cinq constantes pres
+
+# ---- Ajoute le 2026-09-19 (vallee d'argent, zone 8)
+EntityHandler_0042FF50 | 0x00550988 | +0x00 | EntityHandler_0042FF50,TickRisingBubble,SpawnStatusEffectEntity_0047AC40 | d81a65cacb3e | n'ecrit jamais +0x40 (TickRisingBubble, le corps de 0x004079E0) ; creneau 63 de 0x0056b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40 qui le met a 0 — la preuve de 0x004079E0

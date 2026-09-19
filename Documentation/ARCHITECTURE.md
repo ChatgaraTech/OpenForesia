@@ -293,6 +293,12 @@ tombe frappe le groupe, mais abîmer n'est pas décider). Le Kraaken est **une c
 routines** (corps, bras, pied) : un seul fichier, la règle « une créature par fichier » compte les
 créatures, pas les routines.
 
+**La vallée d'argent (zone 8), le même jour** : les cinq fichiers de la zone 7
+(`Effects/SilverValleyParticles.cs`, `Handlers/SilverValley.cs`, `Handlers/SilverValleyMecanismes.cs`
+— la tempête, le radeau et la luge comptent le groupe —, `Cutscene/SilverValleyScenes.cs`) et
+**deux** fichiers d'IA dans `Ai/SilverValley/`, `Griffin.cs` et `Fougre.cs` : deux créatures, deux
+fichiers, même si Fougre emprunte les aides que `Griffin.cs` porte.
+
 
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son

@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **326** |
-| implementes, jamais appeles | **782** |
-| a transcrire | **322** |
+| implementes, jamais appeles | **810** |
+| a transcrire | **294** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -70,7 +70,7 @@ et n'est pas un comportement.
 | 5 | Le Labyrinthe des morts | 160 | 160 | 0 |
 | 6 | Le chateau de l'immortel | 170 | 170 | 0 |
 | 7 | Les ruines souterraines | 35 | 35 | 0 |
-| 8 | La vallee d'argent | 46 | 18 | 0 |
+| 8 | La vallee d'argent | 46 | 46 | 0 |
 | 9 | Les ruines dans le lac | 41 | 41 | 0 |
 | 10 | La grotte scellee | 349 | 55 | 0 |
 
@@ -1346,47 +1346,43 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 8 — La vallee d'argent
 
-46 gestionnaires, 18 implementes, 0 testes.
+46 gestionnaires, 46 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x0042F2A0` | 0,1 | 0056B0C8 | **non** | **non** |
-| `0x0042F3B0` | 0,1 | 0056B1C8 | **non** | **non** |
-| `0x0042F620` | 0,1 | 0056B0C8 | **non** | **non** |
-| `0x0042F860` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x0042F970` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x0042FA10` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x0042FB50` | 0,1 | 0056B1C8 | **non** | **non** |
-| `0x0042FC10` | 0,1 | 0056B1C8 | **non** | **non** |
-| `0x0042FCC0` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x0042FDB0` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x0042FF50` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x00430040` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x004301E0` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x00430360` | 0,1 | 0056B2C8 | **non** | **non** |
-| `0x00445150` | 0,1 | 0056AEC8 | **non** | **non** |
-| `0x00466C30` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00466C70` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00466DB0` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00466DF0` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00466E60` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00466ED0` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00466F50` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00467280` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x00467440` | 0,1 | 0056ADC8 | **non** | **non** |
-| `0x004DFB40` | 0,1 | 0056AD48 | **non** | **non** |
-| `0x004E0B10` | 0,1 | 0056AD48 | **non** | **non** |
-| `0x004E1380` | 0,1 | 0056AD48 | **non** | **non** |
-| `0x004E20F0` | 0,1 | 0056AD48 | **non** | **non** |
+| `0x0042F2A0` | 0,1 | 0056B0C8 | oui | **non** |
+| `0x0042F3B0` | 0,1 | 0056B1C8 | oui | **non** |
+| `0x0042F620` | 0,1 | 0056B0C8 | oui | **non** |
+| `0x0042F860` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x0042F970` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x0042FA10` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x0042FB50` | 0,1 | 0056B1C8 | oui | **non** |
+| `0x0042FC10` | 0,1 | 0056B1C8 | oui | **non** |
+| `0x0042FCC0` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x0042FDB0` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x0042FF50` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x00430040` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x004301E0` | 0,1 | 0056B2C8 | oui | **non** |
+| `0x00430360` | 0,1 | 0056B2C8 | oui | **non** |
 | `0x00442E10` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00443260` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x004432A0` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00443830` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x004441F0` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 0,1 | 0056AEC8 | oui | **non** |
+| `0x00445150` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00445480` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0,1 | 0056AEC8 | oui | **non** |
+| `0x00466C30` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00466C70` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00466DB0` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00466DF0` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00466E60` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00466ED0` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00466F50` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00467280` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x00467440` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004734B0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004736D0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0,1 | 0056ADC8 | oui | **non** |
@@ -1395,6 +1391,10 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473CB0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00473ED0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1 | 0056ADC8 | oui | **non** |
+| `0x004DFB40` | 0,1 | 0056AD48 | oui | **non** |
+| `0x004E0B10` | 0,1 | 0056AD48 | oui | **non** |
+| `0x004E1380` | 0,1 | 0056AD48 | oui | **non** |
+| `0x004E20F0` | 0,1 | 0056AD48 | oui | **non** |
 | `0x005413E0` | 0,1 | 0056AFC8 | oui | **non** |
 
 ## Zone 9 — Les ruines dans le lac

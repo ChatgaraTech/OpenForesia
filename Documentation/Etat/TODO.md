@@ -1,10 +1,11 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**trois zones fermées dans la
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**quatre zones fermées dans la
 journée** : le château de l’immortel — 170 sur 170 —, puis en un lot chacune les ruines souterraines
-— 35 sur 35 — et **les ruines dans le lac — 41 sur 41**, le dixième ensemble). La zone 5, le
-Labyrinthe, a été fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du
-dragon de feu et la vieille tour.
+— 35 sur 35 —, les ruines dans le lac — 41 sur 41 — et **la vallée d’argent — 46 sur 46**, le
+onzième ensemble). **Il ne reste que la grotte scellée (55 / 349).** La zone 5, le Labyrinthe, a été
+fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du dragon de feu et la
+vieille tour.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -16,6 +17,14 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# ONZE ENSEMBLES COMPLETS — LA VALLÉE D’ARGENT FERMÉE (2026-09-19)
+
+**La zone 8, la vallée d’argent, est complète : 46 sur 46**, fermée en un lot de vingt-huit
+gestionnaires. Ses pièces sont **la luge** (`0x00467440`, un parcours scripté par portes qui pilote
+un bloc de caméra dont le lecteur reste à trouver), **le radeau** (`0x00466F50`) et deux volantes
+sœurs, **le Grifon et Fougre** (`Ai/SilverValley/`). **Toutes les zones sauf la grotte scellée sont
+maintenant complètes. Rien n'en a été exercé en jeu.**
 
 # DIX ENSEMBLES COMPLETS — LES RUINES DANS LE LAC FERMÉES (2026-09-19)
 
@@ -76,8 +85,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **782** |
-| à transcrire | **322** |
+| implémentés, jamais appelés | **810** |
+| à transcrire | **294** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -90,7 +99,7 @@ socle commun, et il est entier.
 | 5 | **Le Labyrinthe des morts** | **160 / 160** |
 | 6 | **Le château de l’immortel** | **170 / 170** |
 | 7 | **Les ruines souterraines** | **35 / 35** |
-| 8 | La vallée d'argent | 18 / 46 |
+| 8 | **La vallée d'argent** | **46 / 46** |
 | 9 | **Les ruines dans le lac** | **41 / 41** |
 | 10 | La grotte scellée | 55 / 349 |
 
@@ -120,8 +129,9 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    Le plus gros fait 7 corps pour 47 instructions.
 3. ~~**La zone 7 (21 / 35)**~~ — **complète le 2026-09-19** (35 / 35), en un lot ; voir
    `REVERSE_STATUS.md`, 2026-09-19 (suite). ~~**La zone 9 (18 / 41)**~~ — **complète le même jour**
-   (41 / 41), voir la suite 2. **Restent la zone 8, la vallée d'argent (18 / 46)**, puis la grotte
-   scellée (55 / 349). Même méthode : `census-zone-complexity.sh 8`, puis **lire l'étendue réelle de
+   (41 / 41), voir la suite 2. ~~**La zone 8 (18 / 46)**~~ — **complète le même jour** (46 / 46),
+   voir la suite 3. **Reste la grotte scellée (55 / 349)**, de loin la plus grosse : la découper en
+   lots par bloc de sous-zones. Même méthode : `census-zone-complexity.sh 10`, puis **lire l'étendue réelle de
    chaque corps** (`spans.tsv`, et le premier `ret` pour les petits) avant de croire son compte
    d'instructions — le tri de la zone 7 en avait gonflé un de 79 à 356, celui de la zone 9 en avait
    sous-compté un (« 356, zéro saut » pour environ 510 et une table de sauts).

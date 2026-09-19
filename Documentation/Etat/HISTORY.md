@@ -6,6 +6,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **la vallée d'argent est complète — 46 sur 46**, le onzième ensemble ; il ne reste que la
+  grotte scellée
+- feat : **la luge** (`0x00467440`) — un parcours scripté par portes, virages et pente, qui
+  s'achève sur les scripts des quatre membres ; et **le radeau** (`0x00466F50`), qui part quand tout
+  le groupe est à bord et finit par sombrer
+- feat : **le Grifon** (`0x004E1380`) et **Fougre** (`0x004E20F0`), deux volantes sœurs — accroche,
+  piqué qui projette, souffle ; nouveau répertoire `Ai/SilverValley/`
+- feat : la neige de la vallée (flocons doubles, étoiles de givre, cristal, bouffées, ondes, jet de
+  glace), son décor, une scène et le verbe qui rappelle les membres écartés ; l'Ours blanc et le
+  Loup blanc branchés sur le Grizzly et le Loup
+- doc : les planches de la zone 8, le tracé de la luge (`0x00467b98`) et son bloc de caméra
+  (`0x00571760`, lecteur à trouver) relevés dans `DataSymbols.md`
 - feat : **les ruines dans le lac sont complètes — 41 sur 41**, le dixième ensemble entièrement
   implémenté, en un lot de vingt-trois gestionnaires
 - feat : **le Kraaken** (`0x004E4F20`, `0x004E40E0`, `0x004E4890`) — le corps, le bras et le pied,
