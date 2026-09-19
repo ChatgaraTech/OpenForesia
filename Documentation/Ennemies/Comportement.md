@@ -58,8 +58,8 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | **3** | **La forêt** | **23** | **22** | **22 — complète** |
 | **4** | **La vieille tour** | **22** | **22** | **22 — complète** |
 | **5** | **Le Labyrinthe des morts** | **19** | **19** | **19 — complète** |
-| 6 | Le château de l'immortel | 21 | 21 | 5 |
-| 7 | Les ruines souterraines | 6 | 6 | 2 |
+| **6** | **Le château de l'immortel** | **21** | **21** | **21 — complète** |
+| **7** | **Les ruines souterraines** | **6** | **6** | **6 — complète** |
 | 8 | La vallée d'argent | 4 | 4 | 0 |
 | 9 | Les ruines dans le lac | 5 | 5 | 0 |
 | 10 | La grotte scellée | 39 | 40 | 13 |
@@ -1065,6 +1065,31 @@ queue réutilisés), avec une morsure sans image, un sort (Ventilo), et **un cri
 sème la famille à trois vies du château : des feux follets, puis l'éclair rouge qui porte l'effet
 d'état 11 à tout le groupe. Deuxième bête du château, après le Vampire, dont l'attaque passe par un
 gestionnaire d'effet de zone.
+
+## Les ruines souterraines (zone 7) — le Sosie, et une zone complète (2026-09-19)
+
+Le bloc `0x0055a128` porte six sous-types, et **cinq étaient déjà écrits ailleurs** avant qu'on y
+touche : le Crapaud (0, la Crapouille), le Loup (3), la Chimère (2), `0x004DEA40` (4), et **Balle
+métal** (1, `0x004DC890`), qui est Willie de la forêt — 524 instructions, zéro écart hors les
+déplacements et sa propre table de sauts, dont les quatre cases sont décalées de `0x50360` comme le
+corps. Il ne restait qu'une routine propre à la zone.
+
+**Le Sosie** (5, `0x004DF680`, `Ai/UndergroundRuins/Doppelganger.cs`) **n'a pas de fiche à lui.** Le
+CD donne à la sous-zone 2 quatre modèles nommés « Sosie », tous à 1 PV et 1 PM ; c'est le
+gestionnaire `0x00541C90` (`Handlers/UndergroundRuinsMecanismes.cs`) qui, à chaque image de cette
+sous-zone, **recopie le groupe dedans** — apparence, rang, PV, PM et sept autres champs. Le Sosie de
+rang *n* est le double du membre *n*, et sa routine lit **la classe** de ce membre :
+
+* les classes qui frappent le font à la fin de chaque geste, avec la sonde que `0x00552ce8` donne pour
+  leur identité — seize entrées, classe **et** sexe ;
+* le **Chasseur** lance la fiche 5/0 sur l'animation `0x100003` (ou `0xc0003` si le bit de sexe est
+  posé), la **Fée** la fiche 6/0 sur `0x30003` — **ce sont les postures 4 et 7 du joueur**
+  (`PostureHandler_0051A6B0`, `PostureHandler_0051A710`) recopiées en ligne : le Sosie tire
+  exactement ce que tire le membre qu'il imite.
+
+La charpente est celle de la Fourmi géante, sans hardiesse, et la replanification ne connaît que deux
+distances (en deçà et au-delà de 300). **Premier cas relevé où une bête se bat comme le joueur** : sa
+sonde de coup vient d'une table indexée par l'identité du personnage, pas par l'espèce.
 
 ## Trois espèces, un comportement : la Crapouille, la Gargouille, le Crapaud (2026-09-15)
 

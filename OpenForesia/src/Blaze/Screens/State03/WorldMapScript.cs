@@ -1821,6 +1821,12 @@ public static unsafe partial class Blaze
             // Celui-ci ne lit aucun de ses deux arguments.
             0x004450A0 => AreaVerb_004450A0(),
 
+            // LES DEUX VERBES DES RUINES SOUTERRAINES (2026-09-19), creneaux 0 et 2 du bloc
+            // 0x0055a2a8 : les porteurs d'effet relaches, et les membres debout comptes dans
+            // l'octet 1 de la banque 2. Ni l'un ni l'autre ne lit un argument.
+            0x00445120 => AreaVerb_00445120(),
+            0x004450E0 => AreaVerb_004450E0(),
+
             // PALIER 3 (2026-09-18). Les deux premiers sont le meme verbe — un effet inflige au
             // membre que designe la banque 2 —, le second sans nombres flottants ; le troisieme
             // lance un script quand tout le groupe a quitte le rectangle. Aucun ne lit l'entite.
@@ -4345,6 +4351,69 @@ public static unsafe partial class Blaze
         }
 
         return (uint)(short)none;
+    }
+
+    // =====================================================================
+    // LES DEUX VERBES DES RUINES SOUTERRAINES (2026-09-19)
+    //
+    // Les creneaux 0 et 2 du bloc 0x0055a2a8 (table 0x0056aec8, zone 7, sous-zones 0 a 2), voisins
+    // d'adresse du dernier verbe du chateau. Deux lignes de `GestionnairesEntites.md` qui ne sont
+    // pas des gestionnaires d'entite. Dumps : Legacy/Raw/Blaze/UndergroundRuins/.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00445120</c> — <b>degeler les trente-deux porteurs d'effet</b>. Absent de
+    /// <c>Blaze.c</c> ; dix instructions.
+    ///
+    /// <para>
+    /// Il efface le bit <c>0x04000000</c> — celui que <see cref="FreezeAllEntities"/> pose — sur
+    /// les <c>0x20</c> enregistrements de <c>0x005ff400</c>, <b>sans condition</b>. C'est un
+    /// morceau de <see cref="UnfreezeAllEntities"/>, qui degele cette table-la et deux autres, mais
+    /// en epargnant les enregistrements retires (<c>0x10000000</c>) ; ce verbe-ci n'epargne rien.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00445120()
+    {
+        byte* record = Mem.Entity(0x005ff400);
+
+        for (int i = 0x20; i != 0; i--, record += 0x9c)
+            *(uint*)record &= 0xfbffffff;
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004450e0</c> — <b>« combien de membres sont debout ? »</b>, range dans
+    /// <b>l'octet 1 de la banque 2</b> (<c>DAT_005e9061</c>). Absent de <c>Blaze.c</c> ; dix-huit
+    /// instructions.
+    ///
+    /// <para>
+    /// Le meme compte que <see cref="AreaVerb_00443960"/> — <c>0x80000000</c> sans
+    /// <c>0x50000000</c> sur les quatre emplacements —, mais <b>la variable est fixee</b> au lieu
+    /// d'etre designee par l'argument. L'octet est d'abord remis a zero, puis ecrit une seconde
+    /// fois a la fin de la boucle : le compte tient dans un registre entre les deux.
+    /// </para>
+    /// <para>
+    /// L'octet 1 de la banque 2 est aussi celui que lit la scene des eclairs du chateau
+    /// (<c>ImmortalCastleScenes.cs</c>) et le membre que vise le verbe d'effet de la banque 2.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_004450E0()
+    {
+        byte standing = 0;
+        Mem.s_StateBank2_005e9060[1] = standing;
+
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 4; i != 0; i--, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) != 0 && (flags & 0x50000000) == 0) standing++;
+        }
+
+        Mem.s_StateBank2_005e9060[1] = standing;
+        return 0;
     }
 
     // =====================================================================

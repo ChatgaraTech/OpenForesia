@@ -1,8 +1,8 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**le château de l’immortel est
-complet — 170 sur 170**, le huitième ensemble entièrement implémenté ; la grotte scellée passe à 55
-et les ruines souterraines à 21). La zone 5, le Labyrinthe, a été fermée la veille — **160 sur
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**les ruines souterraines sont
+complètes — 35 sur 35**, le neuvième ensemble, fermé en un lot ; plus tôt le même jour, **le château
+de l’immortel — 170 sur 170**). La zone 5, le Labyrinthe, a été fermée la veille — **160 sur
 160** —, et l’avant-veille la mine, la montagne du dragon de feu et la vieille tour.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
@@ -15,6 +15,14 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# NEUF ENSEMBLES COMPLETS — LES RUINES SOUTERRAINES FERMÉES (2026-09-19)
+
+**La zone 7, les ruines souterraines, est complète : 35 sur 35**, fermée en un seul lot de quatorze
+gestionnaires. La pièce de la zone est **le Sosie** : les quatre modèles de la sous-zone 2 sont
+remplis du groupe à chaque image (`0x00541C90`), et la routine `0x004DF680` se bat comme le membre
+qu'elle imite. Cinq fichiers neufs et le répertoire `Ai/UndergroundRuins/`. **Rien n'en a été exercé
+en jeu** — la sous-zone 2 est celle à visiter pour voir les Sosies.
 
 # HUIT ENSEMBLES COMPLETS — LE CHÂTEAU DE L’IMMORTEL FERMÉ (2026-09-19)
 
@@ -59,8 +67,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **326** |
-| implémentés, jamais appelés | **745** |
-| à transcrire | **359** |
+| implémentés, jamais appelés | **759** |
+| à transcrire | **345** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -72,7 +80,7 @@ socle commun, et il est entier.
 | 4 | **La vieille tour** | **176 / 176** |
 | 5 | **Le Labyrinthe des morts** | **160 / 160** |
 | 6 | **Le château de l’immortel** | **170 / 170** |
-| 7 | Les ruines souterraines | 21 / 35 |
+| 7 | **Les ruines souterraines** | **35 / 35** |
 | 8 | La vallée d'argent | 18 / 46 |
 | 9 | Les ruines dans le lac | 18 / 41 |
 | 10 | La grotte scellée | 55 / 349 |
@@ -101,8 +109,11 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      au-delà lisent seize places après la fin de leur liste de sorts, par un registre non chargé.
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
    Le plus gros fait 7 corps pour 47 instructions.
-3. **La zone 7 (21 / 35)**, la plus petite de celles qui restent. La zone 2 est complète depuis le
-   2026-09-17.
+3. ~~**La zone 7 (21 / 35)**~~ — **complète le 2026-09-19** (35 / 35), en un lot ; voir
+   `REVERSE_STATUS.md`, 2026-09-19 (suite). **La plus petite de celles qui restent est maintenant la
+   zone 9, les ruines dans le lac (18 / 41)**, puis la zone 8 (18 / 46). Même méthode :
+   `census-zone-complexity.sh 9`, puis **chercher le premier `ret`** de chaque corps avant de croire
+   son compte d'instructions — le tri de la zone 7 en avait gonflé un de 79 à 356.
 4. ~~**Le décor du Labyrinthe des morts**~~ — **complet le 2026-09-18** (160 / 160) —
    plus un seul « B » ni « C ». Le tri est à jour dans `Zone5ParComplexite.md`. La
    table `0x0056adc8` n'a plus que son unique « D » (`0x00462A80`, 536 instr.), et `0x0056aec8` n'a

@@ -1187,8 +1187,11 @@ public static unsafe partial class Blaze
             // Coccinelle qui ENFLE pour frapper (trois fois sa taille), dont la sonde est centree
             // sur son propre corps, et qui pulse en taille et en couleur sur la phase de son vol.
             // Et ses deux copies de la mine (sous-zones 5 a 8, puis 3, 4 et 9), identiques.
+            // Et BALLE METAL, le sous-type 1 des ruines souterraines (2026-09-19) : 524
+            // instructions, zero ecart hors les deplacements et sa propre table de sauts.
             case 0x0048C530:
             case 0x004935F0:
+            case 0x004DC890:
             case 0x004A35B0: TickSceneEntityAi_004A35B0(record); return;
 
             // Le sous-type 10 du bloc B — LE TRENT, seconde bete du depot qui LANCE UN SORT : le
@@ -2252,6 +2255,39 @@ public static unsafe partial class Blaze
             case 0x00466890: EntityHandler_00466890(record); return;
             case 0x00466970: EntityHandler_00466970(record); return;
             case 0x00466AA0: EntityHandler_00466AA0(record); return;
+
+            // ====================================================================================
+            // ZONE 7 — LES RUINES SOUTERRAINES (2026-09-19), sous-zones 0 a 2. Les douze corps
+            // propres a la zone ; les deux verbes de script sont dans WorldMapScript.cs, et Balle
+            // metal (0x004DC890) sur le cas de Willie, plus haut.
+            // ====================================================================================
+
+            // La bulle et le grain de la mine a la planche pres, le tourbillon qui ralentit, celui
+            // qui enfle, l'etincelle qui monte en accelerant, et l'onde sans planche.
+            // Effects/UndergroundRuinsParticles.cs.
+            case 0x0042EEA0: EntityHandler_0042EEA0(record); return;
+            case 0x0042EDB0: EntityHandler_0042EDB0(record); return;
+            case 0x0042EC30: EntityHandler_0042EC30(record); return;
+            case 0x0042E940: EntityHandler_0042E940(record); return;
+            case 0x0042E600: EntityHandler_0042E600(record); return;
+            case 0x0042ED20: EntityHandler_0042ED20(record); return;
+
+            // Le son d'ambiance dont la fiche de placement regle le volume — Handlers/UndergroundRuins.cs.
+            case 0x00466BE0: EntityHandler_00466BE0(record); return;
+
+            // Le reveil des entites de scene de type 2, et LA FABRIQUE DES SOSIES : en sous-zone 2,
+            // le groupe recopie chaque image dans les modeles 0 a 3. Handlers/UndergroundRuinsMecanismes.cs.
+            case 0x0042EF90: EntityHandler_0042EF90(record); return;
+            case 0x00541C90: EntityHandler_00541C90(record); return;
+
+            // La scene de l'hote qui tremble, flambe et rend la main — Cutscene/UndergroundRuinsScenes.cs.
+            case 0x0042E150: EntityHandler_0042E150(record); return;
+
+            // LE SOSIE — le sous-type 5 du bloc 0x0055a128, le double d'un membre du groupe : il
+            // frappe avec la sonde de sa classe ; en Chasseur ou en Fee, il tire les fiches 5/0 ou
+            // 6/0, exactement comme les postures 4 et 7 du joueur.
+            // Ai/UndergroundRuins/Doppelganger.cs.
+            case 0x004DF680: TickSceneEntityAi_004DF680(record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un

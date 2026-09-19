@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **326** |
-| implementes, jamais appeles | **745** |
-| a transcrire | **359** |
+| implementes, jamais appeles | **759** |
+| a transcrire | **345** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -69,7 +69,7 @@ et n'est pas un comportement.
 | 4 | La vieille tour | 176 | 176 | 2 |
 | 5 | Le Labyrinthe des morts | 160 | 160 | 0 |
 | 6 | Le chateau de l'immortel | 170 | 170 | 0 |
-| 7 | Les ruines souterraines | 35 | 21 | 0 |
+| 7 | Les ruines souterraines | 35 | 35 | 0 |
 | 8 | La vallee d'argent | 46 | 18 | 0 |
 | 9 | Les ruines dans le lac | 41 | 18 | 0 |
 | 10 | La grotte scellee | 349 | 55 | 0 |
@@ -1304,32 +1304,29 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 7 — Les ruines souterraines
 
-35 gestionnaires, 21 implementes, 0 testes.
+35 gestionnaires, 35 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x0042E150` | 0,1,2 | 0056B0C8 | **non** | **non** |
-| `0x0042E600` | 0,1,2 | 0056B2C8 | **non** | **non** |
-| `0x0042E940` | 0,1,2 | 0056B2C8 | **non** | **non** |
-| `0x0042EC30` | 0,1,2 | 0056B2C8 | **non** | **non** |
-| `0x0042ED20` | 0,1,2 | 0056B1C8 | **non** | **non** |
-| `0x0042EDB0` | 0,1,2 | 0056B2C8 | **non** | **non** |
-| `0x0042EEA0` | 0,1,2 | 0056B2C8 | **non** | **non** |
-| `0x0042EF90` | 0,1,2 | 0056B0C8 | **non** | **non** |
-| `0x004450E0` | 0,1,2 | 0056AEC8 | **non** | **non** |
-| `0x00445120` | 0,1,2 | 0056AEC8 | **non** | **non** |
-| `0x00466BE0` | 0,1,2 | 0056ADC8 | **non** | **non** |
-| `0x004DC890` | 0,1,2 | 0056AD48 | **non** | **non** |
-| `0x004DF680` | 0,1,2 | 0056AD48 | **non** | **non** |
-| `0x00541C90` | 0,1,2 | 0056AFC8 | **non** | **non** |
+| `0x0042E150` | 0,1,2 | 0056B0C8 | oui | **non** |
+| `0x0042E600` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x0042E940` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x0042EC30` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x0042ED20` | 0,1,2 | 0056B1C8 | oui | **non** |
+| `0x0042EDB0` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x0042EEA0` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x0042EF90` | 0,1,2 | 0056B0C8 | oui | **non** |
 | `0x00442E10` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x00443260` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x00443830` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x004441F0` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 0,1,2 | 0056AEC8 | oui | **non** |
+| `0x004450E0` | 0,1,2 | 0056AEC8 | oui | **non** |
+| `0x00445120` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x00445480` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0,1,2 | 0056AEC8 | oui | **non** |
+| `0x00466BE0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004734B0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004736D0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0,1,2 | 0056ADC8 | oui | **non** |
@@ -1339,10 +1336,13 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473ED0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004DB610` | 0,1,2 | 0056AD48 | oui | **non** |
+| `0x004DC890` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x004DCF10` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x004DDE30` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x004DEA40` | 0,1,2 | 0056AD48 | oui | **non** |
+| `0x004DF680` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x005413E0` | 0,1,2 | 0056AFC8 | oui | **non** |
+| `0x00541C90` | 0,1,2 | 0056AFC8 | oui | **non** |
 
 ## Zone 8 — La vallee d'argent
 

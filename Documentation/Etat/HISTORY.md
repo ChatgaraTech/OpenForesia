@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **les ruines souterraines sont complètes — 35 sur 35**, le neuvième ensemble entièrement
+  implémenté, en un seul lot de quatorze gestionnaires
+- feat : **le Sosie** (`0x004DF680`) — le double d'un membre du groupe : il frappe avec la sonde de
+  sa classe, ou tire comme le Chasseur et la Fée ; nouveau répertoire `Ai/UndergroundRuins/`
+- feat : **la fabrique des Sosies** (`0x00541C90`) — en sous-zone 2, le groupe est recopié à chaque
+  image dans les quatre modèles « Sosie » du CD
+- feat : Balle métal (`0x004DC890`) branchée sur Willie ; six particules, un son d'ambiance, un
+  réveil de scène, une scène et deux verbes de script des ruines — quatre fichiers neufs
+- doc : `0x00550958`, `0x00550980` et la sonde du Sosie `0x00552ce8` relevées dans `DataSymbols.md` ;
+  trois marges courtes prouvées et scellées
 - feat : **le château de l'immortel est complet — 170 sur 170**, le huitième ensemble entièrement
   implémenté
 - feat : **le Tigre** (`0x004D80D0`) — le frère du Loup-garou, plus vif : un coup de patte en deux

@@ -3411,3 +3411,31 @@ n'appartiennent à aucun corps écrit au 2026-09-18.
 images (`0x00550460` au Labyrinthe, `0x005508b8`, `0x005510f8`). Avec ce palier, la plage
 `0x00550570`..`0x005505d0` du groupe des sous-zones 0 à 4 est relevée d'un bout à l'autre, et de
 même `0x005506c0`..`0x00550728` pour les sous-zones 6 à 10.
+
+## `0x00550958`, `0x00550980`, `0x00552ce8` — les ruines souterraines (2026-09-19)
+
+```
+--- 0x005508d8 : 00d0 / 10d0 / 20d0, la planche d'orbite du château (s_Descriptors_005508D8)
+0x005508f0: 6088 2020 ... 4080 2020 0101 0300   (treize enregistrements sans consommateur connu)
+0x00550958: 0000 0808 0103 1000                   <- 0x0042EEA0, la bulle
+0x00550960: 0808 / 1008 / 0810 / 1010 0808 0103 1000   <- 0x0042EDB0, le grain (quatre images)
+0x00550980: e070 1f1f 0102 0800                   <- 0x0042EC30, 0x0042E940, 0x0042E600
+--- 0x00550988 : 0000 0808 0103 1000, autre forme
+```
+
+| plage | enregistrements | borne haute | corps | marge |
+|---|---:|---|---|---|
+| `0x00550958` | 5 | `0x00550980` | `0x0042EEA0` (`+0`), `0x0042EDB0` (`+8`) | 5 et 4 restants ; le grain tourne `+0x40` de 0 à 3 et meurt à 4 |
+| `0x00550980` | 1 | `0x00550988` | les trois corps tournants | prouvée : `+0x40` posé à 0, jamais avancé (scellée) |
+
+**Le bloc de la zone 7 n'est pas celui du château.** `0x005508f0..0x0055097f` porte les dix-huit
+derniers enregistrements du bloc `0x00550480` (à partir de son troisième), mais les deux premiers
+n'y sont pas : `0x005508d8..0x005508ef` est déjà la planche d'orbite du château. Comparer
+`0x005508e0` à `0x00550480` sur `0xa0` octets échoue au second octet.
+
+**`0x00552ce8` — la sonde de coup du Sosie**, seize enregistrements de six mots indexés par l'octet
+d'identité entier du membre imité (classe sur trois bits, sexe sur le bit `8`). Les rangs 4, 7, 12 et
+15 — le Chasseur et la Fée — sont nuls : la routine ne les lit pas, ces classes lancent un sort à la
+place. Bornée en bas par le mot de sort de la Chimère des ruines (`0x00552ce0`), en haut par un
+changement de forme à `0x00552da8` (`0000 3200 7800 6400 80fe 8200`). Transcrite dans
+`Ai/UndergroundRuins/Doppelganger.cs`.

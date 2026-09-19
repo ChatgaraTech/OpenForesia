@@ -278,6 +278,14 @@ pas dans la table d'origine, et deux de ces quatre viennent d'une table d'effets
 de rôle ; un rôle absent n'ouvre pas de fichier, un rôle présent l'ouvre tout de suite, fût-ce à
 quatre corps.
 
+**Les ruines souterraines (zone 7) ont reçu les quatre d'un coup, le 2026-09-19**, et avec eux le
+répertoire `Ai/UndergroundRuins/` : `Effects/UndergroundRuinsParticles.cs` (six corps),
+`Handlers/UndergroundRuins.cs` (**un** corps — le reste de son décor est commun),
+`Handlers/UndergroundRuinsMecanismes.cs` (deux : un réveil qui lance des scripts, et la recopie du
+groupe dans les modèles « Sosie »), `Cutscene/UndergroundRuinsScenes.cs` (une scène) et
+`Ai/UndergroundRuins/Doppelganger.cs`. Fichiers courts, mais chacun à sa place : la zone a été
+fermée en un lot, et un fichier de décor à un corps vaut mieux qu'un corps rangé chez un voisin.
+
 
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son

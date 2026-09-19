@@ -24883,3 +24883,66 @@ au-delà de hardiesse + 100 = 164 dans la plage où elle est sous 100. Le Tigre 
 - `census-entity-handlers.sh` et `census-zone-complexity.sh 6` régénérés : zone 6 **170 / 170**,
   catégorie E vide ; ruines souterraines 21 / 35, grotte scellée 55 / 349.
 - **Non exercé en jeu.**
+
+## 2026-09-19 (suite) — Zone 7 fermée en un lot : les ruines souterraines, 35 sur 35
+
+**21 sur 35 devient 35 sur 35 : les ruines souterraines sont le neuvième ensemble entièrement
+implémenté**, en un seul lot de quatorze gestionnaires. Le tri (`Zone7ParComplexite.md`) en annonçait
+3 A, 5 B, 2 C, 3 D et 1 E ; la lecture a trouvé moins cher que prévu :
+
+| gestionnaire | table / créneau | ce que c'est | fichier |
+|---|---|---|---|
+| `0x0042EEA0` | `0x0056b2c8` / 63 | la bulle de la mine (`TickRisingBubble`), planche `0x00550958` | `Effects/UndergroundRuinsParticles.cs` |
+| `0x0042EDB0` | `0x0056b2c8` / 62 | le grain de la mine (`TickMineSpeck_004070F0`), planche `0x00550960` | idem |
+| `0x0042EC30` | `0x0056b2c8` / 59 | l'étincelle qui monte en accélérant | idem |
+| `0x0042E940` | `0x0056b2c8` / 60 | le tourbillon qui se resserre en ralentissant | idem |
+| `0x0042E600` | `0x0056b2c8` / 61 | le tourbillon qui enfle en tournant | idem |
+| `0x0042ED20` | `0x0056b1c8` / 63 | l'onde qui s'étend, sans planche (modèle `s_Unknown_005edec4`) | idem |
+| `0x00466BE0` | `0x0056adc8` / 9 | le son d'ambiance, volume réglé par le placement | `Handlers/UndergroundRuins.cs` |
+| `0x0042EF90` | `0x0056b0c8` / 32 | le réveil des entités de scène de type 2, + trois pas d'état propres | `Handlers/UndergroundRuinsMecanismes.cs` |
+| `0x00541C90` | `0x0056afc8` / 0 | **la fabrique des Sosies** | idem |
+| `0x0042E150` | `0x0056b0c8` / 33 | la scène de l'hôte qui flambe | `Cutscene/UndergroundRuinsScenes.cs` |
+| `0x004DF680` | `0x0056ad48` / 5 | **le Sosie** | `Ai/UndergroundRuins/Doppelganger.cs` |
+| `0x004DC890` | `0x0056ad48` / 1 | Balle métal = Willie, zéro écart | (cas de `TickSceneEntityAi_004A35B0`) |
+| `0x00445120` | `0x0056aec8` / 0 | verbe : dégeler les 32 porteurs d'effet | `WorldMapScript.cs` |
+| `0x004450E0` | `0x0056aec8` / 2 | verbe : membres debout, dans l'octet 1 de la banque 2 | idem |
+
+Les fichiers ont été proposés et acceptés avant d'écrire (cinq neufs, un répertoire `Ai/UndergroundRuins/`).
+
+### Ce que le lot a appris
+
+- **Le Sosie n'a pas de fiche à lui.** Les quatre modèles de la sous-zone 2 s'appellent « Sosie » et
+  portent 1 PV, 1 PM. `0x00541C90`, créneau 0 de la table d'effets, les **remplit du groupe à chaque
+  image** : il refait les statistiques dérivées de chaque fiche de personnage
+  (`CommitStagedStatBlock`, `ComputeDerivedStats`, `ApplyEquipmentStatBonuses`) puis recopie ses
+  trois ressources de modèle et onze champs (rang, PV, PM…) dans le modèle de même rang. La routine
+  du Sosie lit ensuite **la classe du membre imité** : les classes de mêlée frappent avec une sonde
+  indexée par l'identité du personnage (`0x00552ce8`, seize entrées, classe et sexe), le Chasseur et
+  la Fée lancent les fiches 5/0 et 6/0 **sur les mêmes images que les postures 4 et 7 du joueur**
+  (`PostureHandler_0051A6B0`, `PostureHandler_0051A710`), recopiées en ligne.
+- **Le désassemblage du recensement peut déborder d'un corps.** `0x00541C90` est classé « D, 356
+  instructions, deux appelées inconnues » ; il en fait 79, et les deux appelées sont celles de la
+  fonction suivante (`0x00541dc0`), derrière son `ret`. **Chercher le premier `ret` avant de croire le
+  compte.**
+- **Le bloc de planches de la zone 7 n'est pas celui du château**, contrairement à ce que les
+  planches de la bulle et du grain laissaient croire : il commence deux enregistrements plus loin,
+  `0x005508d8` étant déjà une planche du château. Relevé au plus juste, par consommateur.
+- **`0x005edec4` se lit par le champ, pas par l'arène.** L'adresse tombe dans `EntityArena`, mais le
+  chargement écrit `s_Unknown_005edec4` (`WorldMap.cs`) et ses trois autres lecteurs lisent le
+  champ. Une lecture par `Mem.Entity` aurait rendu zéro sans bruit — c'est un des recouvrements que
+  `MemoryLayoutTests` garde en rouge.
+- **Les pas d'état de `0x0042EF90` ne sont pas ceux de `WakeState.cs`** à trois détails près qui
+  changent tout : garde de l'enregistrement nul (`0x005de558`), script de fin sur `+0x70` au lieu de
+  `+0x6c`, et un pas neuf (`0x0042F130`) qui joue dix images, marque une pause de onze, puis les
+  rejoue à l'envers.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur.
+- `check-descriptors.sh` : 0 tableau en désaccord ; les trois marges courtes de `0x00550980`
+  prouvées et scellées (`marges-verifiees.txt`).
+- `dotnet test OpenForesia.Tests` : les deux rouges d'avant, aucun ne nomme un symbole de ce lot.
+- `census-entity-handlers.sh` et `census-zone-complexity.sh 7` régénérés : zone 7 **35 / 35** ;
+  1 430 distincts, 759 implémentés jamais appelés, **345 à transcrire**.
+- **Non exercé en jeu.** Aucun des 35 n'avait été vu par la sonde : pas de ligne à retirer de
+  `handlers-exerces.tsv`.
