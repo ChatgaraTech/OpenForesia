@@ -1965,4 +1965,143 @@ public static unsafe partial class Blaze
         *(uint*)(e + 0x38) = tint;
         if (tint == 0) *(uint*)e = 0;
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x00485680</c> (sonde de 300, grandit en <c>+0x28</c>/<c>+0x2c</c>, frappe tant que
+    /// la teinte vaut <c>0x404040</c>, palit de <c>0x101010</c>) et <c>0x00485850</c> (sonde de 200,
+    /// <c>+0x2a</c> rejoint <c>+0x12</c>, frappe au-dessus de <c>0x202020</c>, palit de
+    /// <c>0x080808</c>) — grotte scellee, sous-zones 13 a 15 (lot 6, 2026-09-19) ; absentes de
+    /// <c>Blaze.c</c>, 69 et 72 instructions. <b>Les ondes qui frappent en s'etendant</b> : elles
+    /// filent par <see cref="IntegrateWithDrag_00535880"/>, leur sonde
+    /// <c>(0, 0, largeur, profondeur, 0, hauteur)</c> suit leurs echelles, et chaque touche porte le
+    /// coup du lanceur <c>+0x74</c>, seize images de clignotement et le son 3 — a la position de
+    /// l'onde, pas de la victime.
+    /// </summary>
+    private static void TickStrikingWave_00485680(byte* e, bool wide)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0;
+        probe[2] = 0;
+        probe[3] = (short)(wide ? 0x12c : 0xc8);
+        probe[4] = 0;
+        probe[5] = 0;
+
+        IntegrateWithDrag_00535880(e);                              // Ghidra: FUN_00535880
+
+        uint threshold;
+        if (wide)
+        {
+            int scale = *(short*)(e + 0x28);
+            scale += (0x4000 - scale) >> 2;
+            *(short*)(e + 0x28) = (short)scale;
+            *(short*)(e + 0x2c) = (short)scale;
+            probe[5] = (short)((scale * 90) >> 0xc);
+            probe[2] = (short)((scale * 80) >> 0xc);
+            threshold = 0x404040;
+        }
+        else
+        {
+            short tall = *(short*)(e + 0x2a);
+            *(short*)(e + 0x2a) = (short)(tall + ((*(short*)(e + 0x12) - tall) >> 2));
+            probe[2] = (short)((*(short*)(e + 0x28) * 50) >> 0xc);
+            probe[5] = (short)((*(short*)(e + 0x2c) * 50) >> 0xc);
+            threshold = 0x202020;
+        }
+
+        if (*(uint*)(e + 0x38) >= threshold)
+        {
+            byte* victim = SweepOpposingSideForMeleeHit_00474C70(e, probe);   // Ghidra: FUN_00474c70
+            if (*Mem.Camera(0x005de0b8) != 0)
+            {
+                ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);   // Ghidra: FUN_00539b80
+                *(uint*)victim |= 0x40;
+                *(ushort*)(victim + 0x96) = 0x10;
+                Aud.PlayPositionalSound(3, 0x400, 0x1800, (int*)(e + 0x1c));   // Ghidra: FUN_0053db20
+            }
+        }
+
+        uint tint = *(uint*)(e + 0x38) + (wide ? 0xffefeff0 : 0xfff7f7f8);
+        *(uint*)(e + 0x38) = tint;
+        if (tint == 0) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004869d0</c> — grotte scellee, sous-zones 13 a 15 (lot 6). Absente de
+    /// <c>Blaze.c</c> ; 98 instructions. <b>La gerbe qui envoute</b>, cousine de
+    /// <see cref="TickGrowingBolt_004850C0"/> (meme ancre qui file, meme gonflement
+    /// <c>(hasard &amp; 0x3ff) + ((age² + 8) &lt;&lt; 7)</c>, meme sol, meme heurt, meme sonde, meme
+    /// decoloration, huit images) — mais ses echelles valent deux et trois fois le gonflement, sa
+    /// hauteur 96 fois, et la touche n'est pas un coup : elle pose l'effet 13
+    /// (<see cref="ApplyStatusEffect_0053B8F0"/>, famille 7 posee en <c>+0x07</c> du lanceur).
+    /// </summary>
+    private static void EntityHandler_004869D0(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0;
+        probe[2] = 0x3c;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x78;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+        }
+
+        int age = *(short*)(e + 0x10);
+        int swell = (CrtRand() & 0x3ff) + ((age * age + 8) << 7);        // Ghidra: FUN_00547140
+        *(uint*)(e + 0x28) = ((uint)(swell * 3) << 0x10) | (uint)(swell * 2);
+
+        int anchorX = *(int*)(e + 0x44) + *(int*)(e + 0x50);
+        int anchorY = *(int*)(e + 0x48) + *(int*)(e + 0x54);
+        int anchorZ = *(int*)(e + 0x4c) + *(int*)(e + 0x58);
+        *(int*)(e + 0x44) = anchorX;
+        *(int*)(e + 0x48) = anchorY;
+        *(int*)(e + 0x4c) = anchorZ;
+
+        int height = ((swell * 3) << 5) + anchorY;
+        *(int*)(e + 0x1c) = anchorX;
+        *(int*)(e + 0x20) = height;
+        *(int*)(e + 0x24) = anchorZ;
+
+        FinalizeEntityPlacement2((uint*)e);                          // Ghidra: FUN_00533940
+
+        int ceiling = *(int*)(e + 0x64);
+        *(int*)(e + 0x20) = height;
+        if (height <= ceiling)
+        {
+            *(int*)(e + 0x20) = ceiling;
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        byte* victim = SweepOpposingSideForMeleeHit_00474C70(e, probe);      // Ghidra: FUN_00474c70
+        if (victim != null)
+        {
+            if (*Mem.Camera(0x005de0b8) == 0)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            byte* caster = *(byte**)(e + 0x74);
+            caster[7] = 7;
+            ApplyStatusEffect_0053B8F0((uint*)caster, (uint*)victim, 0);    // Ghidra: FUN_0053b8f0
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+        }
+
+        *(uint*)(e + 0x38) += 0xffe7e7e8;
+        *(short*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 8) *(uint*)e = 0;
+    }
 }

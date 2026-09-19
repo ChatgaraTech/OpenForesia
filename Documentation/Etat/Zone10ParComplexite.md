@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**349 gestionnaires, 226 implementes, 123 a ecrire.**
+**349 gestionnaires, 240 implementes, 109 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,6 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 14 | 14 | 1129 |
 | **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 84 | 69 | 10838 |
 | **D — gros** | pas d'IA, > 250 instr. | 25 | 18 | 6299 |
 
@@ -28,25 +27,6 @@ aucune, puisque son corps est deja ecrit.
 
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
-
-## B — simple (14)
-
-| gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
-|---|---|---|---:|---:|---|---|---|
-| `0x004421B0` | 13,14,15 | 0056B2C8 | 68 | 0 | oui |  |  |
-| `0x00485680` | 13,14,15 | 0056B1C8 | 69 | 0 | non |  |  |
-| `0x00485850` | 13,14,15 | 0056B1C8 | 72 | 0 | non |  |  |
-| `0x004406B0` | 13,14,15 | 0056B2C8 | 73 | 0 | oui |  |  |
-| `0x00486240` | 13,14,15 | 0056B1C8 | 74 | 0 | non |  |  |
-| `0x00441570` | 13,14,15 | 0056B1C8 | 75 | 0 | oui |  |  |
-| `0x00441DB0` | 13,14,15 | 0056B1C8 | 75 | 0 | oui |  |  |
-| `0x00485940` | 13,14,15 | 0056B0C8 | 75 | 0 | oui |  |  |
-| `0x004868E0` | 13,14,15 | 0056B0C8 | 76 | 0 | non |  |  |
-| `0x00442290` | 13,14,15 | 0056B1C8 | 90 | 0 | non |  |  |
-| `0x00441040` | 13,14,15 | 0056B2C8 | 93 | 0 | oui |  |  |
-| `0x00440F00` | 13,14,15 | 0056B2C8 | 95 | 0 | non |  |  |
-| `0x00441180` | 13,14,15 | 0056B2C8 | 96 | 0 | non |  |  |
-| `0x004869D0` | 13,14,15 | 0056B2C8 | 98 | 0 | non |  |  |
 
 ## C — moyen (84)
 

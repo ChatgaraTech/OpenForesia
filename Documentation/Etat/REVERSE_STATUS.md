@@ -25304,5 +25304,27 @@ salles 13-15 (`Zone10ParComplexite.md`).
   frappant** (`0x00485EC0`), dans `Combat/Projectiles.cs`.
 - Contrôles : `dotnet build` 0 erreur ; `dotnet test`, les deux rouges connus ;
   `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **226 / 349**, 14 « B », 84 « C »,
-  25 « D » ; 856 implémentés jamais appelés, **123 à transcrire**. `check-descriptors.sh` : voir la
-  ligne HISTORY du jour. **Non exercé en jeu.**
+  25 « D » ; 856 implémentés jamais appelés, **123 à transcrire**. `check-descriptors.sh` : 0 tableau
+  en désaccord, 94 marges courtes prouvées sur 96 (restent les deux de la tour). **Non exercé en
+  jeu.**
+
+## 2026-09-19 (suite 10) — Grotte scellée, lot 6 terminé : plus aucun « B », 240 sur 349
+
+**226 sur 349 devient 240 sur 349** : les quatorze derniers « B », tous des salles 13 à 15. La
+catégorie « simple » de la grotte est vide.
+
+- Dans `Combat/Projectiles.cs` : les **ondes qui frappent en s'étendant** (`0x00485680` / `0x00485850`,
+  un corps paramétré — sonde, croissance, seuil et décoloration diffèrent) et **la gerbe qui
+  envoûte** (`0x004869D0`), cousine de la gerbe grandissante de la tour qui pose l'effet 13 au lieu
+  d'un coup.
+- Dans `Effects/SealedCaveParticles.cs` : le grain en spirale, la fumée qui s'envole, le satellite
+  qui se resserre autour de son propriétaire, l'éclat qui s'épanouit (deux copies à leur portée et
+  leur fondu près), **l'explosion qui secoue la salle** (six incantations en couronne et une
+  secousse de caméra `0x005de0ac` amortie en changeant de signe), la fontaine d'un porteur (planche
+  de l'éclaboussure à `+8`), la colonne qui s'élève, le feu follet, l'étincelle projetée, la spore.
+- Trois planches d'une tuile (`0x005513b8`, `0x005514f0`, `0x005514f8`), cinq sites, marges
+  prouvées.
+- Contrôles : `dotnet build` 0 erreur ; `dotnet test`, les deux rouges connus ;
+  `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **240 / 349**, 0 « B », 84 « C »
+  (69 lectures), 25 « D » (18 lectures) ; 870 implémentés jamais appelés, **109 à transcrire**.
+  **Non exercé en jeu.**

@@ -153,3 +153,10 @@ EntityHandler_0043C010 | 0x00551158 | +0x00 | EntityHandler_0043C010,SpawnStatus
 EntityHandler_0043D3A0 | 0x005511F0 | +0x00 | EntityHandler_0043D3A0,TickHelixMote | 0314d80d8da4 | pose 0 a la naissance (`xor eax,eax ; mov [esi+40h],al`, 0x0043d3b1) et ne l'ecrit plus — la preuve de 0x0041B9F0
 EntityHandler_0043DA60 | 0x005511F0 | +0x00 | EntityHandler_0043DA60,TickFallingDrop | d9a1412edb3a | pose 0 a la naissance (0x0043da82) et ne l'ecrit plus — la preuve de 0x0041B220
 EntityHandler_00438260 | 0x00550F60 | +0x00 | EntityHandler_00438260 | 17a648603239 | pose 0 a la naissance (`xor ebx,ebx ; mov [esi+40h],bl`, 0x0043827f) et ne l'ecrit plus
+
+# ---- Ajoute le 2026-09-19 (grotte scellee, lot 6) : cinq planches d'une tuile, toutes posees a 0
+EntityHandler_004421B0 | 0x005513B8 | +0x00 | EntityHandler_004421B0 | 5e2cd0dd58d8 | pose 0 a la naissance (0x004421ca) et ne l'ecrit plus
+EntityHandler_004406B0 | 0x005514F0 | +0x08 | EntityHandler_004406B0 | 3e32a1400667 | pose 0 a la naissance (0x004406c7) et ne l'ecrit plus
+EntityHandler_00441040 | 0x005514F0 | +0x00 | EntityHandler_00441040 | a09da3a6575f | pose 0 a la naissance (0x00441057) et ne l'ecrit plus
+EntityHandler_00440F00 | 0x005514F0 | +0x00 | EntityHandler_00440F00 | 1e9ed483488b | pose 0 a la naissance (`xor ebx,ebx ; mov [esi+40h],bl`, 0x00440f1f) et ne l'ecrit plus
+EntityHandler_00441180 | 0x005514F0 | +0x00 | EntityHandler_00441180 | cf19a1d74b83 | pose 0 a la naissance (`xor ebx,ebx ; mov [esi+40h],bl`, 0x0044119a) et ne l'ecrit plus

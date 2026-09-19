@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **grotte scellée, lot 6 terminé — 240 sur 349, plus aucun « B »** : les quatorze derniers,
+  dont l'explosion qui secoue la salle, les ondes qui frappent en s'étendant, la gerbe qui envoûte,
+  le satellite qui se resserre, le feu follet et la spore
 - feat : **grotte scellée, lot 6 (moitié) — 226 sur 349** : treize « B » des salles 11 à 15 —
   tourbillons, éventail, jets depuis un porteur, éclair qui frappe en pâlissant, l'éclosion qui
   réveille son propriétaire ; l'anneau et la braise branchés sur leurs parents. Restent 14 « B »

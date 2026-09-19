@@ -3635,3 +3635,9 @@ geyser quand il n'est pas nul.
 **Lot 6 (même jour)** : `0x00551330`, trois tuiles `0x0f x 0x0f` page 2 (l'étincelle qui papillote
 `0x0043C880`, image bouclée de 0 à 2, marge exacte) ; `0x00552850`, script de trois voix (`0x30`,
 `0x0f`, `0x0e`) de l'éclosion `0x00486D60`.
+
+**Lot 6, fin** : `0x005513b8` (une tuile `0x08 x 0x08` page 3, le grain en spirale) ; `0x005514f0`
+(une `0x10 x 0x10` page 2 : feu follet, étincelle projetée, spore) et `0x005514f8` (une `0x1f x 0x1f`
+page 2 couche 5 : la fumée qui s'envole) — cinq marges de 1, prouvées. La fontaine `0x004868E0`
+sème sur `0x00551a10`, la planche de l'éclaboussure (`s_SplashDescriptors_00551A08`) à `+8`.
+`0x005de0ac` : la secousse de caméra, écrite aussi par l'explosion `0x00485940`.

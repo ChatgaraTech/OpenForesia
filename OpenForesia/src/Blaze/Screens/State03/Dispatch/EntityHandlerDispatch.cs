@@ -2616,6 +2616,21 @@ public static unsafe partial class Blaze
             case 0x0043E030: EntityHandler_0043E030(record); return;
             case 0x00485760: EntityHandler_00485760(record); return;
             case 0x0043C380: EntityHandler_0043C380(record); return;
+            // La seconde moitie du lot 6.
+            case 0x004421B0: EntityHandler_004421B0(record); return;
+            case 0x00485680: TickStrikingWave_00485680(record, true); return;    // Combat/Projectiles.cs
+            case 0x00485850: TickStrikingWave_00485680(record, false); return;   // Combat/Projectiles.cs
+            case 0x004406B0: EntityHandler_004406B0(record); return;
+            case 0x00486240: EntityHandler_00486240(record); return;
+            case 0x00441570: TickBloomingShard_00441570(record, 0x320, 0x190, -4); return;
+            case 0x00441DB0: TickBloomingShard_00441570(record, 0x190, 0xc8, -2); return;
+            case 0x00485940: EntityHandler_00485940(record); return;
+            case 0x004868E0: EntityHandler_004868E0(record); return;
+            case 0x00442290: EntityHandler_00442290(record); return;
+            case 0x00441040: EntityHandler_00441040(record); return;
+            case 0x00440F00: EntityHandler_00440F00(record); return;
+            case 0x00441180: EntityHandler_00441180(record); return;
+            case 0x004869D0: EntityHandler_004869D0(record); return;   // Combat/Projectiles.cs
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
