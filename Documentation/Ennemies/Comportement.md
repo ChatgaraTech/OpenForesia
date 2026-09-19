@@ -62,7 +62,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | **7** | **Les ruines souterraines** | **6** | **6** | **6 — complète** |
 | **8** | **La vallée d'argent** | **4** | **4** | **4 — complète** |
 | **9** | **Les ruines dans le lac** | **5** | **5** | **5 — complète** |
-| 10 | La grotte scellée | 39 | 39 | 24 |
+| **10** | **La grotte scellée** | **39** | **39** | **39 — complète** |
 
 Les totaux par zone dépassent 166 : **plusieurs zones partagent des gestionnaires**, et une même
 zone réutilise le même bloc sur plusieurs sous-zones.
@@ -1136,6 +1136,45 @@ nage à la surface.
   hasard d'une ruée sur dix.
 * Leurs quatre postures sont les mêmes, **à un écart près** : en nage (posture 3), le pied vire vers
   un cap tiré au hasard, le bras et le corps vers leur cible.
+
+## La grotte scellée (zone 10) complète — sept bêtes et huit copies (2026-09-19)
+
+Les quinze dernières routines de la grotte, en un lot. **Huit étaient des copies** d'un corps déjà
+écrit, et ne demandaient qu'une ligne de répartiteur chacune :
+
+| routine | espèce | corps | ce qui le prouve |
+|---|---|---|---|
+| `0x004F4FD0` | Maudite (sous-zones 4 et 9) | Willie `0x004A35B0` | zéro écart hors les tables de sauts |
+| `0x004FD700` | Bras gris (sous-zone 1) | Wyrm `0x004A13E0` | ses sondes portent les octets de `0x005529b0` / `0x005529bc` |
+| `0x004F0530` | Gremlin (5, 8, 10) | Gremlin `0x004A7190` | registres permutés ; sa table de sorts porte les octets de `0x00552a88` |
+| `0x004FABF0` | Salamandre (6, 7) | Salamandre `0x0048E3A0` | zéro écart ; ses 16 octets de sorts sont ceux de `0x005528b0` |
+| `0x004E56C0`, `0x004EA430`, `0x004EEB20` | Sale rampant (0 ; 2-3 ; 5-8-10) | Rampant `0x004ADAE0` | 3 392 octets, deux permutations de registres, même table de sauts, sorts identiques |
+| `0x005017C0` | Eifridt, l'Ange noir, le gros poilu, Lordémon (11 à 15) | — | 39 instructions : elle pose `0x2000` et déroule son animation, rien d'autre (`SceneEntityAiCommon.cs`) |
+
+Les chercheurs de proie des Sale rampant (`0x004e6400`, `0x004eb170`, `0x004ef860`) et de la Gorgone
+(`0x004F6380`) sont `FUN_004a1020` instruction pour instruction, table de sauts comprise.
+
+**Les sept bêtes**, une par fichier dans `Ai/SealedCave/` :
+
+| routine | fichier | charpente | ce qui est à elle |
+|---|---|---|---|
+| `0x004F6740` Dragon zombie | `ZombieDragon.cs` | le Dragon rouge | trois jets, aucun coup ; le souffle du Roi zombie |
+| `0x004F7980` Cerbère | `Cerberus.cs` | la même | un bond qui frappe à la retombée ; **trois têtes**, trois naissances aux trois attaches du modèle |
+| `0x004F6E60` Gorgone | `Gorgon.cs` | **le Varan** | une charge qui sème et frappe une fois ; un regard (entité `0xdc`) jamais répété |
+| `0x005003E0` Eifridt | `Eifridt.cs` | le Dragon rouge + son incantation | gravité `0x6000` ; deux coups, un souffle ; Mur de flammes / Boule de feu |
+| `0x00501840` Lordémon | `Lordemon.cs` | Eifridt | le bond, qui frappe EN L'AIR ; trois jets ; Feu d'enfer / Colère |
+| `0x00502210` Ange noir | `BlackAngel.cs` | **la Coccinelle** (volante) + l'incantation | un piqué, quatre jets, dont une pluie tirée du bloc de zone `+0xd4` ; cinq sorts |
+| `0x00502CD0` Belzébuth | `Beelzebub.cs` | aucune tout à fait | trois postures, pas de marche ; **une disparition** (il rétrécit en s'élevant, reparaît à 800 unités, retombe) ; quatre sorts |
+
+Trois choses à retenir :
+
+* **La Gorgone a le heurt du Varan à une immédiate près** : sa marche de contournement tient `0xc8`
+  et non `0x50`. `SettleSceneEntityOnGroundAndWalls` a pris un paramètre (`wallWalkRange`) plutôt
+  que de dupliquer 70 lignes.
+* **Belzébuth ne recalcule rien** au moment de replanifier : il reprend la distance à trois
+  dimensions de la lecture de situation. Et il ne pose pas sa gravité.
+* **Le script de sons de sa retombée (`0x00553230`) ne se termine pas** — un enregistrement à compte
+  nul et délai non nul, sur lequel la file repasse sans fin. Donnée de 1998, reproduite.
 
 ## Trois espèces, un comportement : la Crapouille, la Gargouille, le Crapaud (2026-09-15)
 

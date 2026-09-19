@@ -716,4 +716,23 @@ public static unsafe partial class Blaze
         ResolveEntityBlocks(e, out _, out _, out byte* model);
         return (short*)(model + 0x40 + row * 8);
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x005017c0</c> — absent de <c>Blaze.c</c>, 39 instructions. <b>La bete qui ne fait
+    /// que s'animer</b> : elle pose le bit <c>0x2000</c> de son mot d'etat, puis deroule son animation
+    /// exactement comme <see cref="AdvanceEntityAnimation_004DB5A0"/>, qu'elle porte en ligne. Ni
+    /// deplacement, ni coup, ni decision.
+    ///
+    /// <para>
+    /// Installee dans la grotte scellee, sous-zones 11 a 15, sur Eifridt, l'Ange noir, le gros
+    /// poilu et Lordemon — les salles de leurs combats. Quatre especes, un seul corps : c'est une
+    /// feuille partagee, d'ou sa place ici (decision du 2026-09-19).
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_005017C0(byte* record)
+    {
+        uint* entity = (uint*)record;
+        entity[0] |= 0x2000;                                        // Ghidra: or ch,20h
+        AdvanceEntityAnimation_004DB5A0(entity);                    // en ligne dans le corps original
+    }
 }

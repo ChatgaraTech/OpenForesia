@@ -3,7 +3,8 @@
 Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**quatre zones fermées dans la
 journée** : le château de l’immortel — 170 sur 170 —, puis en un lot chacune les ruines souterraines
 — 35 sur 35 —, les ruines dans le lac — 41 sur 41 — et **la vallée d’argent — 46 sur 46**, le
-onzième ensemble). **Il ne reste que la grotte scellée — 118 / 349 après ses lots 1 et 2.** La zone 5, le Labyrinthe, a été
+onzième ensemble). **Il ne reste que la grotte scellée — 133 / 349 après ses lots 1 à 3 ; toutes les
+routines d'IA du jeu sont désormais écrites.** La zone 5, le Labyrinthe, a été
 fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du dragon de feu et la
 vieille tour.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
@@ -17,6 +18,20 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# TOUTES LES INTELLIGENCES ÉCRITES — GROTTE SCELLÉE, LOT 3 (2026-09-19)
+
+**La grotte scellée passe à 133 sur 349**, et avec elle **la dernière routine d'IA du dépôt** : la
+table `0x0056ad48` n'a plus rien à transcrire, dans aucune zone. Huit copies branchées sans corps
+neuf (Maudite, Bras gris, Gremlin, Salamandre, trois Sale rampant — le Rampant de la tour), un corps
+de 39 instructions qui ne fait qu'animer, et **sept bêtes** dans `Ai/SealedCave/` : le Dragon zombie,
+le Cerbère, la Gorgone, et les quatre maîtres des salles du fond — Eifridt, Lordémon, l'Ange noir,
+Belzébuth. **Rien n'en a été exercé en jeu.**
+
+**La suite** : **216 gestionnaires simples** dans la grotte — 103 « B » (103 lectures), 88 « C »
+(70 lectures), 25 « D » (18 lectures), aucun déjà écrit ailleurs selon le tri
+(`Zone10ParComplexite.md`). Commencer par les « B » bloc par bloc, en refaisant d'abord la recherche
+de parenté constantes masquées : elle a trouvé deux familles cachées au lot 2.
 
 # ONZE ENSEMBLES COMPLETS — LA VALLÉE D’ARGENT FERMÉE (2026-09-19)
 

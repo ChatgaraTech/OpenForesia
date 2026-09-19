@@ -3545,3 +3545,49 @@ planches, recopiée à `+0xf0` puis `+0x110` :
 Et `0x00550f68` / `0x00551220` (sous-zones 4-9 et 11-12) : les étincelles, quatre tuiles
 `0x20 x 0x20` en couche 2. Le bloc 4-9 a `0x00550f18` (éclat attiré, 3) suivi de `0x00550f30`
 (grain qui monte, déjà relevé).
+
+## La grotte scellée, lot 3 (2026-09-19) — les tables des bêtes, `0x00552f30`..`0x00553288`
+
+Relevé octet par octet dans `Blaze.exe`. Une sonde est six mots (`x, y, z` de départ, puis de
+fin) ; un script de sons différés est une suite d'enregistrements de 8 octets terminée par le premier
+dont l'octet 1 (le délai suivant) est nul.
+
+| adresse | contenu | corps |
+|---|---|---|
+| `0x00552f30` | table de sorts, octets de `0x00552a88` | le Gremlin de `0x004F0530` (copie de `0x004A7190`) |
+| `0x00552f70` | sonde `(0, 80, 70, 150, 200, 150)` | le bond du Cerbère |
+| `0x00552f80` | script, 6 enregistrements (voix `0x26`, `0x13`, `0x1f`, `0x23` ×3) | les trois têtes du Cerbère |
+| `0x00552fb0` | script, 2 enregistrements (`0x12`, `0x3f`) | le jet du Cerbère |
+| `0x00552fcc` | 16 octets, ceux de `0x005528b0` | la Salamandre de `0x004FABF0` |
+| `0x00553000` / `0x0055300c` | sondes, octets de `0x005529b0` / `0x005529bc` | le Bras gris de `0x004FD700` (Wyrm) |
+| `0x00553038` | sonde `(0, 0, 60, 150, 0, 150)` | le coup sans verrou d'Eifridt |
+| `0x00553044` | sonde `(0, 50, 70, 150, 256, 170)` | le coup sous verrou d'Eifridt |
+| `0x00553050` | sorts `0x000a`, `0x0014` (Mur de flammes, Boule de feu) | Eifridt |
+| `0x00553058` | script, 3 × voix 5 | l'a-coup d'Eifridt |
+| `0x00553070` | script, 5 × voix `0x20` | le souffle d'Eifridt |
+| `0x00553098` | sonde `(0, 30, 70, 100, 0, 100)` | — lecteur non relevé |
+| `0x005530a8`.. | trois scripts (`0x23`, `0x24`, `0x36`) | — lecteurs non relevés |
+| `0x005530e0` | sonde `(0, 0, 60, 150, 0, 150)` | le bond de Lordémon |
+| `0x005530ec` | sonde `(0, 50, 70, 150, 256, 170)` | — lecteur non relevé |
+| `0x005530f8` | sorts `0x0004`, `0x001a` (Feu d'enfer, Colère) | Lordémon |
+| `0x00553100` | script, 3 × voix `0x15` | le jet de Lordémon |
+| `0x00553118` | script, 9 enregistrements (`0x20`, puis `0x11` ×8) | l'appel de Lordémon |
+| `0x00553160` | script, 4 × voix `0x20` | le souffle de Lordémon |
+| `0x00553180` | sonde `(0, 30, 50, 120, 0, 90)` | le piqué de l'Ange noir |
+| `0x00553190` | sorts `0x0010`, `0x0018`, `0x001c`, `0x010b`, `0x0117` | l'Ange noir |
+| `0x005531a0` | script, 3 × voix `0x27` | le jet de l'Ange noir |
+| `0x005531b8` | script, 8 × voix `0x29` | la pluie de l'Ange noir |
+| `0x005531f8` | sonde `(0, 50, 100, 200, 0, 200)` | le coup de Belzébuth |
+| `0x00553208` | sorts `0x000a`, `0x0016`, `0x0015`, `0x001b` | Belzébuth |
+| `0x00553210` | script, 4 × voix `0x0a` | l'envol de Belzébuth |
+| `0x00553230` | script, 9 enregistrements, **sans fin** | la retombée de Belzébuth |
+| `0x00553278` | script, 2 × voix 5 | le geste 2 de Belzébuth |
+| `0x00553288` | pointeurs de code (`0x00486ee0`, `0x00487260`, …) | — |
+
+**`0x00553230` ne se termine pas.** Son neuvième enregistrement (`0x00553270`) a un délai de 2 et un
+compte de 0 : la file des sons différés n'y joue plus rien, mais elle y repasse toutes les deux images
+sans jamais libérer l'emplacement, jusqu'à ce que l'anneau de 0x20 le réutilise. Défaut de donnée de
+1998, reproduit.
+
+La Gorgone et le Dragon zombie n'ont pas de table en `.data` : leurs sondes sont bâties sur la pile
+(la Gorgone reprend celle du Varan, `(0, 30, 50, 100, 0, 100)`).

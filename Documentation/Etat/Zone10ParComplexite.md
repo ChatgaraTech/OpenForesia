@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**349 gestionnaires, 118 implementes, 231 a ecrire.**
+**349 gestionnaires, 133 implementes, 216 a ecrire.**
 
 ## Le compte
 
@@ -19,10 +19,9 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 104 | 104 | 6963 |
+| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 103 | 103 | 6924 |
 | **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 88 | 70 | 10941 |
 | **D — gros** | pas d'IA, > 250 instr. | 25 | 18 | 6299 |
-| **E — intelligence** | une routine de bete | 14 | 12 | 9483 |
 
 La colonne « instructions » additionne une seule fois chaque forme ; la categorie A n'en compte
 aucune, puisque son corps est deja ecrit.
@@ -30,7 +29,7 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## B — simple (104)
+## B — simple (103)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
@@ -45,7 +44,6 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x00486D60` | 13,14,15 | 0056B1C8 | 38 | 0 | oui |  |  |
 | `0x004453E0` | 2,3 | 0056AEC8 | 39 | 0 | non |  |  |
 | `0x0046C260` | 2,3 | 0056ADC8 | 39 | 0 | oui |  |  |
-| `0x005017C0` | 11,12,13,14,15 | 0056AD48 | 39 | 0 | non |  | **Eifridt, L'Ange noir, Le gros poilu, Lordémon** |
 | `0x004414E0` | 13,14,15 | 0056B1C8 | 41 | 0 | oui |  |  |
 | `0x0046E070` | 4,9 | 0056ADC8 | 41 | 0 | non |  |  |
 | `0x00485EC0` | 13,14,15 | 0056B1C8 | 41 | 0 | non |  |  |
@@ -261,22 +259,3 @@ les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon deco
 | `0x0046F2E0` | 6,7 | 0056ADC8 | 459 | 0 | non | `0x0046AD70`, `0x0046D070` |  |
 | `0x00440840` | 13,14,15 | 0056B0C8 | 477 | 0 | non |  |  |
 | `0x00471150` | 1 | 0056ADC8 | 610 | 0 | non |  | appelee(s) inconnue(s) : `0x00471A10` `0x00471DD0` `0x00471F80` `0x004725A0` `0x00472630` |
-
-## E — intelligence (14)
-
-| gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
-|---|---|---|---:|---:|---|---|---|
-| `0x004F4FD0` | 4,9 | 0056AD48 | 510 | 1 | non |  | **Maudite** |
-| `0x004F6740` | 4,9 | 0056AD48 | 562 | 1 | non |  | **Dragon zombie** |
-| `0x00502CD0` | 13,14,15 | 0056AD48 | 666 | 2 | non |  | **Belzébuth** |
-| `0x004F7980` | 4,9 | 0056AD48 | 682 | 1 | non |  | **Cerbère** |
-| `0x004FD700` | 1 | 0056AD48 | 704 | 1 | non |  | **Bras gris** |
-| `0x00501840` | 13,14,15 | 0056AD48 | 712 | 3 | non |  | **Lordémon** |
-| `0x005003E0` | 11,12 | 0056AD48 | 769 | 2 | non |  | **Eifridt** |
-| `0x00502210` | 13,14,15 | 0056AD48 | 779 | 4 | non |  | **L'Ange noir** |
-| `0x004F6E60` | 4,9 | 0056AD48 | 839 | 1 | non |  | **Gorgon** ; appelee(s) inconnue(s) : `0x004F6380` |
-| `0x004E56C0` | 0 | 0056AD48 | 986 | 1 | non | `0x004EA430`, `0x004EEB20` | **Sale rampant** |
-| `0x004EA430` | 2,3 | 0056AD48 | 986 | 1 | non | `0x004E56C0`, `0x004EEB20` | **Sale rampant** |
-| `0x004EEB20` | 5,8,10 | 0056AD48 | 986 | 1 | non | `0x004E56C0`, `0x004EA430` |  |
-| `0x004FABF0` | 6,7 | 0056AD48 | 1095 | 1 | non |  | **Salamandre, Salamandre feu, Triton glace, Varan glace** |
-| `0x004F0530` | 5,8,10 | 0056AD48 | 1179 | 1 | non |  | **Gremlin** |

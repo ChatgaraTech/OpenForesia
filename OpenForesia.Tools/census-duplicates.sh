@@ -129,9 +129,10 @@ END {
   for (k = 1; k >= 0; k--) {
     nom = k ? "routines d IA" : "gestionnaires simples"
     r = neuf[k]; tt = tc[k]
-    printf "  %-28s %6d %8d %7.0f %% %10d  sur %d\n", nom, tt, r, 100.0*(tt-r)/tt, neufi[k], tk[k] }
+    # Une filiere vide (toutes les routines d IA ecrites, 2026-09-19) n a pas de taux : 0 %.
+    printf "  %-28s %6d %8d %7.0f %% %10d  sur %d\n", nom, tt, r, tt ? 100.0*(tt-r)/tt : 0, neufi[k], tk[k] }
   tt = tc[0]+tc[1]; r = neuf[0]+neuf[1]
-  printf "  %-28s %6d %8d %7.0f %% %10d  sur %d\n\n", "TOTAL", tt, r, 100.0*(tt-r)/tt, neufi[0]+neufi[1], tbrut
+  printf "  %-28s %6d %8d %7.0f %% %10d  sur %d\n\n", "TOTAL", tt, r, tt ? 100.0*(tt-r)/tt : 0, neufi[0]+neufi[1], tbrut
 
   printf "  dont copies exactes d un corps DEJA ECRIT : %d IA + %d simples = %d corps, %d instructions\n",
          couv[1], couv[0], couv[0]+couv[1], couvi[0]+couvi[1]

@@ -6,6 +6,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **grotte scellée, lot 3 — 133 sur 349 : toutes les intelligences du jeu sont écrites** ;
+  sept bêtes, une par fichier dans `Ai/SealedCave/` — le Dragon zombie, le Cerbère et ses trois têtes,
+  la Gorgone, Eifridt, Lordémon, l'Ange noir, Belzébuth et sa disparition
+- feat : huit copies branchées sans corps neuf (Maudite, Bras gris, Gremlin, Salamandre, trois Sale
+  rampant qui sont le Rampant de la tour) et la bête qui ne fait que s'animer des salles 11 à 15
+- feat : `SettleSceneEntityOnGroundAndWalls` prend la distance de la marche de contournement en
+  paramètre — la Gorgone tient `0xc8` là où le Varan tient `0x50`
+- fix : `census-duplicates.sh` divisait par zéro une fois la dernière routine d'IA écrite, et le tri
+  par complexité sortait vide
+- doc : les sondes, sorts et scripts de sons des bêtes de la grotte (`0x00552f30`..`0x00553288`) dans
+  `DataSymbols.md` ; le script `0x00553230`, qui ne se termine jamais
 - feat : **grotte scellée, lot 2 — 118 sur 349** : onze familles de jumeaux (35 corps) et six verbes,
   dont la dalle de pression, le battant qui frappe, la fumée qui monte et la sortie vers l'état de
   jeu 10 ; deux familles de cinq étaient déjà écrites (la lueur de la tour, le grain du Labyrinthe) ;

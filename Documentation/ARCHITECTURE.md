@@ -305,6 +305,13 @@ seulement `Effects/SealedCaveParticles.cs` et `Handlers/SealedCave.cs`, à côt�
 premier corps — `Handlers/SealedCaveMecanismes.cs` s'est ouvert au lot 2 avec la dalle de pression. À 294 corps, **le fichier d'effets est à couper par bloc de sous-zones passé ~3 000
 lignes** — la coupe se propose alors, elle ne se fait pas d'office.
 
+Au lot 3 (les intelligences), **une bête par fichier** dans `Ai/SealedCave/` : `ZombieDragon.cs`,
+`Cerberus.cs`, `Gorgon.cs`, `Eifridt.cs`, `Lordemon.cs`, `BlackAngel.cs`, `Beelzebub.cs`. Lordémon,
+l'Ange noir et Belzébuth empruntent les petites aides d'armement (`EifridtTurn`,
+`EifridtStartGesture`…) que porte `Eifridt.cs`. Le corps de 39 instructions `0x005017C0`, partagé par
+quatre espèces des salles 11 à 15, est allé dans `Ai/SceneEntityAiCommon.cs`, avec les feuilles
+communes.
+
 
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son

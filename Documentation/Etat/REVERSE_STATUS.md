@@ -25130,3 +25130,61 @@ petits verbes de script de la zone.
   (104 lectures : plus aucun jumeau entre eux), 88 « C », 25 « D », 14 IA ; 873 implémentés
   jamais appelés, **231 à transcrire**.
 - **Non exercé en jeu.**
+
+## 2026-09-19 (suite 6) — Grotte scellée, lot 3 : les intelligences, 133 sur 349
+
+**118 sur 349 devient 133 sur 349**, et c'est la **dernière routine d'IA du dépôt** : la table
+`0x0056ad48` n'a plus rien à transcrire, dans aucune zone (`census-duplicates.sh` rend « 0 routines
+d'IA » — et divisait par ce zéro ; la division est désormais gardée).
+
+### Huit copies, aucun corps neuf
+
+| routine | branchée sur | preuve |
+|---|---|---|
+| `0x004F4FD0` Maudite (4, 9) | Willie `0x004A35B0` | zéro écart hors tables de sauts |
+| `0x004FD700` Bras gris (1) | Wyrm `0x004A13E0` | sondes `0x00553000` / `0x0055300c` = `0x005529b0` / `0x005529bc` |
+| `0x004F0530` Gremlin (5, 8, 10) | `0x004A7190` | registres permutés ; `0x00552f30` = `0x00552a88` |
+| `0x004FABF0` Salamandre (6, 7) | `0x0048E3A0` | `0x00552fcc` = `0x005528b0` sur 16 octets |
+| `0x004E56C0`, `0x004EA430`, `0x004EEB20` Sale rampant | Rampant `0x004ADAE0` | mêmes 3 392 octets ; deux permutations de registres vérifiées équivalentes ; table de sauts à douze entrées aux mêmes écarts ; sorts `0x00552e48` / `ea8` / `f08` = `0x00552a60` ; chercheurs de proie = `FUN_004a1020` |
+
+Et `0x005017C0` (39 instructions, quatre espèces des salles 11 à 15) : pose `0x2000`, déroule
+l'animation — `Ai/SceneEntityAiCommon.cs`.
+
+### Sept bêtes, une par fichier dans `Ai/SealedCave/`
+
+| routine | fichier | lecture |
+|---|---|---|
+| `0x004F6740` Dragon zombie | `ZombieDragon.cs` | la charpente du Dragon rouge ; trois jets tirés du bloc de zone `+0xcc`, aucun coup |
+| `0x004F7980` Cerbère | `Cerberus.cs` | la même ; un bond qui frappe à chaque image de la retombée, puis la projection du Troll ; trois têtes aux trois attaches du modèle |
+| `0x004F6E60` Gorgone | `Gorgon.cs` | **la charpente du Varan**, troisième membre ; son chercheur `0x004F6380` = `FUN_004a1020` ; une charge qui sème `0xee` ; un regard (`0xdc`) |
+| `0x005003E0` Eifridt | `Eifridt.cs` | le Dragon rouge et son incantation ; gravité `0x6000` ; deux coups (l'un sans verrou, l'autre à demi-dégâts qui projette), un souffle |
+| `0x00501840` Lordémon | `Lordemon.cs` | Eifridt ; le bond du Cerbère qui frappe en l'air ; trois jets, dont un dont la phase vit en `+0x43` |
+| `0x00502210` Ange noir | `BlackAngel.cs` | une **volante** (le vol de la Coccinelle) avec l'incantation des boss ; cinq gestes, cinq sorts |
+| `0x00502CD0` Belzébuth | `Beelzebub.cs` | trois postures ; replanifie sur les mesures de la lecture de situation ; une disparition en trois phases |
+
+### Ce que le lot a appris
+
+- **La Gorgone a le heurt du Varan à une immédiate près** (`0xc8` au lieu de `0x50` pour la marche
+  de contournement) : `SettleSceneEntityOnGroundAndWalls` prend un paramètre `wallWalkRange`, défaut
+  inchangé.
+- **Trois corps existants couvraient des morceaux entiers** : `ThrowTrollVictim_0049684C` (la
+  projection et l'effet `0x39` sur la victime — Cerbère, Eifridt, Belzébuth), `RedDragonLunge`
+  (l'a-coup d'Eifridt), `BeatWings_0049A68F` (le vol de l'Ange noir). Chercher ces blocs-là avant
+  d'écrire un coup.
+- **Le script de sons `0x00553230` ne se termine pas** : un enregistrement à compte nul et délai 2 ;
+  la file y repasse sans fin jusqu'à ce que l'anneau le réutilise. Donnée de 1998, reproduite.
+- **Belzébuth ne pose pas sa gravité** et ne recalcule ni distance ni cap avant de replanifier.
+- L'Ange noir tire sa « pluie » du bloc `+0xd4` du répertoire de zone — le premier corps du lot à
+  lire un autre bloc que `+0xcc`.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur, aucun avertissement dans les fichiers du lot. `check-descriptors.sh` :
+  0 tableau en désaccord ; 88 marges courtes, 85 prouvées — les trois ouvertes sont celles de la
+  vieille tour (`0x0054FA50`, `0x0054FBF0`, `0x0054FBF8`), inchangées. `dotnet test` : les deux
+  rouges connus.
+- `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **133 / 349** ; 103 « B »,
+  88 « C » (70 lectures), 25 « D » (18 lectures), plus aucune IA ; 888 implémentés jamais appelés,
+  **216 à transcrire**, tous gestionnaires simples.
+- Dumps : `Legacy/Raw/Blaze/SealedCave/FUN_*.asm` (les huit corps lus et `0x004F6380`).
+- **Non exercé en jeu.**

@@ -193,6 +193,9 @@ public static unsafe partial class Blaze
             // dragon de feu. La charpente du Gremlin, avec ses propres postures. Ai/Mine/Salamander.cs.
             case 0x0048E3A0:
             case 0x00497EF0:
+            // Et sa copie de la grotte scellee, sous-zones 6 et 7 (lot 3) : zero ecart hors les
+            // deplacements, et sa table de sorts 0x00552fcc porte les 16 octets de 0x005528b0.
+            case 0x004FABF0:
                 TickSceneEntityAi_0048E3A0(record); return;
 
             // L'OGRE — sous-type 14 des deux blocs de la mine, et ses deux copies de la grotte scellee.
@@ -1196,9 +1199,11 @@ public static unsafe partial class Blaze
             case 0x004935F0:
             case 0x004DC890:
             // Et la MAUDITE de la grotte scellee (2026-09-19), sous-zone 0, avec sa copie des sous-zones
-            // 6 et 7 : zero ecart hors leurs tables de sauts.
+            // 6 et 7 : zero ecart hors leurs tables de sauts. Et sa troisieme copie, sous-zones 4 et 9
+            // (lot 3), 0x004F4FD0 : zero ecart non plus.
             case 0x004E9DB0:
             case 0x004F95F0:
+            case 0x004F4FD0:
             case 0x004A35B0: TickSceneEntityAi_004A35B0(record); return;
 
             // Le sous-type 10 du bloc B — LE TRENT, seconde bete du depot qui LANCE UN SORT : le
@@ -1228,6 +1233,9 @@ public static unsafe partial class Blaze
             case 0x004E84E0:
             case 0x004ED250:
             case 0x004EFC20:
+            // Et le quatrieme, sous-zone 1 (lot 3) : ses sondes 0x0055300c / 0x00553000 portent les
+            // octets de 0x005529bc / 0x005529b0.
+            case 0x004FD700:
             case 0x004A13E0: TickSceneEntityAi_004A13E0(record); return;
 
             // LE GREMLIN — le sous-type 2 de la vieille tour, et cinq copies du meme corps dans
@@ -1238,6 +1246,9 @@ public static unsafe partial class Blaze
             case 0x004E8DF0:
             case 0x004EDB60:
             case 0x004F8270:
+            // Et la sixieme, sous-zones 5, 8 et 10 de la grotte scellee (lot 3) : sa table de sorts
+            // 0x00552f30 porte les octets de 0x00552a88 ; seuls ses registres sont permutes.
+            case 0x004F0530:
                 TickSceneEntityAi_004A7190(record); return;
 
             // LE POURPRE PREUX — le sous-type 11 du chateau de l'immortel, et deux copies dans la
@@ -1362,6 +1373,14 @@ public static unsafe partial class Blaze
 
             // LE RAMPANT (vieille tour, sous-zones 5, 6, 8, 10) — la charpente du Pourpre preux, un coup, un
             // bond et le sort de la Salamandre. Ai/OldTower/Crawler.cs.
+            // Et les trois SALE RAMPANT de la grotte scellee (lot 3, 2026-09-19 — sous-zones 0 ; 2 et 3 ;
+            // 5, 8 et 10) : 3 392 octets comme lui, deux permutations de registres sans effet, la meme
+            // table de sauts a douze entrees, leurs chercheurs de proie (0x004e6400, 0x004eb170,
+            // 0x004ef860) sont FUN_004a1020 instruction pour instruction, et leurs sorts (0x00552e48,
+            // 0x00552ea8, 0x00552f08) portent les sept mots de 0x00552a60.
+            case 0x004E56C0:
+            case 0x004EA430:
+            case 0x004EEB20:
             case 0x004ADAE0: TickSceneEntityAi_004ADAE0(record); return;
 
             // LE SABRE VOLANT (vieille tour, sous-zones 5, 6, 8, 10) — le cousin du Garde golem : pique,
@@ -2477,6 +2496,20 @@ public static unsafe partial class Blaze
             case 0x00468850:
             case 0x0046B340:
             case 0x0046D760: EntityHandler_00468850(record); return;
+
+            // ZONE 10 — LOT 3 (2026-09-19) : les intelligences. Les copies sont branchees sur leurs
+            // parents plus haut (Maudite, Bras gris, Gremlin, Salamandre, Sale rampant).
+            // La bete qui ne fait que s'animer, sous-zones 11 a 15 — Ai/SceneEntityAiCommon.cs.
+            case 0x005017C0: TickSceneEntityAi_005017C0(record); return;
+
+            // Les betes de la grotte, une par fichier dans Ai/SealedCave/.
+            case 0x004F6740: TickSceneEntityAi_004F6740(record); return;   // le Dragon zombie
+            case 0x004F7980: TickSceneEntityAi_004F7980(record); return;   // le Cerbere
+            case 0x004F6E60: TickSceneEntityAi_004F6E60(record); return;   // la Gorgone
+            case 0x005003E0: TickSceneEntityAi_005003E0(record); return;   // Eifridt
+            case 0x00501840: TickSceneEntityAi_00501840(record); return;   // Lordemon
+            case 0x00502210: TickSceneEntityAi_00502210(record); return;   // l'Ange noir
+            case 0x00502CD0: TickSceneEntityAi_00502CD0(record); return;   // Belzebuth
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un

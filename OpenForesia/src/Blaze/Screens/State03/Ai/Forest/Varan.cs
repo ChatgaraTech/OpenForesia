@@ -1018,10 +1018,14 @@ public static unsafe partial class Blaze
     /// nombre, 11 : <c>cmp cl,7 ; jne ; cmp byte [esi+0Ch],0Bh ; je</c>. Toute autre espece sur ce
     /// corps retire sa marche a chaque heurt. <c>-1</c> (le defaut) : le test d'espece n'existe
     /// pas.</param>
+    /// <param name="wallWalkRange">La distance que la marche de contournement (posture 7) se donne
+    /// a tenir. <c>0x50</c> partout, sauf la Gorgone de la grotte scellee (<c>0x004f6e60</c>,
+    /// <c>0x004f772e</c> : <c>mov word [esi+10h],0C8h</c>) — une immediate, et rien d'autre, ne
+    /// separe son heurt de celui du Varan.</param>
     private static void SettleSceneEntityOnGroundAndWalls(
         byte* e, int boldness, uint contactMask, SceneEntityPlacement* keep,
         bool dropAttackOnAirborneHit = false, int keepWalkingSpecies = -1,
-        int hoverAnimation = -1)
+        int hoverAnimation = -1, ushort wallWalkRange = 0x50)
     {
         uint contact = *(uint*)(e + 0x90) & 0xfffffcff;
         *(uint*)(e + 0x90) = contact;
@@ -1075,7 +1079,7 @@ public static unsafe partial class Blaze
         {
             e[0x42] = 7;
             *(ushort*)(e + 0x12) = 0;
-            *(ushort*)(e + 0x10) = 0x50;
+            *(ushort*)(e + 0x10) = wallWalkRange;
             e[0x43] = (byte)(CrtRand() % 0x28 + 0x14);   // Ghidra: FUN_00547140
         }
 
