@@ -3631,3 +3631,7 @@ La Gorgone et le Dragon zombie n'ont pas de table en `.data` : leurs sondes sont
 Et la caméra : `0x005de068..0x005de070` (sa position, lue par le geyser, le semeur d'éboulis et ce
 qui se déplace quand elle approche) ; `0x005de038`, l'octet de la carte courante, qui fait taire le
 geyser quand il n'est pas nul.
+
+**Lot 6 (même jour)** : `0x00551330`, trois tuiles `0x0f x 0x0f` page 2 (l'étincelle qui papillote
+`0x0043C880`, image bouclée de 0 à 2, marge exacte) ; `0x00552850`, script de trois voix (`0x30`,
+`0x0f`, `0x0e`) de l'éclosion `0x00486D60`.

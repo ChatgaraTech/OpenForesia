@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **grotte scellée, lot 6 (moitié) — 226 sur 349** : treize « B » des salles 11 à 15 —
+  tourbillons, éventail, jets depuis un porteur, éclair qui frappe en pâlissant, l'éclosion qui
+  réveille son propriétaire ; l'anneau et la braise branchés sur leurs parents. Restent 14 « B »
 - feat : **grotte scellée, lot 5 — 213 sur 349** : les quarante « B » des sous-zones 4 à 10 — herse
   qui tombe et secoue la caméra, monte-charge, piston, geyser, bruit qui rôde, vague qui frappe,
   pierre lancée, vol qui traverse la salle, verbe qui pousse une entité d'un pas

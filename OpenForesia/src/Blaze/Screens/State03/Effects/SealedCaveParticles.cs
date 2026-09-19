@@ -1105,7 +1105,9 @@ public static unsafe partial class Blaze
     /// <c>0x0d</c> est morte ici, comme celle des etincelles du lot 2.
     /// </para>
     /// </summary>
-    private static void EntityHandler_00437BB0(byte* e)
+    /// <param name="fourMeansTwo">Le rattrapage de la sous-zone 4 ; sa copie des salles 11-12,
+    /// <c>0x0043DF60</c> (lot 6), ne l'a pas — c'est leur seul ecart.</param>
+    private static void EntityHandler_00437BB0(byte* e, bool fourMeansTwo = true)
     {
         if (*(short*)(e + 0x10) == 0)
         {
@@ -1117,7 +1119,7 @@ public static unsafe partial class Blaze
             else
             {
                 e[0x0a] = subArea == 0x10 ? (byte)0x0d : (byte)0x0f;
-                if (subArea == 4) e[0x0a] = 2;
+                if (fourMeansTwo && subArea == 4) e[0x0a] = 2;
             }
 
             e[0x0b] = 0;
@@ -1830,5 +1832,469 @@ public static unsafe partial class Blaze
             (int*)(e + 0x1c));                                       // Ghidra: FUN_0053dbe0
 
         *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // LOT 6 (2026-09-19) — une premiere moitie des « B » des salles 11 a 15
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_00551330</c> — trois tuiles <c>0x0f x 0x0f</c> page 2, bornees
+    /// en bas par une <c>0x10 x 0x10</c> (<c>0x00551328</c>), en haut par une <c>0x20 x 0x20</c> de
+    /// page 3 (<c>0x00551348</c>). Le corps boucle son image de 0 a 2 : marge exacte.</summary>
+    private static readonly byte[] s_Descriptors_00551330 =
+    [
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551330  <- 0x0043C880
+        0x10, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551338
+        0x20, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551340
+    ];
+
+    private static byte* s_Descriptors00551330Storage;
+
+    private static byte* Descriptors00551330() => NativeCopy(s_Descriptors_00551330, ref s_Descriptors00551330Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x0043c880</c> — sous-zones 11 et 12, table de debordement. Absente de
+    /// <c>Blaze.c</c> ; 33 instructions. <b>L'etincelle qui papillote</b> : planche
+    /// <c>0x00551330</c>, image de depart tiree de 0 a 2 puis bouclee, echelle <c>0xfa0</c> ; elle vit
+    /// onze images.
+    /// </summary>
+    private static void EntityHandler_0043C880(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors00551330();            // Ghidra: &DAT_00551330
+            int r = CrtRand();
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = 0x0fa0;
+            *(short*)(e + 0x2a) = 0x0fa0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0x0b;
+            e[0x40] = (byte)(r % 3);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        byte frame = (byte)(e[0x40] + 1);
+        *(short*)(e + 0x12) -= 1;
+        e[0x40] = frame;
+        if (frame >= 3) e[0x40] = 0;
+
+        if (*(short*)(e + 0x12) <= 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00441450</c> — sous-zones 13 a 15, table de debordement. Absente de
+    /// <c>Blaze.c</c> ; 33 instructions. <b>Le tourbillon</b> : modele <c>DAT_005edec4 + 4</c>, ne
+    /// sans echelle ; il tourne de <c>0xc8</c> par image et grandit de <c>0x1f4</c> pendant
+    /// <c>+0x14</c> images, puis tourne sans grandir. Il vit 500 images.
+    /// </summary>
+    private static void EntityHandler_00441450(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x0a] = 4;
+            e[0x0b] = 0;
+            e[4] = (byte)(s_Unknown_005edec4 + 4);                 // Ghidra: DAT_005edec4 + 4
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) += 0xc8;
+            *(short*)(e + 0x28) += 0x1f4;
+            *(short*)(e + 0x2c) += 0x1f4;
+            *(short*)(e + 0x2a) += 0x1f4;
+            *(short*)(e + 0x14) -= 1;
+            if (*(short*)(e + 0x14) == 0) *(short*)(e + 0x10) = 2;
+        }
+
+        if (*(short*)(e + 0x10) == 2) *(short*)(e + 0x32) += 0xc8;
+
+        *(short*)(e + 0x16) += 1;
+        if (*(short*)(e + 0x16) >= 0x1f4) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552850</c> — le script de <see cref="EntityHandler_00486D60"/> : les voix
+    /// <c>0x30</c>, <c>0x0f</c>, <c>0x0e</c>. Borne par le <c>[1] = 0</c> du troisieme.
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552850 =
+    [
+        0x30, 0x01, 0x01, 0x00, 0x53, 0x06, 0x00, 0x18,   // 0x00552850
+        0x0f, 0x01, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552858
+        0x0e, 0x00, 0x01, 0x00, 0xb5, 0x00, 0x00, 0x18,   // 0x00552860 — [1] = 0 : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552850Storage;
+
+    /// <summary>
+    /// Ghidra: <c>0x00486d60</c> — sous-zones 13 a 15. Absente de <c>Blaze.c</c> ; 38 instructions.
+    /// Deux roles selon <c>+0x16</c>, apres un quart de tour a la naissance :
+    /// <list type="bullet">
+    /// <item>0 — <b>l'eclosion</b> : <c>+0x28</c> rejoint <c>0x1800</c> d'un quart par image ;
+    /// passe <c>0x17c0</c>, elle pose le bit <c>0x2000000</c> de l'entite rangee en
+    /// <c>+0x70</c>, met en file le script <c>0x00552850</c> et libere son emplacement ;</item>
+    /// <item>1 — elle palit de <c>0x101010</c> par image (double mot) et libere son emplacement a
+    /// teinte nulle.</item>
+    /// </list>
+    /// </summary>
+    private static void EntityHandler_00486D60(byte* e)
+    {
+        byte* owner = *(byte**)(e + 0x70);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x32) += 0x400;
+            *(short*)(e + 0x10) = 1;
+        }
+
+        short role = *(short*)(e + 0x16);
+
+        if (role == 1)
+        {
+            uint tint = *(uint*)(e + 0x38) + 0xffefeff0;
+            *(uint*)(e + 0x38) = tint;
+            if (tint == 0) *(uint*)e = 0;
+            return;
+        }
+
+        if (role != 0) return;
+
+        int scale = *(short*)(e + 0x28);
+        scale += (0x1800 - scale) >> 2;
+        *(short*)(e + 0x28) = (short)scale;
+        if (scale <= 0x17c0) return;
+
+        *(uint*)owner |= 0x2000000;
+        Aud.QueueDelayedSoundScript(
+            NativeCopy(s_DelayedSoundScript_00552850, ref s_DelayedSoundScript00552850Storage),
+            (int*)(e + 0x1c));                                       // Ghidra: FUN_0053dbe0
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004414e0</c> — sous-zones 13 a 15, table de debordement. Absente de
+    /// <c>Blaze.c</c> ; 41 instructions. <b>Le rayon qui s'allonge</b> : modele
+    /// <c>DAT_005edec4 + 3</c>, releve de 230 unites, echelle verticale <c>0x1000</c> ; ses deux
+    /// autres echelles grandissent de 1 000 par image, et passe <c>0x3a98</c> il palit de 5 ; a
+    /// <c>0x7530</c> il se fige et meurt.
+    /// </summary>
+    private static void EntityHandler_004414E0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x12) = 0;
+            e[4] = (byte)(s_Unknown_005edec4 + 3);                 // Ghidra: DAT_005edec4 + 3
+            e[0x0a] = 8;
+            *(short*)(e + 0x2a) = 0x1000;
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x20) += 0xe6000;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x28) += 0x3e8;
+        *(short*)(e + 0x2c) += 0x3e8;
+        if (*(short*)(e + 0x28) >= 0x3a98) BrightenEntityTint_00404DE0(e, -5, -5, -5);   // Ghidra: FUN_00404de0
+
+        if (*(short*)(e + 0x28) < 0x7530) return;
+
+        *(short*)(e + 0x28) = 0x7530;
+        *(short*)(e + 0x2c) = 0x7530;
+        *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00486680</c> — sous-zones 13 a 15. Absente de <c>Blaze.c</c> ; 42 instructions.
+    /// <b>L'eventail</b>, une image : lanceur range en <c>+0x74</c>, modele <c>0x38</c>, eteint, il
+    /// fait naitre quatre fois l'incantation de l'octet 7 du bloc <c>+0xd0</c> (parametre 4), son
+    /// cap pris a chaque fois dans un quart de tour qui avance de <c>0x100</c> — plus un tirage de 0
+    /// a 63 —, puis libere son emplacement. Son cap n'est pas rendu : le dernier reste.
+    /// </summary>
+    private static void EntityHandler_00486680(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            int course = *(short*)(e + 0x32);
+            *(byte**)(e + 0x74) = *(byte**)(e + 0x6c);
+            e[4] = 0x38;
+            *(uint*)(e + 0x38) = 0;
+            *(short*)(e + 0x36) = 4;
+            *(short*)(e + 0x2e) = -0x10;
+            *(uint*)(e + 0x28) = 0x02001000;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x12) = 8;
+
+            course -= 0x180;
+            for (int i = 4; i != 0; i--, course += 0x100)
+            {
+                *(short*)(e + 0x32) = (short)((CrtRand() & 0x3f) + course + 0x3e0);
+                byte* directory = *(byte**)(s_Unknown_005e97cc + 0xd0);
+                SpawnCastEntity_0047AAE0(e, (byte)((*(byte**)directory)[7] + 0xc0), 0, 4);   // Ghidra: FUN_0047aae0
+            }
+        }
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004855f0</c> — sous-zones 13 a 15. Absente de <c>Blaze.c</c> ; 44 instructions.
+    /// <b>Le jet depuis le porteur</b>, une image : releve a la hauteur de la bulle de son porteur
+    /// (<see cref="StatusBubbleHeight_00538BC0"/>, bit bas efface), modele <c>0x2a</c>, sans echelle,
+    /// vitesse de 16 dans son cap et nulle en Y (<see cref="SetVectorFromAngle_00532B10"/>), il fait
+    /// naitre l'incantation de l'octet 1 du bloc <c>+0xd0</c> (1, 2) et libere son emplacement.
+    /// </summary>
+    private static void EntityHandler_004855F0(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+        *(byte**)(e + 0x74) = carrier;
+
+        int lift = (StatusBubbleHeight_00538BC0((uint*)carrier) & ~1) << 0xb;   // Ghidra: FUN_00538bc0
+        *(int*)(e + 0x20) += lift;
+
+        e[4] = 0x2a;
+        *(short*)(e + 0x36) = 4;
+        *(uint*)(e + 0x38) = 0xf0f0f0;
+        *(int*)(e + 0x28) = 0;
+        *(short*)(e + 0x2c) = 0;
+        *(short*)(e + 0x9a) = 0;
+
+        SetVectorFromAngle_00532B10((int*)(e + 0x50), *(short*)(e + 0x32), 0x10);   // Ghidra: FUN_00532b10
+        *(int*)(e + 0x54) = 0;
+
+        byte* directory = *(byte**)(s_Unknown_005e97cc + 0xd0);
+        SpawnCastEntity_0047AAE0(e, (byte)((*(byte**)directory)[1] + 0xc0), 1, 2);   // Ghidra: FUN_0047aae0
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00441b80</c> — sous-zones 13 a 15, table de debordement. Absente de
+    /// <c>Blaze.c</c> ; 50 instructions. <b>La vague sombre qui se referme</b> : modele
+    /// <c>DAT_005edec4 + 1</c>, nee enorme (<c>0x7d00</c>) et noire, octet <c>+0x3b</c> a
+    /// <c>0xc0</c> ; elle tourne de <c>0x12c</c> par image et retrecit de 200, s'eclairant de 2 passe
+    /// <c>0x6d60</c> ; a zero, elle meurt.
+    /// </summary>
+    private static void EntityHandler_00441B80(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x0a] = 0x0f;
+            e[0x0b] = 0;
+            e[4] = (byte)(s_Unknown_005edec4 + 1);                 // Ghidra: DAT_005edec4 + 1
+            *(short*)(e + 0x28) = 0x7d00;
+            *(short*)(e + 0x2a) = 0x7d00;
+            *(short*)(e + 0x2c) = 0x7d00;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            e[0x3b] = 0xc0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) += 0x12c;
+            *(short*)(e + 0x28) -= 200;
+            *(short*)(e + 0x2a) -= 200;
+            *(short*)(e + 0x2c) -= 200;
+
+            if (*(short*)(e + 0x28) <= 0x6d60) BrightenEntityTint_00404DE0(e, 2, 2, 2);   // Ghidra: FUN_00404de0
+
+            if (*(short*)(e + 0x28) < 0)
+            {
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(uint*)e &= 0x7fffffff;
+            }
+        }
+
+        *(short*)(e + 0x16) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0043e030</c> — sous-zones 11 et 12, table de debordement. Absente de
+    /// <c>Blaze.c</c> ; 99 instructions. La braise de la foret (<see cref="TickRisingEmber"/>,
+    /// famille A) sur la planche des etincelles (<c>0x00551220</c>), dont le <c>+0x0a</c> depend de
+    /// la sous-zone : 9 en sous-zone 16, 6 ailleurs — donc toujours 6 dans la grotte. Le choix n'est
+    /// lu qu'a la naissance, comme dans le corps.
+    /// </summary>
+    private static void EntityHandler_0043E030(byte* e)
+        => TickRisingEmber(e, Descriptors00551220(), (byte)((byte)s_Unknown_005de52c == 0x10 ? 9 : 6), false);
+
+    /// <summary>
+    /// Ghidra: <c>0x00485760</c> — sous-zones 13 a 15. Absente de <c>Blaze.c</c> ; 63 instructions.
+    /// <b>Le double jet</b>, une image : lanceur range en <c>+0x74</c>, modele <c>0x1e</c>, teinte
+    /// <c>0x808080</c> ; il fait naitre deux fois l'incantation de l'octet 2 du bloc <c>+0xd0</c>
+    /// (1, 2) dans son cap — d'abord a la vitesse 8 et aux echelles <c>0x3000 / 0x6000</c>, puis a
+    /// la vitesse 32 et aux echelles <c>0x4000 / 0x4000</c> —, puis libere son emplacement.
+    /// </summary>
+    private static void EntityHandler_00485760(byte* e)
+    {
+        short course = *(short*)(e + 0x32);
+        *(byte**)(e + 0x74) = *(byte**)(e + 0x6c);
+        e[4] = 0x1e;
+        *(short*)(e + 0x2e) = -0x20;
+        *(short*)(e + 0x36) = 4;
+        *(uint*)(e + 0x38) = 0x808080;
+        *(short*)(e + 0x2c) = 0x6000;
+        *(short*)(e + 0x9a) = 0;
+
+        byte* directory = *(byte**)(s_Unknown_005e97cc + 0xd0);
+
+        *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(course) << 3;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = (int)Winsys3d.GetCosTableEntry(course) << 3;
+        *(int*)(e + 0x28) = 0x3000;
+        *(short*)(e + 0x12) = 0x6000;
+        SpawnCastEntity_0047AAE0(e, (byte)((*(byte**)directory)[2] + 0xc0), 1, 2);   // Ghidra: FUN_0047aae0
+
+        *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(course) << 5;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = (int)Winsys3d.GetCosTableEntry(course) << 5;
+        *(int*)(e + 0x28) = 0x4000;
+        *(short*)(e + 0x12) = 0x4000;
+        directory = *(byte**)(s_Unknown_005e97cc + 0xd0);
+        SpawnCastEntity_0047AAE0(e, (byte)((*(byte**)directory)[2] + 0xc0), 1, 2);
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0043c380</c> — sous-zones 11 et 12, table de debordement. Absente de
+    /// <c>Blaze.c</c> ; 80 instructions. <b>La gerbe des vingt images</b> : lanceur range en
+    /// <c>+0x74</c>. Pendant vingt images, a chaque image, elle se colle a 80 unites au-dessus du
+    /// lanceur (<c>+0x70</c>, decalage <c>(0, 0x50000, 0)</c>), tire un cap dans un quart de tour et
+    /// un tangage, et fait naitre l'incantation <c>0x70</c> (modele <c>0x3f</c>, echelles
+    /// <c>0x1fff / 0 / 0x100</c>). Puis deux <c>0xdf</c>, <c>+0x9a</c> prete a +200 et -200, et
+    /// trente images d'attente avant de mourir.
+    /// </summary>
+    private static void EntityHandler_0043C380(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0x14;
+            *(byte**)(e + 0x74) = *(byte**)(e + 0x6c);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x16) -= 1;
+            if (*(short*)(e + 0x16) <= 0) *(short*)(e + 0x10) = 2;
+
+            e[4] = 0x3f;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(byte**)(e + 0x70) = *(byte**)(e + 0x6c);
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0x50000;
+            *(int*)(e + 0x4c) = 0;
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x400 + 0x400);
+
+            int tilt = CrtRand() % 0x1000;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x34) = (short)tilt;
+            *(short*)(e + 0x12) = 0xc8;
+            *(short*)(e + 0x28) = 0x1fff;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 0x100;
+            SpawnCastEntity_0047AAE0(e, 0x70, 0, -1);               // Ghidra: FUN_0047aae0
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x10) = 3;
+            *(short*)(e + 0x16) = 0x1e;
+            *(short*)(e + 0x9a) = 0xc8;
+            SpawnCastEntity_0047AAE0(e, 0xdf, 0, -1);
+            *(short*)(e + 0x9a) = -0xc8;
+            SpawnCastEntity_0047AAE0(e, 0xdf, 0, -1);
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        *(short*)(e + 0x16) -= 1;
+        if (*(short*)(e + 0x16) < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004423d0</c> — sous-zones 13 a 15, table de debordement. Absente de
+    /// <c>Blaze.c</c> ; 59 instructions. <b>Le tourbillon qui enfle et s'effondre</b> : modele 1,
+    /// releve de 20 unites, ne sans echelle ; il tourne de <c>0xc8</c> par image et grandit de plus
+    /// en plus vite (+10 d'acceleration) jusqu'a <c>0x61a8</c>, marque deux images, puis retrecit
+    /// de plus en plus vite (depart 30, +40) jusqu'a disparaitre.
+    /// </summary>
+    private static void EntityHandler_004423D0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x20) += 0x14000;
+            e[4] = 1;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) += 0x0a;
+            short grow = *(short*)(e + 0x12);
+            *(short*)(e + 0x28) += grow;
+            *(short*)(e + 0x32) += 0xc8;
+            *(short*)(e + 0x2a) += grow;
+            *(short*)(e + 0x2c) += grow;
+
+            if (*(short*)(e + 0x28) > 0x61a8)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x12) += 1;
+            *(short*)(e + 0x32) += 0xc8;
+            if (*(short*)(e + 0x12) >= 2)
+            {
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x12) = 0x1e;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x12) += 0x28;
+            short shrink = *(short*)(e + 0x12);
+            *(short*)(e + 0x28) -= shrink;
+            *(short*)(e + 0x32) += 0xc8;
+            *(short*)(e + 0x2a) -= shrink;
+            *(short*)(e + 0x2c) -= shrink;
+
+            if (*(short*)(e + 0x28) < 0)
+            {
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(uint*)e &= 0x7fffffff;
+            }
+        }
+
+        *(short*)(e + 0x16) += 1;
     }
 }

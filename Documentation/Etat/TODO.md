@@ -3,7 +3,7 @@
 Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**quatre zones fermées dans la
 journée** : le château de l’immortel — 170 sur 170 —, puis en un lot chacune les ruines souterraines
 — 35 sur 35 —, les ruines dans le lac — 41 sur 41 — et **la vallée d’argent — 46 sur 46**, le
-onzième ensemble). **Il ne reste que la grotte scellée — 213 / 349 après ses lots 1 à 5 ; toutes les
+onzième ensemble). **Il ne reste que la grotte scellée — 226 / 349 après ses lots 1 à 6 ; toutes les
 routines d'IA du jeu sont désormais écrites.** La zone 5, le Labyrinthe, a été
 fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du dragon de feu et la
 vieille tour.
@@ -36,8 +36,10 @@ parenté). La sous-zone 1 s'avère être une machine à trois mots d'état (`Dat
 confirmées constantes rendues et branchées (leurs parents paramétrés), puis les quarante « B » des
 sous-zones 4 à 10.
 
-**La suite** : **136 gestionnaires simples** — 27 « B » (les salles 11 à 15), 84 « C »
-(69 lectures), 25 « D » (18 lectures), `Zone10ParComplexite.md`. La recherche de parenté ne compare
+**Lot 6, écourté (même jour) : 226 sur 349** — treize des vingt-sept « B » des salles 11 à 15.
+
+**La suite** : **123 gestionnaires simples** — **14 « B »** (salles 13 à 15, la fin du lot 6),
+84 « C » (69 lectures), 25 « D » (18 lectures), `Zone10ParComplexite.md`. La recherche de parenté ne compare
 que des corps de même longueur : une variante à longueur voisine (quelques instructions de plus ou
 de moins) trouverait sans doute d'autres cousins parmi les « C » — `0x00485330` en était un.
 

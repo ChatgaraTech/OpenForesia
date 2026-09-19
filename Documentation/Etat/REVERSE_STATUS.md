@@ -25287,3 +25287,22 @@ charge, le relais qui lance le script des quatre membres, la dalle de la forêt.
   84 « C » (69 lectures), 25 « D » (18 lectures) ; 843 implémentés jamais appelés, **136 à
   transcrire**. Aucune ligne de la zone 10 dans `handlers-exerces.tsv`.
 - **Non exercé en jeu.**
+
+## 2026-09-19 (suite 9) — Grotte scellée, lot 6 (moitié) : treize « B » des salles 11 à 15, 226 sur 349
+
+**213 sur 349 devient 226 sur 349.** Lot écourté à la demande (fin de séance) : les quatre « B » des
+salles 11-12 et les neuf plus courts des salles 13-15. **Restent quatorze « B »**, tous dans les
+salles 13-15 (`Zone10ParComplexite.md`).
+
+- **Deux copies de plus** : `0x0043DF60` est l'anneau qui s'élargit `0x00437BB0` sans son rattrapage
+  de la sous-zone 4 (paramètre `fourMeansTwo`) ; `0x0043E030` est la braise de la forêt sur la
+  planche des étincelles (`0x00551220`), `+0x0a` choisi par la sous-zone.
+- Onze corps neufs : l'étincelle qui papillote (planche `0x00551330`, trois images), les tourbillons
+  (`0x00441450`, `0x004423D0`), l'éclosion qui réveille son propriétaire (`0x00486D60`, script
+  `0x00552850`), le rayon qui s'allonge, la vague sombre qui se referme, l'éventail, les jets depuis
+  un porteur (`0x004855F0`, `0x00485760`), la gerbe des vingt images ; et **l'éclair qui pâlit en
+  frappant** (`0x00485EC0`), dans `Combat/Projectiles.cs`.
+- Contrôles : `dotnet build` 0 erreur ; `dotnet test`, les deux rouges connus ;
+  `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **226 / 349**, 14 « B », 84 « C »,
+  25 « D » ; 856 implémentés jamais appelés, **123 à transcrire**. `check-descriptors.sh` : voir la
+  ligne HISTORY du jour. **Non exercé en jeu.**

@@ -1929,4 +1929,40 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x10) += 1;
         if (*(short*)(e + 0x10) >= 8) *(uint*)e = 0;
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x00485ec0</c> — grotte scellee, sous-zones 13 a 15 (lot 6, 2026-09-19). Absente
+    /// de <c>Blaze.c</c> ; 41 instructions. <b>L'eclair qui palit en frappant</b> : il porte le bit
+    /// <c>0x04</c> de <c>+0x36</c> ; tant que sa teinte vaut au moins <c>0x404040</c> il balaie la
+    /// sonde <c>(0, -100, 100, 200, 0, 100)</c> (<see cref="ProbeMeleeTarget_00474CA0"/>) et chaque
+    /// victime subit le coup de son lanceur <c>+0x74</c> et clignote douze images. Il palit de
+    /// <c>0x101010</c> par image et libere l'emplacement a teinte nulle.
+    /// </summary>
+    private static void EntityHandler_00485EC0(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = -0x64;
+        probe[2] = 0x64;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x64;
+
+        e[0x36] |= 4;
+
+        if (*(uint*)(e + 0x38) >= 0x404040)
+        {
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);    // Ghidra: FUN_00474ca0
+            if (victim != null)
+            {
+                ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);   // Ghidra: FUN_00539b80
+                *(uint*)victim |= 0x40;
+                *(ushort*)(victim + 0x96) = 0x0c;
+            }
+        }
+
+        uint tint = *(uint*)(e + 0x38) + 0xffefeff0;
+        *(uint*)(e + 0x38) = tint;
+        if (tint == 0) *(uint*)e = 0;
+    }
 }

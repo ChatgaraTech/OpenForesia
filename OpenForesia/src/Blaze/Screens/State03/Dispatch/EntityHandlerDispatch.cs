@@ -2602,6 +2602,21 @@ public static unsafe partial class Blaze
             case 0x00434A90: TickCrossingFlight_00434940(record, 0x384000, -0x578, 0x08, 0x708, -0xc8, -0xc8, 0x708); return;
             case 0x00484E80: EntityHandler_00484E80(record); return;
 
+            // ZONE 10 — LOT 6 (2026-09-19) : une premiere moitie des « B » des salles 11 a 15.
+            case 0x0043C880: EntityHandler_0043C880(record); return;
+            case 0x00441450: EntityHandler_00441450(record); return;
+            case 0x00486D60: EntityHandler_00486D60(record); return;
+            case 0x004414E0: EntityHandler_004414E0(record); return;
+            case 0x00485EC0: EntityHandler_00485EC0(record); return;   // Combat/Projectiles.cs
+            case 0x00486680: EntityHandler_00486680(record); return;
+            case 0x004855F0: EntityHandler_004855F0(record); return;
+            case 0x00441B80: EntityHandler_00441B80(record); return;
+            case 0x004423D0: EntityHandler_004423D0(record); return;
+            case 0x0043DF60: EntityHandler_00437BB0(record, false); return;   // l'anneau, sans le cas de la sous-zone 4
+            case 0x0043E030: EntityHandler_0043E030(record); return;
+            case 0x00485760: EntityHandler_00485760(record); return;
+            case 0x0043C380: EntityHandler_0043C380(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
