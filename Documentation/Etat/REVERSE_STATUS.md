@@ -25232,3 +25232,58 @@ la jumelle d'un d'entre eux dans les sous-zones 6-7 (`0x0046F180`), et **quatre 
   transcrire**. (Le compte des testés est passé de 326 à 451 : `handlers-exerces.tsv` a reçu une
   partie dans les zones 0 à 9 pendant le lot ; aucune ligne de la zone 10, donc rien à retirer.)
 - **Non exercé en jeu.**
+
+## 2026-09-19 (suite 8) — Grotte scellée, lot 5 : sept copies retrouvées et les « B » des blocs 4 à 10, 213 sur 349
+
+**166 sur 349 devient 213 sur 349** : quarante-sept corps.
+
+### Sept copies d'autres zones, à quelques immédiates près
+
+La recherche de parenté constantes masquées du lot 4 les avait désignées ; relues constantes rendues :
+
+| copie | parent | ce qui diffère | ce que le parent a pris en paramètre |
+|---|---|---|---|
+| `0x0043EB60` (13-15) | la salve de la mine `0x00409E40` | sous-type semé `0xe1` au lieu de `0xde` | `subtype` |
+| `0x0043ADC0` (6-7) | la braise de la forêt `TickRisingEmber` | `+0x0a` 2, teinte −2 au lieu de −5, planche `0x005510a8` | `fade` |
+| `0x0043CD70` (11-12) | l'onde de froid de la vallée `0x0042FB50` | sous-type `0xca`, `+0x0a` `0x0f`, rouge et bleu échangés | `TickColdWave` |
+| `0x0043D3A0` (11-12) | l'hélice de la tour `0x0041B9F0` | planche `0x005511f0`, `+0x0a` 9 | `TickHelixMote` |
+| `0x0043DA60` (11-12) | la goutte de la tour `0x0041B220` | planche `0x005511f0`, `+0x0a` 6 | `TickFallingDrop` |
+| `0x0046F9D0` (6-7) | la dalle de la forêt `0x00459B20` | voix `0x25`, hauteur `0x200`, gain `0x2000` | `TickPressurePlate_00459B20` |
+| `0x00484BB0` (4-9) | la vague qui marque `0x00483A30` | rien : deux soustractions échangées | — branchée sur le même cas |
+
+Tous les appelants existants gardent leurs valeurs (paramètres à défaut, ou enveloppe inchangée).
+
+### Les quarante « B »
+
+Dans `Handlers/SealedCave.cs` : les roues (`TickShiftedWheel_0046DFC0`, deux masques), ce qui tangue
+(`0x00470130`, `0x004700C0` qui sème), l'ellipse, le piston, les flotteurs qui tournent
+(`SpinAndBob_0046E3C1`, trois corps), le troisième tremplin, la herse qui tombe et secoue la caméra
+(`0x0046D640` et sa jumelle `0x0046F8B0`, au gain près), le bruit qui rôde, le geyser, ce qui se
+déplace quand la caméra approche, le grondement lointain. Dans `SealedCaveMecanismes.cs` : le monte-
+charge, le relais qui lance le script des quatre membres, la dalle de la forêt. Dans
+`Combat/Projectiles.cs` : la vague qui frappe (`0x00484DA0`) et la gerbe qui frappe en roulant
+(`0x00485330`). Dans `WorldMapScript.cs` : le verbe qui pousse l'entité d'un pas, deux copies
+(`0x004454E0` / `0x00445610`, pas de 24 et 8 unités). Le reste — braises, flammes, cendres, anneaux,
+éclats, jets depuis un lanceur, semeurs d'éboulis, le vol qui traverse la salle en miroir
+(`0x00434940` / `0x00434A90`), la traîne du lot 4 qui sème `0xdf` (`0x004343D0`) — dans
+`Effects/SealedCaveParticles.cs`.
+
+### Ce que le lot a appris
+
+- **La recherche à longueur égale ne voit pas tout** : `0x00485330` est un cousin de la gerbe
+  grandissante de la tour (même sonde, même sol, même décoloration par double mot), sans en être
+  une copie. Une recherche à longueur voisine reste à écrire.
+- `0x005510a8` était déjà relevée dans `Combat/Projectiles.cs` : la déclarer une seconde fois ne
+  compile pas, et c'est tant mieux — une planche vit en un seul endroit.
+- Trois corps de plus ont des effets morts : un tirage jeté (`0x0046F070`), un second compte des
+  membres présents jeté (`0x0046F1C0`), et le `+0x14` décompté sans être lu de l'éclat projeté.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur. `check-descriptors.sh` : 0 tableau en désaccord ; 96 marges courtes,
+  **94 prouvées** (trois nouvelles scellées) ; restent les deux de la tour. `dotnet test` : les deux
+  rouges connus.
+- `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **213 / 349** ; 27 « B »,
+  84 « C » (69 lectures), 25 « D » (18 lectures) ; 843 implémentés jamais appelés, **136 à
+  transcrire**. Aucune ligne de la zone 10 dans `handlers-exerces.tsv`.
+- **Non exercé en jeu.**

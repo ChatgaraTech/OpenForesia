@@ -1850,6 +1850,10 @@ public static unsafe partial class Blaze
             // Lot 4 (2026-09-19) : la vue saute sur le membre que designe l'operande.
             0x004453E0 => AreaVerb_004453E0((short)(s[2] | (s[3] << 8))),
 
+            // Lot 5 (2026-09-19) : pousser l'entite d'un pas, deux copies a leur pas pres.
+            0x004454E0 => AreaVerb_004454E0(ent, (short)(s[2] | (s[3] << 8)), 0x18000),
+            0x00445610 => AreaVerb_004454E0(ent, (short)(s[2] | (s[3] << 8)), 0x8000),
+
             // PALIER 3 (2026-09-18). Les deux premiers sont le meme verbe — un effet inflige au
             // membre que designe la banque 2 —, le second sans nombres flottants ; le troisieme
             // lance un script quand tout le groupe a quitte le rectangle. Aucun ne lit l'entite.
@@ -4665,6 +4669,56 @@ public static unsafe partial class Blaze
     /// n'a pas de garde. Transcrit sans en ajouter.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Ghidra: <c>0x004454e0</c> (pas de 24 unites) et <c>0x00445610</c> (pas de 8) — grotte
+    /// scellee, sous-zones 5, 8 et 10 (lot 5, 2026-09-19) ; absents de <c>Blaze.c</c>, 82
+    /// instructions, a ces trois immediates pres. <b>Pousser l'entite d'un pas</b>, si elle porte le
+    /// bit <c>0x800000</c> : l'operande donne la direction (0 : +X, 1 : +Z, 2 : -X, 3 : -Z). Son
+    /// placement est finalise ; si son mot de contact revient avec <c>0x8800</c>, elle est heurtee
+    /// et le pas est annule — mot d'etat, placement, contact (lu en seize bits) rendus — et ses
+    /// decalages <c>+0x44</c>/<c>+0x4c</c> sont NIES. Rend zero.
+    /// </summary>
+    private static uint AreaVerb_004454E0(byte* entity, short direction, int step)
+    {
+        uint flags = *(uint*)entity;
+        if ((flags & 0x800000) == 0) return 0;
+
+        int at7c = *(int*)(entity + 0x7c);
+        int at60 = *(int*)(entity + 0x60);
+        int at64 = *(int*)(entity + 0x64);
+        int at80 = *(int*)(entity + 0x80);
+        ushort at90 = *(ushort*)(entity + 0x90);
+        int x = *(int*)(entity + 0x1c);
+        int z = *(int*)(entity + 0x24);
+        int at8c = *(int*)(entity + 0x8c);
+        int at84 = *(int*)(entity + 0x84);
+        int at88 = *(int*)(entity + 0x88);
+
+        if (direction == 0) *(int*)(entity + 0x1c) = x + step;
+        if (direction == 1) *(int*)(entity + 0x24) = z + step;
+        if (direction == 2) *(int*)(entity + 0x1c) -= step;
+        if (direction == 3) *(int*)(entity + 0x24) -= step;
+
+        FinalizeEntityPlacement2((uint*)entity);                    // Ghidra: FUN_00533940
+
+        if ((*(uint*)(entity + 0x90) & 0x8800) == 0) return 0;
+
+        *(int*)(entity + 0x7c) = at7c;
+        *(int*)(entity + 0x60) = at60;
+        *(int*)(entity + 0x64) = at64;
+        *(uint*)entity = flags;
+        *(int*)(entity + 0x84) = at84;
+        *(int*)(entity + 0x88) = at88;
+        *(int*)(entity + 0x80) = at80;
+        *(uint*)(entity + 0x90) = at90;
+        *(int*)(entity + 0x1c) = x;
+        *(int*)(entity + 0x24) = z;
+        *(int*)(entity + 0x8c) = at8c;
+        *(int*)(entity + 0x44) = -*(int*)(entity + 0x44);
+        *(int*)(entity + 0x4c) = -*(int*)(entity + 0x4c);
+        return 0;
+    }
+
     private static uint AreaVerb_004453E0(short member)
     {
         byte* m = null;

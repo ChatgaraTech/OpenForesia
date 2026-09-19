@@ -2819,7 +2819,9 @@ public static unsafe partial class Blaze
     /// L'ecran clignote donc en bleu sombre pendant trente images, puis l'entite s'eteint.
     /// </para>
     /// </summary>
-    private static void EntityHandler_00409E40(byte* e)
+    /// <param name="subtype">Le sous-type seme, <c>0xde</c> ; <c>0xe1</c> pour la copie de la grotte scellee
+    /// <c>0x0043EB60</c> (sous-zones 13 a 15), qui ne differe que par ces deux <c>push</c>.</param>
+    private static void EntityHandler_00409E40(byte* e, byte subtype = 0xde)
     {
         if (*(short*)(e + 0x10) == 0)
         {
@@ -2831,7 +2833,7 @@ public static unsafe partial class Blaze
             *(int*)(e + 0x5c) = 1;
             for (int i = 0; i < 0x0b; i++)
             {
-                SpawnCastEntity_0047AAE0(e, 0xde, e[0x0b], e[0x0a]);   // Ghidra: FUN_0047aae0
+                SpawnCastEntity_0047AAE0(e, subtype, e[0x0b], e[0x0a]);   // Ghidra: FUN_0047aae0
             }
         }
 
@@ -2843,7 +2845,7 @@ public static unsafe partial class Blaze
             *(int*)(e + 0x5c) = 0;
             *(short*)(e + 0x16) = beat == 0 ? (short)0 : (short)1;
 
-            SpawnCastEntity_0047AAE0(e, 0xde, e[0x0b], e[0x0a]);
+            SpawnCastEntity_0047AAE0(e, subtype, e[0x0b], e[0x0a]);
         }
 
         *(short*)(e + 0x12) += 1;

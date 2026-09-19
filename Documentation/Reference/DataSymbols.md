@@ -3616,3 +3616,18 @@ La Gorgone et le Dragon zombie n'ont pas de table en `.data` : leurs sondes sont
 **`0x005fa988 + n * 0x9c`** (n = 0 à 3) : les enregistrements 6 à 9 de la troisième table d'entités
 `0x005fa5e0` — ceux dont le verbe `0x004453E0` publie la pose dans les blocs de vue. Et
 `0x005fa5f2` = `0x005fa5e0 + 0x12`, le mot que lit `0x00470BE0`.
+
+## La grotte scellée, lot 5 (2026-09-19) — trois planches et trois scripts
+
+| adresse | contenu | corps |
+|---|---|---|
+| `0x005511f0` | une tuile `0x08 x 0x08` page 3 (celle de `0x0054fd58`) | l'hélice et la goutte des salles 11-12 ; marge 1 prouvée |
+| `0x00550f60` | une tuile `0x1f x 0x1f` page 2, entre le grain 4-9 et les étincelles | la fumée qui monte vite `0x00438260` ; marge 1 prouvée |
+| `0x00551008` | quatre tuiles `0x20 x 0x20` page 2 | la gerbe en arc `0x0043B1D0`, image `3 - (+0x16)` |
+| `0x005526c0` | script, voix `0x21` puis `0x24` — les octets de `0x00552710` | `0x00484760` |
+| `0x00552710` | idem | `0x00484CD0` |
+| `0x00552720` | script, cinq fois la voix `0x0e`, montant | l'impact de la pierre lancée `0x00484E80` |
+
+Et la caméra : `0x005de068..0x005de070` (sa position, lue par le geyser, le semeur d'éboulis et ce
+qui se déplace quand elle approche) ; `0x005de038`, l'octet de la carte courante, qui fait taire le
+geyser quand il n'est pas nul.

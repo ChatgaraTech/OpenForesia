@@ -263,4 +263,109 @@ public static unsafe partial class Blaze
 
         BounceSpringboard_0046897F(e);
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046f9d0</c> — sous-zones 6 et 7 (lot 5). Absente de <c>Blaze.c</c> ;
+    /// 73 instructions. <b>La dalle de pression de la foret</b>
+    /// (<see cref="TickPressurePlate_00459B20"/>), qui compte le groupe, avec le son de la grotte.
+    /// </summary>
+    private static void EntityHandler_0046F9D0(byte* e) => TickPressurePlate_00459B20(e, 0x25, 0x200, 0x2000);
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e070</c> — sous-zones 4 et 9. Absente de <c>Blaze.c</c> ; 41 instructions.
+    /// <b>Le relais sans etat</b>, deux roles selon son <c>+0x14</c> :
+    /// <list type="bullet">
+    /// <item>0 — quand les bits <c>0x02</c> et <c>0x04</c> de l'octet <c>0x21</c> de la banque 0
+    /// sont poses, il prend le bit <c>0x2000</c> de son mot d'etat ;</item>
+    /// <item>1 — tant que l'octet 3 de la banque 2 vaut 1, il lance le script 1 sur chacun des
+    /// quatre membres (<see cref="RunEntityScript"/>) — <b>a chaque image</b> : rien dans le corps
+    /// ne le retient d'une image a l'autre.</item>
+    /// </list>
+    /// </summary>
+    private static void EntityHandler_0046E070(byte* e)
+    {
+        short role = *(short*)(e + 0x14);
+
+        if (role == 0)
+        {
+            byte latches = Mem.s_StateBank0_005e96e0[0x21];         // Ghidra: DAT_005e9701
+            if ((latches & 2) != 0 && (latches & 4) != 0) *(uint*)e |= 0x2000;
+        }
+
+        if (role != 1) return;
+        if (Mem.s_StateBank2_005e9060[3] != 1) return;              // Ghidra: DAT_005e9063
+
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+            RunEntityScript(s_Unknown_005e97cc, slot, 1);           // Ghidra: FUN_00513dd0
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046f1c0</c> — sous-zones 6 et 7. Absente de <c>Blaze.c</c> ; 89 instructions.
+    /// <b>Le monte-charge</b>. Quand tous les membres presents sont dessus, il retient sa hauteur et
+    /// monte en accelerant (d'une unite par image, jusqu'a <c>+0x14</c>) ; passe <c>+0x16</c> unites
+    /// de course, il ralentit jusqu'a s'arreter en haut (etat <c>0x63</c>). Quand plus personne n'y
+    /// est, il redescend en accelerant (jusqu'a 30 unites par image) et se pose a sa hauteur
+    /// retenue.
+    /// <para>
+    /// Le nombre de membres presents est demande deux fois ; la seconde reponse est jetee.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046F1C0(byte* e)
+    {
+        int aboard = CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+
+        if (aboard == ActivePartySlotCount_00466D70() && *(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x9a) = (short)(*(int*)(e + 0x20) >> 0xc);
+        }
+
+        _ = ActivePartySlotCount_00466D70();                        // Ghidra: resultat jete
+
+        if (aboard == 0 && *(short*)(e + 0x10) == 0x63) *(short*)(e + 0x10) = 3;
+
+        short state = *(short*)(e + 0x10);
+
+        if (state == 1)
+        {
+            short speed = *(short*)(e + 0x12);
+            *(int*)(e + 0x20) += speed << 0xc;
+            *(int*)(e + 0x5c) += speed;
+
+            speed++;
+            *(short*)(e + 0x12) = speed;
+            if (speed > *(short*)(e + 0x14)) *(short*)(e + 0x12) = *(short*)(e + 0x14);
+
+            if (*(int*)(e + 0x5c) > *(short*)(e + 0x16))
+            {
+                *(short*)(e + 0x10) = 2;
+                return;
+            }
+        }
+
+        if (state == 2)
+        {
+            short speed = *(short*)(e + 0x12);
+            *(int*)(e + 0x20) += speed << 0xc;
+            speed--;
+            *(short*)(e + 0x12) = speed;
+            if (speed == 0) *(short*)(e + 0x10) = 0x63;
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        short fall = *(short*)(e + 0x12);
+        *(int*)(e + 0x20) += fall << 0xc;
+        fall--;
+        *(short*)(e + 0x12) = fall < -0x1e ? (short)-0x1e : fall;
+
+        int rest = *(short*)(e + 0x9a);
+        if (*(int*)(e + 0x20) >> 0xc >= rest) return;
+
+        *(int*)(e + 0x20) = rest << 0xc;
+        *(short*)(e + 0x10) = 0;
+    }
 }

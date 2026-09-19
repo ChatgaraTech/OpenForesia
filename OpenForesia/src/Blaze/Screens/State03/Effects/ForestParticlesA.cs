@@ -589,7 +589,10 @@ public static unsafe partial class Blaze
     /// pas assez pour qu'elle y parte.
     /// </para>
     /// </summary>
-    private static void TickRisingEmber(byte* e, byte* atlas, byte kind, bool reddens)
+    /// <param name="fade">Ce que la teinte perd par canal et par image : <c>-5</c> ; <c>-2</c> pour la
+    /// copie de la grotte scellee <c>0x0043ADC0</c> (sous-zones 6-7), qui ne differe que par la, par
+    /// sa planche et par son <c>+0x0a</c>.</param>
+    private static void TickRisingEmber(byte* e, byte* atlas, byte kind, bool reddens, short fade = -5)
     {
         if (*(short*)(e + 0x10) == 0)
         {
@@ -630,7 +633,7 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x5c) = radius + *(short*)(e + 0x14);
 
         (*(short*)(e + 0x9a))++;
-        BrightenEntityTint_00404DE0(e, -5, -5, -5);
+        BrightenEntityTint_00404DE0(e, fade, fade, fade);
 
         if (reddens)
         {

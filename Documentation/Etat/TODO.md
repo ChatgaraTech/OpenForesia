@@ -3,7 +3,7 @@
 Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**quatre zones fermées dans la
 journée** : le château de l’immortel — 170 sur 170 —, puis en un lot chacune les ruines souterraines
 — 35 sur 35 —, les ruines dans le lac — 41 sur 41 — et **la vallée d’argent — 46 sur 46**, le
-onzième ensemble). **Il ne reste que la grotte scellée — 166 / 349 après ses lots 1 à 4 ; toutes les
+onzième ensemble). **Il ne reste que la grotte scellée — 213 / 349 après ses lots 1 à 5 ; toutes les
 routines d'IA du jeu sont désormais écrites.** La zone 5, le Labyrinthe, a été
 fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du dragon de feu et la
 vieille tour.
@@ -32,12 +32,14 @@ Belzébuth. **Rien n'en a été exercé en jeu.**
 l'un d'eux, et les quatre bouffées obliques (la bouffée de la tour, trouvée par la recherche de
 parenté). La sous-zone 1 s'avère être une machine à trois mots d'état (`DataSymbols.md`).
 
-**La suite** : **183 gestionnaires simples** — 74 « B », 84 « C » (69 lectures), 25 « D »
-(18 lectures), `Zone10ParComplexite.md`. La recherche de parenté du lot 4 a déjà désigné, hors des
-blocs 0 à 3, **sept « B » quasi identiques à un corps écrit** : `0x0043EB60` (= `0x0040CDA0`, zéro
-écart masqué), `0x0043ADC0` (≈ `0x00412330`), `0x0043CD70` (≈ `0x0042FB50`), `0x0043D3A0`
-(≈ `0x0041B9F0`), `0x0043DA60` (≈ `0x0041B220`), `0x00484BB0` (≈ `0x00483A30`), plus `0x0046F9D0`
-(≈ `0x00459B20`, cinq écarts). À confirmer constantes rendues en tête du lot 5.
+**Lot 5 (même jour) : 213 sur 349** — les sept copies désignées par la recherche de parenté,
+confirmées constantes rendues et branchées (leurs parents paramétrés), puis les quarante « B » des
+sous-zones 4 à 10.
+
+**La suite** : **136 gestionnaires simples** — 27 « B » (les salles 11 à 15), 84 « C »
+(69 lectures), 25 « D » (18 lectures), `Zone10ParComplexite.md`. La recherche de parenté ne compare
+que des corps de même longueur : une variante à longueur voisine (quelques instructions de plus ou
+de moins) trouverait sans doute d'autres cousins parmi les « C » — `0x00485330` en était un.
 
 # ONZE ENSEMBLES COMPLETS — LA VALLÉE D’ARGENT FERMÉE (2026-09-19)
 

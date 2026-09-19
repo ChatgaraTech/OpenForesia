@@ -665,23 +665,31 @@ public static unsafe partial class Blaze
     /// <c>(8, 12, 12)</c>, et s'eteint a 30000.
     /// </para>
     /// </summary>
-    private static void EntityHandler_0042FB50(byte* e)
+    private static void EntityHandler_0042FB50(byte* e) => TickColdWave(e, 0xc2, 5, 0xfa, 0xbe);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0042FB50"/>. Sa copie de la grotte scellee,
+    /// <c>0x0043CD70</c> (sous-zones 11-12, 2026-09-19), n'en differe que par le sous-type seme
+    /// (<c>0xca</c>), son <c>+0x0a</c> (<c>0x0f</c>) et sa teinte de depart, rouge et bleu echanges :
+    /// <c>0xbe / 0xbe / 0xfa</c> au lieu de <c>0xfa / 0xbe / 0xbe</c>.
+    /// </summary>
+    private static void TickColdWave(byte* e, byte subtype, byte kind, byte red, byte blue)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             e[4] = (byte)(s_Unknown_005edec4 + 1);                 // Ghidra: DAT_005edec4 + 1
             e[0x39] = 0xbe;
-            e[0x3a] = 0xbe;
-            e[0x0a] = 5;
+            e[0x3a] = blue;
+            e[0x0a] = kind;
             e[0x0b] = 0;
-            e[0x38] = 0xfa;
+            e[0x38] = red;
             *(short*)(e + 0x28) = 0;
             *(short*)(e + 0x2a) = 0;
             *(short*)(e + 0x2c) = 0;
             *(int*)(e + 0x20) += 0x64000;
             *(short*)(e + 0x12) = 0;
             *(short*)(e + 0x10) = 1;
-            SpawnCastEntity_0047AAE0(e, 0xc2, 0, -1);              // Ghidra: FUN_0047aae0
+            SpawnCastEntity_0047AAE0(e, subtype, 0, -1);            // Ghidra: FUN_0047aae0
             *(short*)(e + 0x12) = 700;
         }
 

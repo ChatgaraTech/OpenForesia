@@ -888,4 +888,534 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x34) = 0;
         *(short*)(e + 0x10) = 1;
     }
+
+    // =====================================================================
+    // LOT 5 (2026-09-19) — les « B » des blocs 4 a 10
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00470130</c> (sans rien semer) et <c>0x004700c0</c> (semant <c>0x3c</c> pres
+    /// de la camera a chaque image) — sous-zones 6 et 7, 24 et 32 instructions. <b>Ce qui tangue sur
+    /// place</b> : sa phase <c>+0x32</c> avance de <c>0x44</c> par image (et repasse sous
+    /// <c>0x1000</c> quand elle le DEPASSE — <c>0x1000</c> lui-meme est garde une image), et sa
+    /// hauteur prend le sinus de la phase decale de <c>+0x14</c> bits (retenu en <c>+0x12</c> a la
+    /// naissance). La hauteur n'est jamais rendue : elle derive de la somme des sinus.
+    /// </summary>
+    private static void TickSwayingFloat_00470130(byte* e, bool seeds)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = *(short*)(e + 0x14);
+            *(short*)(e + 0x14) = 0;
+        }
+
+        *(short*)(e + 0x32) += 0x44;
+        if (*(short*)(e + 0x32) > 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+        int sin = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32));
+        *(int*)(e + 0x20) += sin << (e[0x12] & 0x1f);
+
+        if (seeds) SpawnEffectNearCamera_00468110(e, 0x3c, 0, -1);  // Ghidra: FUN_00468110
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e2c0</c> — sous-zones 6 et 7. Absente de <c>Blaze.c</c> ; 46 instructions.
+    /// <b>Le grondement lointain</b> : passe 150 images, une chance sur deux cents par image — et
+    /// au plus tard a la 251e —, la voix <c>0x19</c> de la zone, hauteur tiree de 500 a 699, gain
+    /// de 2 500 a 4 499, sans position. Le compte repart de zero.
+    /// </summary>
+    private static void EntityHandler_0046E2C0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x12) += 1;
+        bool lucky = (short)(CrtRand() % 0xc8) == 1;
+        if (!(lucky && *(short*)(e + 0x12) > 0x96) && *(short*)(e + 0x12) <= 0xfa) return;
+
+        *(short*)(e + 0x12) = 0;
+        short pitch = (short)(CrtRand() % 0xc8 + 0x1f4);
+        short gain = (short)(CrtRand() % 0x7d0 + 0x9c4);
+        Aud.PlaySoundEffect(ZoneSound(0x19), pitch, gain, gain);   // Ghidra: FUN_0053cea0
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046dfc0</c> (sous-zones 5, 8, 10) et <c>0x00470190</c> (6-7) — absentes de
+    /// <c>Blaze.c</c> ; 48 et 53 instructions. <b>La roue qui roule, troisieme forme</b> : celle de
+    /// <see cref="EntityHandler_0046C2F0"/>, mais l'amplitude du sinus est un decalage de
+    /// <c>+0x14</c> bits (retenu en <c>+0x12</c> a la naissance), et la naissance est la. Les deux
+    /// copies different par leurs masques de deplacement — <c>0x8840 / 0xa840</c> et
+    /// <c>0x0802 / 0xa842</c>, le premier en sous-zone 7 — et la seconde meurt quand elle porte le bit
+    /// <c>0x20000000</c>.
+    /// </summary>
+    private static void TickShiftedWheel_0046DFC0(byte* e, uint maskInSeven, uint maskElsewhere, bool diesOnFlag)
+    {
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int sin = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32));
+            *(int*)(e + 0x20) += unchecked((int)0xfff9c000) - (sin << (e[0x12] & 0x1f));
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = *(short*)(e + 0x14);
+            *(short*)(e + 0x14) = 0;
+        }
+
+        MoveSceneEntity_00455B30(e, (byte)s_Unknown_005de52c != 7 ? maskElsewhere : maskInSeven);   // Ghidra: FUN_00455b30
+
+        *(short*)(e + 0x32) += 0x44;
+        if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+        int lift = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32));
+        *(int*)(e + 0x20) += (lift << (e[0x12] & 0x1f)) + 0x64000;
+
+        TestTriggerVolumes_00534CD0((uint*)e);                      // Ghidra: FUN_00534cd0
+
+        if (diesOnFlag && (*(uint*)e & 0x20000000) != 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046ce60</c> — sous-zones 5, 8 et 10. Presente dans <c>Blaze.c</c> ;
+    /// 49 instructions. <b>Ce qui tourne en ellipse</b> : il retient sa position de naissance comme
+    /// centre, et son <c>+0x30</c> comme vitesse angulaire ; il se place ensuite a
+    /// <c>+0x14</c> unites en X et <c>+0x16</c> en Z du centre, sur une phase qui part de son cap et
+    /// tourne dans les deux sens.
+    /// </summary>
+    private static void EntityHandler_0046CE60(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = *(short*)(e + 0x32);
+            *(int*)(e + 0x5c) = *(short*)(e + 0x30);
+            *(short*)(e + 0x30) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short phase = *(short*)(e + 0x12);
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(phase) * *(short*)(e + 0x14) + *(int*)(e + 0x44);
+        int z = (int)Winsys3d.GetCosTableEntry(phase) * *(short*)(e + 0x16) + *(int*)(e + 0x4c);
+        *(short*)(e + 0x12) += (short)*(int*)(e + 0x5c);
+        *(int*)(e + 0x24) = z;
+
+        if (*(short*)(e + 0x12) > 0x1000) *(short*)(e + 0x12) -= 0x1000;
+        if (*(short*)(e + 0x12) < 0) *(short*)(e + 0x12) += 0x1000;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e360</c> — sous-zones 6 et 7. Absente de <c>Blaze.c</c> ; 54 instructions.
+    /// <b>Ce qui flotte en tournant</b> : a sa naissance il fait naitre l'incantation <c>0xff</c>
+    /// 30 unites au-dessus de lui (sa hauteur est pretee, puis rendue) et tire une phase ; ensuite
+    /// il tourne de <c>0x64</c> par image et sa hauteur ondule de 5 unites autour de celle de sa
+    /// naissance, la phase avancant de <c>0x64</c> aussi.
+    /// </summary>
+    private static void EntityHandler_0046E360(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(int*)(e + 0x5c) = CrtRand() % 0x1000;
+            *(int*)(e + 0x20) += 0x1e000;
+            SpawnCastEntity_0047AAE0(e, 0xff, 0, -1);               // Ghidra: FUN_0047aae0
+            *(int*)(e + 0x20) -= 0x1e000;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        SpinAndBob_0046E3C1(e);
+    }
+
+    /// <summary>Ghidra: <c>0x0046e3c1</c> / <c>0x0046e16e</c> — <b>tourner et onduler</b>, le pas par
+    /// image commun a <see cref="EntityHandler_0046E360"/> et a <see cref="EntityHandler_0046E100"/> :
+    /// cap et phase avancent de <c>0x64</c>, la hauteur ondule de 5 unites autour de <c>+0x12</c>.</summary>
+    private static void SpinAndBob_0046E3C1(byte* e)
+    {
+        *(short*)(e + 0x32) += 0x64;
+        if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+        int sin = (int)Winsys3d.GetSinTableEntry(*(int*)(e + 0x5c));
+        *(int*)(e + 0x20) = sin * 5 + (*(short*)(e + 0x12) << 0xc);
+
+        int phase = *(int*)(e + 0x5c) + 0x64;
+        *(int*)(e + 0x5c) = phase;
+        if (phase >= 0x1000) *(int*)(e + 0x5c) = phase - 0x1000;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e100</c> — sous-zones 4 et 9. Absente de <c>Blaze.c</c> ; 57 instructions.
+    /// <see cref="EntityHandler_0046E360"/> en trois etats au lieu de deux : la naissance tire la
+    /// phase (etat 1), l'image suivante fait naitre l'incantation <c>0xff</c> 30 unites plus haut
+    /// (etat 2), puis il tourne et ondule.
+    /// </summary>
+    private static void EntityHandler_0046E100(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(int*)(e + 0x20) += 0x1e000;
+            SpawnCastEntity_0047AAE0(e, 0xff, 0, -1);               // Ghidra: FUN_0047aae0
+            *(short*)(e + 0x10) = 2;
+            *(int*)(e + 0x20) -= 0x1e000;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(int*)(e + 0x5c) = CrtRand() % 0x1000;
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        SpinAndBob_0046E3C1(e);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e610</c> — sous-zones 6 et 7. Absente de <c>Blaze.c</c> ; 60 instructions.
+    /// <b>Le tremplin, troisieme forme</b> : celui de <see cref="EntityHandler_00468950"/>, mais sa
+    /// hauteur de repos est retenue en <c>+0x16</c> (et non en <c>+0x9a</c>), et la vitesse qu'il
+    /// donne au quart d'onde est fixe, <c>0x14000</c> — celle que le premier ne donne que par
+    /// defaut.
+    /// </summary>
+    private static void EntityHandler_0046E610(byte* e)
+    {
+        e[7] &= 0xef;
+        uint flags = *(uint*)e & 0xffffdfff;
+        *(uint*)e = flags;
+        *(short*)(e + 0x2a) = 0x1770;
+
+        if ((flags & 0x10) == 0 && *(short*)(e + 0x10) == 0) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + *(short*)(e + 0x14) * 0x9c + 0x10) = 1;   // le voisin, reveille
+            *(short*)(e + 0x16) = (short)(*(int*)(e + 0x20) >> 0xc);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        int rest = *(short*)(e + 0x16);
+        int sin = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12));
+        *(short*)(e + 0x12) += 0x100;
+        *(int*)(e + 0x20) = (sin + (rest << 4)) << 8;
+
+        short phase = *(short*)(e + 0x12);
+        if (phase > 0x800)
+        {
+            *(short*)(e + 0x10) = 0;
+            *(int*)(e + 0x20) = rest << 0xc;
+        }
+
+        if (phase != 0x400) return;
+
+        *(int*)(e + 0x54) = 0x14000;
+        e[7] |= 0x10;
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x58) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046ea40</c> — sous-zones 6 et 7. Absente de <c>Blaze.c</c> ; 61 instructions.
+    /// <b>Ce qui se deplace quand la camera approche</b>. Il porte en permanence les bits
+    /// <c>0x6000</c> de son mot d'etat. Quand la camera (<c>0x005de068</c>) passe a moins de 150
+    /// unites — ou une fois parti —, il compte dix images et pose son <c>+0x24</c> a 5 unites, dix
+    /// de plus et le pose a 405, puis s'arrete (etat 3). Ce sont des AFFECTATIONS de la coordonnee
+    /// Z, pas des deplacements.
+    /// </summary>
+    private static void EntityHandler_0046EA40(byte* e)
+    {
+        int* camera = Mem.Camera(0x005de068);
+        int dx = (*(int*)(e + 0x1c) >> 0xc) - (camera[0] >> 0xc);
+        int dy = (*(int*)(e + 0x20) >> 0xc) - (camera[1] >> 0xc);
+        int dz = (*(int*)(e + 0x24) >> 0xc) - (camera[2] >> 0xc);
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));   // Ghidra: FUN_00545a10
+
+        *(uint*)e |= 0x6000;
+
+        if (distance > 0x96 && *(short*)(e + 0x10) == 0) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) += 1;
+            if (*(short*)(e + 0x12) >= 0x0a)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+                *(int*)(e + 0x24) = 0x5000;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x12) += 1;
+        if (*(short*)(e + 0x12) < 0x0a) return;
+
+        *(short*)(e + 0x10) = 3;
+        *(short*)(e + 0x12) = 0;
+        *(int*)(e + 0x24) = 0x195000;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046dd90</c> — sous-zones 5, 8 et 10. Absente de <c>Blaze.c</c> ; 68
+    /// instructions. <b>Le piston</b> : il retient son point de depart (X, Z) et sa course par
+    /// image (<c>+0x14</c> vers <c>+0x12</c>), puis s'ecarte du point dans son cap jusqu'a 240
+    /// unites, s'arrete deux images, revient jusqu'a zero, s'arrete quinze images, et repart en
+    /// ayant inverse sa course (et efface le bit <c>0x2000</c> de son mot d'etat). Sa vitesse
+    /// <c>+0x50..+0x58</c> est tenue a zero.
+    /// <para>
+    /// <b>Les axes sont croises</b> : le sinus du cap va sur Z et le cosinus sur X, a l'inverse des
+    /// deplacements ordinaires — la course part donc a angle droit du cap.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046DD90(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = *(short*)(e + 0x14);
+            *(short*)(e + 0x14) = 0;
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+
+            short reach = *(short*)(e + 0x14);
+            short course = *(short*)(e + 0x32);
+            *(int*)(e + 0x24) = (int)Winsys3d.GetSinTableEntry(course) * reach + *(int*)(e + 0x4c);
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetCosTableEntry(course) * reach + *(int*)(e + 0x44);
+
+            short next = (short)(*(short*)(e + 0x12) + reach);
+            *(short*)(e + 0x14) = next;
+
+            if (next > 0xf0)
+            {
+                *(short*)(e + 0x14) = 0xf0;
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x9a) = 2;
+            }
+
+            if (*(short*)(e + 0x14) < 0)
+            {
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x9a) = 0x0f;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x9a) -= 1;
+        if (*(short*)(e + 0x9a) != 0) return;
+
+        *(short*)(e + 0x12) = (short)-*(short*)(e + 0x12);
+        *(short*)(e + 0x10) = 1;
+        *(uint*)e &= 0xffffdfff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e1c0</c> — sous-zones 4 et 9. Absente de <c>Blaze.c</c> ; 73 instructions.
+    /// <see cref="EntityHandler_0046E100"/> une fois de plus, mais l'incantation nee a la seconde
+    /// image est <c>0xfe</c>, a sa hauteur ; et tant que le bit de rang <c>+0x14</c> de la banque 0
+    /// n'est PAS pose, il seme <c>0x3b</c> pres de la camera a chaque image.
+    /// </summary>
+    private static void EntityHandler_0046E1C0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 1)
+        {
+            SpawnCastEntity_0047AAE0(e, 0xfe, 0, -1);               // Ghidra: FUN_0047aae0
+            *(short*)(e + 0x10) = 2;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(int*)(e + 0x5c) = CrtRand() % 0x1000;
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        SpinAndBob_0046E3C1(e);
+
+        // Ghidra: le bit se lit en division C (n / 8, n % 8), comme la dalle du lot 2.
+        int flag = *(short*)(e + 0x14);
+        short cell = (short)(flag / 8);
+        if ((Mem.s_StateBank0_005e96e0[cell] & (byte)(1 << ((flag - cell * 8) & 0x1f))) != 0) return;
+
+        SpawnEffectNearCamera_00468110(e, 0x3b, 0, -1);            // Ghidra: FUN_00468110
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046d640</c> (sous-zones 5, 8, 10 ; gain <c>0x1000</c>) et <c>0x0046f8b0</c>
+    /// (6-7 ; gain <c>0x1500</c>) — absentes de <c>Blaze.c</c>, 86 instructions, a cette seule
+    /// immediate pres. <b>La herse qui tombe</b>, sur le bit de rang <c>+0x16</c> de la banque 0 :
+    /// tant qu'il est eteint, rien. Pose, elle bascule (<c>+0x34</c> descend de 5, puis 7, 9... par
+    /// image) jusqu'a <c>+0x14</c> sous sa position retenue, s'y cale en sonnant (voix <c>0x21</c>),
+    /// et secoue la camera (<see cref="TryPublishCameraEffectNearEntity"/>) d'une amplitude qui part
+    /// de 8, change de signe et decroit d'un a chaque image ; a ±1, un dernier effet a zero, et elle
+    /// se fige (etat 3).
+    /// </summary>
+    private static void TickFallingPortcullis_0046D640(byte* e, short gain)
+    {
+        int flag = *(short*)(e + 0x16);
+        int cell = flag / 8;                                        // Ghidra: division C
+        if ((Mem.s_StateBank0_005e96e0[cell] & (byte)(1 << ((flag - cell * 8) & 0x1f))) == 0) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 5;
+            *(int*)(e + 0x5c) = *(short*)(e + 0x34);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short step = *(short*)(e + 0x12);
+            *(short*)(e + 0x34) -= step;
+            *(short*)(e + 0x12) = (short)(step + 2);
+
+            short drop = *(short*)(e + 0x14);
+            if (*(short*)(e + 0x34) < *(int*)(e + 0x5c) - drop)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 8;
+                *(short*)(e + 0x34) = (short)((short)*(int*)(e + 0x5c) - drop);
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x21), 0x400, gain, 0, 0);   // Ghidra: FUN_00468080
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, *(short*)(e + 0x12), 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+
+        short jolt = (short)-*(short*)(e + 0x12);
+        jolt = jolt > 0 ? (short)(jolt - 1) : (short)(jolt + 1);
+        *(short*)(e + 0x12) = jolt;
+        if (jolt != 1 && jolt != -1) return;
+
+        TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, 0, 0x3e7, 0, 0);
+        *(short*)(e + 0x10) = 3;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046f070</c> — sous-zones 6 et 7. Absente de <c>Blaze.c</c> ; 88 instructions.
+    /// <b>Le bruit qui rode</b> : l'entite porte le bit <c>0x4000</c> ; une image sur cent vingt, elle
+    /// se deplace pour un instant a ±300 unites de sa place, cap tire de <c>0xb38</c> a
+    /// <c>0xd2b</c>, y fait entendre la voix BRUTE <c>0x1f</c> ou <c>0x22</c> (hauteur 246 a 265,
+    /// gain <c>0x2000</c>), y seme <c>0x32</c> pres de la camera, et revient a sa place et a son cap.
+    /// <para>
+    /// Le tirage qui suit la sauvegarde de la position est jete — un appel de plus au generateur.
+    /// Et l'identifiant de la voix est range dans l'emplacement de l'argument sur la pile : sans
+    /// effet, le corps ne relit plus son argument.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046F070(byte* e)
+    {
+        *(uint*)e |= 0x4000;
+
+        if (CrtRand() % 0x78 != 1) return;
+
+        short heading = *(short*)(e + 0x32);
+        int x = *(int*)(e + 0x1c);
+        int z = *(int*)(e + 0x24);
+        int y = *(int*)(e + 0x20);
+
+        _ = CrtRand();                                              // Ghidra: resultat jete
+        *(int*)(e + 0x1c) += (CrtRand() % 0x258 - 0x12c) << 0xc;
+        *(int*)(e + 0x24) += (CrtRand() % 0x258 - 0x12c) << 0xc;
+        *(short*)(e + 0x32) = (short)(CrtRand() % 0x1f4 + 0xb38);
+
+        short voice = (short)((CrtRand() % 2) * 3 + 0x1f);
+        short pitch = (short)(CrtRand() % 0x14 + 0xf6);
+        TryPlaySoundNearEntity((uint*)e, voice, pitch, 0x2000, 0, 0);   // Ghidra: FUN_00468080
+
+        *(short*)(e + 0x16) = 3;
+        SpawnEffectNearCamera_00468110(e, 0x32, 0, -1);            // Ghidra: FUN_00468110
+
+        *(int*)(e + 0x20) = y;
+        *(int*)(e + 0x24) = z;
+        *(int*)(e + 0x1c) = x;
+        *(short*)(e + 0x32) = heading;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e770</c> — sous-zones 6 et 7. Absente de <c>Blaze.c</c> ; 90 instructions.
+    /// <b>Le geyser</b>. Rien tant que l'octet <c>0x005de038</c> (la carte courante) n'est pas nul.
+    /// La camera a plus de 3 000 unites le remet au repos ; plus pres, il s'eveille et compte :
+    /// entre la 31e et la 41e image il fait naitre <c>0xcb</c> (le bouillonnement) ; passe la 50e,
+    /// une chance sur cent par image — et au plus tard passe la 100e — il jaillit : 10 a 14 images
+    /// de <c>0xca</c>, puis retour au repos.
+    /// </summary>
+    private static void EntityHandler_0046E770(byte* e)
+    {
+        if (*(byte*)Mem.Camera(0x005de038) != 0) return;
+
+        int* camera = Mem.Camera(0x005de068);
+        int dx = (camera[0] >> 0xc) - (*(int*)(e + 0x1c) >> 0xc);
+        int dy = (camera[1] >> 0xc) - (*(int*)(e + 0x20) >> 0xc);
+        int dz = (camera[2] >> 0xc) - (*(int*)(e + 0x24) >> 0xc);
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));   // Ghidra: FUN_00545a10
+
+        if (distance >= 0xbb8)
+        {
+            *(short*)(e + 0x10) = 0;
+        }
+        else if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) += 1;
+            short age = *(short*)(e + 0x12);
+            if (age > 0x1e && age < 0x2a) SpawnEffectEntity(e, 0xcb, 0, -1);   // Ghidra: FUN_0047a9d0
+
+            short roll = (short)(CrtRand() % 100);
+            age = *(short*)(e + 0x12);
+            if (age > 100 || (age > 0x32 && roll == 1))
+            {
+                int r = CrtRand();
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = (short)(r % 5 + 10);
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x12) -= 1;
+        if (*(short*)(e + 0x12) >= 0)
+        {
+            SpawnEffectEntity(e, 0xca, 0, -1);                      // Ghidra: FUN_0047a9d0
+            return;
+        }
+
+        *(short*)(e + 0x10) = 0;
+    }
 }

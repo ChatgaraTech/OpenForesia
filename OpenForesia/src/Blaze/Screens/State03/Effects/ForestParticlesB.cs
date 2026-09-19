@@ -1311,7 +1311,15 @@ public static unsafe partial class Blaze
     /// <c>sons[0x12]</c>.
     /// </para>
     /// </summary>
-    private static void EntityHandler_00459B20(byte* e)
+    private static void EntityHandler_00459B20(byte* e) => TickPressurePlate_00459B20(e, 0x12, 0x400, 0x1000);
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_00459B20"/>. Sa copie de la grotte scellee,
+    /// <c>0x0046F9D0</c> (sous-zones 6-7, 2026-09-19), n'en differe que par son son : la voix
+    /// <c>0x25</c> de la zone, hauteur <c>0x200</c>, gain <c>0x2000</c> — ceux de la dalle de la
+    /// grotte <see cref="EntityHandler_00468850"/>, qui fait la meme chose dans un autre ordre.
+    /// </summary>
+    private static void TickPressurePlate_00459B20(byte* e, int voice, short pitch, short gain)
     {
         if (*(short*)(e + 0x10) == 0)
         {
@@ -1335,7 +1343,7 @@ public static unsafe partial class Blaze
         {
             if (*(short*)(e + 0x98) == 0)
             {
-                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x12], 0x400, 0x1000, 0, 0);
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[voice], pitch, gain, 0, 0);
                 *(short*)(e + 0x98) = 1;
             }
 

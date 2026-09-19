@@ -148,3 +148,8 @@ EntityHandler_00433900 | 0x00550DA8 | +0x00 | EntityHandler_00433900,TickSlanted
 EntityHandler_004354A0 | 0x00550EB8 | +0x00 | EntityHandler_004354A0,TickSlantedPuff | a2f1c18b69fb | idem (0x004354c1)
 EntityHandler_0043BDD0 | 0x00551160 | +0x00 | EntityHandler_0043BDD0,TickSlantedPuff | 94995fb7a7fd | idem (0x0043bdf1)
 EntityHandler_0043C010 | 0x00551158 | +0x00 | EntityHandler_0043C010,SpawnStatusEffectEntity_0047AC40 | 7a06017f0b44 | n'ecrit jamais +0x40 (aucun acces dans ses 78 instructions) ; creneau de 0x0056b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40 qui le met a 0 — la preuve de 0x004079E0
+
+# ---- Ajoute le 2026-09-19 (grotte scellee, lot 5) : l'helice, la goutte, la fumee qui monte vite
+EntityHandler_0043D3A0 | 0x005511F0 | +0x00 | EntityHandler_0043D3A0,TickHelixMote | 0314d80d8da4 | pose 0 a la naissance (`xor eax,eax ; mov [esi+40h],al`, 0x0043d3b1) et ne l'ecrit plus — la preuve de 0x0041B9F0
+EntityHandler_0043DA60 | 0x005511F0 | +0x00 | EntityHandler_0043DA60,TickFallingDrop | d9a1412edb3a | pose 0 a la naissance (0x0043da82) et ne l'ecrit plus — la preuve de 0x0041B220
+EntityHandler_00438260 | 0x00550F60 | +0x00 | EntityHandler_00438260 | 17a648603239 | pose 0 a la naissance (`xor ebx,ebx ; mov [esi+40h],bl`, 0x0043827f) et ne l'ecrit plus

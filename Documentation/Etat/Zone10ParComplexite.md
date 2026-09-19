@@ -11,7 +11,7 @@ tables de sauts, appelees que le C# ne connait pas encore, jumeaux — et les ra
 categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/non vient de
 `GestionnairesEntites.md` : le regenerer d'abord.
 
-**349 gestionnaires, 166 implementes, 183 a ecrire.**
+**349 gestionnaires, 213 implementes, 136 a ecrire.**
 
 ## Le compte
 
@@ -19,7 +19,7 @@ categories, dans l'ordre ou il vaut la peine de les prendre. L'etat implemente/n
 
 | categorie | ce que c'est | corps | lectures | instructions |
 |---|---|---:|---:|---:|
-| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 74 | 74 | 5199 |
+| **B — simple** | pas d'IA, <= 100 instr., sans table de sauts ni inconnue | 27 | 27 | 1813 |
 | **C — moyen** | pas d'IA, <= 250 instr., ou une table de sauts, ou une inconnue | 84 | 69 | 10838 |
 | **D — gros** | pas d'IA, > 250 instr. | 25 | 18 | 6299 |
 
@@ -29,82 +29,35 @@ aucune, puisque son corps est deja ecrit.
 **Les sous-zones se lisent par bloc.** Une zone installe ses tables par groupes de sous-zones ;
 les gestionnaires d'un meme groupe vivent ensemble, et c'est souvent le bon decoupage pour un lot.
 
-## B — simple (74)
+## B — simple (27)
 
 | gestionnaire | sous-zones | table | instr. | sauts | Blaze.c | jumeaux a ecrire | note |
 |---|---|---|---:|---:|---|---|---|
-| `0x00470130` | 6,7 | 0056ADC8 | 24 | 0 | oui |  |  |
-| `0x004700C0` | 6,7 | 0056ADC8 | 32 | 0 | oui |  |  |
 | `0x0043C880` | 11,12 | 0056B2C8 | 33 | 0 | oui |  |  |
 | `0x00441450` | 13,14,15 | 0056B1C8 | 33 | 0 | non |  |  |
 | `0x00486D60` | 13,14,15 | 0056B1C8 | 38 | 0 | oui |  |  |
 | `0x004414E0` | 13,14,15 | 0056B1C8 | 41 | 0 | oui |  |  |
-| `0x0046E070` | 4,9 | 0056ADC8 | 41 | 0 | non |  |  |
 | `0x00485EC0` | 13,14,15 | 0056B1C8 | 41 | 0 | non |  |  |
 | `0x00486680` | 13,14,15 | 0056B0C8 | 42 | 0 | oui |  |  |
-| `0x0043AEF0` | 6,7 | 0056B0C8 | 43 | 0 | oui |  |  |
-| `0x0043A860` | 6,7 | 0056B1C8 | 44 | 0 | non |  |  |
 | `0x004855F0` | 13,14,15 | 0056B0C8 | 44 | 0 | oui |  |  |
-| `0x0046E2C0` | 6,7 | 0056ADC8 | 46 | 0 | oui |  |  |
-| `0x0046DFC0` | 5,8,10 | 0056ADC8 | 48 | 0 | oui |  |  |
-| `0x0046CE60` | 5,8,10 | 0056ADC8 | 49 | 0 | oui |  |  |
-| `0x00434BE0` | 5,8,10 | 0056B1C8 | 50 | 0 | oui |  |  |
 | `0x00441B80` | 13,14,15 | 0056B1C8 | 50 | 0 | non |  |  |
-| `0x00470190` | 6,7 | 0056ADC8 | 53 | 0 | oui |  |  |
-| `0x0046E360` | 6,7 | 0056ADC8 | 54 | 0 | oui |  |  |
-| `0x0043CD70` | 11,12 | 0056B1C8 | 57 | 0 | oui |  |  |
-| `0x0046E100` | 4,9 | 0056ADC8 | 57 | 0 | oui |  |  |
 | `0x004423D0` | 13,14,15 | 0056B1C8 | 59 | 0 | non |  |  |
-| `0x0043DA60` | 11,12 | 0056B2C8 | 60 | 0 | oui |  |  |
-| `0x0046E610` | 6,7 | 0056ADC8 | 60 | 0 | non |  |  |
 | `0x0043DF60` | 11,12 | 0056B1C8 | 61 | 0 | non |  |  |
-| `0x0046EA40` | 6,7 | 0056ADC8 | 61 | 0 | non |  |  |
-| `0x00437BB0` | 4,9 | 0056B1C8 | 62 | 0 | non |  |  |
 | `0x00485760` | 13,14,15 | 0056B0C8 | 63 | 0 | oui |  |  |
-| `0x0043AF70` | 6,7 | 0056B2C8 | 67 | 0 | oui |  |  |
-| `0x00484DA0` | 4,9 | 0056B1C8 | 67 | 0 | non |  |  |
 | `0x004421B0` | 13,14,15 | 0056B2C8 | 68 | 0 | oui |  |  |
-| `0x0046DD90` | 5,8,10 | 0056ADC8 | 68 | 0 | oui |  |  |
 | `0x00485680` | 13,14,15 | 0056B1C8 | 69 | 0 | non |  |  |
-| `0x00484CD0` | 4,9 | 0056B0C8 | 70 | 0 | non |  |  |
 | `0x00485850` | 13,14,15 | 0056B1C8 | 72 | 0 | non |  |  |
 | `0x004406B0` | 13,14,15 | 0056B2C8 | 73 | 0 | oui |  |  |
-| `0x0046E1C0` | 4,9 | 0056ADC8 | 73 | 0 | oui |  |  |
-| `0x0046F9D0` | 6,7 | 0056ADC8 | 73 | 0 | non |  |  |
 | `0x00486240` | 13,14,15 | 0056B1C8 | 74 | 0 | non |  |  |
 | `0x00441570` | 13,14,15 | 0056B1C8 | 75 | 0 | oui |  |  |
 | `0x00441DB0` | 13,14,15 | 0056B1C8 | 75 | 0 | oui |  |  |
 | `0x00485940` | 13,14,15 | 0056B0C8 | 75 | 0 | oui |  |  |
 | `0x004868E0` | 13,14,15 | 0056B0C8 | 76 | 0 | non |  |  |
-| `0x0043EB60` | 13,14,15 | 0056B0C8 | 77 | 0 | non |  |  |
 | `0x0043C380` | 11,12 | 0056B0C8 | 80 | 0 | non |  |  |
-| `0x004454E0` | 5,8,10 | 0056AEC8 | 82 | 0 | non |  |  |
-| `0x00445610` | 5,8,10 | 0056AEC8 | 82 | 0 | non |  |  |
-| `0x00484760` | 4,9 | 0056B0C8 | 82 | 0 | non |  |  |
-| `0x00485330` | 4,9 | 0056B1C8 | 82 | 0 | non |  |  |
-| `0x00438260` | 4,9 | 0056B2C8 | 84 | 0 | non |  |  |
-| `0x00485220` | 4,9 | 0056B0C8 | 84 | 0 | non |  |  |
-| `0x0046D640` | 5,8,10 | 0056ADC8 | 86 | 0 | oui |  |  |
-| `0x0046F8B0` | 6,7 | 0056ADC8 | 86 | 0 | oui |  |  |
-| `0x0043AA90` | 6,7 | 0056B0C8 | 88 | 0 | oui |  |  |
-| `0x0046F070` | 6,7 | 0056ADC8 | 88 | 0 | non |  |  |
-| `0x0046F1C0` | 6,7 | 0056ADC8 | 89 | 0 | oui |  |  |
-| `0x0043A730` | 6,7 | 0056B0C8 | 90 | 0 | oui |  |  |
 | `0x00442290` | 13,14,15 | 0056B1C8 | 90 | 0 | non |  |  |
-| `0x0046E770` | 6,7 | 0056ADC8 | 90 | 0 | non |  |  |
-| `0x00438710` | 4,9 | 0056B1C8 | 91 | 0 | non |  |  |
-| `0x0043B1D0` | 6,7 | 0056B2C8 | 91 | 0 | oui |  |  |
-| `0x0043D3A0` | 11,12 | 0056B2C8 | 92 | 0 | oui |  |  |
-| `0x0043A600` | 6,7 | 0056B2C8 | 93 | 0 | oui |  |  |
 | `0x00441040` | 13,14,15 | 0056B2C8 | 93 | 0 | oui |  |  |
-| `0x00484E80` | 4,9 | 0056B2C8 | 93 | 0 | oui |  |  |
-| `0x0043ADC0` | 6,7 | 0056B2C8 | 94 | 0 | non |  |  |
-| `0x00434940` | 5,8,10 | 0056B1C8 | 95 | 0 | non |  |  |
-| `0x00434A90` | 5,8,10 | 0056B1C8 | 95 | 0 | non |  |  |
 | `0x00440F00` | 13,14,15 | 0056B2C8 | 95 | 0 | non |  |  |
-| `0x004343D0` | 5,8,10 | 0056B0C8 | 96 | 0 | oui |  |  |
 | `0x00441180` | 13,14,15 | 0056B2C8 | 96 | 0 | non |  |  |
-| `0x00484BB0` | 4,9 | 0056B1C8 | 97 | 0 | non |  |  |
 | `0x004869D0` | 13,14,15 | 0056B2C8 | 98 | 0 | non |  |  |
 | `0x0043E030` | 11,12 | 0056B2C8 | 99 | 0 | non |  |  |
 

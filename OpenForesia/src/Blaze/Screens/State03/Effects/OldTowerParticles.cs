@@ -722,13 +722,21 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_0041B220(byte* e)
+        => TickFallingDrop(e, Descriptors0054FD58(), 9);                         // Ghidra: &DAT_0054fd58
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0041B220"/>. Sa copie de la grotte scellee,
+    /// <c>0x0043DA60</c> (sous-zones 11-12, 2026-09-19), n'en differe que par sa planche
+    /// (<c>0x005511f0</c>) et son <c>+0x0a</c> (6 au lieu de 9).
+    /// </summary>
+    private static void TickFallingDrop(byte* e, byte* plate, byte kind)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
-            *(byte**)(e + 0x3c) = Descriptors0054FD58();                         // Ghidra: &DAT_0054fd58
+            *(byte**)(e + 0x3c) = plate;
             e[0x40] = 0;
-            e[0x0a] = 9;
+            e[0x0a] = kind;
             e[0x0b] = 0;
             *(short*)(e + 0x28) = 0x800;
             *(short*)(e + 0x2a) = 0x800;
@@ -824,14 +832,22 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_0041B9F0(byte* e)
+        => TickHelixMote(e, Descriptors0054FD58(), 2);                           // Ghidra: &DAT_0054fd58
+
+    /// <summary>
+    /// Le corps de <see cref="EntityHandler_0041B9F0"/>. Sa copie de la grotte scellee,
+    /// <c>0x0043D3A0</c> (sous-zones 11-12, 2026-09-19), n'en differe que par sa planche
+    /// (<c>0x005511f0</c>) et son <c>+0x0a</c> (9 au lieu de 2).
+    /// </summary>
+    private static void TickHelixMote(byte* e, byte* plate, byte kind)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             e[0x40] = 0;
             e[0x0b] = 0;
             *(short*)(e + 0x10) = 1;
-            *(byte**)(e + 0x3c) = Descriptors0054FD58();                         // Ghidra: &DAT_0054fd58
-            e[0x0a] = 2;
+            *(byte**)(e + 0x3c) = plate;
+            e[0x0a] = kind;
             *(short*)(e + 0x28) = 0x800;
             *(short*)(e + 0x2a) = 0x800;
 

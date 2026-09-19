@@ -1798,4 +1798,135 @@ public static unsafe partial class Blaze
         BrightenEntityTint_00404DE0(e, -20, -20, -20);              // Ghidra: FUN_00404de0
         if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x00484da0</c> — grotte scellee, sous-zones 4 et 9 (lot 5, 2026-09-19). Absente
+    /// de <c>Blaze.c</c> ; 67 instructions. <b>La vague qui frappe</b>, en deux temps que separe le
+    /// bit <c>0x2000000</c> de son propre mot d'etat :
+    /// <list type="bullet">
+    /// <item>tant qu'il est eteint, elle grandit (<c>+0x28</c> rejoint <c>0x4000</c> d'un huitieme
+    /// par image — ecrit en DOUBLE MOT, ce qui remet <c>+0x2a</c> a zero — et <c>+0x2c</c> suit) et
+    /// s'eclaire de <c>0x080808</c> ; a <c>0x808080</c> elle pose le bit ;</item>
+    /// <item>pose, elle balaie pendant 40 images la sonde <c>(0, -200, 200, 50, 0, 400)</c> par
+    /// <see cref="ProbeMeleeTarget_00474CA0"/> : chaque victime subit le coup de son lanceur
+    /// (<c>+0x74</c>) et clignote huit images. Puis elle palit de <c>0x080808</c> par image et
+    /// libere l'emplacement (<c>*e = 0</c>) quand sa teinte est nulle.</item>
+    /// </list>
+    /// </summary>
+    private static void EntityHandler_00484DA0(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = -0xc8;
+        probe[2] = 0xc8;
+        probe[3] = 0x32;
+        probe[4] = 0;
+        probe[5] = 0x190;
+
+        uint flags = *(uint*)e;
+
+        if ((flags & 0x2000000) == 0)
+        {
+            int scale = *(short*)(e + 0x28);
+            scale += (0x4000 - scale) >> 3;
+            *(int*)(e + 0x28) = scale;
+            *(short*)(e + 0x2c) = (short)scale;
+
+            uint tint = *(uint*)(e + 0x38) + 0x80808;
+            *(uint*)(e + 0x38) = tint;
+            if (tint == 0x808080) *(uint*)e = flags | 0x2000000;
+            return;
+        }
+
+        if (*(short*)(e + 0x10) < 0x28)
+        {
+            *(short*)(e + 0x10) += 1;
+
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);    // Ghidra: FUN_00474ca0
+            if (victim == null) return;
+
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);   // Ghidra: FUN_00539b80
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 8;
+            return;
+        }
+
+        // Ghidra: LAB_00484e21 — `add eax,0FFF7F7F8h` puis `jne`.
+        uint fade = *(uint*)(e + 0x38) + 0xfff7f7f8;
+        *(uint*)(e + 0x38) = fade;
+        if (fade == 0) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00485330</c> — grotte scellee, sous-zones 4 et 9 (lot 5, 2026-09-19). Absente
+    /// de <c>Blaze.c</c> ; 82 instructions. <b>La gerbe qui frappe en roulant</b>, cousine de
+    /// <see cref="TickGrowingBolt_004850C0"/> : meme sonde <c>(0, 0, 60, 200, 0, 120)</c>, meme
+    /// sol et meme heurt (<c>0x8802</c>, et un sol franchi vaut heurt), meme coup venu du lanceur
+    /// <c>+0x74</c> et meme decoloration par double mot. Mais elle file sur sa vitesse
+    /// (<c>+0x50..+0x58</c>) des sa deuxieme image, s'aplatit (<c>+0x2a</c> et <c>+0x2c</c> perdent
+    /// la moitie par image, <c>+0x28</c> rejoint <c>0x4000</c> d'un quart), tire son modele de 8 a
+    /// 11 — et ne fait rien naitre. Huit images au plus.
+    /// </summary>
+    private static void EntityHandler_00485330(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0;
+        probe[2] = 0x3c;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x78;
+
+        if (*(short*)(e + 0x10) != 0)
+        {
+            short flat = *(short*)(e + 0x2a);
+            flat = (short)(flat - (flat >> 1));
+            *(short*)(e + 0x2a) = flat;
+            *(short*)(e + 0x2c) = flat;
+
+            short wide = *(short*)(e + 0x28);
+            *(short*)(e + 0x28) = (short)(wide + ((0x4000 - wide) >> 2));
+
+            *(int*)(e + 0x20) += *(int*)(e + 0x54);
+            *(int*)(e + 0x1c) += *(int*)(e + 0x50);
+            *(int*)(e + 0x24) += *(int*)(e + 0x58);
+        }
+
+        int height = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);                          // Ghidra: FUN_00533940
+
+        int ceiling = *(int*)(e + 0x64);
+        *(int*)(e + 0x20) = height;
+        if (height <= ceiling)
+        {
+            *(int*)(e + 0x20) = ceiling;
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(uint*)e = 0;                                           // Ghidra: LAB_0048543a
+            return;
+        }
+
+        byte* victim = SweepOpposingSideForMeleeHit_00474C70(e, probe);      // Ghidra: FUN_00474c70
+        if (victim != null)
+        {
+            if (*Mem.Camera(0x005de0b8) == 0)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);    // Ghidra: FUN_00539b80
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+        }
+
+        *(uint*)(e + 0x38) += 0xffe7e7e8;
+        e[4] = (byte)((CrtRand() & 3) + 8);
+
+        *(short*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 8) *(uint*)e = 0;
+    }
 }

@@ -1946,6 +1946,10 @@ public static unsafe partial class Blaze
             // empoisonnee.
             case 0x00483930: EntityHandler_00483930(record); return;
             case 0x00484F80: EntityHandler_00484F80(record); return;
+            // Et sa copie de la grotte scellee, sous-zones 4 et 9 (lot 5, 2026-09-19) : les deux
+            // soustractions de chaque freinage sont echangees (x - (x >> 3) - (x >> 8) au lieu de
+            // x - (x >> 8) - (x >> 3)) — meme resultat, rien d'autre ne differe.
+            case 0x00484BB0:
             case 0x00483A30: EntityHandler_00483A30(record); return;
 
             // ====================================================================================
@@ -2549,6 +2553,54 @@ public static unsafe partial class Blaze
             case 0x0046B440: EntityHandler_0046B440(record); return;
             case 0x0046BCD0: EntityHandler_0046BCD0(record); return;   // Handlers/SealedCave.cs
             case 0x004314C0: EntityHandler_004314C0(record); return;   // Effects/SealedCaveParticles.cs
+
+            // ZONE 10 — LOT 5 (2026-09-19) : six copies a quelques immediates pres, les parents
+            // parametres (la septieme, 0x00484BB0, est branchee sur 0x00483A30 plus haut).
+            case 0x0043EB60: EntityHandler_0043EB60(record); return;
+            case 0x0043ADC0: EntityHandler_0043ADC0(record); return;
+            case 0x0043CD70: EntityHandler_0043CD70(record); return;
+            case 0x0043D3A0: EntityHandler_0043D3A0(record); return;
+            case 0x0043DA60: EntityHandler_0043DA60(record); return;
+            case 0x0046F9D0: EntityHandler_0046F9D0(record); return;   // Handlers/SealedCaveMecanismes.cs
+            // Les « B » des blocs 4 a 10.
+            case 0x00470130: TickSwayingFloat_00470130(record, false); return;
+            case 0x004700C0: TickSwayingFloat_00470130(record, true); return;
+            case 0x0046E2C0: EntityHandler_0046E2C0(record); return;
+            case 0x0046E070: EntityHandler_0046E070(record); return;
+            case 0x0043AEF0: EntityHandler_0043AEF0(record); return;
+            case 0x0043A860: EntityHandler_0043A860(record); return;
+            case 0x0046DFC0: TickShiftedWheel_0046DFC0(record, 0x8840, 0xa840, false); return;
+            case 0x00470190: TickShiftedWheel_0046DFC0(record, 0x0802, 0xa842, true); return;
+            case 0x0046CE60: EntityHandler_0046CE60(record); return;
+            case 0x00434BE0: EntityHandler_00434BE0(record); return;
+            case 0x0046E360: EntityHandler_0046E360(record); return;
+            case 0x0046E100: EntityHandler_0046E100(record); return;
+            case 0x0046E610: EntityHandler_0046E610(record); return;
+            case 0x0046EA40: EntityHandler_0046EA40(record); return;
+            case 0x00437BB0: EntityHandler_00437BB0(record); return;
+            case 0x0043AF70: EntityHandler_0043AF70(record); return;
+            case 0x00484DA0: EntityHandler_00484DA0(record); return;   // Combat/Projectiles.cs
+            case 0x0046DD90: EntityHandler_0046DD90(record); return;
+            case 0x00484CD0: EntityHandler_00484CD0(record); return;
+            case 0x0046E1C0: EntityHandler_0046E1C0(record); return;
+            case 0x00484760: EntityHandler_00484760(record); return;
+            case 0x00485220: EntityHandler_00485220(record); return;
+            case 0x00438260: EntityHandler_00438260(record); return;
+            case 0x00485330: EntityHandler_00485330(record); return;   // Combat/Projectiles.cs
+            case 0x0046D640: TickFallingPortcullis_0046D640(record, 0x1000); return;
+            case 0x0046F8B0: TickFallingPortcullis_0046D640(record, 0x1500); return;
+            case 0x0046F070: EntityHandler_0046F070(record); return;
+            case 0x0046F1C0: EntityHandler_0046F1C0(record); return;   // Handlers/SealedCaveMecanismes.cs
+            case 0x0043AA90: EntityHandler_0043AA90(record); return;
+            case 0x0043A730: EntityHandler_0043A730(record); return;
+            case 0x00438710: EntityHandler_00438710(record); return;
+            case 0x0043B1D0: EntityHandler_0043B1D0(record); return;
+            case 0x0046E770: EntityHandler_0046E770(record); return;
+            case 0x004343D0: EntityHandler_004314C0(record, 0xdf); return;   // la traine du lot 4, qui seme 0xdf
+            case 0x0043A600: EntityHandler_0043A600(record); return;
+            case 0x00434940: TickCrossingFlight_00434940(record, unchecked((int)0xfff9c000), -0xbb8, 0x04, -0x44c, 0x320, -0x44c, 0x320); return;
+            case 0x00434A90: TickCrossingFlight_00434940(record, 0x384000, -0x578, 0x08, 0x708, -0xc8, -0xc8, 0x708); return;
+            case 0x00484E80: EntityHandler_00484E80(record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un

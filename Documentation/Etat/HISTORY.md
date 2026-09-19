@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **grotte scellée, lot 5 — 213 sur 349** : les quarante « B » des sous-zones 4 à 10 — herse
+  qui tombe et secoue la caméra, monte-charge, piston, geyser, bruit qui rôde, vague qui frappe,
+  pierre lancée, vol qui traverse la salle, verbe qui pousse une entité d'un pas
+- feat : sept copies d'autres zones branchées — la salve de la mine, la braise de la forêt, l'onde
+  de froid de la vallée, l'hélice et la goutte de la tour, la dalle de la forêt, la vague qui marque ;
+  leurs parents prennent les écarts en paramètres, défauts inchangés
+- doc : trois planches, trois scripts de sons et trois marges prouvées de plus (`DataSymbols.md`)
 - feat : **grotte scellée, lot 4 — 166 sur 349** : les vingt-huit « B » des sous-zones 0 à 3 et
   cinq corps de plus — roues, balancier, bloc qui culbute, tremplins, pierres qui tombent, dalles
   qui comptent le groupe, la minuterie, le levier et le battant de la sous-zone 1, un verbe de vue
