@@ -140,3 +140,11 @@ EntityHandler_004341C0 | 0x00550D58 | +0x18 | EntityHandler_004341C0,TickLabyrin
 EntityHandler_00435D60 | 0x00550E68 | +0x18 | EntityHandler_00435D60,TickLabyrinthRisingMote | 576692ceff0e | idem
 EntityHandler_00438AE0 | 0x00550F30 | +0x00 | EntityHandler_00438AE0,TickLabyrinthRisingMote | c747c921aefd | idem
 EntityHandler_0043B660 | 0x00551048 | +0x18 | EntityHandler_0043B660,TickLabyrinthRisingMote | 2d8ab366ce97 | idem
+
+# ---- Ajoute le 2026-09-19 (grotte scellee, lot 4) : la bouffee oblique et la flamme qui recule
+TickSlantedPuff_00418AF0 | 0x0054FBF8 | +0x00 | TickSlantedPuff_00418AF0,TickSlantedPuff | b2cc51695abe | pose 0 a la naissance et ne l'ecrit plus (un seul `mov byte [esi+40h],0`, 0x00418b11, jusqu au ret)
+EntityHandler_00432240 | 0x00550CB8 | +0x00 | EntityHandler_00432240,TickSlantedPuff | 5f529d9c9aed | idem, copie de la grotte (0x00432261)
+EntityHandler_00433900 | 0x00550DA8 | +0x00 | EntityHandler_00433900,TickSlantedPuff | 94f57ffb38c4 | idem (0x00433921)
+EntityHandler_004354A0 | 0x00550EB8 | +0x00 | EntityHandler_004354A0,TickSlantedPuff | a2f1c18b69fb | idem (0x004354c1)
+EntityHandler_0043BDD0 | 0x00551160 | +0x00 | EntityHandler_0043BDD0,TickSlantedPuff | 94995fb7a7fd | idem (0x0043bdf1)
+EntityHandler_0043C010 | 0x00551158 | +0x00 | EntityHandler_0043C010,SpawnStatusEffectEntity_0047AC40 | 7a06017f0b44 | n'ecrit jamais +0x40 (aucun acces dans ses 78 instructions) ; creneau de 0x0056b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40 qui le met a 0 — la preuve de 0x004079E0

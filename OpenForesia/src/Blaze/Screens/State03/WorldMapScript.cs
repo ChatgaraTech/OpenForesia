@@ -1847,6 +1847,9 @@ public static unsafe partial class Blaze
             0x004457A0 => AreaVerb_004457A0(ent),
             0x00445760 => AreaVerb_00445760(),
 
+            // Lot 4 (2026-09-19) : la vue saute sur le membre que designe l'operande.
+            0x004453E0 => AreaVerb_004453E0((short)(s[2] | (s[3] << 8))),
+
             // PALIER 3 (2026-09-18). Les deux premiers sont le meme verbe — un effet inflige au
             // membre que designe la banque 2 —, le second sans nombres flottants ; le troisieme
             // lance un script quand tout le groupe a quitte le rectangle. Aucun ne lit l'entite.
@@ -4649,6 +4652,38 @@ public static unsafe partial class Blaze
         }
 
         return 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004453e0</c> — grotte scellee, sous-zones 2 et 3 (lot 4, 2026-09-19). Absent de
+    /// <c>Blaze.c</c> ; 39 instructions. <b>La vue saute sur un membre</b> : l'operande (0 a 3)
+    /// designe l'un des quatre enregistrements <c>0x005fa988 + n * 0x9c</c> ; son placement est
+    /// finalise (<see cref="FinalizeEntityPlacement2"/>), puis sa pose est publiee dans les blocs de
+    /// vue — la meme rafale que le radeau de la foret. Rend zero.
+    /// <para>
+    /// <b>Hors de 0 a 3, le pointeur reste nul</b> et la finalisation le recoit tel quel : le binaire
+    /// n'a pas de garde. Transcrit sans en ajouter.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_004453E0(short member)
+    {
+        byte* m = null;
+        if (member == 0) m = Mem.Entity(0x005fa988);
+        if (member == 1) m = Mem.Entity(0x005faa24);
+        if (member == 2) m = Mem.Entity(0x005faac0);
+        if (member == 3) m = Mem.Entity(0x005fab5c);
+
+        FinalizeEntityPlacement2((uint*)m);                         // Ghidra: FUN_00533940
+
+        for (int i = 0; i < 4; i++)
+            *(uint*)Mem.Entity(0x005f7d70 + i * 4) = *(uint*)(m + 0x80 + i * 4);
+
+        *(int*)Mem.Arena(0x005e9a30) = *(int*)(m + 0x1c);
+        *(int*)Mem.Arena(0x005e9a34) = *(int*)(m + 0x20);
+        *(int*)Mem.Arena(0x005e9a38) = *(int*)(m + 0x24);
+        *(short*)Mem.Arena(0x005e9b38) = *(short*)(m + 0x90);
+        *(uint*)Mem.Entity(0x005f7b48) = *(uint*)(m + 0x7c);
+        return 0;
     }
 
     /// <summary>

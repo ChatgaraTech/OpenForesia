@@ -25188,3 +25188,47 @@ l'animation — `Ai/SceneEntityAiCommon.cs`.
   **216 à transcrire**, tous gestionnaires simples.
 - Dumps : `Legacy/Raw/Blaze/SealedCave/FUN_*.asm` (les huit corps lus et `0x004F6380`).
 - **Non exercé en jeu.**
+
+## 2026-09-19 (suite 7) — Grotte scellée, lot 4 : les « B » des blocs 0 à 3, 166 sur 349
+
+**133 sur 349 devient 166 sur 349** : trente-trois corps. Les vingt-huit « B » des sous-zones 0 à 3,
+la jumelle d'un d'entre eux dans les sous-zones 6-7 (`0x0046F180`), et **quatre « C » qui n'en
+étaient pas** : la recherche de parenté constantes masquées a retrouvé dans `0x00432240`,
+`0x0043BDD0`, `0x00433900` et `0x004354A0` (un par bloc) la bouffée oblique de la vieille tour
+`0x00418AF0`, à trois instructions près — la planche et la montée tirée (`% 6 + 6` au lieu de
+`% 3 + 1`). `TickSlantedPuff` prend désormais ces deux choses en paramètres.
+
+| où | corps |
+|---|---|
+| `Effects/SealedCaveParticles.cs` | la gerbe au hasard (`0x00468810` / `0x0046F180`, à leur sous-type près), l'émetteur qui tousse, les deux bouffées, l'éclair de modèle, la traîne qui suit son porteur, les quatre bouffées obliques |
+| `Handlers/SealedCave.cs` | les roues (`0x0046C260`, `0x0046C2F0` qui réécrit sa fiche de placement), ce qui remonte, ce qui tourne en rond, le plateau qui fait demi-tour, le balancier, le bloc qui culbute, le tremplin, la pierre qui se détache, et **la chaîne du mot `0x00571978`** |
+| `Handlers/SealedCaveMecanismes.cs` | les dalles qui comptent le groupe : celle qui s'effondre, les deux « tout le monde dessus » (un seul corps, deux mots), le tremplin qui attend le groupe en bas |
+| `Combat/Projectiles.cs` | la flamme qui recule en brûlant (`0x0043C010`) — elle blesse le groupe |
+| `WorldMapScript.cs` | le verbe `0x004453E0` : la vue saute sur un des enregistrements `0x005fa988 + n * 0x9c` |
+
+### Ce que le lot a appris
+
+- **La sous-zone 1 est une machine à trois mots** (`0x00571828`, `0x0057182c`, `0x00571978`, remis à
+  zéro au chargement). Sur `0x00571978` : une dalle qui veut tout le groupe pose `0x1000` ; la
+  minuterie `FUN_00470640` pose, au bout de son compte, deux bits à la fois ; le premier arme un
+  battant et une roue ; la roue arme un levier ; le levier pose… le second bit, déjà posé par la
+  minuterie. Le tableau des écrivains et des lecteurs est dans `DataSymbols.md`.
+- **Deux branches mortes de plus** : `0x00470B00` remet son compteur à zéro à chaque image, son cas
+  « 2 » n'est jamais atteint ; `0x004699F0` / `0x00470A00` masquent le mot des membres dans une
+  boucle sans effet et jettent un second compte. Et `0x0046C260` lit deux fois le sinus pour rien.
+- **Un corps sans garde** : le verbe `0x004453E0` finalise un pointeur nul si son opérande sort de
+  0 à 3.
+- `census-duplicates.sh` rendait « 0 routines d'IA » et divisait par ce zéro, si bien que
+  `census-zone-complexity.sh` sortait **vide sans erreur** — la division est gardée.
+
+### Contrôles
+
+- `dotnet build` : 0 erreur. `check-descriptors.sh` : 0 tableau en désaccord ; 93 marges courtes,
+  **91 prouvées** — les cinq nouvelles et celle de `0x0054FBF8` (la bouffée de la tour, même corps)
+  prouvées et scellées ; restent les deux de la tour (`0x0054FA50`, `0x0054FBF0`). `dotnet test` :
+  les deux rouges connus.
+- `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **166 / 349** ; 74 « B »,
+  84 « C » (69 lectures), 25 « D » (18 lectures) ; 796 implémentés jamais appelés, **183 à
+  transcrire**. (Le compte des testés est passé de 326 à 451 : `handlers-exerces.tsv` a reçu une
+  partie dans les zones 0 à 9 pendant le lot ; aucune ligne de la zone 10, donc rien à retirer.)
+- **Non exercé en jeu.**

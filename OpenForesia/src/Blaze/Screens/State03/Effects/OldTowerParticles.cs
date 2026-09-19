@@ -2116,11 +2116,21 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void TickSlantedPuff_00418AF0(byte* e)
+        => TickSlantedPuff(e, Descriptors0054FBF8(), 3, 1);                 // Ghidra: &DAT_0054fbf8
+
+    /// <summary>
+    /// Le corps de <see cref="TickSlantedPuff_00418AF0"/>, planche et montee en parametres. Les
+    /// quatre copies de la grotte scellee (<c>0x00432240</c>, <c>0x0043bdd0</c>, <c>0x00433900</c>,
+    /// <c>0x004354a0</c>, une par bloc de sous-zones, 2026-09-19) n'en different que par trois
+    /// instructions : leur planche, et une montee <c>+0x16</c> tiree de 6 a 11
+    /// (<c>hasard % 6 + 6</c>) au lieu de 1 a 3 (<c>% 3 + 1</c>) — elles filent vers le haut.
+    /// </summary>
+    private static void TickSlantedPuff(byte* e, byte* plate, int riseSpan, int riseBase)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
-            *(byte**)(e + 0x3c) = Descriptors0054FBF8();                     // Ghidra: &DAT_0054fbf8
+            *(byte**)(e + 0x3c) = plate;
             e[0x40] = 0;
             e[0x0a] = 2;
             e[0x0b] = 0;
@@ -2131,7 +2141,7 @@ public static unsafe partial class Blaze
 
             *(short*)(e + 0x32) += (short)(CrtRand() % 800 - 400);
             *(short*)(e + 0x14) = (short)((CrtRand() & 7) + 8);
-            *(short*)(e + 0x16) = (short)(CrtRand() % 3 + 1);
+            *(short*)(e + 0x16) = (short)(CrtRand() % riseSpan + riseBase);
 
             *(int*)(e + 0x1c) += (CrtRand() % 0x3c - 0x1e) * 0x1000;
             *(int*)(e + 0x24) += (CrtRand() % 0x3c - 0x1e) * 0x1000;

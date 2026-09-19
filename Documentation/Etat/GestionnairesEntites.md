@@ -48,9 +48,9 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 | | |
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
-| testes en jeu | **326** |
-| implementes, jamais appeles | **888** |
-| a transcrire | **216** |
+| testes en jeu | **451** |
+| implementes, jamais appeles | **796** |
+| a transcrire | **183** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -61,18 +61,18 @@ et n'est pas un comportement.
 
 | zone | lieu | gestionnaires | implementes | testes |
 |---|---|---|---|---|
-| — | **tables statiques** (partout) | 274 | 274 | 219 |
-| 0 | L'auberge | 48 | 48 | 16 |
-| 1 | La mine abandonnee | 157 | 157 | 0 |
-| 2 | La montagne du dragon de feu | 42 | 42 | 0 |
-| 3 | La foret | 136 | 136 | 90 |
-| 4 | La vieille tour | 176 | 176 | 2 |
-| 5 | Le Labyrinthe des morts | 160 | 160 | 0 |
-| 6 | Le chateau de l'immortel | 170 | 170 | 0 |
+| — | **tables statiques** (partout) | 274 | 274 | 221 |
+| 0 | L'auberge | 48 | 48 | 17 |
+| 1 | La mine abandonnee | 157 | 157 | 22 |
+| 2 | La montagne du dragon de feu | 42 | 42 | 22 |
+| 3 | La foret | 136 | 136 | 95 |
+| 4 | La vieille tour | 176 | 176 | 43 |
+| 5 | Le Labyrinthe des morts | 160 | 160 | 25 |
+| 6 | Le chateau de l'immortel | 170 | 170 | 9 |
 | 7 | Les ruines souterraines | 35 | 35 | 0 |
-| 8 | La vallee d'argent | 46 | 46 | 0 |
-| 9 | Les ruines dans le lac | 41 | 41 | 0 |
-| 10 | La grotte scellee | 349 | 133 | 0 |
+| 8 | La vallee d'argent | 46 | 46 | 31 |
+| 9 | Les ruines dans le lac | 41 | 41 | 29 |
+| 10 | La grotte scellee | 349 | 166 | 0 |
 
 Un gestionnaire employe dans plusieurs zones compte dans chacune : le tableau se lit
 « ce qui m'attend si je vais la », pas « ce qui n'existe qu'ici ». Les totaux par zone
@@ -85,7 +85,7 @@ depassent donc le total global.
 Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` et
 `0x0047acf0` lisent pour un indice sous `0xc0`. Elles ne dependent d'aucune zone.
 
-274 gestionnaires, 274 implementes, 219 testes.
+274 gestionnaires, 274 implementes, 221 testes.
 
 | gestionnaire | tables | implemente | teste |
 |---|---|---|---|
@@ -113,8 +113,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00447050` | 00552230 | oui | **non** |
 | `0x00447170` | 00551C30 | oui | **non** |
 | `0x00447630` | 00551C30 | oui | **non** |
-| `0x004477D0` | 00551C30 | oui | **non** |
-| `0x004478F0` | 00551F30 | oui | **non** |
 | `0x00447A90` | 00551C30 | oui | **non** |
 | `0x00447D50` | 00551F30 | oui | **non** |
 | `0x0044D9B0` | 00552230 | oui | **non** |
@@ -162,6 +160,8 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00447280` | 00551C30 | oui | oui |
 | `0x00447380` | 00551F30 | oui | oui |
 | `0x004474C0` | 00552230 | oui | oui |
+| `0x004477D0` | 00551C30 | oui | oui |
+| `0x004478F0` | 00551F30 | oui | oui |
 | `0x00447DF0` | 00551C30 | oui | oui |
 | `0x00448060` | 00551C30 | oui | oui |
 | `0x00448250` | 00551F30 | oui | oui |
@@ -366,7 +366,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 0 — L'auberge
 
-48 gestionnaires, 48 implementes, 16 testes.
+48 gestionnaires, 48 implementes, 17 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -375,7 +375,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00404E50` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405E70` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405FE0` | 0 | 0056B0C8 | oui | **non** |
-| `0x00442D90` | 0 | 0056AEC8 | oui | **non** |
 | `0x00442DB0` | 0 | 0056AEC8 | oui | **non** |
 | `0x00442E10` | 0 | 0056AEC8 | oui | **non** |
 | `0x00442E20` | 0 | 0056AEC8 | oui | **non** |
@@ -406,6 +405,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004055C0` | 0 | 0056B0C8 | oui | oui |
 | `0x00405A70` | 0 | 0056B0C8 | oui | oui |
 | `0x00405D60` | 0 | 0056B0C8 | oui | oui |
+| `0x00442D90` | 0 | 0056AEC8 | oui | oui |
 | `0x00442F60` | 0 | 0056AEC8 | oui | oui |
 | `0x00443100` | 0 | 0056AEC8 | oui | oui |
 | `0x004441F0` | 0 | 0056AEC8 | oui | oui |
@@ -421,26 +421,21 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 1 — La mine abandonnee
 
-157 gestionnaires, 157 implementes, 0 testes.
+157 gestionnaires, 157 implementes, 22 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
 | `0x004060C0` | 0,1,2 | 0056B0C8 | oui | **non** |
 | `0x00406120` | 0,1,2 | 0056B2C8 | oui | **non** |
-| `0x00406570` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x004065D0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406680` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406810` | 0,1,2 | 0056B2C8 | oui | **non** |
-| `0x00406970` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406AA0` | 0,1,2 | 0056B2C8 | oui | **non** |
-| `0x00406C40` | 0,1,2 | 0056B2C8 | oui | **non** |
-| `0x00406DF0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406F60` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x004070F0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x004071E0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00407800` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x004079E0` | 0,1,2 | 0056B2C8 | oui | **non** |
-| `0x00407AD0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00407C10` | 5,6,7,8 | 0056B0C8 | oui | **non** |
 | `0x00407D70` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00407FE0` | 5,6,7,8 | 0056B0C8 | oui | **non** |
@@ -481,38 +476,25 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0040C910` | 3,4,9 | 0056B2C8 | oui | **non** |
 | `0x0040CA80` | 3,4,9 | 0056B2C8 | oui | **non** |
 | `0x0040CC60` | 3,4,9 | 0056B2C8 | oui | **non** |
-| `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00443100` | 3,4,9 | 0056AEC8 | oui | **non** |
 | `0x00443170` | 0,1,2 | 0056AEC8 | oui | **non** |
 | `0x004431B0` | 0,1,2 | 0056AEC8 | oui | **non** |
-| `0x004431F0` | 0,1,2,3,4,9 | 0056AEC8 | oui | **non** |
-| `0x00443260` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004432A0` | 3,4,9 | 0056AEC8 | oui | **non** |
-| `0x00443830` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004439A0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0,1,2,5,6,7,8 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 3,4,9 | 0056AEC8 | oui | **non** |
-| `0x00445480` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00451170` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004511F0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00451250` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00451460` | 0,1,2 | 0056ADC8 | oui | **non** |
-| `0x00451630` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00451790` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004518D0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00451A00` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00451B40` | 0,1,2 | 0056ADC8 | oui | **non** |
-| `0x00452090` | 0,1,2 | 0056ADC8 | oui | **non** |
-| `0x004523A0` | 0,1,2 | 0056ADC8 | oui | **non** |
-| `0x00452410` | 0,1,2 | 0056ADC8 | oui | **non** |
-| `0x00452670` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00452790` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004528D0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00452950` | 0,1,2 | 0056ADC8 | oui | **non** |
-| `0x004529F0` | 0,1,2 | 0056ADC8 | oui | **non** |
-| `0x00452A90` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00452B20` | 5,6,7,8 | 0056ADC8 | oui | **non** |
 | `0x00452B60` | 5,6,7,8 | 0056ADC8 | oui | **non** |
 | `0x00452BD0` | 5,6,7,8 | 0056ADC8 | oui | **non** |
@@ -552,14 +534,11 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473A70` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473CB0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x00473ED0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00474380` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746F0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00482FF0` | 3,4,9 | 0056B1C8 | oui | **non** |
 | `0x00483B50` | 3,4,9 | 0056B0C8 | oui | **non** |
-| `0x004879F0` | 0,1,2 | 0056AD48 | oui | **non** |
-| `0x00488210` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x004889A0` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x00489CA0` | 0,1,2 | 0056AD48 | oui | **non** |
 | `0x0048AD80` | 0,1,2 | 0056AD48 | oui | **non** |
@@ -581,60 +560,81 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00495C90` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x004965B0` | 3,4,9 | 0056AD48 | oui | **non** |
 | `0x00497370` | 3,4,9 | 0056AD48 | oui | **non** |
-| `0x005413E0` | 0,1,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | **non** |
+| `0x00406570` | 0,1,2 | 0056B2C8 | oui | oui |
+| `0x00406970` | 0,1,2 | 0056B2C8 | oui | oui |
+| `0x00406C40` | 0,1,2 | 0056B2C8 | oui | oui |
+| `0x00406DF0` | 0,1,2 | 0056B2C8 | oui | oui |
+| `0x00407AD0` | 0,1,2 | 0056B2C8 | oui | oui |
+| `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x004431F0` | 0,1,2,3,4,9 | 0056AEC8 | oui | oui |
+| `0x00443260` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443830` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0,1,2,5,6,7,8 | 0056AEC8 | oui | oui |
+| `0x00445480` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00451630` | 0,1,2 | 0056ADC8 | oui | oui |
+| `0x00452090` | 0,1,2 | 0056ADC8 | oui | oui |
+| `0x004523A0` | 0,1,2 | 0056ADC8 | oui | oui |
+| `0x00452410` | 0,1,2 | 0056ADC8 | oui | oui |
+| `0x00452670` | 0,1,2 | 0056ADC8 | oui | oui |
+| `0x004529F0` | 0,1,2 | 0056ADC8 | oui | oui |
+| `0x00452A90` | 0,1,2 | 0056ADC8 | oui | oui |
+| `0x00473ED0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004879F0` | 0,1,2 | 0056AD48 | oui | oui |
+| `0x00488210` | 0,1,2 | 0056AD48 | oui | oui |
+| `0x005413E0` | 0,1,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | oui |
 
 ## Zone 2 — La montagne du dragon de feu
 
-42 gestionnaires, 42 implementes, 0 testes.
+42 gestionnaires, 42 implementes, 22 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x0040CDA0` | 0 | 0056B0C8 | oui | **non** |
-| `0x0040CEA0` | 0 | 0056B1C8 | oui | **non** |
-| `0x0040D560` | 0 | 0056B0C8 | oui | **non** |
-| `0x0040D6C0` | 0 | 0056B2C8 | oui | **non** |
 | `0x0040D930` | 0 | 0056B0C8 | oui | **non** |
 | `0x0040DDE0` | 0 | 0056B2C8 | oui | **non** |
 | `0x0040E3A0` | 0 | 0056B0C8 | oui | **non** |
-| `0x0040E6F0` | 0 | 0056B2C8 | oui | **non** |
-| `0x0040E860` | 0 | 0056B2C8 | oui | **non** |
 | `0x0040EA00` | 0 | 0056B2C8 | oui | **non** |
 | `0x0040EAF0` | 0 | 0056B2C8 | oui | **non** |
 | `0x0040EBE0` | 0 | 0056B2C8 | oui | **non** |
 | `0x00442E10` | 0 | 0056AEC8 | oui | **non** |
-| `0x004431F0` | 0 | 0056AEC8 | oui | **non** |
-| `0x00443260` | 0 | 0056AEC8 | oui | **non** |
 | `0x004432A0` | 0 | 0056AEC8 | oui | **non** |
-| `0x00443830` | 0 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 0 | 0056AEC8 | oui | **non** |
-| `0x00445480` | 0 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0 | 0056AEC8 | oui | **non** |
-| `0x00445840` | 0 | 0056AEC8 | oui | **non** |
-| `0x004560A0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00456110` | 0 | 0056ADC8 | oui | **non** |
-| `0x00456180` | 0 | 0056ADC8 | oui | **non** |
-| `0x00456270` | 0 | 0056ADC8 | oui | **non** |
 | `0x00456310` | 0 | 0056ADC8 | oui | **non** |
-| `0x00456590` | 0 | 0056ADC8 | oui | **non** |
 | `0x004734B0` | 0 | 0056ADC8 | oui | **non** |
-| `0x004736D0` | 0 | 0056ADC8 | oui | **non** |
-| `0x004738A0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473CB0` | 0 | 0056ADC8 | oui | **non** |
-| `0x00473ED0` | 0 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0 | 0056ADC8 | oui | **non** |
 | `0x004830F0` | 0 | 0056B0C8 | oui | **non** |
 | `0x00483260` | 0 | 0056B1C8 | oui | **non** |
 | `0x00483360` | 0 | 0056B2C8 | oui | **non** |
-| `0x00497EF0` | 0 | 0056AD48 | oui | **non** |
-| `0x00499140` | 0 | 0056AD48 | oui | **non** |
-| `0x005413E0` | 0 | 0056AFC8 | oui | **non** |
+| `0x0040CDA0` | 0 | 0056B0C8 | oui | oui |
+| `0x0040CEA0` | 0 | 0056B1C8 | oui | oui |
+| `0x0040D560` | 0 | 0056B0C8 | oui | oui |
+| `0x0040D6C0` | 0 | 0056B2C8 | oui | oui |
+| `0x0040E6F0` | 0 | 0056B2C8 | oui | oui |
+| `0x0040E860` | 0 | 0056B2C8 | oui | oui |
+| `0x004431F0` | 0 | 0056AEC8 | oui | oui |
+| `0x00443260` | 0 | 0056AEC8 | oui | oui |
+| `0x00443830` | 0 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0 | 0056AEC8 | oui | oui |
+| `0x00445480` | 0 | 0056AEC8 | oui | oui |
+| `0x00445840` | 0 | 0056AEC8 | oui | oui |
+| `0x004560A0` | 0 | 0056ADC8 | oui | oui |
+| `0x00456180` | 0 | 0056ADC8 | oui | oui |
+| `0x00456270` | 0 | 0056ADC8 | oui | oui |
+| `0x00456590` | 0 | 0056ADC8 | oui | oui |
+| `0x004736D0` | 0 | 0056ADC8 | oui | oui |
+| `0x004738A0` | 0 | 0056ADC8 | oui | oui |
+| `0x00473ED0` | 0 | 0056ADC8 | oui | oui |
+| `0x00497EF0` | 0 | 0056AD48 | oui | oui |
+| `0x00499140` | 0 | 0056AD48 | oui | oui |
+| `0x005413E0` | 0 | 0056AFC8 | oui | oui |
 
 ## Zone 3 — La foret
 
-136 gestionnaires, 136 implementes, 90 testes.
+136 gestionnaires, 136 implementes, 95 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -654,8 +654,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00412720` | 6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00412810` | 6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00412950` | 6,7,8 | 0056B2C8 | oui | **non** |
-| `0x00412B30` | 6,7,8 | 0056B2C8 | oui | **non** |
-| `0x00412C20` | 6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00412D10` | 6,7,8 | 0056B2C8 | oui | **non** |
 | `0x004137E0` | 5,9 | 0056B0C8 | oui | **non** |
 | `0x00413840` | 5,9 | 0056B2C8 | oui | **non** |
@@ -667,7 +665,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00443300` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
 | `0x00443A00` | 6,7,8 | 0056AEC8 | oui | **non** |
 | `0x00457770` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
-| `0x00458070` | 6,7,8 | 0056ADC8 | oui | **non** |
 | `0x00458E90` | 6,7,8 | 0056ADC8 | oui | **non** |
 | `0x00458FC0` | 6,7,8 | 0056ADC8 | oui | **non** |
 | `0x004593C0` | 6,7,8 | 0056ADC8 | oui | **non** |
@@ -679,10 +676,8 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473A70` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473CB0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004746C0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00483760` | 5,9 | 0056B1C8 | oui | **non** |
 | `0x00483920` | 5,9 | 0056B2C8 | oui | **non** |
-| `0x004A0480` | 6,7,8 | 0056AD48 | oui | **non** |
 | `0x00541550` | 6,7,8 | 0056AFC8 | oui | **non** |
 | `0x0040EDF0` | 0,1,2,3,4 | 0056B0C8 | oui | oui |
 | `0x0040EF40` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
@@ -693,6 +688,8 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0040F650` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
 | `0x0040F7F0` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
 | `0x0040F8E0` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
+| `0x00412B30` | 6,7,8 | 0056B2C8 | oui | oui |
+| `0x00412C20` | 6,7,8 | 0056B2C8 | oui | oui |
 | `0x00413330` | 5,9 | 0056B0C8 | oui | oui |
 | `0x004134C0` | 5,9 | 0056B1C8 | oui | oui |
 | `0x00413C90` | 5,9 | 0056B0C8 | oui | oui |
@@ -737,6 +734,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00457E20` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
 | `0x00457EC0` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
 | `0x00457FC0` | 0,1,2,3,4,6,7,8 | 0056ADC8 | oui | oui |
+| `0x00458070` | 6,7,8 | 0056ADC8 | oui | oui |
 | `0x00458170` | 0,1,2,3,4,6,7,8 | 0056ADC8 | oui | oui |
 | `0x00458200` | 6,7,8 | 0056ADC8 | oui | oui |
 | `0x00458DE0` | 6,7,8 | 0056ADC8 | oui | oui |
@@ -746,6 +744,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004736D0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
 | `0x00473ED0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
 | `0x00474380` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004746C0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
 | `0x004746F0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
 | `0x00483450` | 0,1,2,3,4 | 0056B0C8 | oui | oui |
 | `0x004834D0` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
@@ -763,6 +762,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0049E920` | 0,1,2,3,4 | 0056AD48 | oui | oui |
 | `0x0049F0C0` | 6,7,8 | 0056AD48 | oui | oui |
 | `0x0049FAD0` | 6,7,8 | 0056AD48 | oui | oui |
+| `0x004A0480` | 6,7,8 | 0056AD48 | oui | oui |
 | `0x004A13E0` | 6,7,8 | 0056AD48 | oui | oui |
 | `0x004A1D50` | 6,7,8 | 0056AD48 | oui | oui |
 | `0x004A2C90` | 6,7,8 | 0056AD48 | oui | oui |
@@ -777,7 +777,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 4 — La vieille tour
 
-176 gestionnaires, 176 implementes, 2 testes.
+176 gestionnaires, 176 implementes, 43 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -786,18 +786,13 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00416A80` | 0,1,2,4 | 0056B0C8 | oui | **non** |
 | `0x00416C40` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00416DE0` | 0,1,2,4 | 0056B2C8 | oui | **non** |
-| `0x00416EE0` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00417000` | 0,1,2,4 | 0056B2C8 | oui | **non** |
-| `0x00417110` | 0,1,2,4 | 0056B2C8 | oui | **non** |
-| `0x00417420` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00417650` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00417770` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00417930` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00417A20` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00417B10` | 0,1,2,4 | 0056B2C8 | oui | **non** |
-| `0x00417CA0` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00417E10` | 0,1,2,4 | 0056B2C8 | oui | **non** |
-| `0x00417F80` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00418120` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00418290` | 0,1,2,4 | 0056B2C8 | oui | **non** |
 | `0x00418370` | 10,5,6,8 | 0056B0C8 | oui | **non** |
@@ -835,43 +830,22 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0041C250` | 3,7,9 | 0056B2C8 | oui | **non** |
 | `0x0041C560` | 3,7,9 | 0056B2C8 | oui | **non** |
 | `0x0041C650` | 3,7,9 | 0056B2C8 | oui | **non** |
-| `0x00442E10` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x00443170` | 0,1,2,4 | 0056AEC8 | oui | **non** |
 | `0x004432A0` | 3,7,9 | 0056AEC8 | oui | **non** |
-| `0x00443830` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004439A0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00443C60` | 0,1,2,4 | 0056AEC8 | oui | **non** |
 | `0x00443CB0` | 0,1,2,4 | 0056AEC8 | oui | **non** |
-| `0x00443D00` | 0,1,2,4 | 0056AEC8 | oui | **non** |
 | `0x00444200` | 3,7,9 | 0056AEC8 | oui | **non** |
 | `0x004442F0` | 3,7,9 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 3,7,9 | 0056AEC8 | oui | **non** |
-| `0x00445480` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x00445840` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x0045A310` | 0,1,2,3,4,7,9 | 0056ADC8 | oui | **non** |
-| `0x0045A3B0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045A4D0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045A630` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045A9B0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045AA20` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045AA90` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045ABC0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045AD20` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045AE90` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045B030` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045B290` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045B3B0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045B540` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045B6C0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045B750` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045B7E0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045B9E0` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045BB10` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045BE00` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045BF20` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045C090` | 0,1,2,4 | 0056ADC8 | oui | **non** |
-| `0x0045C120` | 0,1,2,4 | 0056ADC8 | oui | **non** |
 | `0x0045C2E0` | 10,5,6,8 | 0056ADC8 | oui | **non** |
 | `0x0045C660` | 10,5,6,8 | 0056ADC8 | oui | **non** |
 | `0x0045C6E0` | 10,5,6,8 | 0056ADC8 | oui | **non** |
@@ -897,7 +871,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0045DF60` | 10,5,6,8 | 0056ADC8 | oui | **non** |
 | `0x0045E040` | 10,5,6,8 | 0056ADC8 | oui | **non** |
 | `0x0045E100` | 10,5,6,8 | 0056ADC8 | oui | **non** |
-| `0x0045E300` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045E4B0` | 0,1,2,3,4,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045E4E0` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045E860` | 3,7,9 | 0056ADC8 | oui | **non** |
@@ -905,8 +878,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0045EB30` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045EC10` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045ECC0` | 3,7,9 | 0056ADC8 | oui | **non** |
-| `0x0045F290` | 3,7,9 | 0056ADC8 | oui | **non** |
-| `0x0045F320` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045F3B0` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045F5F0` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x0045F6C0` | 3,7,9 | 0056ADC8 | oui | **non** |
@@ -917,13 +888,9 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0045FFA0` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x00460080` | 3,7,9 | 0056ADC8 | oui | **non** |
 | `0x00460140` | 3,7,9 | 0056ADC8 | oui | **non** |
-| `0x004734B0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004736D0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004738A0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473CB0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x00473ED0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00474380` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00482FF0` | 3,7,9 | 0056B1C8 | oui | **non** |
@@ -932,11 +899,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00483B50` | 3,7,9 | 0056B0C8 | oui | **non** |
 | `0x00484F80` | 3,7,9 | 0056B0C8 | oui | **non** |
 | `0x004850C0` | 3,7,9 | 0056B2C8 | oui | **non** |
-| `0x004A6290` | 0,1,2,4 | 0056AD48 | oui | **non** |
-| `0x004A6A00` | 0,1,2,4 | 0056AD48 | oui | **non** |
-| `0x004A7190` | 0,1,2,4 | 0056AD48 | oui | **non** |
-| `0x004A8510` | 0,1,2,4 | 0056AD48 | oui | **non** |
-| `0x004A9150` | 0,1,2,4 | 0056AD48 | oui | **non** |
 | `0x004AA070` | 0,1,2,4 | 0056AD48 | oui | **non** |
 | `0x004AAA80` | 0,1,2,4 | 0056AD48 | oui | **non** |
 | `0x004AB940` | 10,5,6,8 | 0056AD48 | oui | **non** |
@@ -946,21 +908,59 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004AF560` | 10,5,6,8 | 0056AD48 | oui | **non** |
 | `0x004B0600` | 10,5,6,8 | 0056AD48 | oui | **non** |
 | `0x004B1660` | 10,5,6,8 | 0056AD48 | oui | **non** |
-| `0x004B22D0` | 3,7,9 | 0056AD48 | oui | **non** |
 | `0x004B3650` | 3,7,9 | 0056AD48 | oui | **non** |
 | `0x004B4570` | 3,7,9 | 0056AD48 | oui | **non** |
-| `0x004B4DB0` | 3,7,9 | 0056AD48 | oui | **non** |
 | `0x004B5AF0` | 3,7,9 | 0056AD48 | oui | **non** |
 | `0x004B6B90` | 3,7,9 | 0056AD48 | oui | **non** |
 | `0x004B7540` | 3,7,9 | 0056AD48 | oui | **non** |
 | `0x004B7E20` | 3,7,9 | 0056AD48 | oui | **non** |
-| `0x005413E0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | **non** |
+| `0x00416EE0` | 0,1,2,4 | 0056B2C8 | oui | oui |
+| `0x00417110` | 0,1,2,4 | 0056B2C8 | oui | oui |
+| `0x00417420` | 0,1,2,4 | 0056B2C8 | oui | oui |
+| `0x00417CA0` | 0,1,2,4 | 0056B2C8 | oui | oui |
+| `0x00417F80` | 0,1,2,4 | 0056B2C8 | oui | oui |
+| `0x00442E10` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443170` | 0,1,2,4 | 0056AEC8 | oui | oui |
 | `0x00443260` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443830` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443D00` | 0,1,2,4 | 0056AEC8 | oui | oui |
 | `0x004441F0` | 0,1,2,4 | 0056AEC8 | oui | oui |
+| `0x00445480` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00445840` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x0045A3B0` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045A4D0` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045A9B0` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045AA20` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045AA90` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045ABC0` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045AE90` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045B030` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045B290` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045B3B0` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045B540` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045B6C0` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045B750` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045C090` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045C120` | 0,1,2,4 | 0056ADC8 | oui | oui |
+| `0x0045E300` | 3,7,9 | 0056ADC8 | oui | oui |
+| `0x0045F290` | 3,7,9 | 0056ADC8 | oui | oui |
+| `0x0045F320` | 3,7,9 | 0056ADC8 | oui | oui |
+| `0x004734B0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004736D0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004738A0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x00473ED0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004A6290` | 0,1,2,4 | 0056AD48 | oui | oui |
+| `0x004A6A00` | 0,1,2,4 | 0056AD48 | oui | oui |
+| `0x004A7190` | 0,1,2,4 | 0056AD48 | oui | oui |
+| `0x004A8510` | 0,1,2,4 | 0056AD48 | oui | oui |
+| `0x004A9150` | 0,1,2,4 | 0056AD48 | oui | oui |
+| `0x004B22D0` | 3,7,9 | 0056AD48 | oui | oui |
+| `0x004B4DB0` | 3,7,9 | 0056AD48 | oui | oui |
+| `0x005413E0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | oui |
 
 ## Zone 5 — Le Labyrinthe des morts
 
-160 gestionnaires, 160 implementes, 0 testes.
+160 gestionnaires, 160 implementes, 25 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -979,7 +979,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0041E070` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041E250` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041E340` | 0,1,2,3 | 0056B2C8 | oui | **non** |
-| `0x0041E430` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041E610` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041E700` | 0,1,2,3 | 0056B2C8 | oui | **non** |
 | `0x0041E7F0` | 0,1,2,3 | 0056B2C8 | oui | **non** |
@@ -1032,22 +1031,14 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00425350` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x00425410` | 4,9 | 0056B2C8 | oui | **non** |
 | `0x00425500` | 4,9 | 0056B2C8 | oui | **non** |
-| `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x00443260` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004432A0` | 4,9 | 0056AEC8 | oui | **non** |
-| `0x00443830` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004439A0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0,1,2,3,5,6,7,8 | 0056AEC8 | oui | **non** |
 | `0x00444340` | 0,1,2,3 | 0056AEC8 | oui | **non** |
 | `0x004443D0` | 0,1,2,3 | 0056AEC8 | oui | **non** |
-| `0x00444400` | 0,1,2,3 | 0056AEC8 | oui | **non** |
 | `0x00444450` | 5,6,7,8 | 0056AEC8 | oui | **non** |
 | `0x004444A0` | 4,9 | 0056AEC8 | oui | **non** |
 | `0x00444620` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 4,9 | 0056AEC8 | oui | **non** |
-| `0x00445480` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x004457F0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x00445840` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00460240` | 0,1,2,3 | 0056ADC8 | oui | **non** |
 | `0x00460260` | 0,1,2,3 | 0056ADC8 | oui | **non** |
 | `0x00460310` | 0,1,2,3 | 0056ADC8 | oui | **non** |
@@ -1056,12 +1047,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004606C0` | 0,1,2,3 | 0056ADC8 | oui | **non** |
 | `0x00460800` | 0,1,2,3 | 0056ADC8 | oui | **non** |
 | `0x00460990` | 0,1,2,3 | 0056ADC8 | oui | **non** |
-| `0x00460A90` | 0,1,2,3 | 0056ADC8 | oui | **non** |
-| `0x00460AC0` | 0,1,2,3 | 0056ADC8 | oui | **non** |
-| `0x00460C00` | 0,1,2,3 | 0056ADC8 | oui | **non** |
-| `0x00460D10` | 0,1,2,3 | 0056ADC8 | oui | **non** |
-| `0x00460D60` | 0,1,2,3 | 0056ADC8 | oui | **non** |
-| `0x00460F30` | 0,1,2,3 | 0056ADC8 | oui | **non** |
 | `0x00460FD0` | 0,1,2,3 | 0056ADC8 | oui | **non** |
 | `0x004610E0` | 5,6,7,8 | 0056ADC8 | oui | **non** |
 | `0x00461100` | 5,6,7,8 | 0056ADC8 | oui | **non** |
@@ -1088,24 +1073,15 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00463300` | 4,9 | 0056ADC8 | oui | **non** |
 | `0x004633C0` | 4,9 | 0056ADC8 | oui | **non** |
 | `0x004635B0` | 4,9 | 0056ADC8 | oui | **non** |
-| `0x00463640` | 4,9 | 0056ADC8 | oui | **non** |
-| `0x004734B0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004736D0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004738A0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x00473CB0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x00473ED0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004746F0` | 0,1,2,3 | 0056ADC8 | oui | **non** |
 | `0x00483C50` | 4,9 | 0056B0C8 | oui | **non** |
 | `0x00483CC0` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x00483E90` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x00483F30` | 4,9 | 0056B0C8 | oui | **non** |
 | `0x004840E0` | 4,9 | 0056B1C8 | oui | **non** |
 | `0x00484190` | 4,9 | 0056B1C8 | oui | **non** |
-| `0x004B8540` | 0,1,2,3 | 0056AD48 | oui | **non** |
-| `0x004B95E0` | 0,1,2,3 | 0056AD48 | oui | **non** |
 | `0x004BA110` | 0,1,2,3 | 0056AD48 | oui | **non** |
 | `0x004BAB60` | 0,1,2,3 | 0056AD48 | oui | **non** |
 | `0x004BB860` | 0,1,2,3 | 0056AD48 | oui | **non** |
@@ -1123,11 +1099,35 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004C5A30` | 4,9 | 0056AD48 | oui | **non** |
 | `0x004C6700` | 4,9 | 0056AD48 | oui | **non** |
 | `0x004C7240` | 4,9 | 0056AD48 | oui | **non** |
-| `0x005413E0` | 0,1,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | **non** |
+| `0x0041E430` | 0,1,2,3 | 0056B2C8 | oui | oui |
+| `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443260` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443830` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0,1,2,3,5,6,7,8 | 0056AEC8 | oui | oui |
+| `0x00444400` | 0,1,2,3 | 0056AEC8 | oui | oui |
+| `0x00445480` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x004457F0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00445840` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00460A90` | 0,1,2,3 | 0056ADC8 | oui | oui |
+| `0x00460AC0` | 0,1,2,3 | 0056ADC8 | oui | oui |
+| `0x00460C00` | 0,1,2,3 | 0056ADC8 | oui | oui |
+| `0x00460D10` | 0,1,2,3 | 0056ADC8 | oui | oui |
+| `0x00460D60` | 0,1,2,3 | 0056ADC8 | oui | oui |
+| `0x00460F30` | 0,1,2,3 | 0056ADC8 | oui | oui |
+| `0x00463640` | 4,9 | 0056ADC8 | oui | oui |
+| `0x004734B0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004736D0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004738A0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x00473CB0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x00473ED0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004746F0` | 0,1,2,3 | 0056ADC8 | oui | oui |
+| `0x004B8540` | 0,1,2,3 | 0056AD48 | oui | oui |
+| `0x004B95E0` | 0,1,2,3 | 0056AD48 | oui | oui |
+| `0x005413E0` | 0,1,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | oui |
 
 ## Zone 6 — Le chateau de l'immortel
 
-170 gestionnaires, 170 implementes, 0 testes.
+170 gestionnaires, 170 implementes, 9 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -1189,15 +1189,11 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0042DC80` | 11,5 | 0056B0C8 | oui | **non** |
 | `0x0042DF70` | 11,5 | 0056B2C8 | oui | **non** |
 | `0x0042E060` | 11,5 | 0056B2C8 | oui | **non** |
-| `0x00442E10` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004431B0` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
 | `0x004431F0` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
-| `0x00443260` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004432A0` | 11,5 | 0056AEC8 | oui | **non** |
-| `0x00443830` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004439A0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00443C60` | 10,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0,1,10,2,3,4,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00444670` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
 | `0x004446F0` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
 | `0x00444A40` | 10,6,7,8,9 | 0056AEC8 | oui | **non** |
@@ -1206,7 +1202,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00444E60` | 11,5 | 0056AEC8 | oui | **non** |
 | `0x00444EF0` | 11,5 | 0056AEC8 | oui | **non** |
 | `0x004450A0` | 11,5 | 0056AEC8 | oui | **non** |
-| `0x00445480` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00463770` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
@@ -1229,7 +1224,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00464900` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00464A10` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00464AC0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
-| `0x00464B30` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00464BC0` | 0,1,10,2,3,4,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00464C30` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00464CF0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
@@ -1270,7 +1264,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00466970` | 11,5 | 0056ADC8 | oui | **non** |
 | `0x00466A10` | 11,5 | 0056ADC8 | oui | **non** |
 | `0x00466AA0` | 11,5 | 0056ADC8 | oui | **non** |
-| `0x004734B0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004736D0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
@@ -1278,7 +1271,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473CB0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473ED0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,10,2,3,4,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004746F0` | 0,1,10,2,3,4,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004C7D00` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
 | `0x004C9140` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
 | `0x004C9E00` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
@@ -1300,7 +1292,15 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004D8F70` | 11,5 | 0056AD48 | oui | **non** |
 | `0x004D9D90` | 11,5 | 0056AD48 | oui | **non** |
 | `0x004DACC0` | 11,5 | 0056AD48 | oui | **non** |
-| `0x005413E0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | **non** |
+| `0x00442E10` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443260` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443830` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0,1,10,2,3,4,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00445480` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00464B30` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
+| `0x004734B0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004746F0` | 0,1,10,2,3,4,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x005413E0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056AFC8 | oui | oui |
 
 ## Zone 7 — Les ruines souterraines
 
@@ -1346,127 +1346,123 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 8 — La vallee d'argent
 
-46 gestionnaires, 46 implementes, 0 testes.
+46 gestionnaires, 46 implementes, 31 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x0042F2A0` | 0,1 | 0056B0C8 | oui | **non** |
-| `0x0042F3B0` | 0,1 | 0056B1C8 | oui | **non** |
-| `0x0042F620` | 0,1 | 0056B0C8 | oui | **non** |
-| `0x0042F860` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x0042F970` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x0042FA10` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x0042FB50` | 0,1 | 0056B1C8 | oui | **non** |
-| `0x0042FC10` | 0,1 | 0056B1C8 | oui | **non** |
 | `0x0042FCC0` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x0042FDB0` | 0,1 | 0056B2C8 | oui | **non** |
 | `0x0042FF50` | 0,1 | 0056B2C8 | oui | **non** |
 | `0x00430040` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x004301E0` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x00430360` | 0,1 | 0056B2C8 | oui | **non** |
 | `0x00442E10` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00443260` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x004432A0` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00443830` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00444E60` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00445150` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00445480` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00466C30` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00466C70` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00466DB0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00466DF0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00466E60` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00466ED0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00466F50` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00467280` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00467440` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004734B0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004736D0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00473CB0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00473ED0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x004DFB40` | 0,1 | 0056AD48 | oui | **non** |
-| `0x004E0B10` | 0,1 | 0056AD48 | oui | **non** |
-| `0x004E1380` | 0,1 | 0056AD48 | oui | **non** |
-| `0x004E20F0` | 0,1 | 0056AD48 | oui | **non** |
-| `0x005413E0` | 0,1 | 0056AFC8 | oui | **non** |
+| `0x0042F2A0` | 0,1 | 0056B0C8 | oui | oui |
+| `0x0042F3B0` | 0,1 | 0056B1C8 | oui | oui |
+| `0x0042F620` | 0,1 | 0056B0C8 | oui | oui |
+| `0x0042F860` | 0,1 | 0056B2C8 | oui | oui |
+| `0x0042F970` | 0,1 | 0056B2C8 | oui | oui |
+| `0x0042FA10` | 0,1 | 0056B2C8 | oui | oui |
+| `0x0042FB50` | 0,1 | 0056B1C8 | oui | oui |
+| `0x0042FC10` | 0,1 | 0056B1C8 | oui | oui |
+| `0x0042FDB0` | 0,1 | 0056B2C8 | oui | oui |
+| `0x004301E0` | 0,1 | 0056B2C8 | oui | oui |
+| `0x00430360` | 0,1 | 0056B2C8 | oui | oui |
+| `0x00443260` | 0,1 | 0056AEC8 | oui | oui |
+| `0x004432A0` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00443830` | 0,1 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00444E60` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00445150` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00466C30` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00466DB0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00466DF0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00466E60` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00466ED0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00466F50` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00467280` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00467440` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00473ED0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x004DFB40` | 0,1 | 0056AD48 | oui | oui |
+| `0x004E0B10` | 0,1 | 0056AD48 | oui | oui |
+| `0x004E1380` | 0,1 | 0056AD48 | oui | oui |
+| `0x004E20F0` | 0,1 | 0056AD48 | oui | oui |
+| `0x005413E0` | 0,1 | 0056AFC8 | oui | oui |
 
 ## Zone 9 — Les ruines dans le lac
 
-41 gestionnaires, 41 implementes, 0 testes.
+41 gestionnaires, 41 implementes, 29 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x00430950` | 0,1 | 0056B0C8 | oui | **non** |
-| `0x00430C40` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x00430E20` | 0,1 | 0056B2C8 | oui | **non** |
 | `0x00430F10` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x00431000` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x00431170` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x004312E0` | 0,1 | 0056B2C8 | oui | **non** |
-| `0x00442E10` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00443260` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x004432A0` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00443830` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00444E60` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x004451B0` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00445250` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x004452D0` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00445360` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00445480` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0,1 | 0056AEC8 | oui | **non** |
-| `0x00467C10` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00467DB0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00467E80` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x004681A0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00468210` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x004734B0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004736D0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x00473CB0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x00473ED0` | 0,1 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1 | 0056ADC8 | oui | **non** |
-| `0x004844A0` | 0,1 | 0056B0C8 | oui | **non** |
-| `0x00484560` | 0,1 | 0056B1C8 | oui | **non** |
-| `0x004E2D60` | 0,1 | 0056AD48 | oui | **non** |
-| `0x004E37D0` | 0,1 | 0056AD48 | oui | **non** |
-| `0x004E40E0` | 0,1 | 0056AD48 | oui | **non** |
-| `0x004E4890` | 0,1 | 0056AD48 | oui | **non** |
-| `0x004E4F20` | 0,1 | 0056AD48 | oui | **non** |
-| `0x005413E0` | 0,1 | 0056AFC8 | oui | **non** |
+| `0x00430950` | 0,1 | 0056B0C8 | oui | oui |
+| `0x00430C40` | 0,1 | 0056B2C8 | oui | oui |
+| `0x00430E20` | 0,1 | 0056B2C8 | oui | oui |
+| `0x00431000` | 0,1 | 0056B2C8 | oui | oui |
+| `0x00431170` | 0,1 | 0056B2C8 | oui | oui |
+| `0x004312E0` | 0,1 | 0056B2C8 | oui | oui |
+| `0x00442E10` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00443260` | 0,1 | 0056AEC8 | oui | oui |
+| `0x004432A0` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00443830` | 0,1 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00444E60` | 0,1 | 0056AEC8 | oui | oui |
+| `0x004451B0` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00445480` | 0,1 | 0056AEC8 | oui | oui |
+| `0x00467C10` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00467DB0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00467E80` | 0,1 | 0056ADC8 | oui | oui |
+| `0x004681A0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00468210` | 0,1 | 0056ADC8 | oui | oui |
+| `0x004734B0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x00473ED0` | 0,1 | 0056ADC8 | oui | oui |
+| `0x004844A0` | 0,1 | 0056B0C8 | oui | oui |
+| `0x00484560` | 0,1 | 0056B1C8 | oui | oui |
+| `0x004E2D60` | 0,1 | 0056AD48 | oui | oui |
+| `0x004E37D0` | 0,1 | 0056AD48 | oui | oui |
+| `0x004E40E0` | 0,1 | 0056AD48 | oui | oui |
+| `0x004E4890` | 0,1 | 0056AD48 | oui | oui |
+| `0x004E4F20` | 0,1 | 0056AD48 | oui | oui |
+| `0x005413E0` | 0,1 | 0056AFC8 | oui | oui |
 
 ## Zone 10 — La grotte scellee
 
-349 gestionnaires, 133 implementes, 0 testes.
+349 gestionnaires, 166 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x004314C0` | 0 | 0056B0C8 | **non** | **non** |
 | `0x00431600` | 0 | 0056B2C8 | **non** | **non** |
 | `0x00431AB0` | 0 | 0056B2C8 | **non** | **non** |
 | `0x00431C30` | 0 | 0056B1C8 | **non** | **non** |
 | `0x00431D80` | 0 | 0056B1C8 | **non** | **non** |
 | `0x00431F20` | 0 | 0056B2C8 | **non** | **non** |
-| `0x00432240` | 0 | 0056B2C8 | **non** | **non** |
 | `0x00432390` | 0,10,2,3,5,8 | 0056B0C8 | **non** | **non** |
 | `0x00432630` | 0 | 0056B2C8 | **non** | **non** |
 | `0x004329D0` | 0 | 0056B2C8 | **non** | **non** |
 | `0x004330E0` | 2,3 | 0056B2C8 | **non** | **non** |
 | `0x00433260` | 2,3 | 0056B1C8 | **non** | **non** |
-| `0x004333B0` | 0,10,2,3,5,8 | 0056B0C8 | **non** | **non** |
 | `0x00433440` | 2,3 | 0056B1C8 | **non** | **non** |
 | `0x004335E0` | 2,3 | 0056B2C8 | **non** | **non** |
-| `0x00433900` | 2,3 | 0056B2C8 | **non** | **non** |
 | `0x00433B60` | 2,3 | 0056B2C8 | **non** | **non** |
 | `0x00433F00` | 2,3 | 0056B2C8 | **non** | **non** |
 | `0x004343D0` | 10,5,8 | 0056B0C8 | **non** | **non** |
@@ -1478,7 +1474,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00434E90` | 10,5,8 | 0056B1C8 | **non** | **non** |
 | `0x00434FE0` | 10,5,8 | 0056B1C8 | **non** | **non** |
 | `0x00435180` | 10,5,8 | 0056B2C8 | **non** | **non** |
-| `0x004354A0` | 10,5,8 | 0056B2C8 | **non** | **non** |
 | `0x00435700` | 10,5,8 | 0056B2C8 | **non** | **non** |
 | `0x00435AA0` | 10,5,8 | 0056B2C8 | **non** | **non** |
 | `0x00436070` | 4,9 | 0056B1C8 | **non** | **non** |
@@ -1516,9 +1511,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0043B1D0` | 6,7 | 0056B2C8 | **non** | **non** |
 | `0x0043B400` | 6,7 | 0056B2C8 | **non** | **non** |
 | `0x0043B870` | 1 | 0056B2C8 | **non** | **non** |
-| `0x0043BDD0` | 1 | 0056B2C8 | **non** | **non** |
-| `0x0043BF50` | 1 | 0056B1C8 | **non** | **non** |
-| `0x0043C010` | 1 | 0056B2C8 | **non** | **non** |
 | `0x0043C120` | 1 | 0056B2C8 | **non** | **non** |
 | `0x0043C380` | 11,12 | 0056B0C8 | **non** | **non** |
 | `0x0043C4A0` | 11,12 | 0056B1C8 | **non** | **non** |
@@ -1562,37 +1554,21 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004423D0` | 13,14,15 | 0056B1C8 | **non** | **non** |
 | `0x004424B0` | 13,14,15 | 0056B0C8 | **non** | **non** |
 | `0x00442870` | 13,14,15 | 0056B1C8 | **non** | **non** |
-| `0x004453E0` | 2,3 | 0056AEC8 | **non** | **non** |
 | `0x004454E0` | 10,5,8 | 0056AEC8 | **non** | **non** |
 | `0x00445610` | 10,5,8 | 0056AEC8 | **non** | **non** |
 | `0x00468580` | 0 | 0056ADC8 | **non** | **non** |
-| `0x00468810` | 0 | 0056ADC8 | **non** | **non** |
-| `0x00468950` | 0 | 0056ADC8 | **non** | **non** |
 | `0x00468AC0` | 0 | 0056ADC8 | **non** | **non** |
 | `0x00468E30` | 0 | 0056ADC8 | **non** | **non** |
 | `0x00469100` | 0 | 0056ADC8 | **non** | **non** |
 | `0x00469480` | 0 | 0056ADC8 | **non** | **non** |
-| `0x00469930` | 0 | 0056ADC8 | **non** | **non** |
-| `0x004699F0` | 0 | 0056ADC8 | **non** | **non** |
-| `0x00469AF0` | 0 | 0056ADC8 | **non** | **non** |
 | `0x00469BC0` | 0 | 0056ADC8 | **non** | **non** |
 | `0x00469F60` | 0 | 0056ADC8 | **non** | **non** |
-| `0x0046A780` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046A810` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046A9E0` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046ABC0` | 0,2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046AC50` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046AD70` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046B440` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046B610` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046B6E0` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046BA50` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046BCD0` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046BE10` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046BF80` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046C160` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046C260` | 2,3 | 0056ADC8 | **non** | **non** |
-| `0x0046C2F0` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046C3B0` | 2,3 | 0056ADC8 | **non** | **non** |
 | `0x0046C540` | 10,5,8 | 0056ADC8 | **non** | **non** |
 | `0x0046C690` | 10,5,8 | 0056ADC8 | **non** | **non** |
@@ -1620,7 +1596,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0046EB10` | 6,7 | 0056ADC8 | **non** | **non** |
 | `0x0046EDE0` | 6,7 | 0056ADC8 | **non** | **non** |
 | `0x0046F070` | 6,7 | 0056ADC8 | **non** | **non** |
-| `0x0046F180` | 6,7 | 0056ADC8 | **non** | **non** |
 | `0x0046F1C0` | 6,7 | 0056ADC8 | **non** | **non** |
 | `0x0046F2E0` | 6,7 | 0056ADC8 | **non** | **non** |
 | `0x0046F8B0` | 6,7 | 0056ADC8 | **non** | **non** |
@@ -1630,15 +1605,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004700C0` | 6,7 | 0056ADC8 | **non** | **non** |
 | `0x00470130` | 6,7 | 0056ADC8 | **non** | **non** |
 | `0x00470190` | 6,7 | 0056ADC8 | **non** | **non** |
-| `0x00470260` | 1 | 0056ADC8 | **non** | **non** |
 | `0x004702D0` | 1 | 0056ADC8 | **non** | **non** |
-| `0x00470640` | 1 | 0056ADC8 | **non** | **non** |
-| `0x00470750` | 1 | 0056ADC8 | **non** | **non** |
-| `0x00470860` | 1 | 0056ADC8 | **non** | **non** |
-| `0x00470900` | 1 | 0056ADC8 | **non** | **non** |
-| `0x00470A00` | 1 | 0056ADC8 | **non** | **non** |
-| `0x00470B00` | 1 | 0056ADC8 | **non** | **non** |
-| `0x00470BE0` | 1 | 0056ADC8 | **non** | **non** |
 | `0x00470C20` | 1 | 0056ADC8 | **non** | **non** |
 | `0x00471150` | 1 | 0056ADC8 | **non** | **non** |
 | `0x00484760` | 4,9 | 0056B0C8 | **non** | **non** |
@@ -1668,10 +1635,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00486B10` | 13,14,15 | 0056B0C8 | **non** | **non** |
 | `0x00486D60` | 13,14,15 | 0056B1C8 | **non** | **non** |
 | `0x0040A600` | 13,14,15,13,14,15,4,9 | 0056B0C8 0056B2C8 | oui | **non** |
+| `0x004314C0` | 0 | 0056B0C8 | oui | **non** |
 | `0x00431870` | 0 | 0056B2C8 | oui | **non** |
 | `0x00431A20` | 0 | 0056B0C8 | oui | **non** |
 | `0x004320B0` | 0 | 0056B2C8 | oui | **non** |
 | `0x00432190` | 0 | 0056B2C8 | oui | **non** |
+| `0x00432240` | 0 | 0056B2C8 | oui | **non** |
 | `0x00432520` | 0 | 0056B2C8 | oui | **non** |
 | `0x004327A0` | 0 | 0056B2C8 | oui | **non** |
 | `0x004328E0` | 0 | 0056B2C8 | oui | **non** |
@@ -1679,8 +1648,10 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00432D80` | 0 | 0056B2C8 | oui | **non** |
 | `0x00432EA0` | 2,3 | 0056B2C8 | oui | **non** |
 | `0x00433050` | 2,3 | 0056B0C8 | oui | **non** |
+| `0x004333B0` | 0,10,2,3,5,8 | 0056B0C8 | oui | **non** |
 | `0x00433770` | 2,3 | 0056B2C8 | oui | **non** |
 | `0x00433850` | 2,3 | 0056B2C8 | oui | **non** |
+| `0x00433900` | 2,3 | 0056B2C8 | oui | **non** |
 | `0x00433A50` | 2,3 | 0056B2C8 | oui | **non** |
 | `0x00433CD0` | 2,3 | 0056B2C8 | oui | **non** |
 | `0x00433E10` | 2,3 | 0056B2C8 | oui | **non** |
@@ -1690,6 +1661,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00434C80` | 10,5,8 | 0056B0C8 | oui | **non** |
 | `0x00435310` | 10,5,8 | 0056B2C8 | oui | **non** |
 | `0x004353F0` | 10,5,8 | 0056B2C8 | oui | **non** |
+| `0x004354A0` | 10,5,8 | 0056B2C8 | oui | **non** |
 | `0x004355F0` | 10,5,8 | 0056B2C8 | oui | **non** |
 | `0x00435870` | 10,5,8 | 0056B2C8 | oui | **non** |
 | `0x004359B0` | 10,5,8 | 0056B2C8 | oui | **non** |
@@ -1708,7 +1680,10 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0043B310` | 6,7 | 0056B2C8 | oui | **non** |
 | `0x0043B660` | 6,7 | 0056B2C8 | oui | **non** |
 | `0x0043B750` | 6,7 | 0056B2C8 | oui | **non** |
+| `0x0043BDD0` | 1 | 0056B2C8 | oui | **non** |
 | `0x0043BF20` | 1 | 0056B0C8 | oui | **non** |
+| `0x0043BF50` | 1 | 0056B1C8 | oui | **non** |
+| `0x0043C010` | 1 | 0056B2C8 | oui | **non** |
 | `0x0043CE30` | 11,12 | 0056B1C8 | oui | **non** |
 | `0x0043DE50` | 11,12 | 0056B2C8 | oui | **non** |
 | `0x0043E170` | 11,12 | 0056B0C8 | oui | **non** |
@@ -1726,6 +1701,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00443830` | 0,1,10,11,12,13,14,15,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004441F0` | 0,10,2,3,5,8 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 11,12,13,14,15,4,9 | 0056AEC8 | oui | **non** |
+| `0x004453E0` | 2,3 | 0056AEC8 | oui | **non** |
 | `0x00445480` | 0,1,10,11,12,13,14,15,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004454C0` | 10,5,8 | 0056AEC8 | oui | **non** |
 | `0x00445740` | 4,9 | 0056AEC8 | oui | **non** |
@@ -1736,15 +1712,39 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00445810` | 1 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0,1,10,11,12,13,14,15,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00461BE0` | 4,6,7,9 | 0056ADC8 | oui | **non** |
+| `0x00468810` | 0 | 0056ADC8 | oui | **non** |
 | `0x00468850` | 0 | 0056ADC8 | oui | **non** |
+| `0x00468950` | 0 | 0056ADC8 | oui | **non** |
 | `0x00468A20` | 0 | 0056ADC8 | oui | **non** |
+| `0x00469930` | 0 | 0056ADC8 | oui | **non** |
+| `0x004699F0` | 0 | 0056ADC8 | oui | **non** |
+| `0x00469AF0` | 0 | 0056ADC8 | oui | **non** |
+| `0x0046A780` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046ABC0` | 0,2,3 | 0056ADC8 | oui | **non** |
+| `0x0046AC50` | 2,3 | 0056ADC8 | oui | **non** |
 | `0x0046B340` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046B440` | 2,3 | 0056ADC8 | oui | **non** |
 | `0x0046B570` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046B610` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046BCD0` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046BF80` | 2,3 | 0056ADC8 | oui | **non** |
 | `0x0046C020` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046C160` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046C260` | 2,3 | 0056ADC8 | oui | **non** |
+| `0x0046C2F0` | 2,3 | 0056ADC8 | oui | **non** |
 | `0x0046C800` | 10,5,8 | 0056ADC8 | oui | **non** |
 | `0x0046D760` | 10,5,8 | 0056ADC8 | oui | **non** |
 | `0x0046DE80` | 10,5,8 | 0056ADC8 | oui | **non** |
 | `0x0046E6D0` | 6,7 | 0056ADC8 | oui | **non** |
+| `0x0046F180` | 6,7 | 0056ADC8 | oui | **non** |
+| `0x00470260` | 1 | 0056ADC8 | oui | **non** |
+| `0x00470640` | 1 | 0056ADC8 | oui | **non** |
+| `0x00470750` | 1 | 0056ADC8 | oui | **non** |
+| `0x00470860` | 1 | 0056ADC8 | oui | **non** |
+| `0x00470900` | 1 | 0056ADC8 | oui | **non** |
+| `0x00470A00` | 1 | 0056ADC8 | oui | **non** |
+| `0x00470B00` | 1 | 0056ADC8 | oui | **non** |
+| `0x00470BE0` | 1 | 0056ADC8 | oui | **non** |
 | `0x004734B0` | 0,1,10,11,12,13,14,15,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004736D0` | 0,1,10,11,12,13,14,15,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0,1,10,11,12,13,14,15,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |

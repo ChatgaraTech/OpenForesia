@@ -2511,6 +2511,45 @@ public static unsafe partial class Blaze
             case 0x00502210: TickSceneEntityAi_00502210(record); return;   // l'Ange noir
             case 0x00502CD0: TickSceneEntityAi_00502CD0(record); return;   // Belzebuth
 
+            // ZONE 10 — LOT 4 (2026-09-19) : les « B » des blocs 0 a 3.
+            // La gerbe au hasard et sa jumelle des sous-zones 6-7, a leur sous-type pres, puis deux
+            // emetteurs — Effects/SealedCaveParticles.cs.
+            case 0x00468810: TickRandomBurst_00468810(record, 0x33); return;
+            case 0x0046F180: TickRandomBurst_00468810(record, 0x3a); return;
+            case 0x0046A780: EntityHandler_0046A780(record); return;
+            case 0x004333B0: EntityHandler_004333B0(record); return;
+            // Le decor — Handlers/SealedCave.cs.
+            case 0x00470BE0: EntityHandler_00470BE0(record); return;
+            case 0x00470260: EntityHandler_00470260(record); return;
+            case 0x0046C260: EntityHandler_0046C260(record); return;
+            case 0x0046ABC0: EntityHandler_0046ABC0(record); return;
+            case 0x00470860: EntityHandler_00470860(record); return;
+            case 0x0046BF80: EntityHandler_0046BF80(record); return;
+            case 0x00469930: EntityHandler_00469930(record); return;
+            case 0x00469AF0: EntityHandler_00469AF0(record); return;
+            case 0x0046C2F0: EntityHandler_0046C2F0(record); return;
+            case 0x0046B610: EntityHandler_0046B610(record); return;
+            case 0x00470B00: EntityHandler_00470B00(record); return;
+            case 0x00470900: EntityHandler_00470900(record); return;
+            case 0x00468950: EntityHandler_00468950(record); return;
+            case 0x0043BF50: EntityHandler_0043BF50(record); return;
+            case 0x00470750: EntityHandler_00470750(record); return;
+            case 0x0046C160: EntityHandler_0046C160(record); return;
+            case 0x0043C010: EntityHandler_0043C010(record); return;   // Combat/Projectiles.cs
+            // La bouffee oblique de la tour, une par bloc (« C » par le tri, mais du meme corps).
+            case 0x00432240: EntityHandler_00432240(record); return;
+            case 0x0043BDD0: EntityHandler_0043BDD0(record); return;
+            case 0x00433900: EntityHandler_00433900(record); return;
+            case 0x004354A0: EntityHandler_004354A0(record); return;
+            case 0x00470640: EntityHandler_00470640(record); return;
+            // Les deux dalles qui comptent le groupe — Handlers/SealedCaveMecanismes.cs.
+            case 0x0046AC50: EntityHandler_0046AC50(record); return;
+            case 0x004699F0: EntityHandler_004699F0(record); return;
+            case 0x00470A00: EntityHandler_00470A00(record); return;
+            case 0x0046B440: EntityHandler_0046B440(record); return;
+            case 0x0046BCD0: EntityHandler_0046BCD0(record); return;   // Handlers/SealedCave.cs
+            case 0x004314C0: EntityHandler_004314C0(record); return;   // Effects/SealedCaveParticles.cs
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de

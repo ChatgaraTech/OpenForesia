@@ -68,7 +68,7 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | `0x00404920` | 10 | 0x55 | oui | **non** | 0,6,10 |
 | `0x00475CC0` | 8 | 0x4e | oui | **non** | 0,1,10 |
 | `0x00446A90` | 4 | 0x3f | oui | **non** | 0,5,10 |
-| `0x004477D0` | 2 | 0x4b | oui | **non** | 0,2 |
+| `0x004477D0` | 2 | 0x4b | oui | oui | 0,2 |
 | `0x00447170` | 1 | 0x3c | oui | **non** | 1 |
 
 ---
@@ -80,7 +80,7 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | gestionnaires distincts atteignables par un objet | **21** |
 | deja ecrits | **21** |
 | a transcrire | **0** |
-| exerces en jeu (sonde des gestionnaires) | **2** |
+| exerces en jeu (sonde des gestionnaires) | **3** |
 | naissances resolues par la table STATIQUE | **1440** |
 | naissances resolues par une table de SOUS-ZONE | **0** |
 
@@ -515,12 +515,12 @@ fiche —, la meme des deux cotes de la sonde.
 | Robe de la terre | — | oui | **non** |
 | Robe de reine | — | oui | **non** |
 | Robe des anciens | — | oui | **non** |
-| Robe des esprits | — | oui | **non** |
+| Robe des esprits | — | oui | oui |
 | Robe des runes | — | oui | **non** |
 | Robe du démon | — | oui | **non** |
 | Robe du gardien | `0x00446DD0` | oui | **non** |
 | Robe fine | — | oui | **non** |
-| Robe magique | — | oui | **non** |
+| Robe magique | — | oui | oui |
 | Robe médicinale | — | oui | **non** |
 | Robe sacrée | — | oui | **non** |
 | Robe épiscopale | — | oui | **non** |
@@ -729,7 +729,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | oui | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | oui | **non** |
 
-**607 objets distincts**, dont **536** pleinement implementes et **6** deja employes
+**607 objets distincts**, dont **536** pleinement implementes et **8** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue

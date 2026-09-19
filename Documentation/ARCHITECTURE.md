@@ -312,6 +312,12 @@ l'Ange noir et Belzébuth empruntent les petites aides d'armement (`EifridtTurn`
 quatre espèces des salles 11 à 15, est allé dans `Ai/SceneEntityAiCommon.cs`, avec les feuilles
 communes.
 
+Au lot 4, un corps de la grotte a quitté les fichiers de zone par le test d'appartenance : **la
+flamme qui recule** (`0x0043C010`) blesse le groupe à chaque image, elle est donc dans
+`Combat/Projectiles.cs`, comme la braise `0x00416C40` de la vieille tour. Et les dalles qui
+**comptent le groupe** (`0x0046AC50`, `0x004699F0`, `0x00470A00`, `0x0046B440`) sont dans
+`Handlers/SealedCaveMecanismes.cs`, selon la règle du lot 2.
+
 
 **Où va un gestionnaire nouvellement transcrit.** La règle de routage ci-dessous s'applique
 d'abord ; c'est seulement quand elle a dit « `Screens/State03/` » (branche 2) ou « chez son

@@ -3591,3 +3591,28 @@ sans jamais libérer l'emplacement, jusqu'à ce que l'anneau de 0x20 le réutili
 
 La Gorgone et le Dragon zombie n'ont pas de table en `.data` : leurs sondes sont bâties sur la pile
 (la Gorgone reprend celle du Varan, `(0, 30, 50, 100, 0, 100)`).
+
+## La grotte scellée, lot 4 (2026-09-19) — cinq planches, trois mots d'état, quatre membres
+
+**Planches** (une tuile chacune, bornée en haut par une forme différente) :
+
+| planche | tuile | corps | marge |
+|---|---|---|---|
+| `0x00550cb8` | `0x18 x 0x18`, page 2 — les octets de `0x0054fbf8` | la bouffée oblique, bloc 0 (`0x00432240`) | 1, `+0x40` posé à 0 par le corps |
+| `0x00550da8` | idem | sous-zones 2-3 (`0x00433900`) | idem |
+| `0x00550eb8` | idem | sous-zones 5-8-10 (`0x004354A0`) | idem |
+| `0x00551160` | idem | sous-zone 1 (`0x0043BDD0`) | idem |
+| `0x00551158` | `0x20 x 0x20`, page 2 | la flamme qui recule (`0x0043C010`) | 1, jamais écrit ; né par `FUN_0047ac40` |
+
+**Mots d'état** (arène `EntityState`, remis à zéro au chargement par `Init_00468570` /
+`Init_00470250`) :
+
+| mot | qui pose | qui lit |
+|---|---|---|
+| `0x0057182c` | — (aucun écrivain relevé) | la pierre qui se détache `0x00469930`, bit de rang `+0x14` |
+| `0x00571828` | `0x004699F0` (bit `0x400`, tout le groupe sur la dalle) ; `0x00469AF0` (bit `0x800`, en fin de course) | `0x00469AF0`, `0x004699F0` |
+| `0x00571978` | la minuterie `FUN_00470640` (`0x01`+`0x04`, `0x08`+`0x20`, `0x40`+`0x100`) ; la roue `0x00470750` (`0x02`, `0x10`, `0x80`) ; le levier `0x00470900` (`0x04`, `0x20`, `0x100`) ; la dalle `0x00470A00` (`0x1000`) ; `0x00470B00` (`0x2000`) | le battant `0x00470860`, la roue, le levier, `0x00470B00`, `0x00470A00` ; et dans `Blaze.c`, `FUN_00471a10` (`& 4`) et `FUN_00471f80` (`& 0x200`) |
+
+**`0x005fa988 + n * 0x9c`** (n = 0 à 3) : les enregistrements 6 à 9 de la troisième table d'entités
+`0x005fa5e0` — ceux dont le verbe `0x004453E0` publie la pose dans les blocs de vue. Et
+`0x005fa5f2` = `0x005fa5e0 + 0x12`, le mot que lit `0x00470BE0`.

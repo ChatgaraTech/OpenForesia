@@ -3,7 +3,7 @@
 Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**quatre zones fermées dans la
 journée** : le château de l’immortel — 170 sur 170 —, puis en un lot chacune les ruines souterraines
 — 35 sur 35 —, les ruines dans le lac — 41 sur 41 — et **la vallée d’argent — 46 sur 46**, le
-onzième ensemble). **Il ne reste que la grotte scellée — 133 / 349 après ses lots 1 à 3 ; toutes les
+onzième ensemble). **Il ne reste que la grotte scellée — 166 / 349 après ses lots 1 à 4 ; toutes les
 routines d'IA du jeu sont désormais écrites.** La zone 5, le Labyrinthe, a été
 fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du dragon de feu et la
 vieille tour.
@@ -28,10 +28,16 @@ de 39 instructions qui ne fait qu'animer, et **sept bêtes** dans `Ai/SealedCave
 le Cerbère, la Gorgone, et les quatre maîtres des salles du fond — Eifridt, Lordémon, l'Ange noir,
 Belzébuth. **Rien n'en a été exercé en jeu.**
 
-**La suite** : **216 gestionnaires simples** dans la grotte — 103 « B » (103 lectures), 88 « C »
-(70 lectures), 25 « D » (18 lectures), aucun déjà écrit ailleurs selon le tri
-(`Zone10ParComplexite.md`). Commencer par les « B » bloc par bloc, en refaisant d'abord la recherche
-de parenté constantes masquées : elle a trouvé deux familles cachées au lot 2.
+**Lot 4 (même jour) : 166 sur 349** — les vingt-huit « B » des sous-zones 0 à 3, la jumelle de
+l'un d'eux, et les quatre bouffées obliques (la bouffée de la tour, trouvée par la recherche de
+parenté). La sous-zone 1 s'avère être une machine à trois mots d'état (`DataSymbols.md`).
+
+**La suite** : **183 gestionnaires simples** — 74 « B », 84 « C » (69 lectures), 25 « D »
+(18 lectures), `Zone10ParComplexite.md`. La recherche de parenté du lot 4 a déjà désigné, hors des
+blocs 0 à 3, **sept « B » quasi identiques à un corps écrit** : `0x0043EB60` (= `0x0040CDA0`, zéro
+écart masqué), `0x0043ADC0` (≈ `0x00412330`), `0x0043CD70` (≈ `0x0042FB50`), `0x0043D3A0`
+(≈ `0x0041B9F0`), `0x0043DA60` (≈ `0x0041B220`), `0x00484BB0` (≈ `0x00483A30`), plus `0x0046F9D0`
+(≈ `0x00459B20`, cinq écarts). À confirmer constantes rendues en tête du lot 5.
 
 # ONZE ENSEMBLES COMPLETS — LA VALLÉE D’ARGENT FERMÉE (2026-09-19)
 

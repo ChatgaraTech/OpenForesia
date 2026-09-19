@@ -1727,4 +1727,75 @@ public static unsafe partial class Blaze
 
         *(uint*)e = 0;
     }
+
+    // =====================================================================
+    // LA GROTTE SCELLEE, LOT 4 (2026-09-19) — la flamme qui recule en brulant
+    //
+    // Meme test d'appartenance que 0x00416C40 ci-dessus : elle blesse le groupe autour d'elle a
+    // chaque image, par FUN_00418f50. Elle est donc ici et non dans SealedCaveParticles.cs.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_00551158</c> — une tuile <c>0x20 x 0x20</c>, page <c>0x02</c>.
+    /// Bornee en bas par une tuile <c>0x10 x 0x10</c> (<c>0x00551150</c>), en haut par la planche de
+    /// la bouffee oblique du bloc 1 (<c>0x00551160</c>). Marge 1 : le corps n'ecrit jamais
+    /// <c>+0x40</c>, et il nait par <c>FUN_0047ac40</c> (table <c>0x0056b2c8</c>), qui le met a
+    /// zero.</summary>
+    private static readonly byte[] s_Descriptors_00551158 =
+    [
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551158  <- 0x0043C010
+    ];
+
+    private static byte* s_Descriptors00551158Storage;
+
+    private static byte* Descriptors00551158()
+        => NativeCopy(s_Descriptors_00551158, ref s_Descriptors00551158Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x0043c010</c> — grotte scellee, sous-zone 1, table <c>0x0056b2c8</c>. Absente de
+    /// <c>Blaze.c</c> ; 78 instructions. <b>La flamme qui recule en brulant</b> : nee 160 unites plus
+    /// haut, teinte <c>0xc8</c>, echelles <c>0xbb8</c>, elle retient son point de depart
+    /// (<c>+0x50</c>, <c>+0x58</c>) et s'en eloigne a l'oppose de son cap — son cap ne change pas —
+    /// de 35 unites par image (<c>+0x9a</c>), en montant de <c>+0x5c</c>. A chaque image elle blesse le groupe
+    /// a moins de 80 unites (2 %). Sa duree <c>+0x14</c> ecoulee, elle s'assombrit de 20 et meurt
+    /// quand l'octet <c>+0x38</c> de sa teinte est nul.
+    /// </summary>
+    private static void EntityHandler_0043C010(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x38] = 0xc8;
+            e[0x39] = 0xc8;
+            e[0x3a] = 0xc8;
+            *(int*)(e + 0x20) += 0xa0000;
+            *(short*)(e + 0x2e) = -20;
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(byte**)(e + 0x3c) = Descriptors00551158();            // Ghidra: &DAT_00551158
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(short*)(e + 0x9a) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x28) = 0x0bb8;
+            *(short*)(e + 0x2a) = 0x0bb8;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        int course = *(short*)(e + 0x32) + 0x800;
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(course) * *(short*)(e + 0x9a) + *(int*)(e + 0x50);
+        int z = (int)Winsys3d.GetCosTableEntry(course) * *(short*)(e + 0x9a) + *(int*)(e + 0x58);
+        *(int*)(e + 0x20) += *(int*)(e + 0x5c) << 0xc;
+        *(int*)(e + 0x24) = z;
+
+        DamagePartyNearPoint_00418F50(
+            *(int*)(e + 0x1c), *(int*)(e + 0x20), z, 0x50, 2, 0);  // Ghidra: FUN_00418f50
+
+        *(short*)(e + 0x9a) += 0x23;
+        *(short*)(e + 0x14) -= 1;
+        if (*(short*)(e + 0x14) >= 0) return;
+
+        BrightenEntityTint_00404DE0(e, -20, -20, -20);              // Ghidra: FUN_00404de0
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+    }
 }

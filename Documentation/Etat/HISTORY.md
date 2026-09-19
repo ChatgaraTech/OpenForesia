@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-19
 
+- feat : **grotte scellée, lot 4 — 166 sur 349** : les vingt-huit « B » des sous-zones 0 à 3 et
+  cinq corps de plus — roues, balancier, bloc qui culbute, tremplins, pierres qui tombent, dalles
+  qui comptent le groupe, la minuterie, le levier et le battant de la sous-zone 1, un verbe de vue
+- feat : les quatre bouffées obliques de la grotte sont celle de la tour — `TickSlantedPuff` prend la
+  planche et la montée en paramètres
+- doc : les trois mots d'état de la sous-zone 1 (`0x00571828`, `0x0057182c`, `0x00571978`), qui les
+  pose et qui les lit ; cinq planches, six marges prouvées et scellées
 - feat : **grotte scellée, lot 3 — 133 sur 349 : toutes les intelligences du jeu sont écrites** ;
   sept bêtes, une par fichier dans `Ai/SealedCave/` — le Dragon zombie, le Cerbère et ses trois têtes,
   la Gorgone, Eifridt, Lordémon, l'Ange noir, Belzébuth et sa disparition
