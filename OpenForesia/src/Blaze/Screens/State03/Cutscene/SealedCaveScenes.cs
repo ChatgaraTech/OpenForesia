@@ -77,7 +77,9 @@ public static unsafe partial class Blaze
             *(int*)(e + 0x24) = *(int*)(scene + 0x24);
             *(short*)(scene + 0x18) = 2;
             clip = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4) + 8);
-            scene[0x36] |= 2;
+            // Ghidra ancre son pointeur sur 0x005ecadb, soit l'enregistrement + 0x3b : son
+            // `*pbVar4 |= 2` se lit LA, pas au +0x36 du mot de sprite. Binaire, 00437e3x.
+            scene[0x3b] |= 2;
             *(uint*)scene |= 0x1000;
             victim = scene;
         }
@@ -337,7 +339,14 @@ public static unsafe partial class Blaze
     /// <para><paramref name="clip"/> sort le bloc d'animation de la victime ; <b>sans victime il
     /// reste le pointeur d'entree de la fonction</b>, ce que le binaire fait aussi — la borne se lit
     /// alors dans le <c>+0x16</c> de la scene. <paramref name="marksSprite"/> ajoute le bit 2 a
-    /// l'octet <c>+0x36</c>, que deux des sept seulement posent.</para></summary>
+    /// l'octet <c>+0x3b</c>, que deux des sept seulement posent.</para>
+    ///
+    /// <para><b>C'est bien <c>+0x3b</c> et non <c>+0x36</c></b>, qui est le mot de sprite
+    /// qu'<see cref="OpenDeathScene"/> met a 1. Ghidra ancre son pointeur de balayage sur
+    /// <c>0x005ecadb</c>, soit l'enregistrement <b>plus <c>0x3b</c></b>, et son <c>*pbVar |= 2</c>
+    /// se lit donc a cet offset-la. Confirme dans le binaire a <c>0043c960</c> —
+    /// <c>mov bl,[eax] ; or bl,2 ; mov [eax],bl</c> avec <c>eax = enregistrement + 0x3b</c>.
+    /// </para></summary>
     private static byte* PickSceneVictim(byte* e, out byte* clip, bool marksSprite)
     {
         byte* victim = null;
@@ -354,7 +363,7 @@ public static unsafe partial class Blaze
             *(int*)(e + 0x24) = *(int*)(scene + 0x24);
             *(short*)(scene + 0x18) = 2;
             clip = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4) + 8);
-            if (marksSprite) scene[0x36] |= 2;
+            if (marksSprite) scene[0x3b] |= 2;
             *(uint*)scene |= 0x1000;
             victim = scene;
         }
@@ -727,7 +736,8 @@ public static unsafe partial class Blaze
             *(int*)(e + 0x24) = *(int*)(scene + 0x24);
             *(short*)(scene + 0x18) = 2;
             clip = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4) + 8);
-            scene[0x36] |= 2;
+            // `or dl,2 ; mov [eax],dl` a 00441f30, eax = enregistrement + 0x3b — pas le +0x36.
+            scene[0x3b] |= 2;
             *(uint*)scene |= 0x1000;
             victim = scene;
         }
@@ -918,5 +928,344 @@ public static unsafe partial class Blaze
         CameraModeApply_005037E0(0);                                // Ghidra: FUN_005037b0
         RunEntityScript(s_Unknown_005e97cc, Inp.s_SlotFlags_005e93c0 + victim[9] * 0x9c, 0);   // Ghidra: FUN_00513dd0
         *(uint*)victim |= 0x2004000;
+    }
+
+    // =====================================================================
+    // LOT 12 (2026-09-20) — LA HUITIEME SCENE : L'EMBRASEMENT DU FOND
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x0043fb80</c> — sous-zones 13, 14 et 15. Decompilee dans <c>Blaze.c</c> ;
+    /// 359 instructions.
+    ///
+    /// <para>
+    /// <b>La huitieme scene de la grotte, et la seule qui ne tue personne.</b> Elle reprend le
+    /// balayage et l'ouverture des sept autres — <see cref="PickSceneVictim"/>,
+    /// <see cref="OpenDeathScene"/> — mais ce qu'elle met en scene est le <b>fond lui-meme</b> :
+    /// pendant cent quatre images elle peint les trois shorts <c>0x005e9160</c>..<c>0x005e9164</c>
+    /// a la main, sans passer par <see cref="SetSceneBackdrop"/>, et les rend a la fin depuis
+    /// <c>+0x50</c>..<c>+0x58</c>.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>images 0..0x38</term><description>le fond <b>s'eteint</b> — les trois canaux
+    ///     perdent 2 par image, mode 2.</description></item>
+    ///   <item><term>images 0x3a..0x3c</term><description>il <b>s'embrase</b> : le bleu gagne
+    ///     <c>0x3c</c>, le rouge et le vert <c>0x1e</c>, mode 1, et deux <c>0xca</c>
+    ///     naissent.</description></item>
+    ///   <item><term>image 0x3d</term><description>le coup : le son <c>0x0b</c> a <c>0x329</c>, la
+    ///     secousse armee a <c>10</c>, et <see cref="SpawnCastEntity_0047AAE0"/> lance un
+    ///     <c>0xca</c> de plus. L'image <c>0x3e</c> repond par le meme son, plus
+    ///     grave.</description></item>
+    ///   <item><term>au-dela de 0x41</term><description>le fond redescend, plus vite sur le bleu
+    ///     (<c>-7</c>) que sur les deux autres (<c>-4</c>).</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Les vingt premieres images sonnent.</b> Le compteur <c>+0x98</c> tourne de <c>0</c> a
+    /// <c>0x12</c> et les cinq premieres valeurs font claquer le son <b>0x20 du catalogue general</b> — un identifiant brut, pas un indice de zone — a des hauteurs
+    /// croissantes — <c>0x200</c>, <c>0x200</c>, <c>0x329</c>, <c>0x400</c>, <c>0x653</c> — les
+    /// quatorze autres passant en silence. C'est un roulement qui monte, puis se tait.
+    /// </para>
+    /// <para>
+    /// <b>La gerbe est en deux temps</b> : huit <c>0xc8</c> a chacune des cinq premieres images,
+    /// puis trois <c>0xc9</c> aux images <c>4</c> et <c>5</c>. Les deux chevauchent a l'image
+    /// <c>4</c>, qui en voit donc onze.
+    /// </para>
+    /// <para>
+    /// <b>La secousse est signee a l'envers.</b> <c>+0x12</c> descend vers zero, puis est
+    /// <b>nie sur place</b> avant d'etre passe a
+    /// <see cref="TryPublishCameraEffectNearEntity"/> : une secousse armee a <c>10</c> alterne donc
+    /// de signe a chaque image tant qu'elle dure. Transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// <b>La sortie appelle le script de la victime deux fois</b>, la seconde avec un argument tire
+    /// de l'octet <c>0x005e96e2</c> — <c>1</c> quand il est nul. Les sept autres scenes ne
+    /// l'appellent qu'une fois ; celle-ci double, et pose le bit <c>0x2004000</c> entre les deux
+    /// comme apres.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0043FB80(byte* e)
+    {
+        MusicFadeStep_0041AF50();                                   // Ghidra: FUN_0041af50
+        ResetEntityWakeBits_0040E640();                             // Ghidra: FUN_0040e640
+
+        byte* victim = PickSceneVictim(e, out byte* clip, marksSprite: true);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x16) = 0;
+            OpenDeathScene(e, victim);
+            *(short*)(e + 0x98) = 0;
+        }
+
+        // ------------------------------------------------- le roulement qui monte
+        short beat = *(short*)(e + 0x98);
+
+        if (beat == 0) Aud.PlaySoundEffect(0x20, 0x200, 0x1200, 0x1200);   // Ghidra: FUN_0053cea0
+        if (beat == 1) Aud.PlaySoundEffect(0x20, 0x200, 0x1200, 0x1200);
+        if (beat == 2) Aud.PlaySoundEffect(0x20, 0x329, 0x1200, 0x1200);
+        if (beat == 3) Aud.PlaySoundEffect(0x20, 0x400, 0x1200, 0x1200);
+        if (beat == 4) Aud.PlaySoundEffect(0x20, 0x653, 0x1200, 0x1200);
+
+        *(short*)(e + 0x98) += 1;
+        if (*(short*)(e + 0x98) == 0x13) *(short*)(e + 0x98) = 0;
+
+        // ------------------------------------------------- la gerbe, en deux temps
+        short age = *(short*)(e + 0x16);
+
+        if (age < 5)
+        {
+            for (int i = 8; i != 0; i--)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 200, 0, -1);   // Ghidra: FUN_0047ac40
+            }
+        }
+
+        if (age > 3 && age < 6)
+        {
+            for (int i = 3; i != 0; i--)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xc9, 0, -1);
+            }
+        }
+
+        // ------------------------------------------------- le fond, peint a la main
+        short* fogR = (short*)Mem.Arena(0x005e9160);                // Ghidra: DAT_005e9160
+        short* fogG = (short*)Mem.Arena(0x005e9162);                // Ghidra: DAT_005e9162
+        short* fogB = (short*)Mem.Arena(0x005e9164);                // Ghidra: DAT_005e9164
+        short* fogMode = (short*)Mem.Arena(0x005e9166);             // Ghidra: DAT_005e9166
+
+        if (age < 0x39)
+        {
+            *fogMode = 2;
+            *fogR -= 2;
+            *fogG -= 2;
+            *fogB -= 2;
+        }
+
+        if (age > 0x39 && age < 0x3d)
+        {
+            *fogB += 0x3c;
+            *fogR += 0x1e;
+            *fogG += 0x1e;
+            *fogMode = 1;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xca, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xca, 0, -1);
+        }
+
+        if (age > 0x41)
+        {
+            *fogMode = 2;
+            *fogR -= 4;
+            *fogG -= 4;
+            *fogB -= 7;
+        }
+
+        if (age == 0x3d)
+        {
+            *(short*)(e + 0x12) = 10;
+            Aud.PlaySoundEffect(0x0b, 0x329, 0x1600, 0x1600);
+            SpawnCastEntity_0047AAE0(e, 0xca, 0, -1);               // Ghidra: FUN_0047aae0
+        }
+
+        if (age == 0x3e) Aud.PlaySoundEffect(0x0b, 0x100, 0x1600, 0x1600);
+
+        // ------------------------------------------------- la secousse, niee sur place
+        if (*(short*)(e + 0x12) != 0)
+        {
+            if (*(short*)(e + 0x12) > 0) *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) < 0) *(short*)(e + 0x12) += 1;
+
+            short shake = *(short*)(e + 0x12);
+            *(short*)(e + 0x12) = (short)-shake;
+
+            TryPublishCameraEffectNearEntity((uint*)e, 999, -shake, 999, 0, 0);   // Ghidra: FUN_0041be60
+            *(uint*)victim |= 0x4000;
+        }
+
+        if ((e[0x16] & 1) != 0) StepVictimClip(victim, clip);
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) <= 0x68) return;
+
+        // ------------------------------------------------- la sortie
+        *(uint*)e &= 0x7fffffff;
+        CameraModeApply_005037E0(0);                                // Ghidra: FUN_005037b0
+
+        byte* member = Inp.s_SlotFlags_005e93c0 + victim[9] * 0x9c;
+        RunEntityScript(s_Unknown_005e97cc, member, 0);             // Ghidra: FUN_00513dd0
+        *(uint*)victim |= 0x2004000;
+
+        uint second = *(byte*)Mem.Arena(0x005e96e2) == 0 ? 1u : 0u;   // Ghidra: DAT_005e96e0._2_1_
+        RunEntityScript(s_Unknown_005e97cc, member, second);
+        *(uint*)victim |= 0x2004000;
+
+        SetSceneBackdrop((short)*(int*)(e + 0x50), (short)*(int*)(e + 0x54),
+                         (short)*(int*)(e + 0x58), 2);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004424b0</c> — sous-zones 13, 14 et 15, table de debordement. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 272 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_004424B0.asm</c>.
+    ///
+    /// <para>
+    /// <b>La neuvieme scene : le membre aspire.</b> Meme ossature que les huit autres — les deux
+    /// appels de tete, le balayage qui retient la derniere entite de scene vivante, l'ouverture
+    /// commune — mais sa mise en scene tient en trois temps : un accord de trois notes, une
+    /// <b>rafale de six ou douze projections</b>, et une sirene qui monte sur quarante-sept images
+    /// pendant que la victime s'eteint.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>les images 0, 1 et 2</term><description>trois sons du catalogue general :
+    ///     <c>0x20</c> a <c>0x200</c>, <c>0x20</c> a <c>0x320</c>, <c>0x23</c> a
+    ///     <c>0x200</c>.</description></item>
+    ///   <item><term>la rafale</term><description>un compteur <c>+0x9a</c> monte ; sous <c>0x23</c>
+    ///     rien, entre <c>0x23</c> et <c>0x2c</c> <b>une chance sur dix</b> par image, a partir de
+    ///     <c>0x2d</c> c'est certain. Quand elle part : <c>+0x9a</c> saute a <c>0x64</c> — ce qui
+    ///     ferme la porte des l'image suivante, la garde superieure etant <c>0x64</c> —,
+    ///     <c>+0x14</c> passe a <c>4</c>, et <b>six</b> <c>0xc5</c> naissent, <b>douze</b> si
+    ///     <c>+0x5c</c> vaut encore <c>2</c>. Puis <c>+0x5c</c> avance, et c'est lui qui compte les
+    ///     temps.</description></item>
+    ///   <item><term>la sirene</term><description>de <c>+0x98 = 2</c> a <c>0x30</c>, le son
+    ///     <c>0x26</c> a chaque image, <b>alternant de hauteur</b> — <c>0xca6</c> aux valeurs
+    ///     impaires, <c>0xdfa</c> aux paires — et au gain <c>0x1300 - (n &lt;&lt; 6)</c>, qui
+    ///     decroit donc jusqu'a <c>0x100</c>. C'est un cri qui s'eloigne.</description></item>
+    ///   <item><term>l'extinction</term><description>tant que <c>+0x5c</c> ne vaut pas <c>2</c>, la
+    ///     victime perd 10 par canal ; au noir, elle prend le bit <c>0x4000</c>. Son animation
+    ///     avance une image sur deux.</description></item>
+    ///   <item><term>la fin</term><description>passe l'image <c>0x82</c> <b>et</b> <c>+0x5c</c> a
+    ///     <c>3</c> : extinction, camera rendue, le script <c>0</c> joue <b>sans entite</b>, le bit
+    ///     <c>0x2004000</c> sur la victime, et le fond rendu.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Elle porte le defaut de 1998 sous sa pire forme.</b> Les huit autres scenes laissent le
+    /// clip d'animation pointer sur leur propre enregistrement quand il n'y a pas de victime ;
+    /// celle-ci le laisse pointer sur un <b>emplacement de pile jamais ecrit</b> — le
+    /// <c>[esp+0x10]</c> que le balayage seul renseigne. Le tampon de secours, lui, est bien mis a
+    /// zero (<c>rep stosd</c> sur <c>0x9c</c> octets). Transcrit tel quel : le tampon de secours
+    /// sert de clip, ce qui donne une borne d'animation nulle au lieu d'une lecture hors des clous.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004424B0(byte* e)
+    {
+        byte* fallback = stackalloc byte[0x9c];
+        for (int i = 0; i < 0x9c; i++) fallback[i] = 0;
+
+        MusicFadeStep_0041AF50();                                   // Ghidra: FUN_0041af50
+        ResetEntityWakeBits_0040E640();                             // Ghidra: FUN_0040e640
+
+        byte* victim = fallback;
+        // Le binaire laisse [esp+0x10] non initialise ; on lui substitue le tampon de secours, qui
+        // est le seul emplacement sur de la pile. Voir le paragraphe de la documentation.
+        byte* clip = fallback;
+
+        byte* scene = Mem.Entity(0x005ecaa0);
+        for (int i = 0x20; i != 0; i--, scene += 0x9c)
+        {
+            if (scene[0x0c] != 0) continue;
+            if ((*(uint*)scene & 0x80000000) == 0) continue;
+
+            *(int*)(e + 0x1c) = *(int*)(scene + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(scene + 0x20);
+            *(int*)(e + 0x24) = *(int*)(scene + 0x24);
+            *(short*)(scene + 0x18) = 2;
+            scene[0x3b] |= 2;                                       // `or bl,2 ; mov [eax],bl` a 00442524
+            clip = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4) + 8);
+            *(uint*)scene |= 0x1000;
+            victim = scene;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x16) = 0;
+            OpenDeathScene(e, victim);
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x5c) = 2;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x20, 0x200, 0x1000, 0x1000);   // Ghidra: FUN_0053cea0
+            if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x20, 0x320, 0x1000, 0x1000);
+            if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x23, 0x200, 0x1000, 0x1000);
+
+            int draw = CrtRand() % 10;
+            *(short*)(e + 0x9a) += 1;
+            short beat = *(short*)(e + 0x9a);
+
+            // Sous 0x23 jamais, entre 0x23 et 0x2c une fois sur dix, a partir de 0x2d toujours.
+            bool fires = beat >= 0x2d || (beat >= 0x23 && draw == 1);
+
+            if (fires && beat <= 0x64)
+            {
+                *(short*)(e + 0x98) = 1;
+                *(short*)(e + 0x9a) = 0x64;
+                *(short*)(e + 0x14) = 4;
+
+                for (int i = 6; i != 0; i--)
+                {
+                    SpawnCastEntity_0047AAE0(e, 0xc5, 0, -1);       // Ghidra: FUN_0047aae0
+                }
+
+                if (*(int*)(e + 0x5c) == 2)
+                {
+                    for (int i = 6; i != 0; i--) SpawnCastEntity_0047AAE0(e, 0xc5, 0, -1);
+                }
+
+                *(int*)(e + 0x5c) += 1;
+            }
+        }
+
+        // ------------------------------------------------- la sirene qui s'eloigne
+        short cry = *(short*)(e + 0x98);
+
+        if (cry >= 2 && cry < 0x31)
+        {
+            short gain = (short)(0x1300 - (cry << 6));
+            Aud.PlaySoundEffect(0x26, (cry & 1) != 0 ? 0xca6 : 0xdfa, gain, gain);
+            *(short*)(e + 0x98) += 1;
+        }
+
+        if (*(short*)(e + 0x98) == 1) *(short*)(e + 0x98) = 2;
+
+        // ------------------------------------------------- la victime s'eteint
+        if (*(int*)(e + 0x5c) != 2)
+        {
+            short red = (short)(victim[0x38] - 10);
+            short green = (short)(victim[0x39] - 10);
+            short blue = (short)(victim[0x3a] - 10);
+
+            if (red < 0)
+            {
+                red = 0;
+                green = 0;
+                blue = 0;
+                *(uint*)victim |= 0x4000;                           // `or byte [edi+1],40h`
+            }
+
+            victim[0x38] = (byte)red;
+            victim[0x39] = (byte)green;
+            victim[0x3a] = (byte)blue;
+        }
+
+        if ((e[0x16] & 1) == 0) StepVictimClip(victim, clip);
+
+        if (*(short*)(e + 0x16) > 0x82 && *(int*)(e + 0x5c) == 3)
+        {
+            *(uint*)e &= 0x7fffffff;
+            CameraModeApply_005037E0(0);                            // Ghidra: FUN_005037b0
+            RunEntityScript(s_Unknown_005e97cc, null, 0);           // Ghidra: FUN_00513dd0
+            *(uint*)victim |= 0x2004000;
+            RestoreSceneBackdrop(e);
+        }
+
+        *(short*)(e + 0x16) += 1;
     }
 }

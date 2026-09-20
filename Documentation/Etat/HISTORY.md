@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-20
 
+- feat : **grotte scellée, lot 12 — 343 sur 349** : trois des cinq isolés des sous-zones 13-15 —
+  la **huitième scène** (l'embrasement du fond, la seule qui ne tue personne), la **neuvième**
+  (le membre aspiré, six ou douze projections et une sirène qui s'éloigne), et l'étincelle qui
+  spirale sur une sphère qui se resserre puis s'en échappe
+- fix : **les trois balayages de victime marquaient le mauvais octet** — Ghidra ancre son pointeur
+  sur `0x005ecadb`, soit l'enregistrement **+ 0x3b**, et son `*pbVar |= 2` s'y lit ; le code posait
+  le bit dans le `+0x36` du mot de sprite, que l'ouverture venait de mettre à 1. Confirmé dans le
+  binaire aux trois sites
 - feat : **grotte scellée, lot 11 — 340 sur 349** : les quatre gros corps de la sous-zone 0 — le
   rocher qui roule sur deux axes, le radeau qui s'éloigne et se dissout, le traîneau que le groupe
   monte, le rouleau qui écrase — et leurs trois feuilles partagées

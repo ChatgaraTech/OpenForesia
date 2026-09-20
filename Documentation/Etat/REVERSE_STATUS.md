@@ -34,6 +34,47 @@ depends on the machine — check `dotnet --list-sdks` first:
 `playtest.ps1 -Build` already detects which case applies — see its "construction"
 section — so prefer it over reproducing this logic by hand.
 
+## Grotte scellée, lot 12 — 340 → 343 sur 349 (2026-09-20)
+
+Trois des cinq isolés des sous-zones 13-15, et un défaut trouvé en chemin.
+
+**Le défaut d'abord, parce qu'il touchait du code déjà livré.** Les trois balayages de victime des
+scènes de la grotte posaient leur bit de marquage dans `scene[0x36]`. C'est faux : Ghidra ancre son
+pointeur de balayage sur `0x005ecadb`, soit **l'enregistrement plus `0x3b`**, et son
+`*pbVar |= 2` se lit donc à cet offset-là. `+0x36` est le mot de sprite que l'ouverture vient de
+mettre à 1 — le balayage tournant à chaque image, il devenait 3 à partir de la deuxième. Confirmé
+dans le binaire aux trois sites (`0043c960`, `00437e3x`, `00441f30` : `mov bl,[eax] ; or bl,2 ;
+mov [eax],bl`, avec `eax` = enregistrement + 0x3b). **La leçon est sur la lecture de Ghidra** : quand
+il déclare un `byte *` et l'initialise à une adresse qui n'est pas le début de la structure, tous ses
+déréférencements sont décalés d'autant, et `*pbVar` seul ne dit pas de quel champ il s'agit. Il faut
+soustraire.
+
+**`0x0043fb80` est la huitième scène, et la seule qui ne tue personne** : elle peint le fond à la
+main pendant cent quatre images — extinction lente, embrasement bleu, redescente — avec un roulement
+de cinq notes en ouverture. Deux traits la distinguent des sept autres : sa secousse de caméra est
+**niée sur place** à chaque image, donc alterne de signe tant qu'elle dure, et sa sortie appelle le
+script de la victime **deux fois**, la seconde avec un argument tiré de l'octet `0x005e96e2`.
+
+**`0x004424b0` est la neuvième**, et elle porte le défaut de 1998 sous sa pire forme. Les huit
+autres laissent le clip d'animation pointer sur leur propre enregistrement quand il n'y a pas de
+victime ; celle-ci le laisse pointer sur un **emplacement de pile jamais écrit**. Son tampon de
+secours, lui, est bien mis à zéro. La transcription lui substitue ce tampon, ce qui donne une borne
+d'animation nulle au lieu d'une lecture hors des clous, et le note sur place.
+
+**`0x00440060` est le seul corps de la grotte qui tient une position en coordonnées sphériques** :
+longitude en `+0x12`, latitude en `+0x14`, rayon en `+0x9a`, centre en `+0x50`..`+0x58`, et la
+position recalculée en entier à chaque image. Elle spirale sur une sphère qui se resserre, puis
+s'en échappe. **Un piège d'ordre y était** : le sinus de la latitude est pris *avant* que les deux
+angles n'avancent, et le binaire ne le relit pas — le transcrire après déplace la particule d'un
+pas angulaire à chaque image.
+
+**Il reste six gestionnaires**, tous dans `Zone10ParComplexite.md`. Deux ont été lus sans être
+écrits : `0x00486320` (274) est un **projectile à tête chercheuse** — il suit la cible de son
+`+0x78`, calcule sa distance et ses deux angles par `0x00545a10`/`0x00545a22`, amortit sa vitesse
+des sept huitièmes, et frappe par `ResolveMeleeHit_00539B80` ; sa place est `Combat/Projectiles.cs`.
+`0x0043b870` (369) est un **effet qui frappe**, à ne pas ranger avec les traîneaux malgré sa
+sous-zone.
+
 ## Grotte scellée, lot 11 — 334 → 340 sur 349 (2026-09-20)
 
 Six gestionnaires et cinq feuilles. Quatre acquis valent d'être retenus.

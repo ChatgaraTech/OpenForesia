@@ -1,11 +1,9 @@
 # TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7 à 11).
-**Il ne reste que la grotte scellée — 340 / 349 —, et il n'y reste que neuf « D », tous distincts.**
-Toutes les routines d'IA du jeu, tous les « B », toute la catégorie « C » et **les trois traîneaux**
-sont écrits. Les onze autres zones sont complètes : l’auberge, la mine, la montagne du dragon de
-feu, la forêt, la vieille tour, le Labyrinthe des morts, le château de l’immortel, les ruines
-souterraines, la vallée d’argent et les ruines dans le lac.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7 à 12).
+**Il ne reste que la grotte scellée — 343 / 349 —, et il n'y reste que six « D », tous distincts.**
+Toutes les routines d'IA du jeu, tous les « B », toute la catégorie « C », **les trois traîneaux** et
+**les neuf scènes** sont écrits. Les onze autres zones sont complètes.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -18,64 +16,45 @@ déplacement.
 
 ---
 
-# GROTTE SCELLÉE, LOTS 7 À 11 — 240 → 340 SUR 349 (2026-09-20)
+# LA SUITE — LES SIX DERNIERS DE LA GROTTE SCELLÉE
 
-Cinq lots, chacun pris par bloc de sous-zones ou par famille de copies. Le détail est dans
-`REVERSE_STATUS.md` ; voici ce qu'il faut retenir.
+`Zone10ParComplexite.md` les liste, tous « D », tous d'une lecture chacun. **Deux ont déjà été
+lus** au lot 12 sans être écrits, et leur place est décidée :
 
-**Lots 7, 8 et 9 — toute la catégorie « C »**, 84 corps. La pierre oblique qui blesse dans *tous* ses
-états ; le coup qui abaisse d'un quart l'attaque de son lanceur puis la remet ; le lien dont le
-`+0x14` désigne un voisin **dans la même table d'entités** ; la boule qui éclate en douze en passant
-son octet `+0x42` à ses enfants ; deux sœurs séparées par **une seule instruction qui coupe le son**
-de l'une ; et **sept morts de membre**, chacune une scène complète
-(`Cutscene/SealedCaveScenes.cs`, ouvert au lot 8).
+- **`0x00486320` (274, sous-zones 13-15)** — un **projectile à tête chercheuse**. Il suit la cible
+  que porte son `+0x78`, en calcule la distance par `0x00545a10` et les deux angles par
+  `0x00545a22`, pose sa vitesse par `SetVectorFromAngles_00532AD0`, l'amortit des sept huitièmes à
+  chaque image, se recale au sol par `FinalizeEntityPlacement2`, puis frappe par
+  `ProbeMeleeTarget_00474CA0` + `ResolveMeleeHit_00539B80`. À l'échec il se transforme : `+0x6c`
+  devient `0x6c` par `SpawnCastEntity_0047AAE0` et un son positionnel part
+  (`Aud.PlayPositionalSound`). **Sa place est `Combat/Projectiles.cs`.** Le seul point à vérifier
+  avant d'écrire est **l'ordre des deux arguments de `0x00545a22`** (ratan2) sur chacun des quatre
+  sites — le binaire pousse `y` puis `x`, mais chaque site les nomme différemment.
+- **`0x0043b870` (369, sous-zone 1, décompilée)** — un **effet qui frappe**, à ne surtout pas ranger
+  avec les traîneaux malgré sa sous-zone. Trois phases sur `+0x14`, deux planches
+  (`0x00551168`, `0x00551178`), l'éclair d'écran `DAT_005de024`..`27`, et une enveloppe gardée
+  `FUN_0043bd90` (`FUN_004364b0` puis `FUN_0053b730`) de la même forme que les vingt et une du
+  lot 10. **Ses deux planches sont à relever dans le binaire et à passer à
+  `check-descriptors.sh`.**
 
-**Lot 10 — les trois familles de « D »**, dix corps pour trois lectures. **La tourelle** qui suit le
-plus proche des quatre membres dans son cône et publie la position de sa cible dans
-`+0x50`..`+0x58` ; **la navette** qui porte le groupe, calcule son point d'arrivée en déroulant tout
-son voyage à la première image, empaquette ses deux bouts **deux par dword**, et se téléporte au bout
-le plus proche de la caméra quand le groupe n'est pas à bord ; **la bulle d'effet d'état**, dont les
-deux tables de sauts se sont révélées être celle de `0x0040a30c` — les vingt et une « appelées
-inconnues » du recensement étaient deux jeux privés d'enveloppes gardées.
+Les quatre autres n'ont pas encore été ouverts :
 
-**Lot 11 — la sous-zone 0 et les traîneaux**, six corps et cinq feuilles.
+- `0x00440840` (477, sous-zones 13-15) — le plus gros des six.
+- `0x00436950` (436, sous-zones 4 et 9) — une table de sauts ; **ses appelées sont les mêmes
+  enveloppes gardées que le lot 10**, plus `0x00436F20` et `0x00436F60`.
+- `0x004396E0` (289, sous-zones 6-7) — une appelée inconnue, `0x00439AC0`.
+- `0x0043C4A0` (289, sous-zones 11-12).
 
-- **La sous-zone 0** : le rocher à deux axes qui emporte ce qui se tient dessus, le radeau qui
-  s'éloigne en ralentissant puis se dissout, **le traîneau que le groupe monte**, et le rouleau qui
-  grandit, dévale le couloir et écrase — celui-ci publie sa progression dans `0x0057182c`, le mot
-  que lisent les pierres qui se détachent.
-- **Trois feuilles partagées** : la glissade de tangage `0x0046a5a0`, la bouffée de poussière
-  `0x0046a630`, le quart de tour `0x0046a3f0`.
-- **La sous-zone 1 rejoue les mêmes trois feuilles, `0x150` plus haut.** `0x004725a0`, `0x00472630`
-  et `0x00471dd0` sont les copies exactes des précédentes, vérifiées instruction par instruction :
-  toutes leurs globales valent celles de la sous-zone 0 **plus `0x150`**, et la bouffée fait naître
-  le sous-type `0x32` au lieu de `0x34`. D'où les paramètres `bank` et `puff` plutôt que trois corps
-  de plus.
-- **Les deux autres traîneaux** : `0x00470c20`, dont le profil de vitesse est écrit virage par
-  virage, et `0x00471150` — **le plus gros corps du dépôt**, 610 instructions, plus ses deux
-  feuilles `0x00471a10` (300) et `0x00471f80` (400). Les trois ensemble sont **la piste** : une
-  cinquantaine de fenêtres de distance, chacune armant un quart de tour avec son sens et sa
-  coordonnée de recalage, réparties en **cinq routes** que trois bits d'aiguillage (`0x04`, `0x20`,
-  `0x100` de `0x00571978`) font varier.
+---
 
-**La suite** : **9 gestionnaires, 9 lectures**. Ils se rangent en deux groupes.
+# LES DEUX COUPES EN ATTENTE
 
-- **`0x0043B870` (369, décompilée)** — elle était rangée avec les traîneaux mais **n'en est pas** :
-  c'est un **effet qui frappe**, trois phases sur `+0x14`, planches `0x00551168` et `0x00551178`,
-  l'éclair d'écran `DAT_005de024`..`27`, et une enveloppe gardée `FUN_0043bd90`
-  (`FUN_004364b0` puis `FUN_0053b730`) de la même forme que celles du lot 10. Elle va dans
-  `Combat/` ou `Effects/`, pas dans `Handlers/SealedCave*.cs`. **Ses deux planches sont à relever
-  dans le binaire et à passer à `check-descriptors.sh`.**
-- **Huit corps isolés** : `0x00440060` (256, décompilée), `0x004424B0`, `0x00486320`,
-  `0x004396E0`, `0x0043C4A0`, `0x0043FB80` (décompilée), `0x00436950` (436, table de sauts —
-  **ses appelées sont les mêmes enveloppes gardées que le lot 10**, plus `0x00436F20` et
-  `0x00436F60`), `0x00440840` (477).
+**Elles se proposent, elles ne se font pas d'office** (`ARCHITECTURE.md`).
 
-**Deux fichiers ont franchi le seuil de coupe** annoncé dans `ARCHITECTURE.md` :
-`Effects/SealedCaveParticles.cs` (4 791 lignes) est **à couper par bloc de sous-zones**, et
-`Handlers/SealedCaveMecanismes.cs` a triplé en deux séances (371 → 1 900 lignes) : les trois
-traîneaux et leur piste y tiennent seuls plus de la moitié, et feraient un
-`Handlers/SealedCaveTraineaux.cs` cohérent. La coupe se propose, elle ne se fait pas d'office.
+- `Effects/SealedCaveParticles.cs` a dépassé **4 950 lignes** : à couper par bloc de sous-zones.
+- `Handlers/SealedCaveMecanismes.cs` a quintuplé en trois séances (371 → 1 900 lignes). Les trois
+  traîneaux et leur piste y tiennent seuls plus de la moitié et feraient un
+  `Handlers/SealedCaveTraineaux.cs` cohérent.
 
 ---
 

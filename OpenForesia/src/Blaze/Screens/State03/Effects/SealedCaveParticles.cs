@@ -4788,4 +4788,174 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x24) = flat * Winsys3d.GetCosTableEntry(spin) + *(int*)(e + 0x58);
         *(int*)(e + 0x20) = (int)Winsys3d.GetSinTableEntry(tilt) * radius + *(int*)(e + 0x54);
     }
+
+    // =====================================================================
+    // LOT 12 (2026-09-20) — L'ETINCELLE QUI SPIRALE SUR UNE SPHERE
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00440060</c> — sous-zones 13, 14 et 15, table de debordement. Decompilee dans
+    /// <c>Blaze.c</c> ; 256 instructions.
+    ///
+    /// <para>
+    /// <b>L'etincelle qui spirale sur une sphere qui se resserre, puis s'en echappe.</b> Elle
+    /// partage la planche <c>0x005514f8</c> de <see cref="EntityHandler_004406B0"/>, la fumee
+    /// voisine, mais la la ressemblance s'arrete : celle-ci ne monte pas en ligne droite, elle
+    /// <b>tient une position en coordonnees spheriques</b> autour d'un centre retenu a la
+    /// naissance.
+    /// </para>
+    /// <para>
+    /// <c>+0x12</c> est la <b>longitude</b>, <c>+0x14</c> la <b>latitude</b>, <c>+0x9a</c> le
+    /// <b>rayon</b>, et le centre est rangé dans <c>+0x50</c>..<c>+0x58</c>. La position se
+    /// recalcule entierement a chaque image — <c>cos(lat) * rayon >> 12</c> donne le rayon en plan,
+    /// dont <c>sin</c> et <c>cos</c> de la longitude tirent X et Z, pendant que
+    /// <c>sin(lat) * rayon</c> donne Y. C'est le seul corps de la grotte qui procede ainsi.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>a la naissance</term><description>longitude et latitude tirees au hasard sur
+    ///     <c>0xfff</c> et <c>0x3ff</c>, rayon <c>rand % 100 + 300</c>, vitesse de contraction
+    ///     <c>+0x5c</c> de <c>0x0d</c> a <c>0x1b</c>, echelle <c>0x400 + rand % 0x3ff</c>, teinte
+    ///     <b>noire</b>, et trois pas angulaires : <c>+0x44</c> pour l'echelle (<c>rand % 0x96</c>),
+    ///     <c>+0x48</c> pour la longitude et <c>+0x4c</c> pour la latitude (<c>rand % 100</c>
+    ///     chacun).</description></item>
+    ///   <item><term>etat 1, la contraction</term><description>le rayon perd <c>+0x5c</c> par image
+    ///     et l'echelle gagne <c>+0x44</c>. <b>Sous un rayon de <c>0xfb</c> tout double</b> :
+    ///     l'echelle gagne <c>+0x44</c> une seconde fois et les deux angles avancent deux fois.
+    ///     <c>+0x5c</c> descend d'un par image, plancher 2, et l'etincelle s'eclaircit de 10 par
+    ///     canal.</description></item>
+    ///   <item><term>a l'age 0x28</term><description><c>+0x44</c> est <b>nie puis divise par
+    ///     deux</b> : l'echelle se met a decroitre.</description></item>
+    ///   <item><term>passe l'age 0x3c</term><description>l'etat passe a 3, <c>+0x5c</c> est retire
+    ///     entre <c>0x28</c> et <c>0x59</c> et <c>+0x44</c> entre <c>200</c> et
+    ///     <c>0x125</c>.</description></item>
+    ///   <item><term>etat 3, la fuite</term><description>meme calcul de position, mais le rayon
+    ///     <b>grandit</b> de <c>+0x5c</c> ; l'etincelle s'assombrit de 7 sur le rouge et le vert mais de 5 seulement sur le bleu,
+    ///     l'echelle perd <c>2 * +0x44</c> avec un plancher a <c>0x200</c>, <c>+0x44</c> perd 10
+    ///     avec un plancher a 10, et <c>+0x5c</c> perd son huitieme. <b>Elle meurt quand son bleu
+    ///     atteint zero</b> — le rouge et le vert ne sont pas consultes, et comme le bleu descend le
+    ///     moins vite des trois, c'est bien lui qui commande la fin.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Deux details du binaire valent d'etre notes.</b> Les deux angles avancent une fois avant le
+    /// test de rayon et <b>une seconde fois dans la branche serree</b> — donc deux fois par image
+    /// sous <c>0xfb</c>, une seule au-dessus. Et <b>l'etat 2 n'existe pas</b> : l'etat 1 passe
+    /// directement a 3.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00440060(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors005514F8();            // Ghidra: &DAT_005514f8
+            e[0x40] = 0;
+            e[0x0a] = 0x0c;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x12) = (short)SignedMask(CrtRand(), 0xfff);
+            *(short*)(e + 0x14) = (short)SignedMask(CrtRand(), 0x3ff);
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 100 + 300);
+
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(int*)(e + 0x5c) = CrtRand() % 0x0f + 0x0d;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            short scale = (short)(SignedMask(CrtRand(), 0x3ff) + 0x400);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            *(int*)(e + 0x44) = CrtRand() % 0x96;
+            *(int*)(e + 0x48) = CrtRand() % 100;
+            *(short*)(e + 0x2e) = unchecked((short)0xffc4);
+            *(int*)(e + 0x4c) = CrtRand() % 100;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            PlaceOnSphere_00440060(e);
+
+            // Le sinus est pris sur la latitude AVANT son avance — le binaire le calcule en tete
+            // et ne le relit pas (`iVar6 = Ordinal_451(param_1[5])` precede les deux increments).
+            short radius = *(short*)(e + 0x9a);
+            int rise = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x14));   // Ghidra: 0x00545a1c
+
+            *(short*)(e + 0x12) += (short)*(int*)(e + 0x48);
+            *(short*)(e + 0x14) += (short)*(int*)(e + 0x4c);
+            *(int*)(e + 0x20) = rise * radius + *(int*)(e + 0x54);
+
+            radius -= (short)*(int*)(e + 0x5c);
+            *(short*)(e + 0x9a) = radius;
+
+            short scaleStep = (short)*(int*)(e + 0x44);
+
+            if (radius < 0xfb)
+            {
+                *(short*)(e + 0x28) += (short)(scaleStep * 2);
+                *(short*)(e + 0x2a) += (short)(scaleStep * 2);
+                *(short*)(e + 0x12) += (short)*(int*)(e + 0x48);
+                *(short*)(e + 0x14) += (short)*(int*)(e + 0x4c);
+            }
+            else
+            {
+                *(short*)(e + 0x28) += scaleStep;
+                *(short*)(e + 0x2a) += scaleStep;
+            }
+
+            if (*(short*)(e + 0x16) == 0x28) *(int*)(e + 0x44) = -*(int*)(e + 0x44) >> 1;
+
+            *(int*)(e + 0x5c) -= 1;
+            BrightenEntityTint_00404DE0(e, 10, 10, 10);             // Ghidra: FUN_00404de0
+            if (*(int*)(e + 0x5c) < 3) *(int*)(e + 0x5c) = 2;
+
+            if (*(short*)(e + 0x16) > 0x3c)
+            {
+                *(short*)(e + 0x10) = 3;
+                *(int*)(e + 0x5c) = CrtRand() % 0x32 + 0x28;
+                *(int*)(e + 0x44) = CrtRand() % 0x96 + 200;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            PlaceOnSphere_00440060(e);
+            *(int*)(e + 0x20) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x14)) * *(short*)(e + 0x9a)
+                                + *(int*)(e + 0x54);
+            *(short*)(e + 0x9a) += (short)*(int*)(e + 0x5c);
+
+            BrightenEntityTint_00404DE0(e, -7, -7, -5);
+
+            *(short*)(e + 0x28) += (short)(*(int*)(e + 0x44) * -2);
+            *(short*)(e + 0x2a) += (short)(*(int*)(e + 0x44) * -2);
+            if (*(short*)(e + 0x28) < 0x200) *(short*)(e + 0x28) = 0x200;
+            if (*(short*)(e + 0x2a) < 0x200) *(short*)(e + 0x2a) = 0x200;
+
+            *(int*)(e + 0x44) -= 10;
+            if (*(int*)(e + 0x44) < 10) *(int*)(e + 0x44) = 10;
+
+            *(int*)(e + 0x5c) -= *(int*)(e + 0x5c) >> 3;
+
+            if (e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+        }
+
+        *(short*)(e + 0x16) += 1;
+    }
+
+    /// <summary>Les deux coordonnees en plan de l'etincelle : le rayon projete
+    /// <c>cos(latitude) * rayon >> 12</c>, puis <c>sin</c> et <c>cos</c> de la longitude. Le
+    /// binaire rappelle les trois fonctions de table a chaque terme au lieu de garder le produit —
+    /// transcrit dans le meme ordre, la table etant constante.</summary>
+    private static void PlaceOnSphere_00440060(byte* e)
+    {
+        int plan = Winsys3d.GetCosTableEntry(*(short*)(e + 0x14)) * *(short*)(e + 0x9a) >> 0xc;
+
+        *(int*)(e + 0x1c) = plan * (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12))
+                            + *(int*)(e + 0x50);                   // Ghidra: 0x00545a1c
+        *(int*)(e + 0x24) = plan * Winsys3d.GetCosTableEntry(*(short*)(e + 0x12))
+                            + *(int*)(e + 0x58);                   // Ghidra: 0x00545a16
+    }
 }
