@@ -13,6 +13,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   et en chantant ; `Cutscene/SealedCaveScenes.cs` passe de deux à sept scènes
 - fix : `EntityHandler_00437790` devient `TickBurningDeath`, paramétrée — la combustion des salles
   11-12 ne marque pas la victime, rend la caméra et garde son script sur la sous-zone
+- doc : la reconnaissance du lot 10 est faite et notée dans `TODO.md` — les dix-sept « appelées
+  inconnues » des deux « D » à table de sauts sont toutes la même enveloppe gardée, et `0x0046AD70`
+  empile deux positions dans trois dwords
 - doc : six planches, neuf scripts de sons qui se chevauchent, et **une planche de cinq
   enregistrements dont le lecteur en lit sept** — relevée entière pour que le C# lise les mêmes
   octets que le binaire (`DataSymbols.md`) ; trois marges prouvées et scellées

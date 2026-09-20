@@ -45,9 +45,32 @@ trois lectures, c'est par là qu'il faut commencer.
 Restent ensuite les quatre pièces lourdes : les deux à **table de sauts** (`0x00436070` et
 `0x0043EC60`, qui portent en plus huit et dix appelées inconnues chacune), celui de **610
 instructions** (`0x00471150`, sous-zone 1, cinq appelées inconnues) et celui de **477**
-(`0x00440840`). Les appelées inconnues de `0x00436070` / `0x0043EC60` sont vraisemblablement la même
-famille d'enveloppes gardées que `0x004365d0` et `0x0043eb20` — quatre lignes chacune — mais cela
-reste à vérifier.
+(`0x00440840`). Leurs appelées inconnues ne sont plus une inconnue — voir juste en dessous.
+
+## Reconnaissance du lot 10, faite le 2026-09-20 — à ne pas refaire
+
+**Les dix-sept « appelées inconnues » n'en sont pas.** `0x00436470`, `0x004365d0`, `0x00436610`,
+`0x00436650`, `0x00436690`, `0x004366d0`, `0x00436710`, `0x00436750` (celles de `0x00436070`) et
+`0x0043f0a0`..`0x0043f2e0` (celles de `0x0043EC60`) sont **toutes la même enveloppe de quatre
+lignes** : `IsEffectPairBlocked_004364B0`, puis un appliqueur d'effet d'état fixe. C'est
+exactement la forme de `AfflictWithGuard`, `AfflictWithGuard11` et `AfflictWithGuard13` déjà
+écrites. Les dix-sept se transcrivent donc en **un** corps paramétré, sur le modèle de
+`AfflictMember_00409F40` et de ses douze enveloppes. Aucune des deux tables de sauts n'est un
+obstacle : ce sont deux choix d'effet d'état.
+
+**`0x00468AC0` est relevée.** C'est **la tourelle qui suit un membre du groupe** : un cône de vue
+dont la demi-ouverture est `+0x16` et la portée `+0x44`, un balayage qui retient **le plus proche
+des quatre** (tableau de quatre shorts sur la pile, initialisés à `0x270f`), un pivotement de
+`delta >> +0x48` par image, et un tir armé quand le cap s'est stabilisé à moins de 5 — trente images
+de `0x31` semé, avec la voix `0x28` de la zone une seule fois. Elle publie la position de sa cible
+dans `+0x50`..`+0x58`, ce que le rayon doit lire. Perdre la cible (hors portée, ou hors du cône
+élargi de `0x12c`) la ramène à l'état 1.
+
+**`0x0046AD70` est la pièce à lire en premier**, et la plus difficile : elle empile **deux positions
+dans trois dwords**, `+0x44`, `+0x48` et `+0x4c` portant chacun un demi-mot « départ » en haut et un
+demi-mot « arrivée » en bas (`and 0xfffff000 ; shl 4` à la pose, `sar 0x10` à la lecture). Elle
+compte aussi le groupe (`CountPartyMembersMatching` contre `ActivePartySlotCount_00466D70`) et lit la
+caméra. À traiter à tête reposée.
 
 **Deux fichiers ont franchi le seuil de coupe** annoncé dans `ARCHITECTURE.md` :
 `Effects/SealedCaveParticles.cs` (4 791 lignes) est **à couper par bloc de sous-zones**, et
