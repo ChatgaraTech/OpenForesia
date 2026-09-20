@@ -4045,10 +4045,10 @@ public static unsafe partial class Blaze
 
             int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
 
-            short course = (short)(Winsys3d.Ordinal_457(dz, dx) + (CrtRand() & 0x3ff) + 0xa00);
+            short course = (short)(Winsys3d.Ordinal_457(dx, dz) + (CrtRand() & 0x3ff) + 0xa00);
             *(short*)(e + 0x32) = course;
 
-            int pitchBase = Winsys3d.Ordinal_457(flat, dy);
+            int pitchBase = Winsys3d.Ordinal_457(dy, flat);
             short pitch = (short)((CrtRand() & 0x3ff) - 0x200 - pitchBase);
             *(short*)(e + 0x34) = pitch;
 
@@ -4250,4 +4250,949 @@ public static unsafe partial class Blaze
 
     private static void EntityHandler_00436070(byte* e) => TickStatusBubble_00436070(e);
     private static void EntityHandler_0043EC60(byte* e) => TickStatusBubble_00436070(e);
+
+    // =====================================================================
+    // LOT 13 (2026-09-20) — LE PROJECTILE A TETE CHERCHEUSE DE LA GROTTE
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00486320</c> — sous-zones 13, 14 et 15, table <c>0x0056b1c8</c>. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 274 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00486320.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le projectile qui poursuit sa cible.</b> Il porte sa proie dans <c>+0x78</c> et, tant
+    /// qu'il ne l'a pas perdue, il <b>recalcule son cap et son tangage a chaque image</b> vers elle,
+    /// pose une poussee de <c>12</c> unites dans cette direction, l'ajoute a une vitesse qu'il
+    /// <b>amortit des sept huitiemes</b>, et avance. C'est le seul de la grotte qui vise.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>avec une cible</term><description>l'ecart se mesure en trois termes : X et Z
+    ///     directement, la hauteur <b>corrigee de la bulle d'etat</b> de la cible
+    ///     (<see cref="StatusBubbleHeight_00538BC0"/>, arrondie au pair et decalee de 11 bits) —
+    ///     le projectile vise donc le buste et non les pieds. Il s'inscrit en retour dans le
+    ///     <c>+0x74</c> de sa cible.</description></item>
+    ///   <item><term>sans cible, ou une fois verrouille</term><description>il garde son cap
+    ///     (<c>+0x32 - 0x400</c>) et son tangage, et son <c>+0x10</c> monte ; a <c>0x14</c> il
+    ///     prend le bit <c>0x40000000</c>, celui qui declenche la transformation
+    ///     finale.</description></item>
+    ///   <item><term>une cible morte</term><description>si elle porte <c>0x50000000</c>, le lien est
+    ///     coupe des deux cotes et le projectile continue tout droit, sans meme la garde du cap :
+    ///     <c>edi</c> et <c>ebp</c> restent a zero, donc il pique vers le nord et
+    ///     l'horizon.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Son echelle suit sa vitesse.</b> Apres le pas, il mesure la distance <b>reellement
+    /// parcourue en trois dimensions</b> et pose <c>+0x28 = (distance &lt;&lt; 12) / 30</c> — la
+    /// magie <c>0x88888889</c> avec <c>sar 4</c>. Plus il file, plus il est gros.
+    /// </para>
+    /// <para>
+    /// <b>Le verrou.</b> Quand l'ecart de cap <b>et</b> l'ecart de tangage tiennent tous deux dans
+    /// une fenetre de <c>0x200</c> <b>et</b> que la distance parcourue est tombee sous <c>0xc8</c>,
+    /// le bit <c>0x10</c> s'allume : le projectile cesse de viser. C'est ce qui l'empeche de
+    /// tourner en rond autour d'une cible qu'il a rattrapee.
+    /// </para>
+    /// <para>
+    /// <b>La fin a deux issues.</b> Sans le bit <c>0x40000000</c> et si <c>+0x90</c> ne porte ni
+    /// <c>0xa000</c> ni <c>0x802</c>, il sonde
+    /// (<see cref="ProbeMeleeTarget_00474CA0"/>) ; un touche appelle
+    /// <see cref="ResolveMeleeHit_00539B80"/> <b>au nom de son lanceur <c>+0x74</c></b>, pose
+    /// <c>0x40</c> et <c>+0x96 = 8</c> sur la victime, et <b>efface le projectile en ecrivant zero
+    /// dans son mot de tete</b>. Sinon il <b>se transforme</b> : vitesse relevee a
+    /// <c>(0x1800, 0x1400, 0x1800)</c>, teinte grise, echelle et tangage remis a plat, un
+    /// <c>0x6c</c> engendre, le son <c>0x2e</c> a sa position — puis il se raye lui aussi, en
+    /// liberant d'abord le <c>+0x74</c> de sa cible.
+    /// </para>
+    /// <para>
+    /// <b>Le sol l'arrete par le haut seulement</b> : si sa hauteur descend au niveau du sol trouve
+    /// (<c>+0x60</c>), elle y est calee et <c>+0x90</c> prend <c>0x800</c> — le bit meme que la
+    /// garde ci-dessus consulte, ce qui envoie droit a la transformation.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00486320(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = unchecked((short)0xfc00);
+        probe[1] = unchecked((short)0xff80);
+        probe[2] = 0x32;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x80;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x80;
+            *(short*)(e + 0x10) = 1;
+            e[0x36] |= 6;
+        }
+
+        int savedX = *(int*)(e + 0x1c);
+        int savedY = *(int*)(e + 0x20);
+        int savedZ = *(int*)(e + 0x24);
+
+        byte* target = *(byte**)(e + 0x78);
+        byte* held = target;                                        // Ghidra: `[esp+0x44]`, l'emplacement d'argument reutilise
+
+        int aimYaw = 0;
+        int aimPitch = 0;
+
+        if (target != null && (*(uint*)e & 0x10) == 0)
+        {
+            if ((*(uint*)target & 0x50000000) != 0)
+            {
+                // La cible est morte : le lien se coupe des deux cotes, et les deux angles de
+                // visee restent a ZERO — le binaire ne repasse pas par la garde du cap.
+                held = null;
+                *(byte**)(target + 0x74) = null;
+                *(byte**)(e + 0x78) = null;
+            }
+            else
+            {
+                *(byte**)(target + 0x74) = e;
+
+                int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+                int bubble = StatusBubbleHeight_00538BC0((uint*)target);   // Ghidra: FUN_00538bc0
+                int dy = (((bubble & ~1) << 0x0b) + *(int*)(target + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+
+                int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));   // Ghidra: 0x00545a10
+                aimYaw = Winsys3d.Ordinal_457(dx, dz);                             // Ghidra: 0x00545a22
+                aimPitch = Winsys3d.Ordinal_457(dy, flat);
+            }
+        }
+        else
+        {
+            *(short*)(e + 0x10) += 1;
+            if (*(short*)(e + 0x10) >= 0x14) *(uint*)e |= 0x40000000;
+
+            aimYaw = *(short*)(e + 0x32) - 0x400;
+            aimPitch = *(short*)(e + 0x34);
+        }
+
+        // ------------------------------------------------- la poussee, la vitesse, le pas
+        int* push = stackalloc int[3];
+        SetVectorFromAngles_00532AD0(push, aimYaw, aimPitch, 0x0c);   // Ghidra: FUN_00532ad0
+
+        int vx = *(int*)(e + 0x50) + push[0];
+        int vy = *(int*)(e + 0x54) + push[1];
+        int vz = *(int*)(e + 0x58) + push[2];
+
+        vx -= vx >> 3;
+        vy -= vy >> 3;
+        vz -= vz >> 3;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x24) += vz;
+
+        // ------------------------------------------------- ce qu'il a reellement parcouru
+        int wentX = (*(int*)(e + 0x1c) - savedX) >> 0xc;
+        int wentY = (*(int*)(e + 0x20) - savedY) >> 0xc;
+        int wentZ = (*(int*)(e + 0x24) - savedZ) >> 0xc;
+
+        int wentFlat = (int)Winsys3d.Ordinal_442((uint)(wentX * wentX + wentZ * wentZ));
+
+        *(short*)(e + 0x32) = (short)(Winsys3d.Ordinal_457(wentX, wentZ) + 0x400);
+        *(short*)(e + 0x34) = (short)Winsys3d.Ordinal_457(wentY, wentFlat);
+
+        aimYaw = aimYaw - *(short*)(e + 0x32) + 0x400;
+        aimPitch -= *(short*)(e + 0x34);
+
+        int travelled = (int)Winsys3d.Ordinal_442(
+            (uint)(wentX * wentX + wentY * wentY + wentZ * wentZ));
+
+        // Ghidra: magie 0x88888889 avec `sar edx,4` — une division signee par 30.
+        *(short*)(e + 0x28) = (short)((travelled << 0xc) / 30);
+
+        aimYaw = (aimYaw + 0x100) & 0xfff;
+
+        if (aimYaw < 0x200)
+        {
+            aimPitch = (aimPitch + 0x100) & 0xfff;
+            if (aimPitch < 0x200 && travelled < 0xc8) *(uint*)e |= 0x10;
+        }
+
+        FinalizeEntityPlacement2((uint*)e);                         // Ghidra: FUN_00533940
+
+        if (*(int*)(e + 0x20) <= *(int*)(e + 0x60))
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(int*)(e + 0x90) = 0x800;
+        }
+
+        // ------------------------------------------------- la fin, a deux issues
+        bool transforms = (*(uint*)e & 0x40000000) != 0;
+
+        if (!transforms)
+        {
+            uint contacts = *(uint*)(e + 0x90);
+            // Ghidra: `test ah,0A0h` puis `test eax,802h` — la premiere passe court-circuite la
+            // seconde, donc 0xa000 mene a la sonde et 0x802 seul a la transformation.
+            if ((contacts & 0xa000) == 0 && (contacts & 0x802) != 0) transforms = true;
+        }
+
+        if (!transforms)
+        {
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);     // Ghidra: FUN_00474ca0
+            if (victim == null) return;
+
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);   // Ghidra: FUN_00539b80
+            *(uint*)victim |= 0x40;
+            *(short*)(victim + 0x96) = 8;
+            *(uint*)e = 0;
+            return;
+        }
+
+        *(byte**)(e + 0x70) = null;
+        *(int*)(e + 0x44) = 0;
+        *(int*)(e + 0x48) = 0;
+        *(int*)(e + 0x4c) = 0;
+        *(int*)(e + 0x50) = 0x1800;
+        *(int*)(e + 0x54) = 0x1400;
+        *(int*)(e + 0x58) = 0x1800;
+        *(uint*)(e + 0x38) = 0x808080;
+        *(int*)(e + 0x28) = 0;
+        *(short*)(e + 0x2c) = 0;
+        *(short*)(e + 0x34) = 0;
+        e[4] = 1;
+
+        SpawnCastEntity_0047AAE0(e, 0x6c, 1, 7);                    // Ghidra: FUN_0047aae0
+        Aud.PlayPositionalSound(0x2e, 0xb52, 0x1800, (int*)(e + 0x1c));   // Ghidra: FUN_0053db20
+
+        if (held != null) *(byte**)(held + 0x74) = null;
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0043b870 @ 0x0043b870 — sous-zone 1, table <c>0x0056b2c8</c>. Decompilee dans
+    /// <c>Blaze.c</c> ; 369 instructions.
+    ///
+    /// <para>
+    /// <b>Le sort en trois temps de la salle de la machine.</b> Ce corps sert <b>trois roles
+    /// differents</b> selon le <c>+0x14</c> que son engendreur lui pose : la spirale montante
+    /// (<c>0</c>), la masse qui tombe et blesse (<c>1</c>), et l'<b>eclair d'ecran</b> qui
+    /// empoisonne tout le groupe (<c>2</c>). C'est le seul corps de la grotte a se partager ainsi.
+    /// </para>
+    /// <para>
+    /// <b>Une garde commune les precede</b>, et elle ne vaut que pour les roles <c>0</c> et
+    /// <c>2</c> : si le lanceur <c>+0x6c</c> est mort — <c>0x40000000</c> pose, ou
+    /// <c>0x80000000</c> absent — l'entite s'efface, et dans le role <c>2</c> elle <b>eteint le
+    /// voile au passage</b> pour ne pas laisser l'ecran teinte.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>role 0, la spirale</term><description>planche <c>0x00551168</c>, image
+    ///     <c>rand &amp; 1</c>, teinte grise, echelle <c>0x400</c>. Elle nait <c>0x64</c> unites
+    ///     au-dessus de son point de depart, garde ce point dans <c>+0x50</c>..<c>+0x58</c>, et
+    ///     tourne autour : le rayon <c>+0x5c</c> part entre <c>0x14</c> et <c>0x31</c> et gagne
+    ///     <c>0x14</c> a <c>0x27</c> par image, le pas d'angle <c>+0x16</c> vaut <c>100</c> a
+    ///     <c>0x95</c>. Elle monte de <c>8</c> unites par image et enfle de <c>200</c> jusqu'a
+    ///     <c>5000</c>. Elle meurt passe l'age <c>0x32</c>, ou des <c>0x1e</c> une fois sur
+    ///     cinquante.</description></item>
+    ///   <item><term>role 1, la masse</term><description>planche <c>0x00551178</c>, echelle
+    ///     <c>3000</c>, cap devie de <c>±100</c>, nee <c>0x78</c> unites plus haut. Elle avance sur
+    ///     son cap de <c>+0x12</c>, qui croit de <c>+0x5c</c> (<c>0xf</c> a <c>0x18</c>) par image,
+    ///     et <b>tombe de plus en plus vite</b> — <c>+0x9a</c> monte de 2 par image, plafond
+    ///     <c>0x1e</c>. Un mur (<c>+0x90 &amp; 0x8802</c>) la remet en place et la repose au
+    ///     sol.</description></item>
+    ///   <item><term>role 2, l'eclair</term><description>quinze images de compte a rebours ; a
+    ///     <c>10</c>, <c>9</c>, <c>8</c> et <c>7</c> le voile plein cadre passe par quatre teintes
+    ///     de plus en plus sombres, a <c>6</c> il s'eteint <b>et l'effet 11 frappe les quatre
+    ///     membres</b>, a <c>0</c> l'entite s'efface.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le role 1 blesse par contact, pas par sonde.</b> Il balaie lui-meme les quatre
+    /// emplacements et frappe (<see cref="ResolveMeleeHit_00539B80"/>) tout membre vivant, dont le
+    /// <c>+0x12</c> est nul, a moins de <c>0x1e</c> unites <b>en trois dimensions</b> et dont le
+    /// <c>+0x96</c> est libre ; il lui pose alors <c>+0x96 = 0x10</c> et le bit <c>0x40</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le rebond du role 1 est ecrit a l'envers</b> : au contact du sol, <c>+0x44</c> — parti de
+    /// <c>-20</c> — gagne 10, le rayon est divise par deux, et <b>c'est quand <c>+0x44</c> devient
+    /// positif que l'entite s'efface</b>. Elle rebondit donc exactement deux fois. Le
+    /// <c>+0x44</c> sert ensuite de vitesse de chute initiale, ce qui fait repartir la masse vers le
+    /// haut : <c>+0x9a</c> est recopie depuis lui, donc negatif.
+    /// </para>
+    /// <para>
+    /// <b>L'effet 11</b> passe par l'enveloppe gardee <c>FUN_0043bd90</c> — <c>FUN_004364b0</c>
+    /// puis <c>FUN_0053b730</c> —, exactement la forme des vingt et une enveloppes du lot 10.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0043B870(byte* e)
+    {
+        short role = *(short*)(e + 0x14);
+        uint caster = **(uint**)(e + 0x6c);
+
+        if ((role == 0 || role == 2) && ((caster & 0x40000000) != 0 || (caster & 0x80000000) == 0))
+        {
+            *(uint*)e &= 0x7fffffff;
+
+            if (role == 2) Mem.s_Unknown_005de024 = 0x01000000;     // Ghidra: DAT_005de024..27
+            return;
+        }
+
+        if (role == 0)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(byte**)(e + 0x3c) = Descriptors00551168();        // Ghidra: &DAT_00551168
+                e[0x0a] = 10;
+                e[0x0b] = 0;
+                *(short*)(e + 0x10) = 1;
+                e[0x40] = (byte)SignedMask(CrtRand(), 1);
+
+                *(ushort*)(e + 0x12) = (ushort)SignedMask(CrtRand(), 0xfff);
+                *(int*)(e + 0x5c) = CrtRand() % 0x1e + 0x14;
+
+                int spin = CrtRand();
+                *(short*)(e + 0x9a) = 0;
+
+                int born = *(int*)(e + 0x20);
+                *(short*)(e + 0x28) = 0x400;
+                *(short*)(e + 0x2a) = 0x400;
+                *(int*)(e + 0x20) = born + 0x64000;
+                *(int*)(e + 0x54) = born + 0x64000;
+                *(short*)(e + 0x16) = (short)(spin % 0x32 + 100);
+                *(int*)(e + 0x58) = *(int*)(e + 0x24);
+                *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+                e[0x38] = 0x80;
+                e[0x39] = 0x80;
+                e[0x3a] = 0x80;
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12))
+                                    * *(int*)(e + 0x5c) + *(int*)(e + 0x50);   // Ghidra: Ordinal_451
+                *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(*(short*)(e + 0x12))
+                                    * *(int*)(e + 0x5c) + *(int*)(e + 0x58);   // Ghidra: Ordinal_450
+                *(int*)(e + 0x20) += 0x8000;
+                *(ushort*)(e + 0x12) =
+                    (ushort)((*(short*)(e + 0x16) + *(short*)(e + 0x12)) & 0xfff);
+
+                int grow = CrtRand();
+                *(short*)(e + 0x28) += 200;
+                *(short*)(e + 0x2a) += 200;
+                *(int*)(e + 0x5c) += grow % 0x14 + 0x14;
+
+                if (*(short*)(e + 0x28) > 5000)
+                {
+                    *(short*)(e + 0x28) = 5000;
+                    *(short*)(e + 0x2a) = 5000;
+                }
+
+                *(short*)(e + 0x9a) += 1;
+
+                int fade = CrtRand();
+                if (*(short*)(e + 0x9a) > 0x32
+                    || (*(short*)(e + 0x9a) > 0x1e && (short)(fade % 0x32) == 1))
+                {
+                    *(uint*)e &= 0x7fffffff;
+                }
+            }
+        }
+
+        if (role == 1)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(byte**)(e + 0x3c) = Descriptors00551178();        // Ghidra: &DAT_00551178
+                e[0x40] = 0;
+                e[0x0a] = 2;
+                e[0x0b] = 0;
+                *(short*)(e + 0x10) = 1;
+
+                int veer = CrtRand();
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x28) = 3000;
+                *(short*)(e + 0x2a) = 3000;
+                *(short*)(e + 0x32) += (short)(veer % 200 - 100);
+
+                int born = *(int*)(e + 0x20);
+                *(int*)(e + 0x20) = born + 0x78000;
+                *(int*)(e + 0x54) = born + 0x78000;
+                *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+                *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+                int speed = CrtRand();
+                *(short*)(e + 0x9a) = 0;
+                *(short*)(e + 0x16) = 0;
+                *(int*)(e + 0x44) = -20;
+                *(int*)(e + 0x5c) = speed % 10 + 0x0f;
+                *(uint*)e |= 0x680;
+            }
+
+            if ((*(uint*)e & 0x40000000) != 0) *(uint*)e &= 0x7fffffff;
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                byte* member = Inp.s_SlotFlags_005e93c0;            // 0x005e93c0
+
+                for (int slot = 0; slot < 4; slot++, member += 0x9c)
+                {
+                    uint flags = *(uint*)member;
+                    if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+                    if (*(short*)(member + 0x12) != 0) continue;
+
+                    int dx = (*(int*)(e + 0x1c) - *(int*)(member + 0x1c)) >> 0xc;
+                    int dy = (*(int*)(e + 0x20) - *(int*)(member + 0x20)) >> 0xc;
+                    int dz = (*(int*)(e + 0x24) - *(int*)(member + 0x24)) >> 0xc;
+
+                    int reach = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+                    if (reach >= 0x1e || *(short*)(member + 0x96) != 0) continue;
+
+                    ResolveMeleeHit_00539B80(*(uint**)(e + 0x6c), (uint*)member);   // Ghidra: FUN_00539b80
+                    *(short*)(member + 0x96) = 0x10;
+                    *(uint*)member |= 0x40;
+                }
+
+                int savedX = *(int*)(e + 0x1c);
+                int savedZ = *(int*)(e + 0x24);
+
+                *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32))
+                                    * *(short*)(e + 0x12) + *(int*)(e + 0x50);
+                *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(*(short*)(e + 0x32))
+                                    * *(short*)(e + 0x12) + *(int*)(e + 0x58);
+
+                FinalizeEntityPlacement2((uint*)e);                 // Ghidra: FUN_00533940
+
+                if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+                {
+                    *(int*)(e + 0x1c) = savedX;
+                    *(int*)(e + 0x24) = savedZ;
+                    FinalizeEntityPlacement2((uint*)e);
+                }
+
+                *(short*)(e + 0x12) += (short)*(int*)(e + 0x5c);
+                if (*(int*)(e + 0x5c) < 0) *(int*)(e + 0x5c) = 0;
+
+                short fall = (short)(*(short*)(e + 0x9a) + 2);
+                *(int*)(e + 0x20) += *(short*)(e + 0x9a) * -0x1000;
+                *(short*)(e + 0x9a) = fall;
+                if (fall > 0x1e) *(short*)(e + 0x9a) = 0x1e;
+
+                if (*(int*)(e + 0x20) < *(int*)(e + 0x60))
+                {
+                    int bounces = *(int*)(e + 0x44);
+                    *(int*)(e + 0x44) = bounces + 10;
+                    *(int*)(e + 0x5c) >>= 1;
+
+                    if (bounces + 10 > 0) *(uint*)e &= 0x7fffffff;
+
+                    *(int*)(e + 0x20) = *(int*)(e + 0x60);
+                    *(short*)(e + 0x9a) = (short)*(int*)(e + 0x44);
+                }
+            }
+        }
+
+        if (role != 2) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0x0f;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x12) -= 1;
+
+        // Ghidra: DAT_005de027 = 1 et les trois octets de couleur — l'octet de poids fort du meme
+        // dword commande l'affichage du voile.
+        if (*(short*)(e + 0x12) == 10) Mem.s_Unknown_005de024 = 0x016464fa;
+        if (*(short*)(e + 0x12) == 9) Mem.s_Unknown_005de024 = 0x015050b4;
+        if (*(short*)(e + 0x12) == 8) Mem.s_Unknown_005de024 = 0x013c3c78;
+        if (*(short*)(e + 0x12) == 7) Mem.s_Unknown_005de024 = 0x011e1e50;
+
+        if (*(short*)(e + 0x12) == 6)
+        {
+            Mem.s_Unknown_005de024 = 0x01000000;
+
+            byte* member = Inp.s_SlotFlags_005e93c0;
+            for (int slot = 0; slot < 4; slot++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                AfflictEleven_0043BD90(*(uint**)(e + 0x6c), (uint*)member, 0);   // Ghidra: FUN_0043bd90
+            }
+        }
+
+        if (*(short*)(e + 0x12) == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: FUN_0043bd90 @ 0x0043bd90 — l'<b>enveloppe gardee</b> de l'effet 11,
+    /// exactement la forme des vingt et une du lot 10 : la paire est-elle bloquee, sinon applique.
+    /// </summary>
+    private static void AfflictEleven_0043BD90(uint* caster, uint* member, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, member) != 0) return;   // Ghidra: FUN_004364b0
+        ApplyStatusEffect_0053B730(caster, member, keep);                // Ghidra: FUN_0053b730
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004396e0</c> (sous-zones 6 et 7) et <c>0x0043c4a0</c> (11 et 12), table
+    /// <c>0x0056b1c8</c>. <b>Absentes de <c>Blaze.c</c></b> ; 289 instructions chacune,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_004396E0.asm</c> et <c>FUN_0043C4A0.asm</c>.
+    /// <b>Les deux corps sont le meme</b>, a quatre differences pres, toutes portees en parametres.
+    ///
+    /// <para>
+    /// <b>Le souffle accroche au lanceur.</b> Il ne vole pas : a chaque image il se <b>repose</b>
+    /// devant le <c>+0x74</c> qui l'a engendre — quatorze unites en avant, <c>0x73000</c> au-dessus
+    /// —, s'etire, balaie le groupe, puis <b>remet sa position ou elle etait</b>. Le deplacement
+    /// n'existe que le temps de la sonde.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>a la naissance</term><description>il perd le bit 1 de <c>+0x36</c>, prend le
+    ///     modele <c>0</c>, l'echelle <c>(0xfa, 0, 0xfa)</c>, la teinte <c>(0x96, 0, 0xc8)</c> — un
+    ///     violet —, une duree de <c>0x0a</c>, et remet a zero sa portee <c>+0x16</c> et son
+    ///     <b>masque de membres deja touches</b> <c>+0x44</c>.</description></item>
+    ///   <item><term>etat 1, le souffle</term><description>la portee <c>+0x16</c> monte vers
+    ///     <c>0x258</c> et la hauteur <c>+0x2a</c> vers <c>0x4000</c>, toutes deux <b>d'un quart de
+    ///     l'ecart par image</b>. A la premiere image seulement, un <c>0xec</c> nait a sa position.
+    ///     Un mur (<c>+0x90 &amp; 0x8802</c>) ou la fin du compte le fait passer a
+    ///     l'etat 2.</description></item>
+    ///   <item><term>etat 2, l'extinction</term><description>la hauteur et les trois canaux de
+    ///     teinte perdent leur quart et leur huitieme par image, le tangage passe a <c>0xc00</c>,
+    ///     et au bout de dix images il s'efface.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le cone se mesure sur le cap du LANCEUR</b>, pas sur le sien : l'angle vers chaque membre
+    /// est ramene par <c>caster[0x32]</c>. Il touche a moins de <c>0xc8</c> unites <b>en trois
+    /// dimensions</b>, dans un cone de <c>0x320</c> de demi-ouverture, et <b>une seule fois par
+    /// membre</b> — c'est a quoi sert le masque <c>+0x44</c>. L'effet appliqué est le <b>8</b>, par
+    /// l'enveloppe gardee <c>FUN_00439ac0</c> (<c>FUN_004364b0</c> puis <c>FUN_0053b4b0</c>), la
+    /// meme forme que les vingt et une du lot 10.
+    /// </para>
+    /// <para>
+    /// <b>Les quatre differences entre les deux copies</b> : la teinte (violet <c>(0x96, 0, 0xc8)</c>
+    /// contre gris <c>(0x96, 0x96, 0x96)</c>), le sous-type engendre (<c>0xec</c> contre <c>0xdf</c>),
+    /// le coup porte (l'effet 8 contre <b>5 % des points de vie maximum</b> par
+    /// <see cref="ApplyPercentDamage_005397B0"/>), et le champ de decalage angulaire.
+    /// </para>
+    /// <para>
+    /// <b>Ce dernier merite un mot.</b> <c>0x0043c4a0</c> lit le mot <c>+0x9a</c> dans ses DEUX
+    /// etats ; <c>0x004396e0</c> lit le <b>dword</b> <c>+0x5c</c> dans l'etat 1 et le mot
+    /// <c>+0x9a</c> dans l'etat 2. La copie coherente etant celle de la sous-zone 11, c'est bien
+    /// <c>0x004396e0</c> qui devie — son souffle saute donc d'angle en passant a l'extinction.
+    /// Aucun des deux champs n'est jamais ecrit par ces corps : ils viennent de l'engendreur.
+    /// Releve tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickCasterBreath_004396E0(
+        byte* e, byte spawn, byte tintR, byte tintG, byte tintB,
+        bool holdsInState1, bool poisons)
+    {
+        byte* caster = *(byte**)(e + 0x74);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x36] &= 0xfe;
+            e[4] = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x28) = 0xfa;
+            *(short*)(e + 0x2c) = 0xfa;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x12) = 0x0a;
+            e[0x38] = tintR;
+            e[0x39] = tintG;
+            e[0x3a] = tintB;
+            *(short*)(e + 0x16) = 0;
+            *(int*)(e + 0x44) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x34) = 0x400;
+            *(short*)(e + 0x32) = (short)(*(short*)(caster + 0x32) + 0xc00);
+            *(int*)(e + 0x20) = *(int*)(caster + 0x20) + 0x73000;
+
+            // `shl 3 ; sub` puis `lea [.. + edx*2]` : le rayon d'accrochage vaut 14 unites.
+            int offset = holdsInState1 ? *(short*)(e + 0x9a) : *(int*)(e + 0x5c);
+            int anchor = offset + *(short*)(e + 0x32) - 0xc00;
+            *(int*)(e + 0x1c) = *(int*)(caster + 0x1c)
+                                + (int)Winsys3d.GetSinTableEntry(anchor) * 14;   // Ghidra: 0x00545a1c
+            anchor = offset + *(short*)(e + 0x32) - 0xc00;
+            *(int*)(e + 0x24) = *(int*)(caster + 0x24)
+                                + Winsys3d.GetCosTableEntry(anchor) * 14;        // Ghidra: 0x00545a16
+
+            if (*(short*)(e + 0x12) == 0x0a)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, spawn, 0, -1);   // Ghidra: FUN_0047ac40
+            }
+
+            int savedX = *(int*)(e + 0x1c);
+            int savedY = *(int*)(e + 0x20);
+            int savedZ = *(int*)(e + 0x24);
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32) - 0xc00)
+                                 * *(short*)(e + 0x16);
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32) - 0xc00)
+                                 * *(short*)(e + 0x16);
+
+            byte* member = Inp.s_SlotFlags_005e93c0;                // 0x005e93c0
+
+            for (int slot = 0; slot < 4; slot++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                int dx = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                int dy = (*(int*)(member + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+                int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                int angle = (Winsys3d.Ordinal_457(dx, dz) - *(short*)(caster + 0x32)) & 0xfff;
+                int reach = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+
+                if (reach >= 0xc8) continue;
+
+                // Le binaire ne rejette pas tout de suite un angle nul ou negatif sous l'ouverture :
+                // il tombe sur le second intervalle. Les deux tests sont donc un OU.
+                bool inCone = (angle < 0x320 && angle > 0) || (angle < 0x1000 && angle > 0xce0);
+                if (!inCone) continue;
+
+                int bit = 1 << slot;
+                if ((*(int*)(e + 0x44) & bit) != 0) continue;
+                *(int*)(e + 0x44) |= bit;
+
+                if (poisons) AfflictEight_00439AC0((uint*)caster, (uint*)member, 0);   // Ghidra: FUN_00439ac0
+                else ApplyPercentDamage_005397B0((uint*)member, 5, 0);                 // Ghidra: FUN_005397b0
+            }
+
+            FinalizeEntityPlacement2((uint*)e);                     // Ghidra: FUN_00533940
+
+            *(int*)(e + 0x24) = savedZ;
+            *(int*)(e + 0x1c) = savedX;
+            *(int*)(e + 0x20) = savedY;
+
+            short height = *(short*)(e + 0x2a);
+            *(short*)(e + 0x2a) = (short)(((0x4000 - height) >> 2) + height);
+
+            short span = *(short*)(e + 0x16);
+            *(short*)(e + 0x16) = (short)(((0x258 - span) >> 2) + span);
+
+            if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+
+            *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) <= 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x34) = 0x400;
+        *(short*)(e + 0x32) = (short)(*(short*)(caster + 0x32) + 0xc00);
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20) + 0x73000;
+
+        // L'etat 2 lit +0x9a la ou l'etat 1 lit +0x5c — voir le dernier paragraphe.
+        int hold = *(short*)(e + 0x9a) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c) + (int)Winsys3d.GetSinTableEntry(hold) * 14;
+        hold = *(short*)(e + 0x9a) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24) + Winsys3d.GetCosTableEntry(hold) * 14;
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32) - 0xc00)
+                             * *(short*)(e + 0x16);
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32) - 0xc00)
+                             * *(short*)(e + 0x16);
+
+        *(short*)(e + 0x34) = 0xc00;
+
+        short shrink = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)(((-shrink) >> 2) + shrink);
+
+        e[0x38] = (byte)(((-(int)e[0x38]) >> 3) + e[0x38]);
+        e[0x39] = (byte)(((-(int)e[0x39]) >> 3) + e[0x39]);
+        e[0x3a] = (byte)(((-(int)e[0x3a]) >> 3) + e[0x3a]);
+
+        *(short*)(e + 0x12) -= 1;
+        if (*(short*)(e + 0x12) <= 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: <c>0x004396e0</c> — sous-zones 6 et 7 : le souffle violet qui empoisonne.
+    /// </summary>
+    private static void EntityHandler_004396E0(byte* e)
+        => TickCasterBreath_004396E0(e, 0xec, 0x96, 0, 0xc8, holdsInState1: false, poisons: true);
+
+    /// <summary>Ghidra: <c>0x0043c4a0</c> — sous-zones 11 et 12 : le souffle gris qui ronge cinq
+    /// pour cent des points de vie.</summary>
+    private static void EntityHandler_0043C4A0(byte* e)
+        => TickCasterBreath_004396E0(e, 0xdf, 0x96, 0x96, 0x96, holdsInState1: true, poisons: false);
+
+    /// <summary>Ghidra: FUN_00439ac0 @ 0x00439ac0 — l'<b>enveloppe gardee</b> de l'effet 8,
+    /// decompilee dans <c>Blaze.c</c> : la paire est-elle bloquee, sinon applique.</summary>
+    private static void AfflictEight_00439AC0(uint* caster, uint* member, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, member) != 0) return;   // Ghidra: FUN_004364b0
+        ApplyStatusEffect_0053B4B0(caster, member, keep);                // Ghidra: FUN_0053b4b0
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00436950</c> — sous-zones 4 et 9, table <c>0x0056b1c8</c>. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 436 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00436950.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le souffle elementaire.</b> Meme charpente que
+    /// <see cref="TickCasterBreath_004396E0"/> — accroche au lanceur, etirement par quarts, cone
+    /// mesure sur le cap du lanceur, masque de membres deja touches, extinction en dix images —
+    /// avec deux ajouts qui en font un corps a part.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>son point d'accroche est <b>donne par une troisieme entite</b></term>
+    ///     <description>le <c>+0x6c</c> porte un vecteur local dans <c>+0x50</c> (lateral),
+    ///     <c>+0x54</c> (hauteur) et <c>+0x58</c> (avant) que le corps <b>fait tourner dans le
+    ///     repere du lanceur</b> avant de l'ajouter. C'est ainsi que plusieurs souffles peuvent
+    ///     sortir de points differents d'une meme bete. Le rayon propre vaut <b>15</b> unites, la
+    ///     ou celui de <see cref="TickCasterBreath_004396E0"/> en vaut 14.</description></item>
+    ///   <item><term>son element se lit dans <c>+0x9a</c></term><description><c>0</c> donne le bleu
+    ///     <c>(0, 0x82, 0x96)</c> et l'effet de <c>0x0053b3c0</c> ; <c>1</c> le rouge
+    ///     <c>(0x96, 0, 0)</c> et <b>un effet tire au hasard parmi neuf</b> ; <c>2</c> le magenta
+    ///     <c>(0x96, 0, 0x96)</c> et l'effet de <c>0x0053b4b0</c>. Toute autre valeur laisse la
+    ///     teinte telle quelle et ne fait rien.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Les neuf effets du tirage</b> sont la table de sauts <c>0x00436ef0</c>, et ses neuf
+    /// appelees sont les memes <b>enveloppes gardees</b> que le lot 10 : <c>0x004364b0</c> puis
+    /// l'applicateur. Dans l'ordre du tirage : <c>0053c420</c>, <c>0053b3c0</c>, <c>0053bf00</c>,
+    /// <c>0053b4b0</c>, <c>0053b660</c>, <c>0053b580</c>, <c>0053b8f0</c>, <c>0053c510</c>,
+    /// <c>0053b9c0</c>. Le tirage est <c>rand % 9</c> ; la garde <c>ja 8</c> ne peut pas echouer, un
+    /// reste de division par neuf etant toujours dans <c>0..8</c> — <b>sauf sur un <c>rand</c>
+    /// negatif</b>, que la bibliotheque de 1998 ne rend jamais.
+    /// </para>
+    /// <para>
+    /// <b>Sans lanceur, le corps travaille sur un enregistrement de rechange</b>
+    /// (<c>0x005de558</c>) — mais il continue de lire le cap et la position du lanceur, c'est-a-dire
+    /// <b>l'adresse nulle</b>. Le garde-fou de 1998 ne protege donc que les ecritures. Transcrit tel
+    /// quel : si ce chemin s'ouvrait un jour, il doit se voir.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00436950(byte* e)
+    {
+        byte* caster = *(byte**)(e + 0x74);
+        if (caster == null) e = Res.s_EntityList_005de558;          // Ghidra: DAT_005de558
+
+        byte* anchor = *(byte**)(e + 0x6c);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            short element = *(short*)(e + 0x9a);
+
+            *(short*)(e + 0x28) = 0xfa;
+            *(short*)(e + 0x2c) = 0xfa;
+            e[4] = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x12) = 0x0a;
+
+            if (element == 0) { e[0x38] = 0; e[0x39] = 0x82; e[0x3a] = 0x96; }
+            if (element == 1) { e[0x38] = 0x96; e[0x39] = 0; e[0x3a] = 0; }
+            if (element == 2) { e[0x38] = 0x96; e[0x39] = 0; e[0x3a] = 0x96; }
+
+            e[0x36] &= 0xfe;
+            *(short*)(e + 0x16) = 0;
+            *(int*)(e + 0x44) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x34) = 0x400;
+            *(short*)(e + 0x32) = (short)(*(short*)(caster + 0x32) + 0xc00);
+            *(int*)(e + 0x20) = *(int*)(caster + 0x20) + *(int*)(anchor + 0x54);
+
+            short course = *(short*)(caster + 0x32);
+            int side = *(int*)(anchor + 0x50) >> 0xc;
+            int ahead = *(int*)(anchor + 0x58) >> 0xc;
+
+            // Le vecteur local du +0x6c, tourne dans le repere du lanceur.
+            int x = *(int*)(caster + 0x1c)
+                    - Winsys3d.GetCosTableEntry(course) * side                        // Ghidra: 0x00545a16
+                    - (int)Winsys3d.GetSinTableEntry(course) * ahead;                 // Ghidra: 0x00545a1c
+            int z = (int)Winsys3d.GetSinTableEntry(course) * side
+                    + *(int*)(caster + 0x24)
+                    - Winsys3d.GetCosTableEntry(course) * ahead;
+
+            // `lea *3` puis `lea *5` : le rayon propre vaut 15 unites, et non 14.
+            int own = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+            *(int*)(e + 0x1c) = x + (int)Winsys3d.GetSinTableEntry(own) * 15;
+            own = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+            *(int*)(e + 0x24) = z + Winsys3d.GetCosTableEntry(own) * 15;
+
+            if (*(short*)(e + 0x12) == 0x0a)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xdf, 0, -1);   // Ghidra: FUN_0047ac40
+            }
+
+            int savedX = *(int*)(e + 0x1c);
+            int savedY = *(int*)(e + 0x20);
+            int savedZ = *(int*)(e + 0x24);
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32) - 0xc00)
+                                 * *(short*)(e + 0x16);
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32) - 0xc00)
+                                 * *(short*)(e + 0x16);
+
+            byte* member = Inp.s_SlotFlags_005e93c0;                // 0x005e93c0
+
+            for (int slot = 0; slot < 4; slot++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                int dx = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                int dy = (*(int*)(member + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+                int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                int angle = (Winsys3d.Ordinal_457(dx, dz) - *(short*)(caster + 0x32)) & 0xfff;
+                int reach = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+
+                if (reach >= 0xc8) continue;
+
+                bool inCone = (angle < 0x320 && angle > 0) || (angle < 0x1000 && angle > 0xce0);
+                if (!inCone) continue;
+
+                int bit = 1 << slot;
+                if ((*(int*)(e + 0x44) & bit) != 0) continue;
+                *(int*)(e + 0x44) |= bit;
+
+                StrikeWithElement_00436950(e, (uint*)caster, (uint*)member);
+            }
+
+            FinalizeEntityPlacement2((uint*)e);                     // Ghidra: FUN_00533940
+
+            *(int*)(e + 0x24) = savedZ;
+            *(int*)(e + 0x1c) = savedX;
+            *(int*)(e + 0x20) = savedY;
+
+            short height = *(short*)(e + 0x2a);
+            *(short*)(e + 0x2a) = (short)(((0x4000 - height) >> 2) + height);
+
+            short span = *(short*)(e + 0x16);
+            *(short*)(e + 0x16) = (short)(((0x258 - span) >> 2) + span);
+
+            if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+
+            *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) <= 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0x0a;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x34) = 0x400;
+        *(short*)(e + 0x32) = (short)(*(short*)(caster + 0x32) + 0xc00);
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20) + *(int*)(anchor + 0x54);
+
+        short bearing = *(short*)(caster + 0x32);
+        int lateral = *(int*)(anchor + 0x50) >> 0xc;
+        int forward = *(int*)(anchor + 0x58) >> 0xc;
+
+        int fadeX = *(int*)(caster + 0x1c)
+                    - Winsys3d.GetCosTableEntry(bearing) * lateral
+                    - (int)Winsys3d.GetSinTableEntry(bearing) * forward;
+        int fadeZ = (int)Winsys3d.GetSinTableEntry(bearing) * lateral
+                    + *(int*)(caster + 0x24)
+                    - Winsys3d.GetCosTableEntry(bearing) * forward;
+
+        int tilt = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x1c) = fadeX + (int)Winsys3d.GetSinTableEntry(tilt) * 15;
+        tilt = *(int*)(e + 0x5c) + *(short*)(e + 0x32) - 0xc00;
+        *(int*)(e + 0x24) = fadeZ + Winsys3d.GetCosTableEntry(tilt) * 15;
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32) - 0xc00)
+                             * *(short*)(e + 0x16);
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32) - 0xc00)
+                             * *(short*)(e + 0x16);
+
+        *(short*)(e + 0x34) = 0xc00;
+
+        short shrink = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)(((-shrink) >> 2) + shrink);
+
+        e[0x38] = (byte)(((-(int)e[0x38]) >> 3) + e[0x38]);
+        e[0x39] = (byte)(((-(int)e[0x39]) >> 3) + e[0x39]);
+        e[0x3a] = (byte)(((-(int)e[0x3a]) >> 3) + e[0x3a]);
+
+        *(short*)(e + 0x12) -= 1;
+        if (*(short*)(e + 0x12) <= 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Le coup du souffle elementaire, choisi par le <c>+0x9a</c> de l'entite : un effet
+    /// fixe pour <c>0</c> et <c>2</c>, un tirage parmi neuf pour <c>1</c>. Les neuf branches sont la
+    /// table de sauts <c>0x00436ef0</c>, et chacune est une <b>enveloppe gardee</b> — la paire
+    /// est-elle bloquee (<c>0x004364b0</c>), sinon applique. Les neuf enveloppes ne different que
+    /// par leur applicateur, exactement comme les vingt et une du lot 10.</summary>
+    private static void StrikeWithElement_00436950(byte* e, uint* caster, uint* member)
+    {
+        short element = *(short*)(e + 0x9a);
+
+        if (element == 0) AfflictGuarded(caster, member, 0x0053b3c0);   // Ghidra: FUN_00436470
+
+        if (element == 1)
+        {
+            // Ghidra: `cdq ; idiv 9 ; movsx eax,dx ; cmp eax,8 ; ja ; jmp [eax*4+436EF0h]`.
+            int draw = CrtRand() % 9;
+            int applier = draw switch
+            {
+                0 => 0x0053c420,                                    // Ghidra: FUN_00436750
+                1 => 0x0053b3c0,                                    // Ghidra: FUN_00436470
+                2 => 0x0053bf00,                                    // Ghidra: FUN_00436690
+                3 => 0x0053b4b0,                                    // Ghidra: FUN_00436510
+                4 => 0x0053b660,                                    // Ghidra: FUN_00436590
+                5 => 0x0053b580,                                    // Ghidra: FUN_00436550
+                6 => 0x0053b8f0,                                    // Ghidra: FUN_004365d0
+                7 => 0x0053c510,                                    // Ghidra: FUN_00436f60
+                _ => 0x0053b9c0,                                    // Ghidra: FUN_00436f20
+            };
+
+            AfflictGuarded(caster, member, applier);
+        }
+
+        if (element == 2) AfflictGuarded(caster, member, 0x0053b4b0);   // Ghidra: FUN_00436510
+    }
+
+    /// <summary>L'enveloppe gardee commune aux onze sites du souffle elementaire : la paire
+    /// est-elle bloquee par <see cref="IsEffectPairBlocked_004364B0"/>, sinon l'applicateur nomme
+    /// par son adresse Ghidra est appele. Les onze corps du binaire sont identiques a cette
+    /// indirection pres.</summary>
+    private static void AfflictGuarded(uint* caster, uint* member, int applier)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, member) != 0) return;   // Ghidra: FUN_004364b0
+
+        switch (applier)
+        {
+            case 0x0053b3c0: ApplyStatusEffect_0053B3C0(caster, member, 0); break;
+            case 0x0053b4b0: ApplyStatusEffect_0053B4B0(caster, member, 0); break;
+            case 0x0053b580: ApplyStatusEffect_0053B580(caster, member, 0); break;
+            case 0x0053b660: ApplyStatusEffect_0053B660(caster, member, 0); break;
+            case 0x0053b8f0: ApplyStatusEffect_0053B8F0(caster, member, 0); break;
+            case 0x0053b9c0: ApplyStatusEffect_0053B9C0(caster, member, 0); break;
+            case 0x0053bf00: ApplyStatusEffect_0053BF00(caster, member, 0); break;
+            case 0x0053c420: ApplyTrapEffect_0053C420(caster, member, 0); break;
+            case 0x0053c510: ApplyStatusEffect_0053C510(caster, member, 0); break;
+        }
+    }
 }

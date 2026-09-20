@@ -146,7 +146,9 @@ TickSlantedPuff_00418AF0 | 0x0054FBF8 | +0x00 | TickSlantedPuff_00418AF0,TickSla
 EntityHandler_00432240 | 0x00550CB8 | +0x00 | EntityHandler_00432240,TickSlantedPuff | 5f529d9c9aed | idem, copie de la grotte (0x00432261)
 EntityHandler_00433900 | 0x00550DA8 | +0x00 | EntityHandler_00433900,TickSlantedPuff | 94f57ffb38c4 | idem (0x00433921)
 EntityHandler_004354A0 | 0x00550EB8 | +0x00 | EntityHandler_004354A0,TickSlantedPuff | a2f1c18b69fb | idem (0x004354c1)
-EntityHandler_0043BDD0 | 0x00551160 | +0x00 | EntityHandler_0043BDD0,TickSlantedPuff | 94995fb7a7fd | idem (0x0043bdf1)
+# 0x00551160 +0x00 n'est plus a marge courte depuis que la planche a ete relevee en entier
+# (4 enregistrements, 2026-09-20) : la preuve de EntityHandler_0043BDD0 devient sans objet.
+EntityHandler_0043B870 | 0x00551160 | +0x18 | EntityHandler_0043B870 | 68802732e1c6 | le role 1 pose +0x40 = 0 a son unique initialisation et n'y touche plus ; 0x00551178 est la derniere de la serie, bornee par la 0x20 x 0x20 de 0x00551180
 EntityHandler_0043C010 | 0x00551158 | +0x00 | EntityHandler_0043C010,SpawnStatusEffectEntity_0047AC40 | 7a06017f0b44 | n'ecrit jamais +0x40 (aucun acces dans ses 78 instructions) ; creneau de 0x0056b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40 qui le met a 0 — la preuve de 0x004079E0
 
 # ---- Ajoute le 2026-09-19 (grotte scellee, lot 5) : l'helice, la goutte, la fumee qui monte vite
@@ -182,3 +184,4 @@ EntityHandler_0043C120 | 0x00551150 | +0x00 | EntityHandler_0043C120,TickOblique
 EntityHandler_0043E690 | 0x00551240 | +0x00 | EntityHandler_0043E690 | b40a2a3fd823 | pose 0 a la naissance (`mov byte [esi+40h],0`) et ne l'ecrit plus, dans aucun de ses deux roles
 EntityHandler_0043E820 | 0x00551518 | +0x00 | EntityHandler_0043E820 | 9a07d4194d09 | tire +0x40 a 0 ou 1 a la naissance et ne l'ecrit plus ; marge 2, plafond 1
 EntityHandler_004403B0 | 0x005514F0 | +0x08 | EntityHandler_004403B0 | 4aae4845ab36 | pose 0 a la naissance (`mov [esi+40h],bl`, 0x004403cf) et ne l'ecrit plus, dans aucun de ses deux etats
+EntityHandler_00440060 | 0x005514F0 | +0x08 | EntityHandler_00440060 | 77b411d8c466 | pose 0 a la naissance (0x00440076, `mov [esi+40h],0` via param_1[0x10]) et ne l'ecrit plus, dans aucun de ses trois etats

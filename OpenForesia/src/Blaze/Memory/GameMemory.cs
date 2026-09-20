@@ -1058,6 +1058,14 @@ internal sealed unsafe class GameMemory
     /// </summary>
     internal int s_Unknown_005d9de0 => (int)s_GammaIni;
 
+    /// <summary>Ghidra: DAT_005de520 — un octet pose a <c>3</c> par la scene finale
+    /// <c>0x00440840</c>, dans la meme rafale que <c>s_GameStateId_005de510 = 7</c> et
+    /// <c>s_WorldMapStep_005645f8 = 0xfd</c>. C'est donc vraisemblablement le <b>sous-mode</b> de
+    /// l'etat de jeu vers lequel la scene bascule, mais aucun lecteur n'a encore ete releve : le
+    /// role reste a etablir.</summary>
+    // TODO(REVERSE): trouver qui lit DAT_005de520 — la bascule d'etat de 0x00440840 l'ecrit seule.
+    internal byte s_Unknown_005de520;
+
     internal int s_Unknown_005de538;
 
     // =====================================================================

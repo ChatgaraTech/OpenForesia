@@ -871,11 +871,20 @@ public static unsafe partial class Blaze
         0x18, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00550eb8  <- 0x004354A0
     ];
 
-    /// <summary>Ghidra: <c>&amp;DAT_00551160</c> — sous-zone 1. Bornee par une tuile
-    /// <c>0x0f x 0x0f</c> (<c>0x00551168</c>).</summary>
+    /// <summary>Ghidra: <c>&amp;DAT_00551160</c> — sous-zone 1. <b>Quatre tuiles d'un tenant</b>,
+    /// relevees ensemble le 2026-09-20 : la <c>0x18 x 0x18</c> de la bouffee oblique, puis trois
+    /// <c>0x0f x 0x0f</c> dont deux sont employees par <see cref="EntityHandler_0043B870"/>.
+    ///
+    /// <para>La suivante, <c>0x00551180</c>, est une <c>0x20 x 0x20</c> page 3 : c'est elle qui
+    /// borne la serie. <b>Marges</b> : 4 pour <c>0x00551160</c> (le corps n'ecrit jamais
+    /// <c>+0x40</c>), 3 pour <c>0x00551168</c> — necessaire, son corps y met <c>rand &amp; 1</c> —,
+    /// et 1 pour <c>0x00551178</c>, dont le corps remet <c>+0x40</c> a zero.</para></summary>
     private static readonly byte[] s_Descriptors_00551160 =
     [
         0x18, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551160  <- 0x0043BDD0
+        0xc0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551168  <- 0x0043B870, phase 0
+        0xd0, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x00551170
+        0x80, 0x48, 0x0f, 0x0f, 0x00, 0x01, 0x10, 0x00,   // 0x00551178  <- 0x0043B870, phase 1
     ];
 
     private static byte* s_Descriptors00550CB8Storage;
@@ -887,6 +896,8 @@ public static unsafe partial class Blaze
     private static byte* Descriptors00550DA8() => NativeCopy(s_Descriptors_00550DA8, ref s_Descriptors00550DA8Storage);
     private static byte* Descriptors00550EB8() => NativeCopy(s_Descriptors_00550EB8, ref s_Descriptors00550EB8Storage);
     private static byte* Descriptors00551160() => NativeCopy(s_Descriptors_00551160, ref s_Descriptors00551160Storage);
+    private static byte* Descriptors00551168() => Descriptors00551160() + 8;
+    private static byte* Descriptors00551178() => Descriptors00551160() + 0x18;
 
     /// <summary>Ghidra: <c>0x00432240</c> — la bouffee oblique du bloc 0 ; montee de 6 a 11.</summary>
     private static void EntityHandler_00432240(byte* e) => TickSlantedPuff(e, Descriptors00550CB8(), 6, 6);

@@ -2835,7 +2835,7 @@ public static unsafe partial class Blaze
                 int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
 
                 int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
-                int angle = Winsys3d.Ordinal_457(dz, dx) + (0x800 - *(short*)(e + 0x12));
+                int angle = Winsys3d.Ordinal_457(dx, dz) + (0x800 - *(short*)(e + 0x12));
 
                 if (distance >= *(int*)(e + 0x44)) continue;
 
@@ -2877,7 +2877,7 @@ public static unsafe partial class Blaze
             int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
             int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
 
-            int swing = ((Winsys3d.Ordinal_457(dz, dx) - *(short*)(e + 0x32)) & 0xfff) - 0x800;
+            int swing = ((Winsys3d.Ordinal_457(dx, dz) - *(short*)(e + 0x32)) & 0xfff) - 0x800;
             *(short*)(e + 0x32) += (short)(swing >> *(int*)(e + 0x48));
 
             int drift = (short)(*(int*)(e + 0x4c) - *(short*)(e + 0x32));
@@ -2896,7 +2896,7 @@ public static unsafe partial class Blaze
                 *(short*)(e + 0x98) = 0;
             }
 
-            int angle = Winsys3d.Ordinal_457(dz, dx) + (0x800 - *(short*)(e + 0x12));
+            int angle = Winsys3d.Ordinal_457(dx, dz) + (0x800 - *(short*)(e + 0x12));
             int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
 
             bool lost = distance > *(int*)(e + 0x44);

@@ -1268,4 +1268,317 @@ public static unsafe partial class Blaze
 
         *(short*)(e + 0x16) += 1;
     }
+
+    // =====================================================================
+    // LOT 13 (2026-09-20) — LA DIXIEME SCENE, ET LA DERNIERE DE LA ZONE
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00440840</c> — sous-zones 13, 14 et 15, table <c>0x0056b0c8</c>. <b>Absente de
+    /// <c>Blaze.c</c></b> ; 477 instructions, <b>le plus gros corps restant de la grotte</b>,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00440840.asm</c>.
+    ///
+    /// <para>
+    /// <b>La scene finale.</b> Cinq cents images, et elle ne se termine pas comme les neuf autres :
+    /// au lieu de rendre la main a la carte, elle <b>bascule l'etat de jeu</b> — <c>0x005de510</c> a
+    /// <c>7</c>, <c>0x005645f8</c> a <c>0xfd</c>, <c>0x005de520</c> a <c>3</c> — apres avoir noyé
+    /// l'ecran de blanc. C'est la sortie de la grotte scellee.
+    /// </para>
+    /// <para>
+    /// <b>Son balayage de victime est le seul a indexer le clip par la pose.</b> Les neuf autres
+    /// prennent <c>animTable[scene[4]][2]</c> ; celle-ci prend <c>animTable[scene[4]][pose]</c>, et
+    /// la pose est le <c>+0x9a</c> de la scene, qui part de <c>0x0b</c> et monte. La victime joue
+    /// donc une <b>suite</b> d'animations, pas une seule.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>la suite d'animations</term><description>une image sur deux, le clip avance ;
+    ///     a sa derniere image la pose monte, <c>0x0d</c> etant saute et <c>0x0f</c> ramene a
+    ///     <c>0x0e</c>. La pose <c>0x0e</c> est donc un <b>point fixe</b> : la victime y reste,
+    ///     bloquee sur sa derniere image.</description></item>
+    ///   <item><term>l'arret du temps</term><description>tant que <c>+0x5c</c> est non nul,
+    ///     <c>+0x16</c> <b>recule d'une image a chaque image impaire</b> — le compte de la scene
+    ///     fait du sur-place. Il se remplit a <c>0x0a</c> quand la pose vaut <c>0x0e</c>, l'image
+    ///     vaut <c>0x1b</c> et le compteur vient de passer a <c>-1</c> : une pause d'une dizaine
+    ///     d'images au moment precis du geste.</description></item>
+    ///   <item><term>les trois eclats</term><description>a la pose <c>0x0e</c>, une fois la
+    ///     derniere image atteinte et tant que <c>+0x16</c> est sous <c>0xbe</c>, trois <c>0xc5</c>
+    ///     naissent par image, avec deux sons <c>5</c> qui ne partent qu'une fois chacun (verrou
+    ///     <c>+0x98</c>, <c>0</c> puis <c>1</c> puis <c>2</c>).</description></item>
+    ///   <item><term>l'image 0xaf</term><description>le fond passe au <b>blanc plein</b> et le
+    ///     semeur de <c>0xcb</c> s'arme : une naissance toutes les trois images jusqu'a
+    ///     <c>0x12c</c>.</description></item>
+    ///   <item><term>0xf0 a 0x118</term><description>un <c>0xc6</c> par image et le troisieme
+    ///     son.</description></item>
+    ///   <item><term>0x10e a 0x140</term><description>le grondement <c>0x28</c> une image sur sept,
+    ///     un <c>0xcd</c> a l'entree, deux <c>0xcf</c> par image jusqu'a <c>0x12c</c>, et un
+    ///     <c>0xce</c> <b>lance 0xe6000 plus haut</b> une image impaire sur deux jusqu'a
+    ///     <c>0x118</c>.</description></item>
+    ///   <item><term>0x118 et 0x11d</term><description>le fond passe au cyan sombre et deux
+    ///     <c>0xcc</c> partent, le premier avec <c>+0x14 = 0x10</c>, le second avec
+    ///     <c>0x0b</c>.</description></item>
+    ///   <item><term>a partir de 0x140</term><description>sept <c>0xc7</c> par image, et le
+    ///     <b>voile plein cadre monte de 5 par canal</b> jusqu'au blanc — c'est en l'atteignant que
+    ///     la bascule d'etat se fait.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>La secousse de camera a son propre compteur</b>, <c>+0x74</c>, independant de <c>+0x16</c>
+    /// : passe <c>0x66</c> elle tremble d'amplitude <c>8</c> une image sur deux, et les deux
+    /// premiers sons de la scene partent a <c>0x61</c> et <c>0x62</c>. Une seconde secousse, plus
+    /// fine, accompagne la pose <c>0x12</c> une fois son clip fini.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00440840(byte* e)
+    {
+        MusicFadeStep_0041AF50();                                   // Ghidra: FUN_0041af50
+        ResetEntityWakeBits_0040E640();                             // Ghidra: FUN_0040e640
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x9a) = 0x0b;
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        byte* victim = null;
+        byte* clip = null;
+
+        byte* scene = Mem.Entity(0x005ecaa0);
+        for (int i = 0x20; i != 0; i--, scene += 0x9c)
+        {
+            if (scene[0x0c] != 0) continue;
+            if ((*(uint*)scene & 0x80000000) == 0) continue;
+
+            *(int*)(e + 0x1c) = *(int*)(scene + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(scene + 0x20);
+            *(int*)(e + 0x24) = *(int*)(scene + 0x24);
+
+            // Seule scene de la grotte a indexer le clip par la POSE et non par la constante 2.
+            *(short*)(scene + 0x18) = *(short*)(e + 0x9a);
+            clip = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4)
+                             + *(short*)(e + 0x9a) * 4);
+
+            *(uint*)scene |= 0x1000;
+            victim = scene;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+
+            *(int*)(e + 0x50) = *(short*)Mem.Arena(0x005e92b8);
+            *(int*)(e + 0x54) = *(short*)Mem.Arena(0x005e92ba);
+            *(int*)(e + 0x58) = *(short*)Mem.Arena(0x005e92bc);
+
+            *(short*)(victim + 0x1a) = 0;
+            victim[0x0a] = 0;
+            *(uint*)(victim + 0x38) = 0xffffff;
+            *(short*)(victim + 0x36) = 1;
+            *(int*)(e + 0x74) = 0;
+        }
+
+        // ------------------------------------------------- la secousse, sur son propre compteur
+        *(int*)(e + 0x74) += 1;
+
+        if ((uint)*(int*)(e + 0x74) > 0x66)
+        {
+            TryPublishCameraEffectNearEntity(
+                (uint*)e, 0x3e7, (*(int*)(e + 0x74) & 1) != 0 ? 8 : 0, 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+        }
+
+        if (*(int*)(e + 0x74) == 0x61) Aud.PlaySoundEffect(0x0b, 0x1c2, 0x1800, 0x1800);   // Ghidra: FUN_0053cea0
+        if (*(int*)(e + 0x74) == 0x62) Aud.PlaySoundEffect(0x20, 0x200, 0x1800, 0x1800);
+
+        // ------------------------------------------------- la suite d'animations
+        if ((e[0x16] & 1) != 0)
+        {
+            if (*(int*)(e + 0x5c) == 0)
+            {
+                *(short*)(victim + 0x1a) += 1;
+
+                if (*(short*)(victim + 0x1a) >= *(ushort*)(clip + 0x16))
+                {
+                    *(short*)(victim + 0x1a) = 0;
+                    *(short*)(e + 0x9a) += 1;
+
+                    if (*(short*)(e + 0x9a) == 0x0d) *(short*)(e + 0x9a) = 0x0e;
+
+                    if (*(short*)(e + 0x9a) >= 0x0f)
+                    {
+                        *(short*)(e + 0x9a) = 0x0e;
+                        *(short*)(victim + 0x1a) = (short)(*(ushort*)(clip + 0x16) - 1);
+                    }
+                }
+            }
+            else
+            {
+                *(short*)(e + 0x16) -= 1;                           // le temps fait du sur-place
+            }
+        }
+
+        *(int*)(e + 0x5c) -= 1;
+
+        if (*(short*)(e + 0x9a) == 0x0e && *(short*)(victim + 0x1a) == 0x1b
+            && *(int*)(e + 0x5c) == -1)
+        {
+            *(int*)(e + 0x5c) = 0x0a;
+        }
+
+        if (*(int*)(e + 0x5c) < 0) *(int*)(e + 0x5c) = 0;
+
+        // ------------------------------------------------- les trois eclats du geste
+        if (*(short*)(e + 0x9a) == 0x0e
+            && *(short*)(victim + 0x1a) >= *(ushort*)(clip + 0x16) - 1
+            && *(short*)(e + 0x16) < 0xbe)
+        {
+            for (int i = 3; i != 0; i--)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xc5, 0, -1);   // Ghidra: FUN_0047ac40
+            }
+
+            if (*(short*)(e + 0x98) == 1)
+            {
+                Aud.PlaySoundEffect(5, 0x190, 0x2000, 0x2000);
+                *(short*)(e + 0x98) = 2;
+            }
+            else if (*(short*)(e + 0x98) == 0)
+            {
+                Aud.PlaySoundEffect(5, 0x100, 0x1400, 0x1400);
+                *(short*)(e + 0x98) = 1;
+            }
+        }
+
+        // ------------------------------------------------- le fond, puis les semis
+        short beat = *(short*)(e + 0x16);
+
+        if (beat == 0xaf)
+        {
+            SetSceneBackdrop(0xff, 0xff, 0xff, 2);                  // Ghidra: DAT_005e9160..66
+            *(short*)(e + 0x12) = 0;
+        }
+
+        beat = *(short*)(e + 0x16);
+        if (beat > 0xaf && beat < 0x12c)
+        {
+            if (*(short*)(e + 0x12) == 2)
+            {
+                *(short*)(e + 0x12) = 0;
+                SpawnCastEntity_0047AAE0(e, 0xcb, 0, -1);           // Ghidra: FUN_0047aae0
+            }
+            *(short*)(e + 0x12) += 1;
+        }
+
+        beat = *(short*)(e + 0x16);
+        if (beat > 0xf0 && beat < 0x118)
+        {
+            if (*(short*)(e + 0x98) == 2)
+            {
+                Aud.PlaySoundEffect(0x20, 0x320, 0x1300, 0x1300);
+                *(short*)(e + 0x98) = 3;
+            }
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xc6, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0x118)
+        {
+            Aud.PlaySoundEffect(5, 0x320, 0x1000, 0x1000);
+            SetSceneBackdrop(0, 0x96, 0x96, 2);
+            *(short*)(e + 0x14) = 0x10;
+            SpawnCastEntity_0047AAE0(e, 0xcc, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0x11d)
+        {
+            *(short*)(e + 0x14) = 0x0b;
+            SpawnCastEntity_0047AAE0(e, 0xcc, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0x10e)
+        {
+            *(short*)(e + 0x98) = 0;
+            SpawnCastEntity_0047AAE0(e, 0xcd, 0, -1);
+        }
+
+        beat = *(short*)(e + 0x16);
+        if (beat >= 0x10e && beat <= 0x140)
+        {
+            if (*(short*)(e + 0x98) == 0) Aud.PlaySoundEffect(0x28, 0x100, 0x1000, 0x1000);
+            *(short*)(e + 0x98) += 1;
+            if (*(short*)(e + 0x98) == 7) *(short*)(e + 0x98) = 0;
+        }
+
+        beat = *(short*)(e + 0x16);
+        if (beat >= 0x10e && beat <= 0x118 && (beat & 1) != 0)
+        {
+            int ground = *(int*)(e + 0x20);
+            *(int*)(e + 0x20) = ground + 0xe6000;
+            SpawnCastEntity_0047AAE0(e, 0xce, 0, -1);
+            *(int*)(e + 0x20) = ground;
+        }
+
+        beat = *(short*)(e + 0x16);
+        if (beat >= 0x10e && beat <= 0x12c)
+        {
+            SpawnCastEntity_0047AAE0(e, 0xcf, 0, -1);
+            SpawnCastEntity_0047AAE0(e, 0xcf, 0, -1);
+        }
+
+        // ------------------------------------------------- le blanchiment, puis la bascule
+        if (*(short*)(e + 0x16) >= 0x140)
+        {
+            if (*(short*)(e + 0x16) == 0x140) Mem.s_Unknown_005de024 = 0x01000000;   // Ghidra: DAT_005de024..27
+
+            byte veilR = (byte)Mem.s_Unknown_005de024;
+
+            if (veilR != 0xff)
+            {
+                byte veilG = (byte)(Mem.s_Unknown_005de024 >> 8);
+                byte veilB = (byte)(Mem.s_Unknown_005de024 >> 0x10);
+
+                Mem.s_Unknown_005de024 = (Mem.s_Unknown_005de024 & 0xff000000)
+                                         | (uint)(byte)(veilR + 5)
+                                         | ((uint)(byte)(veilG + 5) << 8)
+                                         | ((uint)(byte)(veilB + 5) << 0x10);
+            }
+            else
+            {
+                Mem.s_WorldFlags_005de02c |= 2;                     // Ghidra: DAT_005de02c
+                s_WorldMapStep_005645f8 = unchecked((sbyte)0xfd);   // Ghidra: DAT_005645f8
+                s_GameStateId_005de510 = 7;                         // Ghidra: DAT_005de510
+                Mem.s_Unknown_005de520 = 3;                         // Ghidra: DAT_005de520
+            }
+
+            for (int i = 7; i != 0; i--)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xc7, 0, -1);
+            }
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) >= 0x1f4)
+        {
+            *(uint*)e &= 0x7fffffff;
+            CameraModeApply_005037E0(0);                            // Ghidra: FUN_005037b0
+
+            RunEntityScript(
+                s_Unknown_005e97cc,
+                Inp.s_SlotFlags_005e93c0 + Mem.s_Unknown_005de538 * 0x9c, 0);   // Ghidra: FUN_00513dd0
+
+            *(uint*)victim |= 0x2004000;
+
+            SetSceneBackdrop((short)*(int*)(e + 0x50), (short)*(int*)(e + 0x54),
+                             (short)*(int*)(e + 0x58), 2);
+            Mem.s_Unknown_005de024 = 0x01000000;
+        }
+
+        // ------------------------------------------------- la seconde secousse, plus fine
+        if (*(short*)(e + 0x9a) == 0x12
+            && *(short*)(victim + 0x1a) >= *(ushort*)(clip + 0x16))
+        {
+            TryPublishCameraEffectNearEntity((uint*)e, 0, CrtRand() % 5 - 2, 1, 0, 0);
+        }
+    }
 }

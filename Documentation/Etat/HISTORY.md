@@ -6,6 +6,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-20
 
+- feat : **la grotte scellée est complète — 349 sur 349, et le dépôt avec elle** : les 1 430
+  gestionnaires d'entité atteignables du jeu sont transcrits, plus aucun « à écrire » dans aucune
+  zone. Les six derniers : le projectile à tête chercheuse, le sort à trois rôles, les deux souffles
+  accrochés au lanceur, le souffle élémentaire à neuf effets tirés au sort, et **la scène finale**,
+  qui bascule l'état de jeu au lieu de rendre la main à la carte
+- fix : **`ratan2` était appelé à arguments inversés sur cinq sites** — la tourelle de la grotte
+  (trois) et le projectile `0x00485F50` (deux). Le binaire pousse `dz` puis `dx`, donc `dx` est le
+  premier argument, comme aux 106 autres sites du dépôt ; la tourelle visait en miroir de la
+  diagonale
+- doc : la planche `0x00551160` relevée en entier (quatre tuiles) ; deux marges courtes prouvées et
+  scellées, une preuve devenue sans objet retirée
 - feat : **grotte scellée, lot 12 — 343 sur 349** : trois des cinq isolés des sous-zones 13-15 —
   la **huitième scène** (l'embrasement du fond, la seule qui ne tue personne), la **neuvième**
   (le membre aspiré, six ou douze projections et une sirène qui s'éloigne), et l'étincelle qui

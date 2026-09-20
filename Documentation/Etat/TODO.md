@@ -1,60 +1,47 @@
 # TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7 à 12).
-**Il ne reste que la grotte scellée — 343 / 349 —, et il n'y reste que six « D », tous distincts.**
-Toutes les routines d'IA du jeu, tous les « B », toute la catégorie « C », **les trois traîneaux** et
-**les neuf scènes** sont écrits. Les onze autres zones sont complètes.
-L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
-l'état courant et la suite à faire.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-20**.
+
+# IL N'Y A PLUS DE GESTIONNAIRE À TRANSCRIRE
+
+`GestionnairesEntites.md` affiche **« à transcrire : 0 »**. Les **1 430 gestionnaires d'entité
+atteignables** du jeu sont écrits, dans les douze zones. La grotte scellée, dernière à l'être, est
+à **349 / 349**.
+
+**Ce qui reste n'est plus de la transcription mais de la preuve.** 979 corps sont implémentés et
+n'ont jamais tourné en jeu — `implemente=oui, teste=non`, la colonne « dette » du recensement. Elle
+ne se paie qu'en jouant, et **les tests en jeu sont à Vincent**.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
-**Les tests de navigation en jeu sont à Vincent.** Atteindre une pièce, changer de carte,
-reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage dans
-`Documentation/Tests/test-protocol.md`. Restent à l'agent le build et les lancements sans
-déplacement.
-
 ---
 
-# LA SUITE — LES SIX DERNIERS DE LA GROTTE SCELLÉE
+# LA SUITE, PAR ORDRE D'UTILITÉ
 
-`Zone10ParComplexite.md` les liste, tous « D », tous d'une lecture chacun. **Deux ont déjà été
-lus** au lot 12 sans être écrits, et leur place est décidée :
+**1. Jouer, et regarder les trois sondes.** `handlers-exerces.tsv`, `objets-exerces.tsv` et
+`sorts-exerces.tsv` s'enrichissent à chaque partie ; `feuille-de-route.bat`, `objets.bat` et
+`sorts.bat` reconstruisent les trois tableaux de bord. C'est la seule manière de faire baisser les
+979. Les zones les moins éprouvées sont **la grotte scellée (0 testés sur 349)** et **les ruines
+souterraines (0 sur 35)** ; le château de l'immortel n'en a que 9 sur 170.
 
-- **`0x00486320` (274, sous-zones 13-15)** — un **projectile à tête chercheuse**. Il suit la cible
-  que porte son `+0x78`, en calcule la distance par `0x00545a10` et les deux angles par
-  `0x00545a22`, pose sa vitesse par `SetVectorFromAngles_00532AD0`, l'amortit des sept huitièmes à
-  chaque image, se recale au sol par `FinalizeEntityPlacement2`, puis frappe par
-  `ProbeMeleeTarget_00474CA0` + `ResolveMeleeHit_00539B80`. À l'échec il se transforme : `+0x6c`
-  devient `0x6c` par `SpawnCastEntity_0047AAE0` et un son positionnel part
-  (`Aud.PlayPositionalSound`). **Sa place est `Combat/Projectiles.cs`.** Le seul point à vérifier
-  avant d'écrire est **l'ordre des deux arguments de `0x00545a22`** (ratan2) sur chacun des quatre
-  sites — le binaire pousse `y` puis `x`, mais chaque site les nomme différemment.
-- **`0x0043b870` (369, sous-zone 1, décompilée)** — un **effet qui frappe**, à ne surtout pas ranger
-  avec les traîneaux malgré sa sous-zone. Trois phases sur `+0x14`, deux planches
-  (`0x00551168`, `0x00551178`), l'éclair d'écran `DAT_005de024`..`27`, et une enveloppe gardée
-  `FUN_0043bd90` (`FUN_004364b0` puis `FUN_0053b730`) de la même forme que les vingt et une du
-  lot 10. **Ses deux planches sont à relever dans le binaire et à passer à
-  `check-descriptors.sh`.**
-
-Les quatre autres n'ont pas encore été ouverts :
-
-- `0x00440840` (477, sous-zones 13-15) — le plus gros des six.
-- `0x00436950` (436, sous-zones 4 et 9) — une table de sauts ; **ses appelées sont les mêmes
-  enveloppes gardées que le lot 10**, plus `0x00436F20` et `0x00436F60`.
-- `0x004396E0` (289, sous-zones 6-7) — une appelée inconnue, `0x00439AC0`.
-- `0x0043C4A0` (289, sous-zones 11-12).
-
----
-
-# LES DEUX COUPES EN ATTENTE
-
-**Elles se proposent, elles ne se font pas d'office** (`ARCHITECTURE.md`).
+**2. Les deux coupes en attente** (`ARCHITECTURE.md` — elles se proposent, elles ne se font pas
+d'office) :
 
 - `Effects/SealedCaveParticles.cs` a dépassé **4 950 lignes** : à couper par bloc de sous-zones.
-- `Handlers/SealedCaveMecanismes.cs` a quintuplé en trois séances (371 → 1 900 lignes). Les trois
-  traîneaux et leur piste y tiennent seuls plus de la moitié et feraient un
-  `Handlers/SealedCaveTraineaux.cs` cohérent.
+- `Combat/Projectiles.cs` a passé **5 300 lignes** en absorbant les quatre derniers corps qui
+  frappent. Les souffles accrochés au lanceur (`0x004396e0`, `0x0043c4a0`, `0x00436950`) forment un
+  sujet net et feraient un `Combat/Souffles.cs` cohérent.
+- `Handlers/SealedCaveMecanismes.cs` est à **1 900 lignes**, dont plus de la moitié pour les trois
+  traîneaux et leur piste : un `Handlers/SealedCaveTraineaux.cs` les prendrait.
+
+**3. Deux marges de planche courtes jamais prouvées**, antérieures à ces séances :
+`EntityHandler_00417B10` sur `0x0054FA50` et `EntityHandler_00419720` sur `0x0054FBF0`, toutes deux
+à 1 enregistrement restant. Les lire et, si le corps laisse `+0x40` à zéro, les sceller dans
+`marges-verifiees.txt`.
+
+**4. Un `TODO(REVERSE)` ouvert** : personne n'a encore été relevé qui **lise** `DAT_005de520`, que la
+scène finale `0x00440840` pose à `3` en même temps qu'elle bascule l'état de jeu à `7`. Son rôle
+reste à établir.
 
 ---
 

@@ -34,6 +34,60 @@ depends on the machine — check `dotnet --list-sdks` first:
 `playtest.ps1 -Build` already detects which case applies — see its "construction"
 section — so prefer it over reproducing this logic by hand.
 
+## LA CARTE DES GESTIONNAIRES EST COMPLETE — 1 430 sur 1 430 (2026-09-20)
+
+`GestionnairesEntites.md` affiche **« à transcrire : 0 »**. Les 1 430 gestionnaires d'entité
+atteignables du jeu sont écrits, dans les douze zones. La grotte scellée, dernière à l'être, passe
+de 343 à 349 sur 349.
+
+**Ce qui reste n'est plus de la transcription mais de la preuve** : 979 corps sont implémentés et
+n'ont jamais tourné en jeu (`implemente=oui, teste=non`). C'est désormais la seule dette que le
+recensement porte, et elle ne se paie qu'en jouant.
+
+### Les six derniers corps
+
+**`0x00486320`, le projectile à tête chercheuse.** Il poursuit la cible de son `+0x78` en
+recalculant cap et tangage à chaque image, pousse de 12 unités, amortit sa vitesse des sept
+huitièmes, et **fait croître son échelle avec sa vitesse réelle** — `(distance parcourue << 12) / 30`.
+Un verrou l'empêche de tourner en rond : quand les deux écarts d'angle tiennent dans `0x200` et que
+la distance parcourue tombe sous `0xc8`, il cesse de viser.
+
+**`0x0043b870`, le sort à trois rôles.** Un seul corps pour trois choses, selon le `+0x14` que son
+engendreur lui pose : la spirale montante, la masse qui tombe et blesse, et l'éclair d'écran qui
+empoisonne tout le groupe. Son rebond est écrit à l'envers — `+0x44` part de `-20`, gagne 10 à
+chaque contact du sol, et **c'est quand il devient positif que l'entité s'efface**, ce qui donne
+exactement deux rebonds.
+
+**`0x004396e0` et `0x0043c4a0`, les deux souffles accrochés au lanceur.** Le même corps à quatre
+différences près, toutes portées en paramètres : la teinte, le sous-type engendré, le coup porté
+(l'effet 8 contre 5 % des points de vie), et le champ de décalage angulaire. **Ce dernier révèle un
+défaut de 1998** : `0x0043c4a0` lit `+0x9a` dans ses deux états, `0x004396e0` lit `+0x5c` dans l'état
+1 et `+0x9a` dans l'état 2 — son souffle saute donc d'angle en passant à l'extinction.
+
+**`0x00436950`, le souffle élémentaire.** Son point d'accroche vient d'une **troisième entité** : le
+`+0x6c` porte un vecteur local que le corps fait tourner dans le repère du lanceur, ce qui permet à
+plusieurs souffles de sortir de points différents d'une même bête. Son élément se lit dans `+0x9a`,
+et la valeur `1` tire **un effet au hasard parmi neuf** par une table de sauts dont les neuf
+appelées sont encore les enveloppes gardées du lot 10.
+
+**`0x00440840`, la scène finale.** Cinq cents images, et elle ne rend pas la main à la carte : elle
+**bascule l'état de jeu** après avoir noyé l'écran de blanc. Seule des dix scènes à **indexer le clip
+d'animation par la pose** plutôt que par la constante 2, ce qui fait jouer à la victime une suite
+d'animations ; et seule à savoir **arrêter le temps**, en faisant reculer son propre compteur d'image
+tant qu'un délai court.
+
+### Le défaut trouvé en chemin : `ratan2` à arguments inversés
+
+Avant d'écrire le projectile à tête chercheuse, la convention d'appel de `Ordinal_457` a été
+vérifiée dans le binaire plutôt que supposée. Le compilateur pousse `dz` puis `dx`, donc **`dx` est
+le premier argument** — ce que font les 106 autres sites du dépôt. Cinq sites en divergeaient : les
+trois de la tourelle de la grotte (lot 10) et deux du projectile `0x00485f50`. Une tourelle ainsi
+appelée vise **en miroir de la diagonale**, sans erreur de compilation ni exception.
+
+**La leçon vaut d'être retenue** : un appel à deux arguments du même type et de la même magnitude ne
+se transcrit pas à l'intuition. Quand 106 sites s'accordent et que cinq divergent, ce sont les cinq
+qui ont tort — mais il fallait compter pour le voir, et le désassemblage pour le prouver.
+
 ## Grotte scellée, lot 12 — 340 → 343 sur 349 (2026-09-20)
 
 Trois des cinq isolés des sous-zones 13-15, et un défaut trouvé en chemin.
