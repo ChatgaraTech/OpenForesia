@@ -1,12 +1,11 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-19** (**quatre zones fermées dans la
-journée** : le château de l’immortel — 170 sur 170 —, puis en un lot chacune les ruines souterraines
-— 35 sur 35 —, les ruines dans le lac — 41 sur 41 — et **la vallée d’argent — 46 sur 46**, le
-onzième ensemble). **Il ne reste que la grotte scellée — 240 / 349 après ses lots 1 à 6 ; toutes les
-routines d'IA du jeu et tous ses « B » sont désormais écrits.** La zone 5, le Labyrinthe, a été
-fermée la veille — **160 sur 160** —, et l’avant-veille la mine, la montagne du dragon de feu et la
-vieille tour.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lot 7). **Il ne
+reste que la grotte scellée — 276 / 349 ; toutes les routines d'IA du jeu, tous ses « B » et tous
+les « C » de ses blocs 0 / 2-3 / 5-8-10 sont écrits.** Les onze autres zones sont complètes :
+l’auberge, la mine, la montagne du dragon de feu, la forêt, la vieille tour, le Labyrinthe des
+morts, le château de l’immortel, les ruines souterraines, la vallée d’argent et les ruines dans le
+lac.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -18,6 +17,29 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# GROTTE SCELLÉE, LOT 7 — LES « C » DU BLOC 0 / 2-3 / 5-8-10 (2026-09-20)
+
+**240 sur 349 devient 276 sur 349** : trente-six corps pour vingt-deux lectures, tous dans le même
+bloc de sous-zones — celui qui se recopie à `+0xf0` puis `+0x110`. Onze corps viennent de `Blaze.c`,
+onze du désassembleur (dix fichiers neufs sous `Legacy/Raw/Blaze/SealedCave/`).
+
+Les pièces de ce lot : **la pierre qui tombe en oblique et éclate** (elle blesse dans tous ses
+états, hors de tout test), **le coup qui tourne et s'enfonce** (il abaisse d'un quart l'attaque du
+lanceur, résout le coup, remet la valeur), **le lien qui tient tant que son voisin reste près** —
+dont le `+0x14` désigne un voisin dans la **même table d'entités**, `e + 0x9c * n` —, **le levier
+qui bascule son bit** là où la dalle du lot 2 ne fait que le poser, et **ce qu'on actionne et qui
+gèle la partie**, avec son message de refus distinct. Le détail est dans `REVERSE_STATUS.md`.
+
+**La suite** : **73 gestionnaires** — **48 « C » (47 lectures)** et 25 « D » (18 lectures),
+`Zone10ParComplexite.md`. Les « C » qui restent se lisent en trois blocs : **4-9 et 6-7** (le plus
+gros paquet), **11-12**, et **13-14-15**. La recherche de parenté ne compare que des corps de même
+longueur : une variante à longueur voisine (quelques instructions de plus ou de moins) trouverait
+sans doute d'autres cousins parmi eux — `0x00485330` en était un.
+
+Cinq « C » portent une **appelée inconnue** (`0x0043AD70`, `0x00439130`, `0x0043A400`, `0x0043EB20`,
+`0x004365D0`) : ce sont les seuls du lot à demander un détour avant d'être écrits.
+
 
 # TOUTES LES INTELLIGENCES ÉCRITES — GROTTE SCELLÉE, LOT 3 (2026-09-19)
 
@@ -40,10 +62,6 @@ sous-zones 4 à 10.
 
 Puis la seconde moitié (même jour) : **240 sur 349, plus aucun « B »**.
 
-**La suite** : **109 gestionnaires simples** — 84 « C » (69 lectures) et 25 « D » (18 lectures),
-`Zone10ParComplexite.md`. La recherche de parenté ne compare
-que des corps de même longueur : une variante à longueur voisine (quelques instructions de plus ou
-de moins) trouverait sans doute d'autres cousins parmi les « C » — `0x00485330` en était un.
 
 # ONZE ENSEMBLES COMPLETS — LA VALLÉE D’ARGENT FERMÉE (2026-09-19)
 

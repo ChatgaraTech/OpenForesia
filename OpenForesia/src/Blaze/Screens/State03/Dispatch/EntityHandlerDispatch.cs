@@ -2632,6 +2632,54 @@ public static unsafe partial class Blaze
             case 0x00441180: EntityHandler_00441180(record); return;
             case 0x004869D0: EntityHandler_004869D0(record); return;   // Combat/Projectiles.cs
 
+            // ZONE 10 — LOT 7 (2026-09-20) : les « C » des blocs de sous-zones 0 / 2-3 / 5-8-10.
+            // Trente-cinq corps pour vingt et une lectures ; les triplets partagent leur corps,
+            // seule la planche change.
+
+            // Ce qui nait et s'eteint — Effects/SealedCaveParticles.cs.
+            case 0x00431AB0: EntityHandler_00431AB0(record); return;
+            case 0x004330E0: EntityHandler_004330E0(record); return;
+            case 0x00434D10: EntityHandler_00434D10(record); return;
+            case 0x00431D80: EntityHandler_00431D80(record); return;
+            case 0x00433440: EntityHandler_00433440(record); return;
+            case 0x00434FE0: EntityHandler_00434FE0(record); return;
+            case 0x00431F20: EntityHandler_00431F20(record); return;
+            case 0x004335E0: EntityHandler_004335E0(record); return;
+            case 0x00435180: EntityHandler_00435180(record); return;
+
+            // Ce qui enleve des points de vie — Combat/Projectiles.cs.
+            case 0x00431C30: EntityHandler_00431C30(record); return;
+            case 0x00433260: EntityHandler_00433260(record); return;
+            case 0x00434E90: EntityHandler_00434E90(record); return;
+            case 0x00432390: EntityHandler_00432390(record); return;
+            case 0x00432630: EntityHandler_00432630(record); return;
+            case 0x00433B60: EntityHandler_00433B60(record); return;
+            case 0x00435700: EntityHandler_00435700(record); return;
+            case 0x004329D0: EntityHandler_004329D0(record); return;
+            case 0x00433F00: EntityHandler_00433F00(record); return;
+            case 0x00435AA0: EntityHandler_00435AA0(record); return;
+            case 0x00431600: EntityHandler_00431600(record); return;
+            case 0x00434510: EntityHandler_00434510(record); return;
+
+            // Le decor — Handlers/SealedCave.cs.
+            case 0x0046BE10: EntityHandler_0046BE10(record); return;
+            case 0x0046C3B0: EntityHandler_0046C3B0(record); return;
+            case 0x0046C690: EntityHandler_0046C690(record); return;
+            case 0x0046A810: EntityHandler_0046A810(record); return;
+            case 0x0046A9E0: EntityHandler_0046A9E0(record); return;
+            case 0x0046CA80: EntityHandler_0046CA80(record); return;
+            case 0x0046CC60: EntityHandler_0046CC60(record); return;
+            case 0x0046BA50: EntityHandler_0046BA50(record); return;
+            case 0x0046FE40: EntityHandler_0046FE40(record); return;
+            case 0x00468E30: EntityHandler_00468E30(record); return;
+            case 0x0046DBD0: EntityHandler_0046DBD0(record); return;
+
+            // Ce qui compte le groupe — Handlers/SealedCaveMecanismes.cs.
+            case 0x0046C540: EntityHandler_0046C540(record); return;
+            case 0x0046CF10: EntityHandler_0046CF10(record); return;
+            case 0x0046C830: EntityHandler_0046C830(record); return;
+            case 0x00468580: EntityHandler_00468580(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de

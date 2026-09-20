@@ -368,4 +368,489 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x20) = rest << 0xc;
         *(short*)(e + 0x10) = 0;
     }
+
+    // =====================================================================
+    // LOT 7 (2026-09-20) — LES « C » QUI COMPTENT LE GROUPE, BLOCS 0 / 5-8-10
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0046c540 @ 0x0046c540 — sous-zones 5, 8 et 10. Decompilee dans <c>Blaze.c</c> ;
+    /// 104 instructions.
+    ///
+    /// <para>
+    /// <b>Le levier qu'on abaisse en montant dessus.</b> Ses trois echelles sont forcees a
+    /// <c>0x1194</c> a chaque image. A sa premiere il retient sa hauteur en <c>+0x12</c>, range son
+    /// numero de drapeau (<c>+0x30</c>) dans <c>+0x16</c> et remet <c>+0x30</c> a zero.
+    /// </para>
+    /// <para>
+    /// <see cref="CountPartyMembersMatching"/> (bit <c>0x10</c> requis, <c>0x40000000</c> interdit)
+    /// decide : quelqu'un dessus fait passer l'etat de 1 a 2, plus personne le ramene de 1 a 3.
+    /// L'etat 2 enfonce le levier de <c>+0x14</c> unites, sonne <b>une fois</b> (voix <c>0x25</c> de
+    /// la zone, gain <c>0x2000</c>) et <b>bascule</b> le bit que designe <c>+0x16</c> dans la banque
+    /// 0 — mis s'il etait libre, efface s'il etait pose. L'etat 3 le releve et rearme les deux
+    /// verrous (<c>+0x98</c> pour le son, <c>+0x5c</c> pour la bascule).
+    /// </para>
+    /// <para>
+    /// <b>La bascule ne se joue qu'une fois par appui</b> : le drapeau <c>+0x5c</c> l'interdit tant
+    /// que le levier n'a pas ete relache. Le levier de la grotte <b>efface</b> donc le bit au second
+    /// appui, la ou la dalle de pression <see cref="EntityHandler_00468850"/> ne fait que le poser.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046C540(byte* e)
+    {
+        *(short*)(e + 0x28) = 0x1194;
+        *(short*)(e + 0x2a) = 0x1194;
+        *(short*)(e + 0x2c) = 0x1194;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x98) = 0;
+            *(short*)(e + 0x16) = *(short*)(e + 0x30);
+            *(short*)(e + 0x30) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            if (*(short*)(e + 0x98) == 0)
+            {
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x25), 0x200, 0x2000, 0, 0);   // Ghidra: FUN_00468080
+                *(short*)(e + 0x98) = 1;
+            }
+
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x20) = (*(short*)(e + 0x12) - *(short*)(e + 0x14)) * 0x1000;
+
+            short flag = *(short*)(e + 0x16);
+            if (flag != 0 && *(int*)(e + 0x5c) == 0)
+            {
+                int cell = (flag + (flag >> 0x1f & 7)) >> 3;
+                byte bit = (byte)(1 << ((flag - cell * 8) & 0x1f));
+                byte bank = Mem.s_StateBank0_005e96e0[cell];
+
+                Mem.s_StateBank0_005e96e0[cell] = (bank & bit) == 0
+                    ? (byte)(bit | bank)
+                    : (byte)(~bit & bank);
+
+                *(int*)(e + 0x5c) = 1;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x98) = 0;
+            *(int*)(e + 0x20) = *(short*)(e + 0x12) << 0xc;
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        int aboard = CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+
+        if (aboard != 0)
+        {
+            if (*(short*)(e + 0x10) == 1) *(short*)(e + 0x10) = 2;
+            return;                                     // le binaire teste deux fois le meme zero
+        }
+
+        if (*(short*)(e + 0x10) == 1) *(short*)(e + 0x10) = 3;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046cf10</c> — sous-zones 5, 8 et 10. <b>Absente de <c>Blaze.c</c></b> ;
+    /// 119 instructions, <c>Legacy/Raw/Blaze/SealedCave/FUN_0046CF10.asm</c>.
+    ///
+    /// <para>
+    /// <b>La plate-forme qui monte tant qu'on est dessus, et redescend des qu'on la quitte.</b> Elle
+    /// compte deux fois les membres rattaches (<see cref="CountPartyMembersMatching"/>) : une fois
+    /// avec le bit <c>0x10</c>, dont elle se sert, et <b>une fois avec le bit <c>0x20</c> dont le
+    /// resultat est jete</b> — l'appel est conserve, le binaire le fait.
+    /// </para>
+    /// <para>
+    /// Au moins un passager a l'arret (etat 0) declenche la montee (etat 1) ; plus personne en haut
+    /// (etat 2) declenche la descente (etat 3). Les deux courses ont le meme profil, au signe pres :
+    /// la vitesse <c>+0x12</c> gagne 1 par image jusqu'a <c>0x14</c> tant que la distance parcourue
+    /// <c>+0x5c</c> n'a pas atteint la course <c>+0x14</c>, puis perd 1 par image — arrivee a zero,
+    /// la plate-forme s'arrete.
+    /// </para>
+    /// <para>
+    /// <b>Elle derive aussi a l'horizontale</b>, de <c>+0x16</c> unites par image sur son cap
+    /// <c>+0x32</c> : en avant a la montee, en arriere a la descente. Une plate-forme oblique.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046CF10(byte* e)
+    {
+        int aboard = CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+        CountPartyMembersMatching(e, 0x20, 0x40000000);                // Ghidra: FUN_00535000, resultat jete
+
+        if (aboard >= 1 && *(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        if (aboard == 0 && *(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x10) = 3;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1) TickSealedCaveLiftTravel(e, rising: true);
+        if (*(short*)(e + 0x10) == 3) TickSealedCaveLiftTravel(e, rising: false);
+    }
+
+    /// <summary>Une image de course de la plate-forme oblique. Le binaire ecrit ce bloc deux fois,
+    /// au signe du pas et a l'etat d'arrivee pres — 2 en haut, 0 en bas.</summary>
+    private static void TickSealedCaveLiftTravel(byte* e, bool rising)
+    {
+        short speed = *(short*)(e + 0x12);
+
+        if (rising) *(int*)(e + 0x20) += speed << 0xc;
+        else *(int*)(e + 0x20) -= speed << 0xc;
+
+        int travelled = *(int*)(e + 0x5c) + speed;
+        *(int*)(e + 0x5c) = travelled;
+
+        short course = *(short*)(e + 0x14);
+
+        if (travelled > course)
+        {
+            short slower = (short)(speed - 1);
+            *(short*)(e + 0x12) = slower;
+            if (slower < 0) *(short*)(e + 0x10) = (short)(rising ? 2 : 0);
+        }
+
+        if (*(short*)(e + 0x12) < 0x14 && *(int*)(e + 0x5c) < course)
+        {
+            *(short*)(e + 0x12) += 1;
+        }
+
+        short drift = *(short*)(e + 0x16);
+        short heading = *(short*)(e + 0x32);
+
+        if (rising)
+        {
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * drift;   // Ghidra: FUN_00545a1c
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * drift;        // Ghidra: FUN_00545a16
+        }
+        else
+        {
+            *(int*)(e + 0x1c) -= (int)Winsys3d.GetSinTableEntry(heading) * drift;
+            *(int*)(e + 0x24) -= Winsys3d.GetCosTableEntry(heading) * drift;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0046c830 @ 0x0046c830 — sous-zones 5, 8 et 10. Decompilee dans <c>Blaze.c</c> ;
+    /// 175 instructions. <b>L'ascenseur de la foret</b> (<see cref="EntityHandler_00458FC0"/>) a
+    /// quatre choses pres : les bornes, le seuil d'arrivee, la forme du <c>+0x44</c> — et
+    /// <b>l'absence totale de son</b>.
+    ///
+    /// <para>
+    /// Le champ <c>+0x44</c>, fige a la premiere image depuis le <c>+0x14</c> de la sous-zone, ne
+    /// choisit pas ici une seconde course : <b>non nul, il fige l'ascenseur</b>. Toute la logique
+    /// d'appel et les deux butees sont gardees par <c>+0x44 == 0</c> ; un ascenseur marque fait
+    /// donc ses courses sans jamais s'arreter de lui-meme.
+    /// </para>
+    /// <para>
+    /// <b>Il part quand tout le monde est monte</b> : le compte des rattaches
+    /// (<see cref="CountPartyMembersMatching"/>) est compare a
+    /// <see cref="ActivePartySlotCount_00466D70"/> <b>moins</b> ceux qui sont deja arrives, un
+    /// arrive etant ici un membre proche <b>de hauteur positive</b> — le seuil est zero, le haut de
+    /// la course. Et il redescend seul si un rattache tombe plus de <c>0x27000</c> sous lui, si tout
+    /// le groupe est dessus a hauteur nulle, ou — par l'autre butee — si la camera
+    /// (<c>0x005de06c</c>) passe au-dessus de <c>-0x1000</c>.
+    /// </para>
+    /// <para>
+    /// La course va de <c>0</c> (haut) a <c>-0x168000</c> (bas), par pas de <c>0x7000</c>, et le
+    /// verrou <c>+0x5c</c> se pose toutes les cinq images comme en foret — <b>mais plus rien ne le
+    /// lit</b>, puisqu'il n'y a pas de son d'arrivee. Releve tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046C830(byte* e)
+    {
+        if (*(short*)(e + 0x16) == 0)
+        {
+            *(int*)(e + 0x44) = *(short*)(e + 0x14);
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x98) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        // ------------------------------------------------- qui est proche, et qui est deja arrive
+        short arrived = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;                    // 0x005e93c0
+
+        for (int i = 4; i != 0; i--, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            int dx = (*(int*)(member + 0x1c) >> 0xc) - (*(int*)(e + 0x1c) >> 0xc);
+            int dy = (*(int*)(member + 0x20) >> 0xc) - (*(int*)(e + 0x20) >> 0xc);
+            int dz = (*(int*)(member + 0x24) >> 0xc) - (*(int*)(e + 0x24) >> 0xc);
+
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x4b0) continue;
+            if (*(int*)(e + 0x44) != 0) continue;
+
+            int height = *(int*)(member + 0x20);
+            if (height >= 0) arrived++;
+
+            if (height < *(int*)(e + 0x20) - 0x27000 && *(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 100;
+            }
+        }
+
+        short riding = (short)CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+
+        bool skipCall = false;
+        if (*(short*)(e + 0x14) != 0)
+        {
+            if (riding == 0) *(short*)(e + 0x14) = 0;
+            if (*(short*)(e + 0x14) != 0) skipCall = true;
+        }
+
+        if (!skipCall && *(short*)(e + 0x10) == 0)
+        {
+            int active = ActivePartySlotCount_00466D70();            // Ghidra: FUN_00466d70
+            if (riding == active - arrived && ActivePartySlotCount_00466D70() != arrived)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x14) = 1;
+            }
+        }
+
+        // ------------------------------------------------- les deux rappels, sous garde de +0x44
+        if (*(int*)(e + 0x44) == 0)
+        {
+            if (*(short*)(e + 0x14) == 0 && *(short*)(e + 0x10) == 0
+                && riding == ActivePartySlotCount_00466D70() && *(int*)(e + 0x20) == 0)
+            {
+                *(short*)(e + 0x10) = 100;
+                *(short*)(e + 0x14) = 1;
+            }
+
+            if (*Mem.Camera(0x005de06c) > -0x1001 && *(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            SilentLiftTravel(e, 0x7000);
+
+            int height = *(int*)(e + 0x20);
+            if (*(int*)(e + 0x44) == 0 && height > 0)
+            {
+                *(int*)(e + 0x20) = 0;
+                *(short*)(e + 0x10) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 100)
+        {
+            *(short*)(e + 0x10) = 0x65;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 0x65) return;
+
+        SilentLiftTravel(e, -0x7000);
+
+        if (*(int*)(e + 0x44) == 0 && *(int*)(e + 0x20) < -0x168000)
+        {
+            *(int*)(e + 0x20) = -0x168000;
+            *(short*)(e + 0x10) = 0;
+        }
+    }
+
+    /// <summary>Une image de course de l'ascenseur de la grotte : le verrou toutes les cinq images,
+    /// le compteur, et le pas vertical. C'est <c>TickLiftTravel</c> de la foret <b>sans le
+    /// son</b> ; le binaire ecrit ce bloc deux fois, au signe du pas pres.</summary>
+    private static void SilentLiftTravel(byte* e, int step)
+    {
+        *(short*)(e + 0x98) += 1;
+
+        if (*(short*)(e + 0x98) == 5)
+        {
+            *(short*)(e + 0x98) = 0;
+            *(int*)(e + 0x5c) = 1;
+        }
+
+        *(short*)(e + 0x12) += 1;
+        *(int*)(e + 0x20) += step;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00468580 @ 0x00468580 — sous-zone 0. Decompilee dans <c>Blaze.c</c> ;
+    /// 202 instructions.
+    ///
+    /// <para>
+    /// <b>Ce qu'on actionne, et qui gele la partie.</b> Le compteur <c>+0x16</c> tourne sans fin
+    /// (repli a <c>0x12c</c> au-dela de 3000) et sert de delai d'armement : sous 5 images, rien ne
+    /// repond. Son <c>+0x14</c> designe un bit de la banque 0 ; <b>si le bit est deja pose,
+    /// l'entite passe a l'etat 99</b>, qui lui met <c>0x6000</c> et la laisse la : ce qui a ete fait
+    /// ne se refait pas.
+    /// </para>
+    /// <para>
+    /// Sur contact (<c>0x40</c>) a l'etat 0, elle prend le membre qui l'a touchee — ou l'entite par
+    /// defaut <c>0x005de558</c> — et regarde <b>son bloc de pose</b> : les trois bits bas de
+    /// l'octet <c>+0x150</c> de son entree <c>0x2000</c> de la memoire principale. Valant 6 et sans
+    /// le bit <c>0x10000</c>, c'est <b>le bon geste</b> : la table de libelles <c>+0x4a8</c> s'ouvre
+    /// (<see cref="BindMenuLabels"/>), <c>0x005e99c8</c> recoit <c>0x40</c>, le bit du
+    /// drapeau se pose et l'etat passe a 1. Sinon c'est la table <c>+0x4</c> qui s'ouvre, l'etat
+    /// passe a 100 et un delai de 5 images s'arme : <b>le refus a son propre message</b>.
+    /// </para>
+    /// <para>
+    /// Les etats 1 et 2 sont l'animation : le membre est mis en pose 6, l'entite gele tout
+    /// (<see cref="FreezeAllEntities"/>), puis avance l'image du membre jusqu'au bout de son
+    /// clip — la longueur se lit dans le bloc de modele que <c>0x005e9680</c> designe pour lui. Au
+    /// bout, le son <c>8</c>, le bit <c>0x2000000</c> sur le membre, et
+    /// <see cref="UnfreezeAllEntities"/>.
+    /// </para>
+    /// <para>
+    /// L'etat 3 est la recompense : cinq images pendant lesquelles l'entite <b>monte de
+    /// <c>0x1e</c></b>, seme neuf fois l'effet <c>0x3b</c>
+    /// (<see cref="SpawnEffectNearCamera_00468110"/>) et redescend aussitot — la hauteur est rendue
+    /// a la fin de chaque image. Puis l'etat 99, qui l'eteint pour de bon.
+    /// </para>
+    /// <para>
+    /// <b>Ghidra ne recupere pas le bloc de pose.</b> Sa pseudo-C ecrit <c>iVar6</c> — l'adresse de
+    /// l'entree de memoire principale — sans le declarer dans la branche qui le lit, et lit
+    /// <c>*(int *)(&amp;DAT_005e9680 + (byte)puVar7[1] * 4)</c> pour le bloc de modele du membre.
+    /// Les deux lectures sont transcrites telles quelles ; le champ <c>+0x16</c> du bloc est la
+    /// longueur du clip.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00468580(byte* e)
+    {
+        byte* toucher = null;
+
+        *(short*)(e + 0x16) += 1;
+        if (*(short*)(e + 0x16) > 3000) *(short*)(e + 0x16) = 0x12c;
+
+        short flag = *(short*)(e + 0x14);
+        int cell = (short)((flag + (flag >> 0x1f & 7)) >> 3);
+        byte bit = (byte)(1 << ((flag - cell * 8) & 0x1f));
+
+        if ((Mem.s_StateBank0_005e96e0[cell] & bit) != 0 && *(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 99;
+        }
+
+        if ((*(uint*)e & 0x40) != 0 && *(short*)(e + 0x10) == 0)
+        {
+            if (*(short*)(e + 0x16) <= 4)
+            {
+                *(short*)(e + 0x10) = 99;
+            }
+            else
+            {
+                toucher = *(byte**)(e + 0x6c);
+                if (toucher == null) toucher = Res.s_EntityList_005de558;   // Ghidra: &DAT_005de558
+
+                byte* slot = GetMainMemPtr() + (toucher[8] + 0x78) * 0x2000;
+
+                if ((slot[0x150] & 7) == 6 && (*(uint*)toucher & 0x10000) == 0)
+                {
+                    BindMenuLabels(
+                        *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x4a8),
+                        toucher, s_WorldMapDescriptor_005633b0, 0);          // Ghidra: FUN_00544350
+                    *(uint*)Mem.Arena(0x005e99c8) = 0x40;
+                    *(short*)(e + 0x10) = 1;
+                    Mem.s_StateBank0_005e96e0[cell] |= bit;
+                }
+
+                if ((slot[0x150] & 7) == 6) return;
+                if ((*(uint*)toucher & 0x10000) != 0) return;
+
+                BindMenuLabels(
+                    *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + 4),
+                    toucher, s_WorldMapDescriptor_005633b0, 0);              // Ghidra: FUN_00544350
+                *(uint*)Mem.Arena(0x005e99c8) = 0x40;
+                *(short*)(e + 0x10) = 100;
+                *(int*)(e + 0x5c) = 5;
+                return;
+            }
+        }
+
+        byte* clip = null;
+
+        if (*(short*)(e + 0x10) == 1 || *(short*)(e + 0x10) == 2)
+        {
+            toucher = *(byte**)(e + 0x6c);
+            if (toucher == null) toucher = Res.s_EntityList_005de558;
+
+            *(short*)(toucher + 0x18) = 6;
+            clip = *(byte**)(*(byte**)(s_PartyAnimationResult_005e9680 + toucher[4] * 4) + 0x18);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            byte* held = *(byte**)(e + 0x6c);
+            *(short*)(e + 0x10) = 2;
+            *(uint*)e |= 0x2000;
+            *(short*)(held + 0x18) = 6;
+            *(short*)(held + 0x1a) = 0;
+            FreezeAllEntities();                                     // Ghidra: FUN_00535300(0)
+            *(uint*)e &= 0xfbffffff;
+            return;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            if (*(short*)(toucher + 0x1a) + 1 < *(ushort*)(clip + 0x16))
+            {
+                *(short*)(toucher + 0x1a) += 1;
+            }
+            else
+            {
+                TryPlaySoundNearEntity((uint*)e, 8, 0x300, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+                *(uint*)toucher |= 0x2000000;
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x12) = 0;
+                UnfreezeAllEntities();                                // Ghidra: FUN_00535400
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            int height = *(int*)(e + 0x20);
+            *(short*)(e + 0x12) += 1;
+            *(uint*)e |= 0x4000;
+            *(int*)(e + 0x20) = height + 0x1e000;
+
+            for (int i = 9; i != 0; i--) SpawnEffectNearCamera_00468110(e, 0x3b, 0, -1);   // Ghidra: FUN_00468110
+
+            if (*(short*)(e + 0x12) == 5) *(short*)(e + 0x10) = 99;
+            *(int*)(e + 0x20) = height;
+        }
+
+        if (*(short*)(e + 0x10) == 99) *(uint*)e |= 0x6000;
+
+        if (*(short*)(e + 0x10) == 100)
+        {
+            int left = *(int*)(e + 0x5c);
+            *(int*)(e + 0x5c) = left - 1;
+            if (left - 1 < 0) *(short*)(e + 0x10) = 0;
+        }
+    }
 }

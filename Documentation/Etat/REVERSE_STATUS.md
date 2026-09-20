@@ -25328,3 +25328,93 @@ catégorie « simple » de la grotte est vide.
   `census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **240 / 349**, 0 « B », 84 « C »
   (69 lectures), 25 « D » (18 lectures) ; 870 implémentés jamais appelés, **109 à transcrire**.
   **Non exercé en jeu.**
+
+## 2026-09-20 — Grotte scellée, lot 7 : les « C » des blocs 0 / 2-3 / 5-8-10, 276 sur 349
+
+Premier lot de la catégorie **C** (« moyen » : pas d'IA, ≤ 250 instructions). Le lot a pris **le
+bloc de sous-zones 0 / 2-3 / 5-8-10 en entier** — les trois blocs qui se recopient à `+0xf0` puis
+`+0x110` —, soit **36 corps pour 22 lectures**. Onze corps viennent de `Blaze.c`, onze du
+désassembleur (`Legacy/Raw/Blaze/SealedCave/`, dix fichiers neufs).
+
+**Ce qui naît et s'éteint** — `Effects/SealedCaveParticles.cs`, trois triplets :
+
+- **l'étincelle qui rentre au centre** (`0x00431AB0`, `0x004330E0`, `0x00434D10`) : elle se pose sur
+  une sphère autour de son point de naissance et le rayon se referme de 10 à 29 par image. Elle
+  **réécrit l'octet 5 de sa planche à 2** — même geste que la fumée du lot 2, et la couche du dessin
+  change donc pour toutes les étincelles du bloc dès la première naissance ;
+- **la traînée qui s'écarte en spirale** (`0x00431D80`, `0x00433440`, `0x00434FE0`) : rayon ouvert
+  d'un pas qui gagne 2 par image, échelle verticale montant de `0x1f4` jusqu'à `0x1770`. Ses trois
+  axes ne prennent pas le même terme — X et Z ajoutent `cos(+0x14) * 30`, Y seul `sin(+0x14) * 30` :
+  l'ondulation se fait sur la diagonale X = Z, pas en rond. Relevé au désassembleur, transcrit tel
+  quel ;
+- **le halo qui tourne à plat** (`0x00431F20`, `0x004335E0`, `0x00435180`) : deux tours combinés —
+  le cap `+0x32` porte le rayon, le cap `+0x14` porte un décalage fixe de 30 unités sur les trois
+  axes. Le repli de `+0x14` sous `0x1000` se fait **après** le calcul du triplet ; la valeur repliée
+  ne sert qu'à l'image suivante.
+
+**Ce qui enlève des points de vie** — `Combat/Projectiles.cs`, par le test d'appartenance
+d'ARCHITECTURE.md (comme la flamme qui recule du lot 4) :
+
+- **le mur qui balaie le couloir** (`0x00431C30` ×3) : il s'aplatit en s'étirant, et frappe à 5 %
+  tout membre sous `0x46000` dont **le seul X** tient à `0x28000` du sien — le Z n'est pas regardé,
+  le mur traverse la salle de part en part ;
+- **le vide sous la salle** (`0x00432390`) : il peint le fond en violet (`0x005e9160`..`0x66`), ronge
+  3 % par image à quiconque tombe sous `-0xc8000` — sans clignotement ni bit de coup — et sème une
+  image sur deux cinq flammes `0xef` à des points fixes ;
+- **le nuage acide qui dérive** (`0x00432630` ×3) : il monte toujours, blesse à 5 % dans `0x28`, et
+  change d'image tous les 3 à 6 tours jusqu'à la quatrième ;
+- **la pierre qui tombe en oblique et éclate** (`0x004329D0` ×3) : sa vitesse verticale est la
+  distance au point visé divisée par le trente-deuxième de la portée, **forcée à zéro si elle est
+  positive** ; à la huitième image elle s'accroche à la grille et prend un gabarit de `0xa000`, puis
+  un contact `0x8802` la fait éclater. **Elle blesse dans tous ses états**, hors de tout test. Son
+  compteur d'image lit `+0x14` **en mot de 32 bits** alors qu'il n'est tenu qu'en 16 : le haut
+  `+0x16` entre dans le décalage (`mov eax,[esi+14h] ; sar eax,2`, relevé au désassembleur) ;
+- **le coup qui part en tournant et s'enfonce** (`0x00431600`, `0x00434510`) : il abaisse d'un quart
+  le `+0x30` du bloc de modèle du lanceur, résout le coup, **remet la valeur**. Un membre qui pare
+  (`IsGuardingToward_004375A0`) tue le coup au lieu de le prendre. Les deux corps ne diffèrent que
+  par la planche et par le repli d'un `+0x74` nul sur `0x005de558`.
+
+**Le décor** — `Handlers/SealedCave.cs` :
+
+- **le pendule qui décrit une ellipse** (`0x0046BE10`) : Y suit le sinus du **double** du cap. Ses
+  deux états ont le même corps, instruction pour instruction — le choix d'état ne change rien ;
+- **l'éboulement qui secoue** (`0x0046C3B0`) : huit images de secousse de caméra, puis une chute qui
+  s'accélère de `0x800` par image paire ;
+- **la porte qui suit son drapeau** (`0x0046C690`) : son cap visé gagne un demi-tour quand le bit de
+  `0x005e96e0` est mis, et son grincement change de gain selon le drapeau, le côté de la caméra et
+  le numéro du drapeau — `0x112` inverse la comparaison ;
+- **le lien qui tient tant que son voisin reste près** (`0x0046A810`, `0x0046A9E0`, `0x0046CA80`) :
+  le champ `+0x14` désigne un **voisin dans la même table**, `e + 0x9c * n`. Proche, il sème six
+  grains par image et **abaisse** le drapeau ; loin, il le **lève**. Les deux variantes ne diffèrent
+  que par une montée de `0x82000` du point de naissance ;
+- **le nid qui lâche ses bêtes quand on approche** (`0x0046CC60`) : une naissance toutes les 10
+  images, ou 25 si la table `0x005f2d40` porte déjà 20 entités vivantes. Sa montée de `0x82000` est
+  écrite `0x82 << ((((rand % 100) << 12) - 0x31ff4) & 0x1f)` — le décalage vaut **toujours 12** ;
+- **la chose qui erre et rebondit** (`0x0046BA50`, `0x0046FE40`) et **le rocher qui roule**
+  (`0x00468E30`) : même charpente — sauvegarde complète de la position, de l'appui et des contacts,
+  avance, `FinalizeEntityPlacement2`, restauration au choc. Le rocher n'avance que sur Z, tourne, et
+  recalcule son octet de contact `+0x09` à chaque image ;
+- **le piston qui sort et rentre** (`0x0046DBD0`) : il se déplace de la **valeur absolue** de
+  `sin(phase) * +0x14`, donc d'un seul côté, et frappe deux fois par tour — mais **rien ne part si
+  son cap dépasse `0x800`**, alors que le verrou anti-doublon se pose dans tous les cas : un piston
+  tourné vers l'arrière avance en silence, sans jamais blesser.
+
+**Ce qui compte le groupe** — `Handlers/SealedCaveMecanismes.cs` :
+
+- **le levier qu'on abaisse en montant dessus** (`0x0046C540`) : il **bascule** le bit, là où la
+  dalle de pression du lot 2 ne fait que le poser — le second appui l'efface ;
+- **la plate-forme oblique** (`0x0046CF10`) : elle monte tant qu'on est dessus et dérive en même
+  temps sur son cap. Elle compte deux fois les passagers, **le second appel jetant son résultat** ;
+- **l'ascenseur** (`0x0046C830`) : l'ascenseur de la forêt sans un seul son, et dont le `+0x44` ne
+  choisit pas une seconde course mais **fige l'appareil** ;
+- **ce qu'on actionne, et qui gèle la partie** (`0x00468580`) : le bon geste (les trois bits bas de
+  l'octet `+0x150` du bloc de pose valant 6) ouvre la table de libellés `+0x4a8`, gèle tout, joue
+  l'animation du membre jusqu'au bout de son clip, puis récompense en neuf bouffées. Le mauvais
+  geste a **son propre message**, la table `+0x4`. Le bit du drapeau, une fois posé, interdit toute
+  reprise.
+
+Contrôles : `dotnet build` 0 erreur, aucun avertissement nouveau ; `census-entity-handlers.sh` /
+`census-zone-complexity.sh 10` : **276 / 349**, 0 « B », **48 « C » (47 lectures)**, 25 « D »
+(18 lectures) ; 906 implémentés jamais appelés, **73 à transcrire** — tous dans la grotte.
+`check-descriptors.sh` : 0 tableau en désaccord, 110 marges courtes dont **108 prouvées** (les neuf
+du lot scellées ; restent les deux de la tour). **Non exercé en jeu.**

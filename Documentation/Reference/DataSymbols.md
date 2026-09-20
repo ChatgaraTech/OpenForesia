@@ -3641,3 +3641,35 @@ geyser quand il n'est pas nul.
 page 2 couche 5 : la fumée qui s'envole) — cinq marges de 1, prouvées. La fontaine `0x004868E0`
 sème sur `0x00551a10`, la planche de l'éclaboussure (`s_SplashDescriptors_00551A08`) à `+8`.
 `0x005de0ac` : la secousse de caméra, écrite aussi par l'explosion `0x00485940`.
+
+## La grotte scellée, lot 7 (2026-09-20) — cinq planches et un fond de salle
+
+Les « C » des blocs de sous-zones 0 / 2-3 / 5-8-10. Les trois blocs portent la même suite de
+planches, recopiée à `+0xf0` puis `+0x110` — la même périodicité que les lots 2 et 4.
+
+| planche (bloc 0) | 2-3 | 5-8-10 | enregistrements | corps | marge |
+|---|---|---|---:|---|---|
+| `0x00550c08` | — | `0x00550e08` | 8 | le coup qui tourne et s'enfonce (`0x00431600`, `0x00434510`) | large : `+0x40` tourne de 1 à 3 |
+| `0x00550c88` | `0x00550d78` | `0x00550e88` | 1 | la pierre en vol (`0x004329D0`) | 1, prouvée et scellée |
+
+`0x00550c08` et `0x00550e08` sont **octet pour octet identiques** : quatre tuiles `0x20 x 0x20` à
+`y = 0x88` couche 2, puis quatre `0x18 x 0x18` à `y = 0x30` couche 3 **dont l'octet 4 est nul** —
+les seules du bloc dans ce cas. Le bloc 2-3 n'a pas d'équivalent : aucun de ses créneaux ne porte ce
+corps. `0x00550c88` est une seule tuile `0x10 x 0x10` à `x = 0x48`, coincée entre le dernier
+enregistrement du grain qui monte (`0x00550c80`) et la première des quatre tuiles du grain
+(`0x00550c90`).
+
+Trois autres planches déjà relevées reçoivent un consommateur de plus, et leur marge de 1 est
+maintenant prouvée pour lui aussi : `0x00550c80` / `d70` / `e80` (l'étincelle qui rentre au centre,
+`0x00431AB0`, qui **réécrit l'octet 5 de l'enregistrement à 2** comme la fumée du lot 2) et
+`0x00550cb8` / `da8` / `eb8` (le halo qui tourne à plat, `0x00431F20`, qui n'écrit jamais `+0x40`).
+
+**Le fond de la salle.** `0x00432390` retient les trois shorts `0x005e92b8`, `0x005e92ba`,
+`0x005e92bc` dans `+0x50`..`+0x58` — **et ne les relit jamais** — puis peint le fond par
+`0x005e9160`..`0x005e9166` en `(0x96, 0x32, 0xfa)`, mode 2 : le violet de la grotte. C'est le même
+quatuor de mots que les fins de la vieille tour repeignent puis restaurent.
+
+**Une constante écrite de travers, deux fois.** Le nid `0x0046CC60` monte son point de naissance de
+`0x82 << ((((rand() % 100) << 12) - 0x31ff4) & 0x1f)`. Les douze bits bas du terme de gauche étant
+nuls, le décalage vaut **toujours 12** et l'addition toujours `0x82000` — la même montée que
+`0x0046A9E0` écrit en clair. Relevé au désassembleur et transcrit tel quel.

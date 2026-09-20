@@ -2821,4 +2821,257 @@ public static unsafe partial class Blaze
 
         *(short*)(e + 0x16) += 1;
     }
+
+    // =====================================================================
+    // LOT 7 (2026-09-20) — LES « C » DES BLOCS 0 / 2-3 / 5-8-10
+    //
+    // Trois familles de triplets, une par bloc de sous-zones, sans aucune immediate differente
+    // d'un bloc a l'autre hors la planche.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00431ab0</c> (bloc 0), <c>0x004330e0</c> (2-3), <c>0x00434d10</c> (5-8-10) —
+    /// table <c>0x0056b2c8</c>. Decompilees dans <c>Blaze.c</c> ; 105 instructions.
+    ///
+    /// <para>
+    /// <b>L'etincelle qui rentre au centre.</b> A la naissance elle se pose sur une sphere : un cap
+    /// <c>+0x12</c> tire au hasard dans <c>0x1000</c>, une elevation <c>+0x14</c> tiree dans
+    /// <c>0x400</c> au-dessus du cap de l'entite plus <c>0x800</c>, et un rayon <c>+0x9a</c> de 100
+    /// a 199. Le centre est la position de naissance, retenue en <c>+0x50</c>..<c>+0x58</c>.
+    /// </para>
+    /// <para>
+    /// Chaque image le rayon perd <c>+0x5c</c> (10 a 29, tire une fois), et la position se recalcule
+    /// en spherique autour du centre. Quand le rayon passe sous zero elle s'eteint. Son cap
+    /// <c>+0x32</c> suit le cap de depart a <c>0xc00</c> pres, et sa rotation de face <c>+0x34</c>
+    /// vaut <c>0x400 - +0x14</c> : elle reste tournee vers le centre.
+    /// </para>
+    /// <para>
+    /// <b>Le corps ecrit dans sa planche</b> : l'octet 5 de son unique enregistrement passe a 2 a
+    /// chaque naissance — comme la fumee qui monte du lot 2. La couche du dessin change donc pour
+    /// toutes les etincelles du bloc des que la premiere nait.
+    /// </para>
+    /// </summary>
+    private static void TickInwardSparkOnSphere(byte* e, byte* descriptors)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = descriptors;
+            descriptors[5] = 2;                                  // Ghidra: DAT_00550c85 = 2
+            e[0x40] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            CrtRand();                                           // Ghidra: FUN_00547140, resultat jete
+            *(short*)(e + 0x28) = 0x800;
+            *(short*)(e + 0x2a) = 0x800;
+            *(short*)(e + 0x10) = 1;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x12) = (short)SignedMask(CrtRand(), 0xfff);
+            *(short*)(e + 0x14) = (short)(SignedMask(CrtRand(), 0x3ff) + *(short*)(e + 0x32) + 0x800);
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 100 + 100);
+
+            int fall = CrtRand();
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(int*)(e + 0x5c) = fall % 0x14 + 10;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x9a) -= (short)*(int*)(e + 0x5c);
+        if (*(short*)(e + 0x9a) < 0)
+        {
+            *(short*)(e + 0x9a) = 0;
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        short polar = *(short*)(e + 0x14);
+        short azimuth = *(short*)(e + 0x12);
+        short radius = *(short*)(e + 0x9a);
+
+        *(int*)(e + 0x1c) = (Winsys3d.GetCosTableEntry(polar) * radius >> 0xc)
+                            * (int)Winsys3d.GetSinTableEntry(azimuth) + *(int*)(e + 0x50);
+        *(int*)(e + 0x20) = (Winsys3d.GetCosTableEntry(polar) * radius >> 0xc)
+                            * Winsys3d.GetCosTableEntry(azimuth) + *(int*)(e + 0x54);
+        *(int*)(e + 0x24) = (int)Winsys3d.GetSinTableEntry(polar) * radius + *(int*)(e + 0x58);
+
+        *(short*)(e + 0x32) = (short)(*(short*)(e + 0x12) + 0xc00);
+        *(short*)(e + 0x34) = (short)(0x400 - *(short*)(e + 0x14));
+    }
+
+    private static void EntityHandler_00431AB0(byte* e) => TickInwardSparkOnSphere(e, Descriptors00550C68() + 0x18);   // &DAT_00550c80
+    private static void EntityHandler_004330E0(byte* e) => TickInwardSparkOnSphere(e, Descriptors00550D58() + 0x18);   // &DAT_00550d70
+    private static void EntityHandler_00434D10(byte* e) => TickInwardSparkOnSphere(e, Descriptors00550E68() + 0x18);   // &DAT_00550e80
+
+    /// <summary>
+    /// Ghidra: <c>0x00431d80</c> (bloc 0), <c>0x00433440</c> (2-3), <c>0x00434fe0</c> (5-8-10) —
+    /// table <c>0x0056b1c8</c>. <b>Absentes de <c>Blaze.c</c></b> ; 123 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00431D80.asm</c>. Aucune immediate differente d'un bloc a
+    /// l'autre.
+    ///
+    /// <para>
+    /// <b>La trainee qui s'ecarte en spirale et s'etire.</b> Elle ne pose pas de planche : elle
+    /// garde celle que sa naissance lui a donnee, et son image <c>e[4]</c> repart a zero. Elle
+    /// tourne autour du point de naissance (<c>+0x50</c>..<c>+0x58</c>) sur un rayon <c>+0x12</c>
+    /// qui s'ouvre de <c>+0x5c</c> par image, <c>+0x5c</c> gagnant lui-meme 2 — l'ecartement
+    /// accelere. Son cap de depart <c>+0x48</c> est celui de l'entite plus un demi-tour, et
+    /// <c>+0x32</c> recoit ce meme cap plus <c>0x400</c> de plus.
+    /// </para>
+    /// <para>
+    /// <b>Les trois axes ne prennent pas le meme terme.</b> X et Z ajoutent chacun
+    /// <c>cos(+0x14) * 30</c> a leur composante circulaire, Y seul prend <c>sin(+0x14) * 30</c> —
+    /// releve tel quel au desassembleur : la trainee ondule donc sur la diagonale X = Z, pas en
+    /// rond.
+    /// </para>
+    /// <para>
+    /// Ses echelles horizontales restent a <c>0x12c</c> tandis que la verticale monte de
+    /// <c>0x1f4</c> par image jusqu'a <c>0x1770</c> : un trait qui s'allonge. Sa teinte part de
+    /// <c>0x96</c> et perd de 2 a 4 par image (<c>+0x9a</c>), et sa vie <c>+0x16</c> tient de 30 a
+    /// 49 images.
+    /// </para>
+    /// </summary>
+    private static void TickWideningSpiralStreak(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[4] = 0;
+            *(short*)(e + 0x28) = 0x12c;
+            *(short*)(e + 0x2c) = 0x12c;
+            *(short*)(e + 0x2a) = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            e[0x38] = 0x96;
+            e[0x39] = 0x96;
+            e[0x3a] = 0x96;
+            *(short*)(e + 0x12) = 0;
+
+            int spread = CrtRand() % 0x19;
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(int*)(e + 0x5c) = spread + 0x28;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+            int life = CrtRand() % 0x14;
+            *(short*)(e + 0x34) = 0x400;
+            *(short*)(e + 0x16) = (short)(life + 0x1e);
+            *(int*)(e + 0x48) = *(short*)(e + 0x32) + 0x800;
+            *(short*)(e + 0x32) += 0xc00;
+
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x9a) = (short)(-2 - CrtRand() % 3);
+            *(short*)(e + 0x14) = (short)SignedMask(CrtRand(), 0x7ff);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        int course = *(int*)(e + 0x48);
+        short radius = *(short*)(e + 0x12);
+        short wobble = *(short*)(e + 0x14);
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry((short)course) * radius
+                            + Winsys3d.GetCosTableEntry(wobble) * 30 + *(int*)(e + 0x50);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry((short)course) * radius
+                            + Winsys3d.GetCosTableEntry(wobble) * 30 + *(int*)(e + 0x58);
+        *(int*)(e + 0x20) = *(int*)(e + 0x54) + (int)Winsys3d.GetSinTableEntry(wobble) * 30;
+
+        *(short*)(e + 0x12) += (short)*(int*)(e + 0x5c);
+        *(int*)(e + 0x5c) += 2;
+
+        short fade = *(short*)(e + 0x9a);
+        BrightenEntityTint_00404DE0(e, fade, fade, fade);        // Ghidra: FUN_00404de0
+
+        *(short*)(e + 0x2a) += 0x1f4;
+        if (*(short*)(e + 0x2a) > 0x1770) *(short*)(e + 0x2a) = 0x1770;
+
+        *(short*)(e + 0x16) -= 1;
+        if (*(short*)(e + 0x16) < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    private static void EntityHandler_00431D80(byte* e) => TickWideningSpiralStreak(e);
+    private static void EntityHandler_00433440(byte* e) => TickWideningSpiralStreak(e);
+    private static void EntityHandler_00434FE0(byte* e) => TickWideningSpiralStreak(e);
+
+    /// <summary>
+    /// Ghidra: <c>0x00431f20</c> (bloc 0), <c>0x004335e0</c> (2-3), <c>0x00435180</c> (5-8-10) —
+    /// table <c>0x0056b2c8</c>. Decompilees dans <c>Blaze.c</c> ; 120 instructions.
+    ///
+    /// <para>
+    /// <b>Le halo qui tourne a plat et s'eteint.</b> Planche <c>0x00550cb8</c> (une tuile
+    /// <c>0x18 x 0x18</c>), teinte <c>0x96</c> sur les trois canaux, echelle tiree entre
+    /// <c>0x400</c> et <c>0x7ff</c>. Le point de naissance est retenu en <c>+0x50</c>..<c>+0x58</c>
+    /// et le rayon <c>+0x12</c> s'ouvre de <c>+0x5c</c> (20 a 34) par image.
+    /// </para>
+    /// <para>
+    /// La position combine <b>deux tours</b> : le cap <c>+0x32</c> porte le rayon, et le cap
+    /// <c>+0x14</c> — qui avance de <c>0x78</c> par image et se replie sous <c>0x1000</c> — porte
+    /// un decalage fixe de 30 unites sur X, Y et Z. La teinte perd de 2 a 4 par image et la vie
+    /// <c>+0x16</c> tient de 30 a 49 images.
+    /// </para>
+    /// <para>
+    /// <b>Le repli de <c>+0x14</c> se fait apres coup.</b> Le binaire calcule le triplet avec la
+    /// valeur d'avant le repli, puis ne retranche <c>0x1000</c> qu'ensuite — la valeur repliee ne
+    /// sert qu'a l'image suivante. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickFadingTwinTurnHalo(byte* e, byte* descriptors)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = descriptors;
+            e[0x0a] = 1;
+            e[0x0b] = 0;
+            e[0x38] = 0x96;
+            e[0x39] = 0x96;
+            e[0x3a] = 0x96;
+            *(short*)(e + 0x12) = 0;
+
+            int spread = CrtRand();
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(int*)(e + 0x5c) = spread % 0xf + 0x14;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+            short scale = (short)(SignedMask(CrtRand(), 0x3ff) + 0x400);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            int life = CrtRand();
+            *(short*)(e + 0x32) += 0x800;
+            *(short*)(e + 0x16) = (short)(life % 0x14 + 0x1e);
+
+            *(short*)(e + 0x14) = (short)SignedMask(CrtRand(), 0xfff);
+            *(short*)(e + 0x9a) = (short)(-2 - CrtRand() % 3);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short course = *(short*)(e + 0x32);
+        short radius = *(short*)(e + 0x12);
+        short turn = *(short*)(e + 0x14);
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(course) * radius
+                            + Winsys3d.GetCosTableEntry(turn) * 0x1e + *(int*)(e + 0x50);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(course) * radius
+                            + Winsys3d.GetCosTableEntry(turn) * 0x1e + *(int*)(e + 0x58);
+
+        int lift = (int)Winsys3d.GetSinTableEntry(turn);
+        *(short*)(e + 0x14) += 0x78;
+        *(short*)(e + 0x12) += (short)*(int*)(e + 0x5c);
+        *(int*)(e + 0x20) = *(int*)(e + 0x54) + lift * 0x1e;
+
+        if (*(short*)(e + 0x14) > 0xfff) *(short*)(e + 0x14) -= 0x1000;
+
+        short fade = *(short*)(e + 0x9a);
+        BrightenEntityTint_00404DE0(e, fade, fade, fade);        // Ghidra: FUN_00404de0
+
+        *(short*)(e + 0x16) -= 1;
+        if (*(short*)(e + 0x16) < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    private static void EntityHandler_00431F20(byte* e) => TickFadingTwinTurnHalo(e, Descriptors00550CB8());
+    private static void EntityHandler_004335E0(byte* e) => TickFadingTwinTurnHalo(e, Descriptors00550DA8());
+    private static void EntityHandler_00435180(byte* e) => TickFadingTwinTurnHalo(e, Descriptors00550EB8());
 }

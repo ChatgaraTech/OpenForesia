@@ -160,3 +160,14 @@ EntityHandler_004406B0 | 0x005514F0 | +0x08 | EntityHandler_004406B0 | 3e32a1400
 EntityHandler_00441040 | 0x005514F0 | +0x00 | EntityHandler_00441040 | a09da3a6575f | pose 0 a la naissance (0x00441057) et ne l'ecrit plus
 EntityHandler_00440F00 | 0x005514F0 | +0x00 | EntityHandler_00440F00 | 1e9ed483488b | pose 0 a la naissance (`xor ebx,ebx ; mov [esi+40h],bl`, 0x00440f1f) et ne l'ecrit plus
 EntityHandler_00441180 | 0x005514F0 | +0x00 | EntityHandler_00441180 | cf19a1d74b83 | pose 0 a la naissance (`xor ebx,ebx ; mov [esi+40h],bl`, 0x0044119a) et ne l'ecrit plus
+
+# ---- lot 7 de la grotte scellee (2026-09-20)
+EntityHandler_00431AB0 | 0x00550C68 | +0x18 | EntityHandler_00431AB0,TickInwardSparkOnSphere | 3815f4f155a1 | pose 0 a la naissance (`*(undefined1 *)(param_1 + 0x10) = 0` dans Blaze.c) et ne l'ecrit plus
+EntityHandler_004330E0 | 0x00550D58 | +0x18 | EntityHandler_004330E0,TickInwardSparkOnSphere | e4e68eca5d90 | idem, copie du bloc 2-3
+EntityHandler_00434D10 | 0x00550E68 | +0x18 | EntityHandler_00434D10,TickInwardSparkOnSphere | 406f6ebed90d | idem, copie du bloc 5-8-10
+EntityHandler_00431F20 | 0x00550CB8 | +0x00 | EntityHandler_00431F20,TickFadingTwinTurnHalo,SpawnStatusEffectEntity_0047AC40 | 7613a525bf19 | n'ecrit jamais +0x40 ; table 0x0056b2c8, debordement de 0x0056afc8, que seul le pool 0x005f2d40 atteint — donc ne par FUN_0047ac40, qui le met a 0
+EntityHandler_004335E0 | 0x00550DA8 | +0x00 | EntityHandler_004335E0,TickFadingTwinTurnHalo,SpawnStatusEffectEntity_0047AC40 | b367995e0750 | idem, copie du bloc 2-3
+EntityHandler_00435180 | 0x00550EB8 | +0x00 | EntityHandler_00435180,TickFadingTwinTurnHalo,SpawnStatusEffectEntity_0047AC40 | 94e7f0fe7385 | idem, copie du bloc 5-8-10
+EntityHandler_004329D0 | 0x00550C88 | +0x00 | EntityHandler_004329D0,TickObliqueFallingRock | 836bd5c85407 | pose 0 aux etats 0 et 2 ; le seul endroit qui l'avance est l'etat 3, ou +0x3c porte deja la planche de fumee 0x00550bd0 (7 enregistrements)
+EntityHandler_00433F00 | 0x00550D78 | +0x00 | EntityHandler_00433F00,TickObliqueFallingRock | 8ae0441c958d | idem, copie du bloc 2-3 (fumee 0x00550ce0)
+EntityHandler_00435AA0 | 0x00550E88 | +0x00 | EntityHandler_00435AA0,TickObliqueFallingRock | eb423d6ed219 | idem, copie du bloc 5-8-10 (fumee 0x00550dd0)

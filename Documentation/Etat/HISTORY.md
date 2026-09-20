@@ -4,6 +4,22 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-20
+
+- feat : **grotte scellée, lot 7 — 276 sur 349** : les « C » du bloc de sous-zones 0 / 2-3 / 5-8-10,
+  trente-six corps pour vingt-deux lectures — l'étincelle qui rentre au centre, la traînée en
+  spirale, le halo qui tourne à plat, le mur qui balaie le couloir, le vide sous la salle, le nuage
+  acide, la pierre oblique qui éclate, le coup qui tourne et s'enfonce
+- feat : le décor de la grotte — le pendule elliptique, l'éboulement qui secoue, la porte qui suit
+  son drapeau, le lien qui tient tant que son voisin reste près, le nid qui lâche ses bêtes, deux
+  errants qui rebondissent sur les murs, le rocher qui roule, le piston
+- feat : les mécanismes — le levier qui **bascule** son bit (là où la dalle ne fait que le poser),
+  la plate-forme oblique, l'ascenseur muet, et ce qu'on actionne et qui gèle la partie
+- doc : cinq planches de plus, le fond violet de la salle (`0x005e9160`) et la montée `0x82000`
+  écrite en décalage variable qui ne varie jamais (`DataSymbols.md`) ; neuf marges courtes prouvées
+  et scellées
+
+
 ## 2026-09-19
 
 - feat : **grotte scellée, lot 6 terminé — 240 sur 349, plus aucun « B »** : les quatorze derniers,
