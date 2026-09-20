@@ -34,6 +34,48 @@ depends on the machine — check `dotnet --list-sdks` first:
 `playtest.ps1 -Build` already detects which case applies — see its "construction"
 section — so prefer it over reproducing this logic by hand.
 
+## Grotte scellée, lot 11 — 334 → 340 sur 349 (2026-09-20)
+
+Six gestionnaires et cinq feuilles. Quatre acquis valent d'être retenus.
+
+**La sous-zone 1 est la sous-zone 0 décalée de `0x150`.** `0x004725a0`, `0x00472630` et `0x00471dd0`
+ont été comparées instruction par instruction à `0x0046a5a0`, `0x0046a630` et `0x0046a3f0` : les
+corps sont identiques, et **toutes** leurs globales valent celles de la sous-zone 0 plus `0x150`
+(`DataSymbols.md` en donne les dix couples). Deux différences seulement : la bouffée fait naître le
+sous-type `0x32` au lieu de `0x34`, et le virage recopié additionne `v/8` et `v/64` dans l'autre
+ordre — même somme, allocation de registres différente. D'où les paramètres `bank` et `puff` sur les
+trois feuilles, plutôt que trois corps de plus. **C'est le genre de vérification qui se fait sur le
+désassemblage et pas sur l'intuition** : rien dans les adresses ne laissait deviner un décalage
+constant.
+
+**La piste des traîneaux est une table, pas un algorithme.** `0x00471150` et ses deux feuilles
+`0x00471a10` et `0x00471f80` — 1 300 instructions à elles trois — se réduisent à une cinquantaine de
+*fenêtres de distance* de la forme « quand le cumul tombe dans `[lo, hi]` et que le virage précédent
+est fini, arme un quart de tour de tel sens, en te recalant sur telle coordonnée ». Cinq routes,
+trois bits d'aiguillage, et rien d'autre. Ce sont des mesures relevées à la main sur la carte en
+1998. **Le nombre d'instructions était trompeur une fois de plus** : le plus gros corps du dépôt
+s'est écrit plus vite que la tourelle du lot 10, parce qu'il n'a qu'une seule forme, répétée
+cinquante fois. Deux virages font exception, et méritent d'être lus : à `0x4b64` et `0x4e02` la
+vitesse est **doublée juste avant** d'armer le tour et rendue de moitié juste après — comme le pas
+de cap vaut `vitesse * 73 / 64`, l'épingle se boucle en deux fois moins d'images.
+
+**Une erreur du lot 10, trouvée en relisant une magie de division.** `TickStatusBubble_00436070`
+lisait son rayon `+0x28 / 100`. La constante `0x51EB851F` sert à trois divisions différentes selon
+le décalage qui la suit — `sar 4` → 50, `sar 5` → 100, `sar 6` → 200 — et c'est `sar 4` qui est
+écrit. La bulle touchait donc deux fois trop loin. **Vérifier le décalage, pas seulement la
+constante** : les trois cas se croisent dans la grotte, le rouleau `0x00469480` employant le `sar 6`.
+
+**`0x0043B870` était mal classée.** Le lot la rangeait avec les traîneaux de la sous-zone 1 ; c'est
+en fait un **effet qui frappe** — trois phases sur `+0x14`, deux planches (`0x00551168`,
+`0x00551178`), l'éclair d'écran `DAT_005de024`..`27`, et une enveloppe gardée `FUN_0043bd90` de la
+même forme que les vingt et une du lot 10. Elle ne partage aucune appelée avec `0x00470c20` ni
+`0x00471150`. Sa place est dans `Combat/` ou `Effects/`, et ses deux planches restent à relever dans
+le binaire et à passer à `check-descriptors.sh`. Le regroupement du `TODO.md` s'était fait sur la
+sous-zone, pas sur le contenu ; **la sous-zone ne dit rien du rôle**.
+
+Aucune planche de descripteurs n'a été ajoutée ce lot-ci, donc `check-descriptors.sh` n'avait pas
+lieu de tourner.
+
 ## Call graph covered so far
 
 ```

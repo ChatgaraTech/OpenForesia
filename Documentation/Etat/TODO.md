@@ -1,11 +1,11 @@
-﻿# TODO
+# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7 à 10).
-**Il ne reste que la grotte scellée — 334 / 349 —, et il n'y reste que quinze « D », tous
-distincts : plus un seul jumeau dans le dépôt.** Toutes les routines d'IA du jeu, tous les « B » et
-toute la catégorie « C » sont écrits. Les onze autres zones sont complètes : l’auberge, la mine, la
-montagne du dragon de feu, la forêt, la vieille tour, le Labyrinthe des morts, le château de
-l’immortel, les ruines souterraines, la vallée d’argent et les ruines dans le lac.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7 à 11).
+**Il ne reste que la grotte scellée — 340 / 349 —, et il n'y reste que neuf « D », tous distincts.**
+Toutes les routines d'IA du jeu, tous les « B », toute la catégorie « C » et **les trois traîneaux**
+sont écrits. Les onze autres zones sont complètes : l’auberge, la mine, la montagne du dragon de
+feu, la forêt, la vieille tour, le Labyrinthe des morts, le château de l’immortel, les ruines
+souterraines, la vallée d’argent et les ruines dans le lac.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -18,9 +18,9 @@ déplacement.
 
 ---
 
-# GROTTE SCELLÉE, LOTS 7 À 10 — 240 → 334 SUR 349 (2026-09-20)
+# GROTTE SCELLÉE, LOTS 7 À 11 — 240 → 340 SUR 349 (2026-09-20)
 
-Quatre lots, chacun pris par bloc de sous-zones ou par famille de copies. Le détail est dans
+Cinq lots, chacun pris par bloc de sous-zones ou par famille de copies. Le détail est dans
 `REVERSE_STATUS.md` ; voici ce qu'il faut retenir.
 
 **Lots 7, 8 et 9 — toute la catégorie « C »**, 84 corps. La pierre oblique qui blesse dans *tous* ses
@@ -38,25 +38,46 @@ le plus proche de la caméra quand le groupe n'est pas à bord ; **la bulle d'ef
 deux tables de sauts se sont révélées être celle de `0x0040a30c` — les vingt et une « appelées
 inconnues » du recensement étaient deux jeux privés d'enveloppes gardées.
 
-**La suite** : **15 gestionnaires, 15 lectures**, `Zone10ParComplexite.md`. Ils se rangent en trois
-groupes.
+**Lot 11 — la sous-zone 0 et les traîneaux**, six corps et cinq feuilles.
 
-- **La sous-zone 0, quatre corps qui partagent leurs appelées** : `0x00469100` (284),
-  `0x00469BC0` (263), `0x00469F60` (342) et `0x00469480` (363). Les trois premiers appellent
-  `0x0046A5A0` et `0x0046A630` (et `0x0046A3F0` pour le dernier des trois) — **commencer par lire ces
-  trois feuilles**, elles serviront quatre fois.
-- **La sous-zone 1, trois corps** : `0x0043B870` (369, décompilée), `0x00470C20` (385) et
-  `0x00471150` (610, le plus gros du dépôt). Ils partagent `0x00471DD0`, `0x004725A0` et
-  `0x00472630`. C'est la salle de la machine à trois mots d'état du lot 4.
-- **Le reste, huit corps isolés** : `0x00440060` (256, décompilée), `0x004424B0`, `0x00486320`,
+- **La sous-zone 0** : le rocher à deux axes qui emporte ce qui se tient dessus, le radeau qui
+  s'éloigne en ralentissant puis se dissout, **le traîneau que le groupe monte**, et le rouleau qui
+  grandit, dévale le couloir et écrase — celui-ci publie sa progression dans `0x0057182c`, le mot
+  que lisent les pierres qui se détachent.
+- **Trois feuilles partagées** : la glissade de tangage `0x0046a5a0`, la bouffée de poussière
+  `0x0046a630`, le quart de tour `0x0046a3f0`.
+- **La sous-zone 1 rejoue les mêmes trois feuilles, `0x150` plus haut.** `0x004725a0`, `0x00472630`
+  et `0x00471dd0` sont les copies exactes des précédentes, vérifiées instruction par instruction :
+  toutes leurs globales valent celles de la sous-zone 0 **plus `0x150`**, et la bouffée fait naître
+  le sous-type `0x32` au lieu de `0x34`. D'où les paramètres `bank` et `puff` plutôt que trois corps
+  de plus.
+- **Les deux autres traîneaux** : `0x00470c20`, dont le profil de vitesse est écrit virage par
+  virage, et `0x00471150` — **le plus gros corps du dépôt**, 610 instructions, plus ses deux
+  feuilles `0x00471a10` (300) et `0x00471f80` (400). Les trois ensemble sont **la piste** : une
+  cinquantaine de fenêtres de distance, chacune armant un quart de tour avec son sens et sa
+  coordonnée de recalage, réparties en **cinq routes** que trois bits d'aiguillage (`0x04`, `0x20`,
+  `0x100` de `0x00571978`) font varier.
+
+**La suite** : **9 gestionnaires, 9 lectures**. Ils se rangent en deux groupes.
+
+- **`0x0043B870` (369, décompilée)** — elle était rangée avec les traîneaux mais **n'en est pas** :
+  c'est un **effet qui frappe**, trois phases sur `+0x14`, planches `0x00551168` et `0x00551178`,
+  l'éclair d'écran `DAT_005de024`..`27`, et une enveloppe gardée `FUN_0043bd90`
+  (`FUN_004364b0` puis `FUN_0053b730`) de la même forme que celles du lot 10. Elle va dans
+  `Combat/` ou `Effects/`, pas dans `Handlers/SealedCave*.cs`. **Ses deux planches sont à relever
+  dans le binaire et à passer à `check-descriptors.sh`.**
+- **Huit corps isolés** : `0x00440060` (256, décompilée), `0x004424B0`, `0x00486320`,
   `0x004396E0`, `0x0043C4A0`, `0x0043FB80` (décompilée), `0x00436950` (436, table de sauts —
   **ses appelées sont les mêmes enveloppes gardées que le lot 10**, plus `0x00436F20` et
   `0x00436F60`), `0x00440840` (477).
 
 **Deux fichiers ont franchi le seuil de coupe** annoncé dans `ARCHITECTURE.md` :
 `Effects/SealedCaveParticles.cs` (4 791 lignes) est **à couper par bloc de sous-zones**, et
-`Combat/Projectiles.cs` (4 253 lignes) est à surveiller. La coupe se propose, elle ne se fait pas
-d'office.
+`Handlers/SealedCaveMecanismes.cs` a triplé en deux séances (371 → 1 900 lignes) : les trois
+traîneaux et leur piste y tiennent seuls plus de la moitié, et feraient un
+`Handlers/SealedCaveTraineaux.cs` cohérent. La coupe se propose, elle ne se fait pas d'office.
+
+---
 
 # TOUTES LES INTELLIGENCES ÉCRITES — GROTTE SCELLÉE, LOT 3 (2026-09-19)
 

@@ -1232,4 +1232,1106 @@ public static unsafe partial class Blaze
     private static void EntityHandler_0046AD70(byte* e) => TickPartyShuttle_0046AD70(e);
     private static void EntityHandler_0046D070(byte* e) => TickPartyShuttle_0046AD70(e);
     private static void EntityHandler_0046F2E0(byte* e) => TickPartyShuttle_0046AD70(e);
+
+    // =====================================================================
+    // LOT 11 (2026-09-20) — LE TRAINEAU QUE LE GROUPE MONTE
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00469f60</c> — sous-zone 0. <b>Absente de <c>Blaze.c</c></b> ; 342 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00469F60.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le traineau sur lequel le groupe descend le couloir.</b> C'est le cousin de la luge de la
+    /// vallee d'argent : il ne part que lorsque <b>tout le groupe</b> est monte dessus, accelere,
+    /// prend les virages par <see cref="SteerSled_0046A3F0"/>, penche la camera dans les courbes par
+    /// <see cref="CameraPitchGlide_0046A5A0"/>, et rend la main au bout du voyage.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>les trois bits de <c>0x00571828</c></term><description><c>0x400</c> decide de
+    ///     son dessin — eteint il porte le bit <c>0x2000</c>, allume il le perd ; <c>0x800</c>
+    ///     l'autorise a exister du tout, et sans lui le corps pose le bit <c>0x4000</c> et
+    ///     <b>rend la main sur-le-champ</b> ; <c>0x200</c> lui coupe la voix
+    ///     d'attente.</description></item>
+    ///   <item><term>l'attente</term><description>tant que <c>+0x12</c> vaut <c>-1</c>, il compte le
+    ///     groupe monte dessus (<see cref="CountPartyMembersMatching"/>, <c>0x10</c> requis,
+    ///     <c>0x40000000</c> interdit) et le compare a
+    ///     <see cref="ActivePartySlotCount_00466D70"/> : <b>egalite stricte</b>, donc il faut que
+    ///     <b>tout</b> le monde soit a bord. Pendant ce temps la voix <c>0x14</c> de la zone claque
+    ///     a intervalle <c>max(3, 0x3c - vitesse)</c>.</description></item>
+    ///   <item><term>le depart</term><description><c>+0x12</c> change de signe et vaut donc
+    ///     <c>1</c>, la vitesse part a <c>5</c>, la distance parcourue
+    ///     (<c>0x00571824</c>) et les trois mots de glissade repassent a zero, et le script
+    ///     <c>0</c> du repertoire est joue sur <b>le contexte de zone</b> — ce qui fige les
+    ///     commandes.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>La vitesse respire avec l'age.</b> L'age <c>+0x10</c> monte d'un par image et se cale a
+    /// <c>0x4e20</c> passe <c>0x7530</c>. Une image sur quatre — age multiple de 4 — et seulement
+    /// quand <c>+0x16</c> vaut <c>1</c>, la vitesse <b>descend</b> d'un, plancher <c>5</c> ; une
+    /// image sur trois elle <b>monte</b> d'un, plafond <c>0x28</c>. Les deux regles se croisent
+    /// librement : c'est le freinage dans les virages.
+    /// </para>
+    /// <para>
+    /// <b>Le virage est detecte par le sol, pas par une table.</b> A chaque image le traineau lit
+    /// l'octet <c>+0x0e</c> de la face sous lui et s'en sert d'indice dans ses propres dwords
+    /// <c>+0x80</c>..<c>+0x8c</c> ; quand ce mot <b>change</b> d'une image a l'autre, <c>+0x16</c>
+    /// avance d'un, et aux valeurs <c>2</c> et <c>4</c> la camera pique vers <c>-0x200</c>.
+    /// </para>
+    /// <para>
+    /// La camera pique aussi vers <c>0x100</c> quand le traineau <b>monte</b>, vers <c>-0x100</c>
+    /// quand il <b>descend</b> — sauf si <c>+0x16</c> vaut <c>2</c> ou <c>4</c>, ou le virage a
+    /// deja la parole — et revient a <c>0</c> a plat.
+    /// </para>
+    /// <para>
+    /// <b>L'arrivee</b> : des que la distance cumulee atteint <c>0x1004</c>, <c>+0x12</c> passe a
+    /// <c>2</c> et le script <c>1</c> est joue sur <b>les quatre emplacements du groupe</b>, un par
+    /// un. Le corps continue de tourner apres, mais <c>+0x12</c> ne vaut plus <c>1</c> et plus rien
+    /// ne bouge.
+    /// </para>
+    /// </summary>
+    private static void TickRideableSled_00469F60(byte* e)
+    {
+        uint* gate = (uint*)Mem.EntityState(0x00571828);            // Ghidra: DAT_00571828
+
+        if ((*gate & 0x400) == 0) *(uint*)e |= 0x2000;
+        if ((*gate & 0x400) != 0) *(uint*)e &= 0xffffdfff;
+
+        if ((*gate & 0x800) == 0)
+        {
+            *(uint*)e |= 0x4000;
+            return;
+        }
+
+        *(uint*)e &= 0xffff9fff;
+
+        int* speed = Mem.EntityState(0x005717d0);                   // Ghidra: DAT_005717d0
+        int* travelled = Mem.EntityState(0x00571824);               // Ghidra: DAT_00571824
+
+        *(short*)(e + 0x98) += 1;
+
+        int wait = 0x3c - *speed;
+        if (wait < 3) wait = 3;
+
+        if (*(short*)(e + 0x98) > wait && (*gate & 0x200) == 0)
+        {
+            *(short*)(e + 0x98) = 0;
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x14),
+                                   (short)(CrtRand() % 100 + 0x2ce), 0x1200, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = -1;
+            *speed = 3;
+            *(short*)(e + 0x16) = 0;
+            *Mem.EntityState(0x005717ec) = 1;                       // Ghidra: DAT_005717ec
+        }
+
+        byte* savedFace = *(byte**)(e + 0x7c);
+        int savedGroundX = *(int*)(e + 0x60);
+        int savedGroundZ = *(int*)(e + 0x64);
+        uint savedContacts = *(ushort*)(e + 0x90);
+        int saved80 = *(int*)(e + 0x80);
+        int saved84 = *(int*)(e + 0x84);
+        int saved88 = *(int*)(e + 0x88);
+        int saved8c = *(int*)(e + 0x8c);
+
+        *(short*)(e + 0x10) += 1;
+        *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+        *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+
+        if (*(short*)(e + 0x10) >= 0x7530) *(short*)(e + 0x10) = 0x4e20;
+
+        // ------------------------------------------------- l'attente, puis le depart
+        if (*(short*)(e + 0x12) == -1)
+        {
+            int aboard = CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+
+            if (ActivePartySlotCount_00466D70() == aboard)                 // Ghidra: FUN_00466d70
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x12) = (short)-*(short*)(e + 0x12);
+                *speed = 5;
+                *travelled = 0;
+                *(short*)(e + 0x16) = 0;
+                *Mem.EntityState(0x005717e0) = 0;                   // Ghidra: DAT_005717e0
+                *(short*)(e + 0x14) = 0;
+                *Mem.EntityState(0x0057181c) = 0;                   // Ghidra: DAT_0057181c
+                *Mem.EntityState(0x00571820) = 0;                   // Ghidra: DAT_00571820
+
+                RunEntityScript(s_Unknown_005e97cc, null, 0);       // Ghidra: FUN_00513dd0
+            }
+        }
+
+        if (*(short*)(e + 0x12) != 1) return;
+
+        // ------------------------------------------------- le voyage
+        *travelled += *speed;
+        SteerSled_0046A3F0(e, 0, 0);                                // Ghidra: FUN_0046a3f0
+        CameraPitchGlide_0046A5A0(e, 0, 0);                         // Ghidra: FUN_0046a5a0
+
+        short age = *(short*)(e + 0x10);
+
+        // Ghidra: `cdq ; and edx,3 ; sar 2 ; shl 2` — « l'age est-il un multiple de 4 ».
+        if (*(short*)(e + 0x16) == 1 && age == ((age + ((age >> 31) & 3)) >> 2) << 2)
+        {
+            *speed -= 1;
+            if (*speed <= 5) *speed = 5;
+        }
+
+        // Ghidra: magie 0x55555556 sans decalage — « l'age est-il un multiple de 3 ».
+        if (age == age / 3 * 3)
+        {
+            *speed += 1;
+            if (*speed >= 0x28) *speed = 0x28;
+        }
+
+        int beforeHeight = *(int*)(e + 0x20);
+
+        *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * *speed;   // Ghidra: 0x00545a1c
+        *(int*)(e + 0x1c) -= Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * *speed;        // Ghidra: 0x00545a16
+
+        // Le mot de sol sous le traineau : l'octet +0x0e de la face choisit lequel des quatre
+        // dwords +0x80..+0x8c du traineau lui-meme sert de temoin.
+        short beforeMark = *(short*)(e + (*(byte**)(e + 0x7c))[0x0e] * 4 + 0x80);
+
+        *(int*)(e + 0x20) = beforeHeight + 0xc8000;
+        FinalizeEntityPlacement2((uint*)e);                         // Ghidra: FUN_00533940
+        *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+        int quarter = (*speed & ~3) == 0 ? 1 : *speed >> 2;
+        TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, CrtRand() % quarter, 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+
+        if (CrtRand() % 0x1e == 1) SmokePuff_0046A630(e, SignedMask(CrtRand(), 3) + 1);   // Ghidra: FUN_0046a630
+
+        // ------------------------------------------------- la camera suit la pente
+        int before = beforeHeight >> 0xc;
+        int after = *(int*)(e + 0x20) >> 0xc;
+
+        if (before < after) CameraPitchGlide_0046A5A0(e, 1, 0x100);
+
+        if (before > after && *(short*)(e + 0x16) != 4 && *(short*)(e + 0x16) != 2)
+        {
+            CameraPitchGlide_0046A5A0(e, 1, -0x100);
+        }
+
+        if (before == after) CameraPitchGlide_0046A5A0(e, 1, 0);
+
+        // ------------------------------------------------- le virage lu sur le sol
+        if (*(short*)(e + (*(byte**)(e + 0x7c))[0x0e] * 4 + 0x80) != beforeMark)
+        {
+            *(short*)(e + 0x16) += 1;
+            if (*(short*)(e + 0x16) == 4 || *(short*)(e + 0x16) == 2)
+            {
+                CameraPitchGlide_0046A5A0(e, 1, -0x200);
+            }
+        }
+
+        if ((*(uint*)(e + 0x90) & 0x800) != 0)
+        {
+            *(byte**)(e + 0x7c) = savedFace;
+            *(int*)(e + 0x60) = savedGroundX;
+            *(int*)(e + 0x64) = savedGroundZ;
+            *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+            *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+            *(int*)(e + 0x80) = saved80;
+            *(uint*)(e + 0x90) = savedContacts & 0xffff;
+            *(int*)(e + 0x84) = saved84;
+            *(int*)(e + 0x88) = saved88;
+            *(int*)(e + 0x8c) = saved8c;
+        }
+
+        // ------------------------------------------------- l'arrivee
+        if ((uint)*travelled < 0x1004) return;
+
+        *(short*)(e + 0x12) = 2;
+
+        byte* member = Inp.s_SlotFlags_005e93c0;                    // 0x005e93c0
+        for (int slot = 0; slot < 4; slot++, member += 0x9c)
+        {
+            RunEntityScript(s_Unknown_005e97cc, member, 1);         // Ghidra: FUN_00513dd0
+        }
+    }
+
+    private static void EntityHandler_00469F60(byte* e) => TickRideableSled_00469F60(e);
+
+    /// <summary>
+    /// Ghidra: <c>0x00470c20</c> — sous-zone 1. <b>Absente de <c>Blaze.c</c></b> ; 385 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00470C20.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le second traineau, celui de la salle de la machine.</b> Meme charpente que
+    /// <see cref="TickRideableSled_00469F60"/> — attente que tout le groupe soit a bord, depart,
+    /// derive sur le cap, camera qui suit la pente, virage lu sur le mot de sol —, mais trois
+    /// choses le distinguent, et ce sont elles qui comptent.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>il part vite et ralentit</term><description>la vitesse demarre a <c>0x1e</c> et
+    ///     monte jusqu'a <c>0x28</c>, la ou le premier traineau part a <c>5</c>. Il n'accelere pas
+    ///     tout seul : <b>c'est le numero du virage qui decide</b>.</description></item>
+    ///   <item><term>le profil de vitesse est ecrit a la main</term><description>aux virages
+    ///     <c>3</c> a <c>6</c>, <c>0x0b</c>, <c>0x14</c> et <c>0x18</c> il accelere (une image sur
+    ///     deux) ; aux virages <c>8</c> a <c>0x0a</c>, <c>0x12</c>, <c>0x16</c> et <c>0x1a</c> il
+    ///     freine (une image sur trois). Le freinage de depart — virage <c>1</c>, une image sur
+    ///     quatre — est le seul qu'il partage avec son aine. C'est le relief du couloir, releve
+    ///     virage par virage par l'auteur de 1998.</description></item>
+    ///   <item><term>sa voix n'est pas placee dans l'espace</term><description>elle passe par
+    ///     <see cref="Audio.PlaySoundEffect"/> et non par <c>TryPlaySoundNearEntity</c> : le
+    ///     grondement est au meme volume partout, ce qui va de soi pour un traineau qu'on
+    ///     monte.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Les trois bits de <c>0x00571978</c></b> jouent le role que <c>0x00571828</c> joue chez
+    /// l'aine, decales : <c>0x1000</c> decide du dessin, <c>0x2000</c> de l'existence, <c>0x200</c>
+    /// coupe la voix.
+    /// </para>
+    /// <para>
+    /// <b>Au depart il retouche cinq mots de dessin de la scene</b> : <c>0x005fa5e0</c> perd son bit
+    /// de tete, et <c>0x005fa850</c>, <c>0x005fa8ec</c>, <c>0x005fa988</c> prennent <c>0x2000</c> —
+    /// puis <c>0x005fbb34</c> le prend a chaque image du voyage. Ce sont les quatre ou cinq
+    /// morceaux de decor que le traineau fait apparaitre en s'ebranlant.
+    /// </para>
+    /// <para>
+    /// <b>L'arrivee est a <c>0x2d28</c></b>, presque trois fois plus loin que celle de l'aine, et
+    /// le script joue est le <c>0</c>, pas le <c>1</c>.
+    /// </para>
+    /// </summary>
+    private static void TickMachineSled_00470C20(byte* e)
+    {
+        uint* gate = (uint*)Mem.EntityState(0x00571978);            // Ghidra: DAT_00571978
+
+        if ((*gate & 0x1000) == 0) *(uint*)e |= 0x2000;
+        if ((*gate & 0x1000) != 0) *(uint*)e &= 0xffffdfff;
+
+        if ((*gate & 0x2000) == 0)
+        {
+            *(uint*)e |= 0x4000;
+            return;
+        }
+
+        *(uint*)e &= 0xffff9fff;
+
+        int* speed = Mem.EntityState(0x00571920);                   // Ghidra: DAT_00571920
+        int* travelled = Mem.EntityState(0x00571974);               // Ghidra: DAT_00571974
+
+        *(short*)(e + 0x98) += 1;
+
+        int wait = 0x3c - *speed;
+        if (wait < 3) wait = 3;
+
+        if (*(short*)(e + 0x98) > wait && (*gate & 0x200) == 0)
+        {
+            *(short*)(e + 0x98) = 0;
+            Aud.PlaySoundEffect(ZoneSound(0x14), CrtRand() % 100 + 0x2ce, 0x1200, 0x1200);   // Ghidra: FUN_0053cea0
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = -1;
+            *speed = 0x1e;
+            *(short*)(e + 0x16) = 0;
+            *Mem.EntityState(0x0057193c) = 1;                       // Ghidra: DAT_0057193c
+        }
+
+        byte* savedFace = *(byte**)(e + 0x7c);
+        uint savedContacts = *(ushort*)(e + 0x90);
+        int savedGroundX = *(int*)(e + 0x60);
+        int savedGroundZ = *(int*)(e + 0x64);
+        int saved80 = *(int*)(e + 0x80);
+        int saved84 = *(int*)(e + 0x84);
+        int saved88 = *(int*)(e + 0x88);
+        int saved8c = *(int*)(e + 0x8c);
+
+        *(short*)(e + 0x10) += 1;
+        *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+        *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+
+        if (*(short*)(e + 0x10) >= 0x7530) *(short*)(e + 0x10) = 0x4e20;
+
+        // ------------------------------------------------- l'attente, puis le depart
+        if (*(short*)(e + 0x12) == -1
+            && ActivePartySlotCount_00466D70() == CountPartyMembersMatching(e, 0x10, 0x40000000))
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)-*(short*)(e + 0x12);
+            *speed = 0x28;
+            *travelled = 0;
+            *(short*)(e + 0x16) = 0;
+            *Mem.EntityState(0x00571930) = 0;                       // Ghidra: DAT_00571930
+            *(short*)(e + 0x14) = 0;
+
+            *(uint*)Mem.Entity(0x005fa5e0) &= 0x7fffffff;           // Ghidra: DAT_005fa5e0
+            *Mem.EntityState(0x0057196c) = 0;                       // Ghidra: DAT_0057196c
+            *(uint*)Mem.Entity(0x005fa850) |= 0x2000;               // Ghidra: DAT_005fa850
+            *(uint*)Mem.Entity(0x005fa8ec) |= 0x2000;               // Ghidra: DAT_005fa8ec
+            *(uint*)Mem.Entity(0x005fa988) |= 0x2000;               // Ghidra: DAT_005fa988
+            *Mem.EntityState(0x00571970) = 0;                       // Ghidra: DAT_00571970
+        }
+
+        if (*(short*)(e + 0x12) != 1) return;
+
+        // ------------------------------------------------- le voyage
+        *(uint*)Mem.Entity(0x005fbb34) |= 0x2000;                   // Ghidra: DAT_005fbb34
+        *travelled += *speed;
+
+        SteerSled_0046A3F0(e, 0, 0, SubArea1Bank, 0x32);            // Ghidra: FUN_00471dd0
+        CameraPitchGlide_0046A5A0(e, 0, 0, SubArea1Bank);           // Ghidra: FUN_004725a0
+
+        short age = *(short*)(e + 0x10);
+        short turn = *(short*)(e + 0x16);
+
+        // Ghidra: `cdq ; and edx,3 ; sar 2 ; shl 2` — « l'age est-il un multiple de 4 ».
+        if (turn == 1 && age == ((age + ((age >> 31) & 3)) >> 2) << 2)
+        {
+            *speed -= 1;
+            if (*speed <= 5) *speed = 5;
+        }
+
+        // Ghidra: `cdq ; sub ; sar 1 ; shl 1` — « l'age est-il pair ».
+        bool evenFrame = age == (age - (age >> 31) >> 1) << 1;
+
+        if (((turn >= 3 && turn <= 6) || turn == 0x0b || turn == 0x14 || turn == 0x18) && evenFrame)
+        {
+            *speed += 1;
+            if (*speed >= 0x28) *speed = 0x28;
+        }
+
+        if (((turn >= 8 && turn <= 0x0a) || turn == 0x12 || turn == 0x16 || turn == 0x1a)
+            && age == age / 3 * 3)
+        {
+            *speed -= 1;
+            if (*speed <= 5) *speed = 5;
+        }
+
+        int beforeHeight = *(int*)(e + 0x20);
+
+        *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * *speed;   // Ghidra: 0x00545a1c
+        *(int*)(e + 0x1c) -= Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * *speed;        // Ghidra: 0x00545a16
+
+        short beforeMark = *(short*)(e + (*(byte**)(e + 0x7c))[0x0e] * 4 + 0x80);
+
+        *(int*)(e + 0x20) = beforeHeight + 0xc8000;
+        FinalizeEntityPlacement2((uint*)e);                         // Ghidra: FUN_00533940
+        *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+        int quarter = (*speed & ~3) == 0 ? 1 : *speed >> 2;
+        TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, CrtRand() % quarter, 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+
+        if (CrtRand() % 0x1e == 1)
+        {
+            SmokePuff_0046A630(e, SignedMask(CrtRand(), 3) + 1, 0x32);   // Ghidra: FUN_00472630
+        }
+
+        // ------------------------------------------------- la camera suit la pente
+        int before = beforeHeight >> 0xc;
+        int after = *(int*)(e + 0x20) >> 0xc;
+
+        if (before < after) CameraPitchGlide_0046A5A0(e, 1, 0x100, SubArea1Bank);
+
+        if (before > after && *(short*)(e + 0x16) != 4)
+        {
+            CameraPitchGlide_0046A5A0(e, 1, -0x100, SubArea1Bank);
+        }
+
+        if (before == after) CameraPitchGlide_0046A5A0(e, 1, 0, SubArea1Bank);
+
+        // ------------------------------------------------- le virage lu sur le sol
+        if (*(short*)(e + (*(byte**)(e + 0x7c))[0x0e] * 4 + 0x80) != beforeMark)
+        {
+            *(short*)(e + 0x16) += 1;
+            if (*(short*)(e + 0x16) == 4) CameraPitchGlide_0046A5A0(e, 1, -0x200, SubArea1Bank);
+        }
+
+        if ((*(uint*)(e + 0x90) & 0x800) != 0)
+        {
+            *(uint*)(e + 0x90) = savedContacts & 0xffff;
+            *(byte**)(e + 0x7c) = savedFace;
+            *(int*)(e + 0x60) = savedGroundX;
+            *(int*)(e + 0x64) = savedGroundZ;
+            *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+            *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+            *(int*)(e + 0x80) = saved80;
+            *(int*)(e + 0x84) = saved84;
+            *(int*)(e + 0x88) = saved88;
+            *(int*)(e + 0x8c) = saved8c;
+        }
+
+        // ------------------------------------------------- l'arrivee
+        if ((uint)*travelled <= 0x2d28) return;
+
+        *(short*)(e + 0x12) = 2;
+
+        byte* member = Inp.s_SlotFlags_005e93c0;                    // 0x005e93c0
+        for (int slot = 0; slot < 4; slot++, member += 0x9c)
+        {
+            RunEntityScript(s_Unknown_005e97cc, member, 0);         // Ghidra: FUN_00513dd0
+        }
+    }
+
+    private static void EntityHandler_00470C20(byte* e) => TickMachineSled_00470C20(e);
+
+    // =====================================================================
+    // LOT 11 (2026-09-20) — LE TROISIEME TRAINEAU ET SA PISTE
+    //
+    // 0x00471150 est le plus gros corps du depot : 610 instructions, plus deux feuilles qui ne
+    // servent qu'a lui, 0x00471a10 (300) et 0x00471f80 (400). Les trois ensemble sont UNE SEULE
+    // CHOSE : la description du couloir, virage par virage.
+    //
+    // LA FORME EST TOUJOURS LA MEME. Le traineau cumule la distance parcourue dans 0x00571974, et
+    // la piste est une suite de FENETRES de distance : quand le cumul tombe dans [lo, hi] et que le
+    // virage precedent est fini (0x0057193c == 1), un quart de tour est arme, avec son sens et la
+    // coordonnee sur laquelle se recaler en sortie. Rien d'autre. Ce sont des mesures relevees a la
+    // main sur la carte en 1998, et c'est pour cela qu'il y en a cinquante.
+    //
+    // LA PISTE SE DIVISE EN CINQ ROUTES, numerotees dans 0x00571930, et DEUX BITS D'AIGUILLAGE de
+    // 0x00571978 choisissent entre des variantes : le bit 0x04 dans la route 0, le bit 0x20 dans la
+    // route 1, le bit 0x100 dans les routes 4 et 5. Chaque route finit en passant la main a la
+    // suivante, en remettant le cumul a zero.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00471a10</c>. <b>Absente de <c>Blaze.c</c></b> ; 300 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00471A10.asm</c>.
+    ///
+    /// <para>
+    /// <b>La route 0 de la piste</b>, et elle seule : la feuille rend la main sur-le-champ si
+    /// <c>0x00571930</c> ne vaut pas <c>0</c>. Le bit <c>0x04</c> de <c>0x00571978</c> choisit entre
+    /// deux trajets qui ne partagent que leur premier virage.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>le trajet court (bit eteint)</term><description>trois virages, puis la route
+    ///     s'acheve a <c>0x4bfa</c> ; ses reglages de vitesse portent sur les virages <c>0x18</c>,
+    ///     <c>0x24</c>, <c>0x2c</c>, <c>0x2d</c>, <c>0x2f</c> et <c>0x36</c>..<c>0x38</c>
+    ///     (plafond <c>0x32</c>), et <c>0x1f</c>..<c>0x22</c>, <c>0x26</c>..<c>0x2a</c> et
+    ///     <c>0x3a</c> (plancher <c>5</c>).</description></item>
+    ///   <item><term>le trajet long (bit allume)</term><description>cinq virages, fin a
+    ///     <c>0x4268</c> ; ses reglages portent sur les virages <c>0x22</c>..<c>0x24</c>
+    ///     (plafond <c>0x28</c>) et <c>0x1c</c> seul (plancher <c>5</c>, une image sur
+    ///     trois).</description></item>
+    /// </list>
+    /// <para>
+    /// La fin de route est la meme des deux cotes : <c>0x00571930</c> passe a <c>1</c>, le cumul et
+    /// le numero de virage repartent de zero, et l'age est <b>force a <c>0x1d1</c></b> — ce qui
+    /// remet la parite de l'age a un endroit connu, puisque tous les reglages de vitesse la lisent.
+    /// </para>
+    /// <para>
+    /// Les deux derniers blocs, a partir de <c>0x00471d48</c>, sont <b>communs aux deux trajets</b> :
+    /// les virages <c>1</c>, <c>5</c> et <c>9</c> accelerent, les virages <c>3</c> et <c>7</c>
+    /// freinent.
+    /// </para>
+    /// </summary>
+    private static void TrackRoute0_00471A10(byte* e)
+    {
+        int* route = Mem.EntityState(0x00571930);                   // Ghidra: DAT_00571930
+        if (*route != 0) return;
+
+        int* travelled = Mem.EntityState(0x00571974);               // Ghidra: DAT_00571974
+        int* speed = Mem.EntityState(0x00571920);                   // Ghidra: DAT_00571920
+        uint gate = *(uint*)Mem.EntityState(0x00571978);            // Ghidra: DAT_00571978
+
+        TrackTurn(e, 0x10cc, 0x1194, 1, -0x384);
+
+        if ((gate & 4) == 0)
+        {
+            // ------------------------------------------------- le trajet court
+            TrackTurn(e, 0x15fe, 0x16a8, 1, -0xb54);
+            TrackTurn(e, 0x22f6, 0x23f0, -1, -0x1194);
+            TrackTurn(e, 0x3d54, 0x3e62, -1, 0x1004);
+
+            if ((uint)*travelled >= 0x4bfa) CloseTrackRoute(e, route, travelled);
+
+            short turn = *(short*)(e + 0x16);
+
+            if ((turn == 0x18 || turn == 0x24 || turn == 0x2c || turn == 0x2d || turn == 0x2f
+                 || (turn >= 0x36 && turn <= 0x38)) && IsEvenAge(e))
+            {
+                *speed += 1;
+                if (*speed >= 0x32) *speed = 0x32;
+            }
+
+            turn = *(short*)(e + 0x16);
+            if (((turn >= 0x1f && turn <= 0x22) || (turn >= 0x26 && turn <= 0x2a) || turn == 0x3a)
+                && IsEvenAge(e))
+            {
+                *speed -= 1;
+                if (*speed <= 5) *speed = 5;
+            }
+        }
+        else
+        {
+            // ------------------------------------------------- le trajet long
+            TrackTurn(e, 0x1aae, 0x1b58, 1, -0x6a4);
+            TrackTurn(e, 0x23f0, 0x24b8, -1, -0xdac);
+            TrackTurn(e, 0x2b5c, 0x2c88, -1, 0x1f4);
+            TrackTurn(e, 0x30a2, 0x319c, 1, -0x76c);
+            TrackTurn(e, 0x3de0, 0x3e80, -1, 0x1004);
+
+            if ((uint)*travelled >= 0x4268) CloseTrackRoute(e, route, travelled);
+
+            short turn = *(short*)(e + 0x16);
+
+            if ((turn == 0x22 || turn == 0x23 || turn == 0x24) && IsEvenAge(e))
+            {
+                *speed += 1;
+                if (*speed >= 0x28) *speed = 0x28;
+            }
+
+            // Ghidra: magie 0x55555556 sans decalage — « l'age est-il un multiple de 3 ».
+            short age = *(short*)(e + 0x10);
+            if (*(short*)(e + 0x16) == 0x1c && age == age / 3 * 3)
+            {
+                *speed -= 1;
+                if (*speed <= 5) *speed = 5;
+            }
+        }
+
+        // ------------------------------------------------- les deux blocs communs
+        short common = *(short*)(e + 0x16);
+
+        if ((common == 1 || common == 5 || common == 9) && IsEvenAge(e))
+        {
+            *speed += 1;
+            if (*speed >= 0x32) *speed = 0x32;
+        }
+
+        common = *(short*)(e + 0x16);
+        if ((common == 3 || common == 7) && IsEvenAge(e))
+        {
+            *speed -= 1;
+            if (*speed <= 5) *speed = 5;
+        }
+    }
+
+    /// <summary>Ghidra: <c>cdq ; sub eax,edx ; sar 1 ; shl 1 ; cmp</c> — la question « l'age
+    /// <c>+0x10</c> est-il pair », posee telle quelle par le compilateur de 1998 a chacun des
+    /// quatorze reglages de vitesse de la piste.</summary>
+    private static bool IsEvenAge(byte* e)
+    {
+        int age = *(short*)(e + 0x10);
+        return age == ((age - (age >> 31)) >> 1) << 1;
+    }
+
+    /// <summary>Une fenetre de la piste : quand le cumul <c>0x00571974</c> tombe dans
+    /// <c>[lo, hi]</c> <b>et</b> que le virage precedent est fini (<c>0x0057193c == 1</c>), un quart
+    /// de tour est arme. Le cumul est relu apres coup parce que le binaire le recharge a chaque
+    /// fenetre — et pour cause, rien ne l'a change.</summary>
+    private static void TrackTurn(byte* e, uint lo, uint hi, int dir, int snap)
+    {
+        uint travelled = (uint)*Mem.EntityState(0x00571974);        // Ghidra: DAT_00571974
+        if (travelled < lo || travelled > hi) return;
+        if (*Mem.EntityState(0x0057193c) != 1) return;              // Ghidra: DAT_0057193c
+
+        SteerSled_0046A3F0(e, dir, snap, SubArea1Bank, 0x32);       // Ghidra: FUN_00471dd0
+    }
+
+    /// <summary>La fin d'une route de la piste, ecrite deux fois a l'identique dans
+    /// <c>0x00471a10</c> : la route suivante est <c>1</c>, le cumul et le numero de virage
+    /// repartent de zero, et l'age est cale a <c>0x1d1</c>.</summary>
+    private static void CloseTrackRoute(byte* e, int* route, int* travelled)
+    {
+        *route = 1;
+        *travelled = 0;
+        *(short*)(e + 0x16) = 0;
+        *(short*)(e + 0x10) = 0x1d1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00471f80</c>. <b>Absente de <c>Blaze.c</c></b> ; 400 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00471F80.asm</c>.
+    ///
+    /// <para>
+    /// <b>La variante longue des routes 4 et 5</b>, celle que le bit <c>0x100</c> de
+    /// <c>0x00571978</c> met en service. Seize virages, dont le cumul va jusqu'a <c>0xa21c</c> — le
+    /// quadruple des autres routes. C'est la grande descente.
+    /// </para>
+    /// <para>
+    /// <b>Deux virages se prennent a vitesse doublee</b> : a <c>0x4b64</c> et a <c>0x4e02</c>, la
+    /// vitesse est doublee <b>juste avant</b> d'armer le quart de tour et rendue de moitie juste
+    /// apres. Comme le pas de cap vaut <c>vitesse * 73 / 64</c>, le virage se boucle en deux fois
+    /// moins d'images : ce sont les deux epingles du parcours.
+    /// </para>
+    /// <para>
+    /// <b>Passe <c>0x9d6c</c></b> le traineau est en plus tire de <c>0xb000</c> vers les X negatifs
+    /// a chaque image, tant qu'il n'a pas franchi <c>-0xe74000</c> — un rail, ajoute par-dessus les
+    /// virages.
+    /// </para>
+    /// <para>
+    /// <b>A <c>0xa21c</c> la course s'arrete</b> : la vitesse perd un point par image et
+    /// <b>huit bouffees</b> partent a chaque image ; quand elle atteint zero, <c>+0x12</c> passe a
+    /// <c>2</c> et le traineau a fini.
+    /// </para>
+    /// <para>
+    /// Les reglages de vitesse de cette variante sont les plus riches de la piste — plafond
+    /// <c>0x3c</c> aux virages <c>0</c>..<c>3</c>, <c>9</c> et <c>0x0a</c>, un <b>bond de 3</b> aux
+    /// virages <c>0x39</c>..<c>0x3d</c> ecrete a <c>0x6e</c>, un freinage de <c>3</c> aux virages
+    /// <c>0x41</c> et <c>0x47</c>..<c>0x4a</c> de la route <c>5</c> — et trois d'entre eux piquent
+    /// la camera au passage.
+    /// </para>
+    /// <para>
+    /// <b>La chute finale</b>, aux virages <c>0x5e</c>..<c>0x60</c> de la route <c>5</c> : le bit
+    /// <c>0x200</c> s'allume, <c>+0x14</c> part de <c>0x0a</c> et perd <c>3</c> par image, le
+    /// traineau tombe d'autant, la camera tangue de <c>-0x14</c>, et l'arrivee au fond
+    /// (<c>-0x320000</c>) claque la voix <c>0x34</c>. Le virage <c>0x61</c> eteint le bit et lache
+    /// <b>vingt-deux bouffees</b>.
+    /// </para>
+    /// </summary>
+    private static void TrackRoutes45_00471F80(byte* e)
+    {
+        int* travelled = Mem.EntityState(0x00571974);               // Ghidra: DAT_00571974
+        int* speed = Mem.EntityState(0x00571920);                   // Ghidra: DAT_00571920
+        int* route = Mem.EntityState(0x00571930);                   // Ghidra: DAT_00571930
+        uint* gate = (uint*)Mem.EntityState(0x00571978);            // Ghidra: DAT_00571978
+
+        TrackTurn(e, 0x166c, 0x1770, -1, 0xdac);
+        TrackTurn(e, 0x1e14, 0x1edc, -1, -0xdac);
+        TrackTurn(e, 0x2418, 0x24b8, -1, 0x6a4);
+        TrackTurn(e, 0x2af8, 0x2bc0, 1, -0x5dc);
+        TrackTurn(e, 0x332c, 0x33f4, -1, -0x2bc);
+        TrackTurn(e, 0x396c, 0x3a34, -1, 0x12c);
+        TrackTurn(e, 0x3c8c, 0x3d54, 1, 0x1f4);
+
+        // Les deux epingles : vitesse doublee le temps du quart de tour, rendue de moitie apres.
+        if ((uint)*travelled >= 0x4b64 && (uint)*travelled <= 0x4c2c
+            && *Mem.EntityState(0x0057193c) == 1)
+        {
+            *speed *= 2;
+            SteerSled_0046A3F0(e, -1, 0xf3c, SubArea1Bank, 0x32);   // Ghidra: FUN_00471dd0
+            *speed = (*speed - (*speed >> 31)) >> 1;
+        }
+
+        if ((uint)*travelled >= 0x4e02 && (uint)*travelled <= 0x4e84
+            && *Mem.EntityState(0x0057193c) == 1)
+        {
+            *speed *= 2;
+            SteerSled_0046A3F0(e, -1, 0x514, SubArea1Bank, 0x32);
+            *speed = (*speed - (*speed >> 31)) >> 1;
+        }
+
+        TrackTurn(e, 0x6a40, 0x6b08, -1, -0xf3c);
+        TrackTurn(e, 0x7080, 0x7148, -1, -0x1f4);
+        TrackTurn(e, 0x7b70, 0x7c38, -1, -0x384);
+        TrackTurn(e, 0x7fc6, 0x80e8, 1, 0x384);
+        TrackTurn(e, 0x837c, 0x8408, -1, 0x12c);
+        TrackTurn(e, 0x8fc0, 0x9088, -1, 0x10cc);
+        TrackTurn(e, 0x9d6c, 0x9e34, 1, -0xe74);
+
+        // ------------------------------------------------- le rail de la fin
+        if ((uint)*travelled >= 0x9d6c && *(int*)(e + 0x1c) >= -0xe74000)
+        {
+            *(int*)(e + 0x1c) += -0xb000;
+        }
+
+        // ------------------------------------------------- l'arret
+        if ((uint)*travelled >= 0xa21c)
+        {
+            *speed -= 1;
+
+            for (int i = 8; i != 0; i--)
+            {
+                SmokePuff_0046A630(e, SignedMask(CrtRand(), 3) + 1, 0x32);   // Ghidra: FUN_00472630
+            }
+
+            if (*speed <= 0)
+            {
+                *speed = 0;
+                *(short*)(e + 0x12) = 2;
+            }
+        }
+
+        // ------------------------------------------------- les reglages de vitesse
+        short turn = *(short*)(e + 0x16);
+
+        if (((turn >= 1 && turn <= 3) || turn == 9 || turn == 0x0a) && IsEvenAge(e))
+        {
+            *speed += 1;
+            if (*speed >= 0x3c) *speed = 0x3c;
+        }
+
+        turn = *(short*)(e + 0x16);
+        if (turn >= 0x39 && turn <= 0x3d)
+        {
+            *speed += 3;
+            if (*(short*)(e + 0x16) == 0x3a)
+            {
+                CameraPitchGlide_0046A5A0(e, 1, -0x200, SubArea1Bank);   // Ghidra: FUN_004725a0
+            }
+            if (*speed >= 0x6e) *speed = 0x6e;
+        }
+
+        turn = *(short*)(e + 0x16);
+        if (turn >= 0x2c && turn <= 0x2e)
+        {
+            *speed -= 1;
+            if (*speed <= 0x0a) *speed = 0x0a;
+            if (*(short*)(e + 0x16) == 0x2d) CameraPitchGlide_0046A5A0(e, 1, 0x200, SubArea1Bank);
+        }
+
+        turn = *(short*)(e + 0x16);
+        if ((turn == 0x41 && *route == 5) || (turn >= 0x47 && turn <= 0x4a && *route == 5))
+        {
+            *speed -= 3;
+            if (*speed <= 0x0a) *speed = 0x0a;
+            if (*(short*)(e + 0x16) == 0x49) CameraPitchGlide_0046A5A0(e, 1, 0x200, SubArea1Bank);
+        }
+
+        turn = *(short*)(e + 0x16);
+        if (turn >= 0x5c && turn <= 0x5d && *route == 5)
+        {
+            for (int i = 8; i != 0; i--)
+            {
+                SmokePuff_0046A630(e, SignedMask(CrtRand(), 3) + 1, 0x32);
+            }
+
+            if (IsEvenAge(e))
+            {
+                *speed -= 1;
+                if (*speed <= 0x0a) *speed = 0x0a;
+            }
+
+            if (*(short*)(e + 0x16) == 0x5c)
+            {
+                CameraPitchGlide_0046A5A0(e, 1, -0x200, SubArea1Bank);
+            }
+        }
+
+        // ------------------------------------------------- la chute finale
+        turn = *(short*)(e + 0x16);
+        if (turn >= 0x5e && turn <= 0x60 && *route == 5)
+        {
+            if ((*gate & 0x200) == 0)
+            {
+                *gate |= 0x200;
+                *(short*)(e + 0x14) = 0x0a;
+            }
+
+            *(short*)(e + 0x14) += -3;
+            *(short*)(e + 0x34) += -0x14;
+            *(int*)(e + 0x20) += *(short*)(e + 0x14) << 0xc;
+
+            // Ghidra: `and eax,0FFFFF000h` avant la comparaison — le test porte sur la hauteur
+            // arrondie a l'unite, pas sur sa valeur exacte.
+            if ((*(int*)(e + 0x20) & ~0xfff) <= -0x320000)
+            {
+                *(int*)(e + 0x20) = -0x320000;
+                *(short*)(e + 0x34) = 0;
+                Aud.PlaySoundEffect(ZoneSound(0x34), 0x300, 0x1500, 0x1500);   // Ghidra: FUN_0053cea0
+            }
+        }
+
+        if (*(short*)(e + 0x16) == 0x61 && (*gate & 0x200) != 0)
+        {
+            *gate &= ~0x200u;
+            for (int i = 0x0b; i != 0; i--)
+            {
+                SmokePuff_0046A630(e, 2, 0x32);
+                SmokePuff_0046A630(e, 3, 0x32);
+            }
+        }
+
+        if (*(short*)(e + 0x16) == 0x65 && *route == 5)
+        {
+            *speed += 1;
+            if (*speed >= 0x2d) *speed = 0x2d;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00471150</c> — sous-zone 1. <b>Absente de <c>Blaze.c</c></b> ;
+    /// 610 instructions, <b>le plus gros corps du depot</b>,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00471150.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le troisieme traineau, celui qui parcourt toute la piste.</b> Il partage sa charpente avec
+    /// <see cref="TickMachineSled_00470C20"/> — attente, depart, derive, camera, virage lu sur le
+    /// sol — mais la ou les deux autres suivent un couloir grave dans le decor, celui-ci suit une
+    /// <b>piste ecrite</b>, cinq routes de fenetres de distance
+    /// (<see cref="TrackRoute0_00471A10"/> et <see cref="TrackRoutes45_00471F80"/>).
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>route 0</term><description>deleguee entierement a
+    ///     <see cref="TrackRoute0_00471A10"/>, qui la termine en passant a la route
+    ///     1.</description></item>
+    ///   <item><term>route 1</term><description>un premier virage commun, puis deux variantes que le
+    ///     bit <c>0x20</c> de <c>0x00571978</c> separe. La variante allumee finit par une
+    ///     <b>descente</b> aux virages <c>0x22</c>..<c>0x26</c> ; la variante eteinte passe par un
+    ///     recalage brutal de <c>+0x24</c> et s'acheve a <c>0x2152</c>.</description></item>
+    ///   <item><term>route 3</term><description>un seul virage, et la route 4 a
+    ///     <c>0x1068</c>.</description></item>
+    ///   <item><term>routes 4 et 5</term><description>quatre virages, ou bien, si le bit
+    ///     <c>0x100</c> est allume, toute la grande descente de
+    ///     <see cref="TrackRoutes45_00471F80"/>.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>La descente de la route 1</b> merite d'etre lue : au premier passage elle retient la
+    /// hauteur entiere dans <c>+0x5c</c> et allume le bit <c>0x200</c> — celui qui, plus bas, fait
+    /// <b>geler la hauteur</b> apres le placement, de sorte que le traineau descend par le calcul et
+    /// non par le sol. Ensuite <c>+0x14</c> monte d'un par image et la hauteur perd sa moitie, ce
+    /// qui donne une chute qui s'accelere ; a <c>-250</c> le bit s'eteint, la camera est secouee et
+    /// <b>vingt-deux bouffees</b> partent.
+    /// </para>
+    /// <para>
+    /// <b>Le passage a la route 3</b> est le seul endroit de la piste ou le traineau s'arrete de
+    /// tourner : le virage <c>0x27</c> de la route <c>1</c> remet le tangage a plat, le cumul a
+    /// zero, la vitesse a <c>0x28</c>, l'age a <c>0x2a0</c>, et claque la voix <c>0x34</c>.
+    /// </para>
+    /// <para>
+    /// <b>Sa voix est double</b> : le grondement <c>0x14</c> comme chez les deux autres, plus un
+    /// craquement <c>0x35</c> une image sur <c>0x46</c>, a la hauteur <c>rand % 100 + 0x7ce</c> —
+    /// beaucoup plus aigu. Les deux se taisent tant que le traineau attend
+    /// (<c>+0x12 == -1</c>) ou qu'il est arrive (<c>+0x12 == 2</c>).
+    /// </para>
+    /// </summary>
+    private static void TickTrackSled_00471150(byte* e)
+    {
+        int* speed = Mem.EntityState(0x00571920);                   // Ghidra: DAT_00571920
+        int* travelled = Mem.EntityState(0x00571974);               // Ghidra: DAT_00571974
+        int* route = Mem.EntityState(0x00571930);                   // Ghidra: DAT_00571930
+        uint* gate = (uint*)Mem.EntityState(0x00571978);            // Ghidra: DAT_00571978
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = -1;
+            *speed = 0x1e;
+            *(short*)(e + 0x16) = 0;
+            *Mem.EntityState(0x0057193c) = 1;                       // Ghidra: DAT_0057193c
+            *(short*)(e + 0x98) = 0;
+        }
+
+        *(short*)(e + 0x98) += 1;
+
+        int wait = 0x3c - *speed;
+        if (wait < 3) wait = 3;
+
+        if (*(short*)(e + 0x98) > wait && (*gate & 0x200) == 0)
+        {
+            *(short*)(e + 0x98) = 0;
+            if (*(short*)(e + 0x12) != 2 && *(short*)(e + 0x12) != -1)
+            {
+                Aud.PlaySoundEffect(ZoneSound(0x14), CrtRand() % 100 + 0x2ce, 0x1200, 0x1200);   // Ghidra: FUN_0053cea0
+            }
+        }
+
+        if (CrtRand() % 0x46 == 1 && *(short*)(e + 0x12) != 2 && *(short*)(e + 0x12) != -1)
+        {
+            Aud.PlaySoundEffect(ZoneSound(0x35), CrtRand() % 100 + 0x7ce, 0x900, 0x900);
+        }
+
+        byte* savedFace = *(byte**)(e + 0x7c);
+        uint savedContacts = *(ushort*)(e + 0x90);
+        int savedGroundX = *(int*)(e + 0x60);
+        int savedGroundZ = *(int*)(e + 0x64);
+        int saved80 = *(int*)(e + 0x80);
+        int saved84 = *(int*)(e + 0x84);
+        int saved88 = *(int*)(e + 0x88);
+        int saved8c = *(int*)(e + 0x8c);
+
+        *(short*)(e + 0x10) += 1;
+        *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+        *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+
+        if (*(short*)(e + 0x10) >= 0x7530) *(short*)(e + 0x10) = 0x4e20;
+
+        // ------------------------------------------------- l'attente, puis le depart
+        if (*(short*)(e + 0x12) == -1
+            && ActivePartySlotCount_00466D70() == CountPartyMembersMatching(e, 0x10, 0x40000000))
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)-*(short*)(e + 0x12);
+            *speed = 0x19;
+            *travelled = 0;
+            *(short*)(e + 0x16) = 0;
+            *route = 0;
+            *(short*)(e + 0x14) = 0;
+            *Mem.EntityState(0x0057196c) = 0;                       // Ghidra: DAT_0057196c
+            *Mem.EntityState(0x00571970) = 0;                       // Ghidra: DAT_00571970
+        }
+
+        if (*(short*)(e + 0x12) == 1)
+        {
+            // ------------------------------------------------- la piste
+            *travelled += *speed;
+            SteerSled_0046A3F0(e, 0, 0, SubArea1Bank, 0x32);        // Ghidra: FUN_00471dd0
+            CameraPitchGlide_0046A5A0(e, 0, 0, SubArea1Bank);       // Ghidra: FUN_004725a0
+            TrackRoute0_00471A10(e);                                // Ghidra: FUN_00471a10
+
+            if (*route == 1)
+            {
+                TrackTurn(e, 0x0be, 0x122, -1, -0x12c);
+
+                if ((*gate & 0x20) != 0)
+                {
+                    TrackTurn(e, 0x53c, 0x5aa, 1, 0xa8c);
+                    TrackTurn(e, 0xc08, 0xce4, 1, 0x6a4);
+                    TrackTurn(e, 0x1220, 0x1324, -1, 0x1194);
+                    TrackTurn(e, 0x19b4, 0x1a5e, -1, 0xf3c);
+
+                    short turn = *(short*)(e + 0x16);
+                    if ((turn == 0x0d || turn == 0x1d || turn == 0x1e) && IsEvenAge(e))
+                    {
+                        *speed += 1;
+                        if (*speed >= 0x32) *speed = 0x32;
+                    }
+
+                    turn = *(short*)(e + 0x16);
+                    if ((turn == 0x0f || turn == 0x1c) && IsEvenAge(e))
+                    {
+                        *speed -= 1;
+                        if (*speed <= 5) *speed = 5;
+                    }
+
+                    // ------------------------------------------- la descente
+                    if (*(short*)(e + 0x16) >= 0x22 && *(short*)(e + 0x16) <= 0x26)
+                    {
+                        if (*(short*)(e + 0x14) == 0)
+                        {
+                            *(int*)(e + 0x5c) = *(int*)(e + 0x20) >> 0xc;
+                            *gate |= 0x200;
+                        }
+
+                        *(short*)(e + 0x14) += 1;
+                        *(short*)(e + 0x34) += -7;
+                        *(int*)(e + 0x5c) -= *(short*)(e + 0x14) >> 1;
+                        *(int*)(e + 0x20) = *(int*)(e + 0x5c) << 0xc;
+
+                        if (*(int*)(e + 0x5c) <= -0xfa)
+                        {
+                            *gate &= ~0x200u;
+                            TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, -0x14, 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+
+                            for (int i = 0x0b; i != 0; i--)
+                            {
+                                SmokePuff_0046A630(e, 2, 0x32);     // Ghidra: FUN_00472630
+                                SmokePuff_0046A630(e, 3, 0x32);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    TrackTurn(e, 0xc58, 0xc80, -1, 0x384);
+                    TrackTurn(e, 0x1162, 0x122a, -1, -0x758);
+
+                    if ((uint)*travelled >= 0x1770 && (uint)*travelled <= 0x179d)
+                    {
+                        *(int*)(e + 0x24) = -0x762000;
+                    }
+
+                    TrackTurn(e, 0x1d10, 0x1d1a, -1, 0x1004);
+
+                    if ((uint)*travelled >= 0x2152 && (*gate & 0x20) == 0)
+                    {
+                        *travelled = 1;
+                        *(short*)(e + 0x16) = 1;
+                    }
+                }
+            }
+
+            if (*route == 3)
+            {
+                TrackTurn(e, 0x384, 0x3e8, -1, 0x514);
+
+                if ((uint)*travelled >= 0x1068)
+                {
+                    *travelled = 0;
+                    *route = 4;
+                }
+            }
+
+            if (*route == 4 || *route == 5)
+            {
+                if ((*gate & 0x100) == 0)
+                {
+                    TrackTurn(e, 0x118, 0x1f4, 1, 0x64);
+                    TrackTurn(e, 0xa50, 0xa8c, 1, -0x514);
+                    TrackTurn(e, 0x1068, 0x10cc, 1, 0x76c);
+                    TrackTurn(e, 0x1996, 0x1a2c, 1, 0x514);
+
+                    if ((uint)*travelled >= 0x1e82)
+                    {
+                        *travelled = 1;
+                        *(short*)(e + 0x16) = 0x35;
+                    }
+                }
+
+                if ((*gate & 0x100) != 0) TrackRoutes45_00471F80(e);   // Ghidra: FUN_00471f80
+            }
+
+            // ------------------------------------------------- la derive
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * *speed;   // Ghidra: 0x00545a1c
+            *(int*)(e + 0x1c) -= Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * *speed;        // Ghidra: 0x00545a16
+
+            int beforeHeight = *(int*)(e + 0x20);
+            short beforeMark = *(short*)(e + (*(byte**)(e + 0x7c))[0x0e] * 4 + 0x80);
+
+            *(int*)(e + 0x20) = beforeHeight + 0xc8000;
+            FinalizeEntityPlacement2((uint*)e);                     // Ghidra: FUN_00533940
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+            int quarter = (*speed & ~3) == 0 ? 1 : *speed >> 2;
+            TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, CrtRand() % quarter, 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+
+            if (CrtRand() % 0x1e == 1)
+            {
+                SmokePuff_0046A630(e, SignedMask(CrtRand(), 3) + 1, 0x32);
+            }
+
+            // Le bit 0x200 GELE la hauteur : pendant la descente ecrite, le sol n'a plus voix.
+            if ((*gate & 0x200) != 0) *(int*)(e + 0x20) = beforeHeight;
+
+            // ------------------------------------------------- la camera suit la pente
+            int before = beforeHeight >> 0xc;
+            int after = *(int*)(e + 0x20) >> 0xc;
+
+            if ((*gate & 0x100) == 0 || *(short*)(e + 0x16) != 0x2d)
+            {
+                if (before < after) CameraPitchGlide_0046A5A0(e, 1, 0x100, SubArea1Bank);
+                if (before > after) CameraPitchGlide_0046A5A0(e, 1, -0x100, SubArea1Bank);
+                if (before == after) CameraPitchGlide_0046A5A0(e, 1, 0, SubArea1Bank);
+            }
+
+            // ------------------------------------------------- le virage lu sur le sol
+            if (*(short*)(e + (*(byte**)(e + 0x7c))[0x0e] * 4 + 0x80) != beforeMark)
+            {
+                *(short*)(e + 0x16) += 1;
+
+                if (*route != 5 && *(short*)(e + 0x16) == 0x46 && (*gate & 0x100) != 0)
+                {
+                    *(short*)(e + 0x16) = 0;
+                    *(short*)(e + 0x10) = 0x37e;
+                }
+
+                if (*(short*)(e + 0x16) == 0x27 && *route == 1)
+                {
+                    *(short*)(e + 0x34) = 0;
+                    *travelled = 0;
+                    *route = 3;
+                    *speed = 0x28;
+                    *(short*)(e + 0x10) = 0x2a0;
+                    Aud.PlaySoundEffect(ZoneSound(0x34), 0x300, 0x1500, 0x1500);   // Ghidra: FUN_0053cea0
+                }
+            }
+
+            if ((*(uint*)(e + 0x90) & 0x800) != 0)
+            {
+                *(uint*)(e + 0x90) = savedContacts & 0xffff;
+                *(byte**)(e + 0x7c) = savedFace;
+                *(int*)(e + 0x60) = savedGroundX;
+                *(int*)(e + 0x64) = savedGroundZ;
+                *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+                *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+                *(int*)(e + 0x80) = saved80;
+                *(int*)(e + 0x84) = saved84;
+                *(int*)(e + 0x88) = saved88;
+                *(int*)(e + 0x8c) = saved8c;
+            }
+        }
+
+        if (*(short*)(e + 0x12) == 2) *(uint*)e |= 0x6000;
+    }
+
+    private static void EntityHandler_00471150(byte* e) => TickTrackSled_00471150(e);
 }

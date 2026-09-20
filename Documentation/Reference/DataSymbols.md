@@ -3613,6 +3613,32 @@ La Gorgone et le Dragon zombie n'ont pas de table en `.data` : leurs sondes sont
 | `0x00571828` | `0x004699F0` (bit `0x400`, tout le groupe sur la dalle) ; `0x00469AF0` (bit `0x800`, en fin de course) | `0x00469AF0`, `0x004699F0` |
 | `0x00571978` | la minuterie `FUN_00470640` (`0x01`+`0x04`, `0x08`+`0x20`, `0x40`+`0x100`) ; la roue `0x00470750` (`0x02`, `0x10`, `0x80`) ; le levier `0x00470900` (`0x04`, `0x20`, `0x100`) ; la dalle `0x00470A00` (`0x1000`) ; `0x00470B00` (`0x2000`) | le battant `0x00470860`, la roue, le levier, `0x00470B00`, `0x00470A00` ; et dans `Blaze.c`, `FUN_00471a10` (`& 4`) et `FUN_00471f80` (`& 0x200`) |
 
+
+**Les deux bancs de la piste des traîneaux** (relevé le 2026-09-20, lot 11). Toute la machinerie des
+traîneaux vit sur deux jeux de mots **identiques à `0x150` près** : la sous-zone 0 en bas, la
+sous-zone 1 en haut. La découverte vient de la comparaison instruction par instruction de
+`0x004725a0`, `0x00472630` et `0x00471dd0` avec `0x0046a5a0`, `0x0046a630` et `0x0046a3f0` — les
+corps sont les mêmes, seules les adresses changent, et toujours du même décalage.
+
+| sous-zone 0 | sous-zone 1 | rôle |
+|---|---|---|
+| `0x005717d0` | `0x00571920` | la **vitesse** courante du traîneau |
+| `0x005717e4` | `0x00571934` | le compte à rebours avant la prochaine bouffée de poussière |
+| `0x005717e8` | `0x00571938` | le **cap visé** du quart de tour en cours |
+| `0x005717ec` | `0x0057193c` | le drapeau « virage fini » — la piste n'arme un virage que s'il vaut 1 |
+| `0x005717f0` | `0x00571940` | la coordonnée de **recalage** en sortie de virage |
+| `0x005717f4` | `0x00571944` | le **pas de cap** par image, `vitesse * 73 / 64` |
+| `0x00571818` | `0x00571968` | le tangage visé de la glissade de caméra |
+| `0x0057181c` | `0x0057196c` | le pas de cette glissade — nul quand elle est désarmée |
+| `0x00571824` | `0x00571974` | la **distance cumulée**, celle que les fenêtres de la piste lisent |
+| — | `0x00571930` | le **numéro de route** de la piste (0, 1, 3, 4, 5) |
+
+`0x00571820` et `0x00571970` sont remis à zéro au départ de chaque traîneau sans qu'aucun lecteur
+n'ait été relevé.
+
+**`0x0057182c` a maintenant un écrivain** : le rouleau `0x00469480`, qui allume le bit
+`(+0x16 + 0x320) / 200` à chaque tranche de 200 unités parcourues. C'est donc lui qui fait tomber
+les pierres de `0x00469930`, l'une après l'autre, sur son passage.
 **`0x005fa988 + n * 0x9c`** (n = 0 à 3) : les enregistrements 6 à 9 de la troisième table d'entités
 `0x005fa5e0` — ceux dont le verbe `0x004453E0` publie la pose dans les blocs de vue. Et
 `0x005fa5f2` = `0x005fa5e0 + 0x12`, le mot que lit `0x00470BE0`.

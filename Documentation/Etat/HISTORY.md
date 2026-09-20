@@ -6,6 +6,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-20
 
+- feat : **grotte scellée, lot 11 — 340 sur 349** : les quatre gros corps de la sous-zone 0 — le
+  rocher qui roule sur deux axes, le radeau qui s'éloigne et se dissout, le traîneau que le groupe
+  monte, le rouleau qui écrase — et leurs trois feuilles partagées
+- feat : **les trois traîneaux de la grotte scellée sont écrits**, dont `0x00471150`, **le plus gros
+  corps du dépôt** (610 instructions) et ses deux feuilles de piste : cinquante virages décrits par
+  des fenêtres de distance, cinq routes, trois bits d'aiguillage
+- doc : **la sous-zone 1 rejoue la sous-zone 0, 0x150 plus haut** — ses trois feuilles sont les
+  copies exactes des siennes, toutes globales décalées de `0x150`, une seule autre différence : la
+  bouffée fait naître `0x32` au lieu de `0x34`
+- fix : le rayon de la bulle d'effet d'état se lisait `+0x28 / 100` ; la magie `0x51EB851F` avec
+  `sar 4` divise par **50**, pas par 100 — la bulle touchait deux fois trop loin
 - feat : **grotte scellée, lot 10 — 334 sur 349** : les trois familles de « D », dix corps pour trois
   lectures — la tourelle qui suit un membre du groupe, la navette qui le porte d'un bout à l'autre,
   et la bulle d'effet d'état. **Plus un seul jumeau dans le dépôt**

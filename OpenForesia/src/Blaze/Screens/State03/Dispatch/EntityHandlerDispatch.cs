@@ -2672,6 +2672,12 @@ public static unsafe partial class Blaze
             case 0x0046BA50: EntityHandler_0046BA50(record); return;
             case 0x0046FE40: EntityHandler_0046FE40(record); return;
             case 0x00468E30: EntityHandler_00468E30(record); return;
+            case 0x00469100: EntityHandler_00469100(record); return;
+            case 0x00469480: EntityHandler_00469480(record); return;
+            case 0x00469BC0: EntityHandler_00469BC0(record); return;
+            case 0x00469F60: EntityHandler_00469F60(record); return;
+            case 0x00470C20: EntityHandler_00470C20(record); return;
+            case 0x00471150: EntityHandler_00471150(record); return;
             case 0x0046DBD0: EntityHandler_0046DBD0(record); return;
 
             // ZONE 10 — LOT 8 (2026-09-20) : les « C » des sous-zones 4-9 et 6-7.

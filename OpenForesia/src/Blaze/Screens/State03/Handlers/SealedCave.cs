@@ -2944,4 +2944,774 @@ public static unsafe partial class Blaze
     private static void EntityHandler_0046D860(byte* e) => TickBeamTurret_00468AC0(e);
     private static void EntityHandler_0046FAD0(byte* e) => TickBeamTurret_00468AC0(e);
     private static void EntityHandler_004702D0(byte* e) => TickBeamTurret_00468AC0(e);
+
+    // =====================================================================
+    // LOT 11 (2026-09-20) — LA SOUS-ZONE 0 : TROIS FEUILLES ET QUATRE CORPS
+    //
+    // Les quatre gros corps de la sous-zone 0 — le rocher a deux axes, le radeau qui monte, le
+    // traineau (dans `SealedCaveMecanismes.cs`) et le tambour qui ecrase — partagent trois
+    // feuilles qui vivent toutes sur les mots 0x005717d0..0x0057182c de `s_EntityState_00571500`.
+    //
+    // LA SOUS-ZONE 1 REJOUE LES MEMES TROIS FEUILLES, 0x150 PLUS HAUT. 0x004725a0, 0x00472630 et
+    // 0x00471dd0 sont les copies exactes de 0x0046a5a0, 0x0046a630 et 0x0046a3f0 — verifie
+    // instruction par instruction le 2026-09-20 —, avec DEUX differences et deux seulement :
+    // chacune de leurs globales vaut celle de la sous-zone 0 PLUS 0x150, et la bouffee fait naitre
+    // le sous-type 0x32 au lieu de 0x34. D ou les parametres `bank` et `puff/subtype` ci-dessous,
+    // plutot que trois corps de plus. (Le virage recopie intervertit deux `shr` — v/8 et v/64 sont
+    // additionnes dans l autre ordre, la somme ne bouge pas : allocation de registres, pas
+    // semantique.)
+    // =====================================================================
+
+    /// <summary>Le decalage qui separe les globales de la sous-zone 1 de celles de la sous-zone 0 :
+    /// toutes, sans exception, valent la meme plus <c>0x150</c>.</summary>
+    private const int SubArea1Bank = 0x150;
+
+    /// <summary>
+    /// Ghidra: <c>0x0046a5a0</c>. <b>Absente de <c>Blaze.c</c></b> ; 33 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_0046A5A0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le glissement du tangage de l'entite vers une valeur visee</b>, en <b>quatre images</b>.
+    /// Deux mots globaux portent tout l'etat : <c>0x00571818</c> la valeur visee et
+    /// <c>0x0057181c</c> le pas par image. La feuille sert donc <b>une seule glissade a la fois</b>
+    /// pour toute la sous-zone — ce qui suffit, les quatre corps ne tournent jamais ensemble.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term><c>mode != 0</c> et pas nul</term><description>elle <b>arme</b> : la visee
+    ///     devient <c>target</c> et le pas <c>(target - +0x34) / 4</c>, arrondi vers zero. Armer
+    ///     pendant une glissade en cours <b>ne fait rien</b> — le pas n'est pas nul, et la fonction
+    ///     tombe dans la branche d'avance, qui exige <c>mode == 0</c>.</description></item>
+    ///   <item><term><c>mode == 0</c> et pas non nul</term><description>elle <b>avance</b> :
+    ///     <c>+0x34</c> gagne le pas, et des que le tangage a <b>franchi</b> la visee — dans le sens
+    ///     du pas — il y est cale net et le pas repasse a zero, ce qui desarme.</description></item>
+    ///   <item><term>les deux autres cas</term><description>rien du tout.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>La comparaison de franchissement se lit sur le signe du pas</b>, pas sur la distance :
+    /// un pas positif s'arrete quand le tangage atteint la visee par en dessous, un pas negatif
+    /// quand il l'atteint par au-dessus. Un pas exactement nul ne peut pas arriver ici, la branche
+    /// d'avance l'ayant deja ecarte.
+    /// </para>
+    /// </summary>
+    private static void CameraPitchGlide_0046A5A0(byte* e, int mode, int target, int bank = 0)
+    {
+        int* aim = Mem.EntityState(0x00571818 + bank);              // Ghidra: DAT_00571818 / DAT_00571968
+        int* step = Mem.EntityState(0x0057181c + bank);             // Ghidra: DAT_0057181c / DAT_0057196c
+
+        if (mode != 0 && *step == 0)
+        {
+            *aim = target;
+            int gap = target - *(short*)(e + 0x34);
+            // Ghidra: `cdq ; and edx,3 ; add ; sar 2` — la division signee par 4 du compilateur 1998.
+            *step = (gap + ((gap >> 31) & 3)) >> 2;
+            return;
+        }
+
+        if (mode != 0 || *step == 0) return;
+
+        *(short*)(e + 0x34) += (short)*step;
+
+        short pitch = *(short*)(e + 0x34);
+        bool arrived = *step > 0 ? pitch >= *aim : pitch <= *aim;
+
+        if (!arrived) return;
+
+        *(short*)(e + 0x34) = (short)*aim;
+        *step = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046a630</c>. <b>Absente de <c>Blaze.c</c></b> ; 74 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_0046A630.asm</c>.
+    ///
+    /// <para>
+    /// <b>La bouffee de poussiere lachee a cote de l'entite.</b> Le parametre <c>which</c> designe
+    /// un <b>coin</b> : <c>1</c> a <c>4</c> valent <c>0x600</c>, <c>0xa00</c>, <c>0xe00</c> et
+    /// <c>0x1200</c> par une table de sauts a <c>0x0046a75c</c> ; toute autre valeur est prise
+    /// telle quelle comme un angle.
+    /// </para>
+    /// <para>
+    /// La feuille <b>deplace l'entite elle-meme</b> le temps de semer : elle range <c>+0x1c</c>,
+    /// <c>+0x20</c>, <c>+0x24</c> et <c>+0x32</c>, se porte a <c>100</c> unites sur
+    /// <c>which + cap</c>, bouscule le cap de <c>SignedMask(rand, 0xff) + 0x380</c>, fait naitre
+    /// <b>sept</b> <c>0x34</c>, puis remet les quatre champs en place. Les sept effets naissent donc
+    /// tous au meme endroit, avec le meme cap bouscule — c'est leur propre corps qui les eparpille.
+    /// </para>
+    /// <para>
+    /// <b>Une image sur dix</b> la voix <c>0x36</c> de la zone claque, a la hauteur
+    /// <c>rand % 100 + 0x3ce</c> et au gain <c>0x800</c>.
+    /// </para>
+    /// <para>
+    /// <c>+0x20</c> est range et remis alors que rien ne l'a touche : Ghidra ne recupere pas les
+    /// deux emplacements de pile reutilises et les rend en <c>unaff_retaddr</c> (<c>+0x20</c>) et
+    /// <c>unaff_EBX</c> (<c>+0x24</c>) — lus ici dans le desassemblage, a <c>0046a679</c>,
+    /// <c>0046a681</c> et <c>0046a73f</c>.
+    /// </para>
+    /// </summary>
+    private static void SmokePuff_0046A630(byte* e, int which, short subtype = 0x34)
+    {
+        int angle = which switch
+        {
+            1 => 0x600,
+            2 => 0x0a00,
+            3 => 0x0e00,
+            4 => 0x1200,
+            _ => which,
+        };
+
+        short savedCourse = *(short*)(e + 0x32);
+        int savedX = *(int*)(e + 0x1c);
+        int savedY = *(int*)(e + 0x20);
+        int savedZ = *(int*)(e + 0x24);
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(angle + savedCourse) * 100;      // Ghidra: 0x00545a1c
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(angle + *(short*)(e + 0x32)) * 100;   // Ghidra: 0x00545a16
+
+        *(short*)(e + 0x32) += (short)(SignedMask(CrtRand(), 0xff) + 0x380);
+
+        for (int i = 7; i != 0; i--) SpawnEffectNearCamera_00468110(e, subtype, 0, -1);   // Ghidra: FUN_00468110
+
+        if (CrtRand() % 10 == 1)
+        {
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x36),
+                                   (short)(CrtRand() % 100 + 0x3ce), 0x800, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        *(int*)(e + 0x1c) = savedX;
+        *(int*)(e + 0x20) = savedY;
+        *(int*)(e + 0x24) = savedZ;
+        *(short*)(e + 0x32) = savedCourse;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046a3f0</c>. <b>Absente de <c>Blaze.c</c></b> ; 100 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_0046A3F0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le virage a angle droit du traineau</b>, tenu par six mots globaux :
+    /// <c>0x005717d0</c> la vitesse courante (ecrite par le traineau lui-meme),
+    /// <c>0x005717e4</c> le compte a rebours avant la prochaine bouffee,
+    /// <c>0x005717e8</c> le cap vise, <c>0x005717ec</c> le drapeau « virage fini »,
+    /// <c>0x005717f0</c> la coordonnee de sortie et <c>0x005717f4</c> le pas de cap par image.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term><c>dir == 1</c> / <c>dir == -1</c></term><description>elle <b>arme</b> un
+    ///     quart de tour : le pas vaut <c>vitesse * 73 / 64</c> — le compilateur l'ecrit
+    ///     <c>v + v/8 + v/64</c> en decalages non signes —, dans un sens ou dans l'autre, le cap
+    ///     vise est le cap courant plus ou moins <c>0x400</c>, le drapeau retombe et le compte a
+    ///     rebours part a <c>rand % 9</c>.</description></item>
+    ///   <item><term><c>dir == 0</c></term><description>elle <b>avance</b>, et seulement tant que le
+    ///     drapeau est eteint.</description></item>
+    /// </list>
+    /// <para>
+    /// A l'avance, le compte a rebours descend ; quand il touche <c>-1</c> il repart a
+    /// <c>SignedMask(rand, 7) + 1</c> et <b>deux bouffees</b> partent — les coins <c>1</c> et
+    /// <c>2</c> quand le pas est positif, <c>3</c> et <c>4</c> quand il est negatif, c'est-a-dire
+    /// du cote vers lequel le traineau se penche.
+    /// </para>
+    /// <para>
+    /// Puis le cap gagne le pas, et <b>des qu'il a franchi la visee</b> il y est cale, le drapeau
+    /// se leve, le cap est replie dans <c>0..0x1000</c>, et la <b>coordonnee de sortie</b> est
+    /// posee : sur <c>+0x1c</c> quand le cap final n'est ni <c>0</c> ni <c>0x800</c>, sur
+    /// <c>+0x24</c> sinon. C'est le recalage sur la grille du couloir apres le quart de tour.
+    /// </para>
+    /// </summary>
+    private static void SteerSled_0046A3F0(byte* e, int dir, int endValue, int bank = 0, short puff = 0x34)
+    {
+        uint speed = *(uint*)Mem.EntityState(0x005717d0 + bank);    // Ghidra: DAT_005717d0 / DAT_00571920
+        int* countdown = Mem.EntityState(0x005717e4 + bank);        // Ghidra: DAT_005717e4 / DAT_00571934
+        int* aim = Mem.EntityState(0x005717e8 + bank);              // Ghidra: DAT_005717e8 / DAT_00571938
+        int* settled = Mem.EntityState(0x005717ec + bank);          // Ghidra: DAT_005717ec / DAT_0057193c
+        int* exitValue = Mem.EntityState(0x005717f0 + bank);        // Ghidra: DAT_005717f0 / DAT_00571940
+        int* step = Mem.EntityState(0x005717f4 + bank);             // Ghidra: DAT_005717f4 / DAT_00571944
+
+        // Ghidra: `shr 6` et `shr 3` NON signes sur la vitesse, puis deux additions — v * 73 / 64.
+        int swing = (int)(speed + (speed >> 6) + (speed >> 3));
+
+        if (dir == 1)
+        {
+            *step = swing;
+            *aim = *(short*)(e + 0x32) + 0x400;
+            *settled = 0;
+            *exitValue = endValue;
+            *countdown = CrtRand() % 9;
+        }
+
+        if (dir == -1)
+        {
+            *step = -swing;
+            *aim = *(short*)(e + 0x32) - 0x400;
+            *settled = 0;
+            *exitValue = endValue;
+            *countdown = CrtRand() % 9;
+        }
+
+        if (dir != 0 || *settled != 0) return;
+
+        int side = *step <= 0 ? 1 : 0;
+        *countdown -= 1;
+
+        if (*countdown == -1)
+        {
+            *countdown = SignedMask(CrtRand(), 7) + 1;
+            SmokePuff_0046A630(e, side * 2 + 1, puff);              // Ghidra: FUN_0046a630 / FUN_00472630
+            SmokePuff_0046A630(e, side * 2 + 2, puff);
+        }
+
+        *(short*)(e + 0x32) += (short)*step;
+
+        short course = *(short*)(e + 0x32);
+        bool arrived = *step < 0 ? course <= *aim : *step > 0 && course >= *aim;
+        if (!arrived) return;
+
+        *(short*)(e + 0x32) = (short)*aim;
+        *settled = 1;
+
+        if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+        if (*(short*)(e + 0x32) < 0) *(short*)(e + 0x32) += 0x1000;
+
+        if (*(short*)(e + 0x32) != 0 && *(short*)(e + 0x32) != 0x800)
+        {
+            *(int*)(e + 0x1c) = *exitValue << 0xc;
+            return;
+        }
+
+        *(int*)(e + 0x24) = *exitValue << 0xc;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00469100</c> — sous-zone 0. <b>Absente de <c>Blaze.c</c></b> ; 284 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00469100.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le rocher qui roule sur deux axes.</b> C'est le cousin de
+    /// <see cref="EntityHandler_00468E30"/>, qui ne roule que sur le Z : meme charpente —
+    /// sauvegarde de dix champs, avance, contact, restauration — mais il avance
+    /// <b>en X et en Z a la fois</b>, il emporte ce qui se tient dessus, et il garde une
+    /// <b>vitesse de base</b> dans <c>+0x5c</c>.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>a la naissance</term><description><c>+0x5c</c> prend le <c>+0x14</c> que la
+    ///     sous-zone a pose — c'est la base autour de laquelle les deux vitesses sont tirees.
+    ///     <c>+0x12</c> et <c>+0x14</c> valent chacun <c>signe * (base + rand % 0x17)</c>,
+    ///     <c>+0x16</c> vaut <c>±1</c>, et le bit <c>0x2000</c> s'allume.</description></item>
+    ///   <item><term>chaque image</term><description>il gronde toutes les neuf images (voix
+    ///     <c>0x2d</c>), avance de <c>+0x12</c> en X et <c>+0x14</c> en Z, <b>publie le meme
+    ///     deplacement en vitesse</b> par <see cref="AddEntityVelocity_00454580"/> pour que le
+    ///     groupe pose dessus suive, et tourne de <c>+0x16 * 0xf0</c>.</description></item>
+    ///   <item><term>au choc</term><description>les dix champs reviennent, les <b>deux</b> vitesses
+    ///     sont <b>retirees au sort</b> (et non pas seulement inversees, comme chez le cousin), le
+    ///     sens de rotation change de signe, la voix <c>0x30</c> claque et <b>sept</b> bouffees
+    ///     <c>0x34</c> naissent.</description></item>
+    /// </list>
+    /// <para>
+    /// La <c>0x35</c> une fois sur sept, l'octet de contact <c>+0x09</c> refait a chaque image et la
+    /// frappe a <c>0x0a</c> sont identiques au cousin, au bit pres : meme cylindre de
+    /// <c>0x3c</c> unites en plan, meme fenetre de hauteur relevee de <c>0x46</c> et large de
+    /// <c>0x50</c>.
+    /// </para>
+    /// <para>
+    /// <see cref="ClearEntityVelocity_00460FC0"/> en tete efface <c>+0x50</c>..<c>+0x58</c> avant
+    /// tout : la vitesse publiee ne vaut donc que pour l'image en cours.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00469100(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);                            // Ghidra: FUN_00460fc0
+
+        int savedGroundX = *(int*)(e + 0x60);
+        int savedGroundZ = *(int*)(e + 0x64);
+        byte* savedFace = *(byte**)(e + 0x7c);
+        uint savedContacts = *(ushort*)(e + 0x90);
+        int saved80 = *(int*)(e + 0x80);
+        int saved84 = *(int*)(e + 0x84);
+        int saved88 = *(int*)(e + 0x88);
+        int saved8c = *(int*)(e + 0x8c);
+
+        *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+        *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x5c) = *(short*)(e + 0x14);
+
+            *(short*)(e + 0x12) = (short)((CrtRand() % 0x17 + *(short*)(e + 0x5c)) * RandomSign());
+            *(short*)(e + 0x14) = (short)((CrtRand() % 0x17 + *(short*)(e + 0x5c)) * RandomSign());
+            *(short*)(e + 0x98) = 0;
+            *(short*)(e + 0x16) = (short)RandomSign();
+            *(uint*)e |= 0x2000;
+        }
+
+        *(short*)(e + 0x98) += 1;
+        if (*(short*)(e + 0x98) == 9)
+        {
+            *(short*)(e + 0x98) = 0;
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2d), 0x400, 0x800, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        *(int*)(e + 0x1c) += *(short*)(e + 0x12) << 0xc;
+        *(int*)(e + 0x24) += *(short*)(e + 0x14) << 0xc;
+        AddEntityVelocity_00454580(e, *(short*)(e + 0x12) << 0xc, 0,
+                                      *(short*)(e + 0x14) << 0xc);   // Ghidra: FUN_00454580
+
+        *(short*)(e + 0x32) += (short)(*(short*)(e + 0x16) * 0xf0);
+        if (*(short*)(e + 0x32) > 0x1000) *(short*)(e + 0x32) = 0;
+        if (*(short*)(e + 0x32) < 0) *(short*)(e + 0x32) = 0x1000;
+
+        FinalizeEntityPlacement2((uint*)e);                         // Ghidra: FUN_00533940
+
+        bool blocked = (*(uint*)(e + 0x90) & 0x880) != 0 || (*(byte**)(e + 0x7c))[0x0f] != 0;
+
+        if (blocked)
+        {
+            *(int*)(e + 0x60) = savedGroundX;
+            *(int*)(e + 0x64) = savedGroundZ;
+            *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+            *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+            *(int*)(e + 0x80) = saved80;
+            *(byte**)(e + 0x7c) = savedFace;
+            *(uint*)(e + 0x90) = savedContacts & 0xffff;
+            *(int*)(e + 0x84) = saved84;
+            *(int*)(e + 0x88) = saved88;
+            *(int*)(e + 0x8c) = saved8c;
+
+            *(short*)(e + 0x12) = (short)((CrtRand() % 0x17 + *(short*)(e + 0x5c)) * RandomSign());
+            *(short*)(e + 0x14) = (short)((CrtRand() % 0x17 + *(short*)(e + 0x5c)) * RandomSign());
+            *(short*)(e + 0x16) = (short)-*(short*)(e + 0x16);
+
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x30), 0x400, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+            for (int i = 7; i != 0; i--) SpawnEffectNearCamera_00468110(e, 0x34, 0, -1);   // Ghidra: FUN_00468110
+        }
+
+        if (CrtRand() % 7 == 1) SpawnEffectNearCamera_00468110(e, 0x35, 0, -1);   // Ghidra: FUN_00468110
+
+        // ------------------------------------------------- l'octet de contact, refait chaque image
+        e[9] = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;                    // 0x005e93c0
+
+        for (int slot = 0; slot < 4; slot++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            int dx = (*(int*)(member + 0x1c) >> 0xc) - (*(int*)(e + 0x1c) >> 0xc);
+            int dz = (*(int*)(member + 0x24) >> 0xc) - (*(int*)(e + 0x24) >> 0xc);
+            int plan = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            int dy = (*(int*)(member + 0x20) >> 0xc) - (*(int*)(e + 0x20) >> 0xc) + 0x46;
+            if (dy < 0) dy = -dy;
+
+            if (plan >= 0x3c || dy >= 0x50) continue;
+
+            e[9] |= (byte)(1 << slot);
+        }
+
+        StrikePartyMembers_0045DA40(e, 0x0a, 0, 0, 0);              // Ghidra: FUN_0045da40
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00469bc0</c> — sous-zone 0. <b>Absente de <c>Blaze.c</c></b> ; 263 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00469BC0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le radeau qui s'eloigne et se dissout.</b> Il derive tout seul sur son cap, en ralentissant,
+    /// pendant que la camera le suit du regard ; passe un certain age il fume par ses quatre coins,
+    /// s'arrete, puis s'efface.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>a la naissance</term><description>la vitesse <c>+0x5c</c> part a <c>0x1e</c>,
+    ///     l'age <c>+0x9a</c> et le compteur de voix <c>+0x98</c> a zero, les deux pas de glissade
+    ///     de tangage sont eteints, <c>+0x12</c> retient la hauteur en unites entieres, et les deux
+    ///     mots de dessin <c>+0x9c</c> et <c>+0x138</c> prennent les bits
+    ///     <c>0x6000</c>.</description></item>
+    ///   <item><term>le regard</term><description>chaque image il fait avancer
+    ///     <see cref="CameraPitchGlide_0046A5A0"/>, puis, <b>selon que sa hauteur a change ou
+    ///     non</b>, il en <b>arme</b> une nouvelle : vers <c>0x200</c> ou <c>0x100</c> tant qu'il
+    ///     monte — le choix depend de deux fenetres d'age, <c>0x1e..0x4b</c> et
+    ///     <c>0x64..0x85</c> —, et vers <c>0</c> des qu'il s'est stabilise.</description></item>
+    ///   <item><term>le flottement</term><description>il se hisse de <c>0xc8000</c> le temps de
+    ///     <see cref="FinalizeEntityPlacement2"/>, puis <b>redescend sur le sol trouve</b>
+    ///     (<c>+0x20 = +0x64</c>). C'est ainsi qu'il epouse le relief sans jamais s'y
+    ///     enfoncer.</description></item>
+    ///   <item><term>la voix</term><description>la <c>0x14</c> de la zone toutes les
+    ///     <c>0x28 - rand % 15</c> images, hauteur <c>rand % 100 + 0x2ce</c>, gain
+    ///     <c>0x1200</c>.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le ralentissement a deux regimes.</b> Avant l'age <c>0xd2</c>, <c>+0x5c</c> perd un point
+    /// toutes les onze images et s'arrete a un <b>plancher de 8</b>. Apres, il en perd un toutes les
+    /// deux images, <b>quatre bouffees de coin partent a chaque cran</b>
+    /// (<see cref="SmokePuff_0046A630"/>, coins 1 a 4), et quand la vitesse passe sous zero l'etat
+    /// devient 2.
+    /// </para>
+    /// <para>
+    /// La derive vaut <c>sin(+0x32) * +0x5c</c> en Z et <c>cos(+0x32) * +0x5c</c> retranche en X, et
+    /// la camera tremble a chaque image de <c>rand % (vitesse / 4)</c> — le quart valant <c>1</c>
+    /// des que la vitesse tombe sous <c>4</c>, ce qui evite la division par zero au dernier cran.
+    /// </para>
+    /// <para>
+    /// <b>L'effacement</b>, a l'etat 2 : le bit <c>0x2000</c> du mot global <c>0x005fa7b4</c>
+    /// s'eteint, <c>*e</c> prend les bits <c>0x6000</c> que <c>+0x9c</c> et <c>+0x138</c> perdent,
+    /// et <c>+0x16c</c> monte de <c>0x46</c> par image jusqu'a <c>0x514</c>, ou l'etat passe a
+    /// <c>0x63</c>.
+    /// </para>
+    /// <para>
+    /// <b>La restauration finale ne regarde que le bit <c>0x800</c></b> de <c>+0x90</c>, la ou les
+    /// rochers de la meme sous-zone testent <c>0x880</c> : le radeau traverse donc ce qui n'est pas
+    /// un mur franc.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00469BC0(byte* e)
+    {
+        byte* savedFace = *(byte**)(e + 0x7c);
+        int savedGroundX = *(int*)(e + 0x60);
+        int savedGroundZ = *(int*)(e + 0x64);
+        uint savedContacts = *(ushort*)(e + 0x90);
+        int saved80 = *(int*)(e + 0x80);
+        int saved84 = *(int*)(e + 0x84);
+        int saved88 = *(int*)(e + 0x88);
+        int saved8c = *(int*)(e + 0x8c);
+
+        *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+        *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x5c) = 0x1e;
+            *(short*)(e + 0x9a) = 0;
+            *Mem.EntityState(0x0057181c) = 0;                       // Ghidra: DAT_0057181c
+            *Mem.EntityState(0x00571820) = 0;                       // Ghidra: DAT_00571820
+            *(short*)(e + 0x12) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(uint*)(e + 0x9c) |= 0x6000;
+            *(uint*)(e + 0x138) |= 0x6000;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x9a) += 1;
+            CameraPitchGlide_0046A5A0(e, 0, 0);                     // Ghidra: FUN_0046a5a0
+
+            *(short*)(e + 0x98) += 1;
+            if (*(short*)(e + 0x98) > 0x28 - CrtRand() % 15)
+            {
+                *(short*)(e + 0x98) = 0;
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x14),
+                                       (short)(CrtRand() % 100 + 0x2ce), 0x1200, 0, 0);   // Ghidra: FUN_00468080
+            }
+
+            short heldHeight = *(short*)(e + 0x12);
+            int height = *(int*)(e + 0x20) >> 0xc;
+
+            if (heldHeight != height)
+            {
+                short age = *(short*)(e + 0x9a);
+                // Les deux fenetres se lisent en cascade, exactement comme le binaire les branche.
+                bool wide = (age > 0x1e && age < 0x4b) || (age > 0x64 && age < 0x85);
+                CameraPitchGlide_0046A5A0(e, 1, wide ? 0x200 : 0x100);
+            }
+
+            if (heldHeight == height) CameraPitchGlide_0046A5A0(e, 1, 0);
+
+            *(short*)(e + 0x12) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(int*)(e + 0x20) += 0xc8000;
+            FinalizeEntityPlacement2((uint*)e);                     // Ghidra: FUN_00533940
+            *(int*)(e + 0x20) = *(int*)(e + 0x64);
+
+            if (*(short*)(e + 0x9a) > 0xd2)
+            {
+                *(short*)(e + 0x14) += 1;
+                if (*(short*)(e + 0x14) > 1)
+                {
+                    *(short*)(e + 0x14) = 0;
+                    SmokePuff_0046A630(e, 1);                       // Ghidra: FUN_0046a630
+                    SmokePuff_0046A630(e, 2);
+                    SmokePuff_0046A630(e, 3);
+                    SmokePuff_0046A630(e, 4);
+
+                    *(int*)(e + 0x5c) -= 1;
+                    if (*(int*)(e + 0x5c) < 0)
+                    {
+                        *(int*)(e + 0x5c) = 0;
+                        *(short*)(e + 0x10) = 2;
+                    }
+                }
+            }
+            else
+            {
+                *(short*)(e + 0x14) += 1;
+                if (*(short*)(e + 0x14) > 0x0a)
+                {
+                    *(short*)(e + 0x14) = 0;
+                    *(int*)(e + 0x5c) -= 1;
+                    if (*(int*)(e + 0x5c) < 8) *(int*)(e + 0x5c) = 8;
+                }
+            }
+
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * *(int*)(e + 0x5c);   // Ghidra: 0x00545a1c
+            *(int*)(e + 0x1c) -= Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * *(int*)(e + 0x5c);        // Ghidra: 0x00545a16
+
+            int quarter = (*(int*)(e + 0x5c) & ~3) == 0 ? 1 : *(int*)(e + 0x5c) >> 2;
+            TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, CrtRand() % quarter, 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+
+            if (CrtRand() % 0x1e == 1) SmokePuff_0046A630(e, SignedMask(CrtRand(), 3) + 1);
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(uint*)Mem.Entity(0x005fa7b4) &= ~0x2000u;             // Ghidra: DAT_005fa7b4
+            *(short*)(e + 0x16c) += 0x46;
+            *(uint*)e |= 0x6000;
+            *(uint*)(e + 0x9c) &= 0xffff9fff;
+            *(uint*)(e + 0x138) &= 0xffff9fff;
+
+            if (*(short*)(e + 0x16c) >= 0x514)
+            {
+                *(short*)(e + 0x16c) = 0x514;
+                *(short*)(e + 0x10) = 0x63;
+            }
+        }
+
+        if ((*(uint*)(e + 0x90) & 0x800) == 0) return;
+
+        *(byte**)(e + 0x7c) = savedFace;
+        *(int*)(e + 0x60) = savedGroundX;
+        *(uint*)(e + 0x90) = savedContacts & 0xffff;
+        *(int*)(e + 0x64) = savedGroundZ;
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+        *(int*)(e + 0x80) = saved80;
+        *(int*)(e + 0x84) = saved84;
+        *(int*)(e + 0x88) = saved88;
+        *(int*)(e + 0x8c) = saved8c;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00469480</c> — sous-zone 0. <b>Absente de <c>Blaze.c</c></b> ; 363 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00469480.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le rouleau qui grandit, devale le couloir et s'ecrase.</b> Il publie sa progression dans
+    /// le mot global <c>0x0057182c</c> — le meme que lisent les pierres qui se detachent de
+    /// <see cref="EntityHandler_00469930"/> —, un bit par tranche de <c>200</c> unites parcourues.
+    /// Il frappe le groupe a <c>0x0a</c> a chaque image, dans <b>tous</b> ses etats.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>etat 0 puis 1</term><description>le mot de progression est efface, les trois
+    ///     echelles <c>+0x28</c>..<c>+0x2c</c> sont mises a zero, la vitesse <c>+0x5c</c> part a
+    ///     <c>0x0a</c> ; l'etat 1 ne dure qu'<b>une seule image</b>.</description></item>
+    ///   <item><term>etat 2, il grandit</term><description>les trois echelles montent de
+    ///     <c>0xc8</c> par image et le tangage recule de <c>0x1e</c> ; a <c>0x1000</c> d'echelle il
+    ///     passe a l'etat 3, avec <c>+0x14 = -1</c> et <c>+0x16 = -0xc8</c>.</description></item>
+    ///   <item><term>etat 3, il roule</term><description>le tangage tourne de <c>+0x5c * -10</c>, la
+    ///     position avance de <c>sin/cos(+0x32) * +0x5c</c>, et chaque fois que le Z a franchi
+    ///     <c>+0x16</c> : le bit <c>(+0x16 + 0x320) / 200</c> s'allume dans <c>0x0057182c</c>,
+    ///     <c>+0x16</c> gagne <c>0xc8</c>, la vitesse gagne 1.</description></item>
+    ///   <item><term>etat 4 puis 5</term><description>les echelles redescendent de <c>0xc8</c> par
+    ///     image jusqu'a zero.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le couloir est decrit par des nudges de cap codes en dur</b> : huit valeurs de
+    /// <c>+0x16</c> — <c>-0xc8</c>, <c>0</c>, <c>0xc8</c>, <c>0x190</c>, <c>0x258</c>, <c>0x320</c>,
+    /// <c>0x3e8</c> et <c>0x4b0</c> — donnent chacune un tour de cap different, et <c>0x708</c>
+    /// termine la course. Ce sont les virages du couloir, releves un par un a la main par
+    /// l'auteur de 1998.
+    /// </para>
+    /// <para>
+    /// <b>Les trois rebonds</b>, sur <c>+0x14</c> : a <c>-1</c> il compte dix images puis tombe a
+    /// <c>0</c> ; a <c>0</c> il descend de <c>+0x12</c> par image, accelerant, jusqu'au plancher
+    /// <c>-0x208000</c>, ou la voix <c>0x1a</c> claque et <b>six</b> <c>0x36</c> giclent ; a
+    /// <c>1</c> il remonte de <c>+0x12</c> qui decroit de 2 par image, et retouche le plancher a
+    /// <c>3</c> ; a <c>±3</c> il rebondit une derniere fois, avec <b>deux</b> <c>0x36</c>.
+    /// </para>
+    /// <para>
+    /// Le dernier rebond <b>tire douze nombres au hasard et les jette</b> (quatre tours de trois
+    /// appels) : ce sont les trois tirages de la gerbe, laisses en place alors que le corps ne fait
+    /// plus naitre personne. Reproduit tel quel — retirer ces appels decalerait le flux du
+    /// generateur pour tout ce qui suit.
+    /// </para>
+    /// <para>
+    /// La gerbe de l'etat 0 disperse sur <c>x ± 0x4b</c>, <c>y - 0x14 - 100</c> et
+    /// <c>z - 0x64</c>, avec <b>un decalage supplementaire de <c>-0x50</c> en Z</b> dans la gerbe a
+    /// deux du premier rebond — c'est la seule difference entre les deux boucles.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00469480(byte* e)
+    {
+        TryPublishCameraEffectNearEntity((uint*)e, 0x3e7, 0, 0x3e7, 0, 0);   // Ghidra: FUN_0041be60
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *Mem.EntityState(0x0057182c) = 0;                       // Ghidra: DAT_0057182c
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(int*)(e + 0x5c) = 0x0a;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) += 1;
+            if (*(short*)(e + 0x12) == 1)
+            {
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x10) = 2;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x34) += -0x1e;
+            if (*(short*)(e + 0x34) < 0) *(short*)(e + 0x34) += 0x1000;
+
+            *(short*)(e + 0x28) += 0xc8;
+            *(short*)(e + 0x2a) += 0xc8;
+            *(short*)(e + 0x2c) += 0xc8;
+
+            if (*(short*)(e + 0x28) >= 0x1000)
+            {
+                *(short*)(e + 0x28) = 0x1000;
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x14) = -1;
+                *(short*)(e + 0x16) = -0xc8;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            if (*(short*)(e + 0x14) == 3 || *(short*)(e + 0x14) == -3)
+            {
+                *(short*)(e + 0x14) = (short)-*(short*)(e + 0x14);
+                TryPublishCameraEffectNearEntity(
+                    (uint*)e, 0x3e7, *(short*)(e + 0x14) / 3 * 2, 0x3e7, 0, 0);
+
+                for (int i = 2; i != 0; i--) SprayGrit_00469480(e, -0x50);
+            }
+
+            // ------------------------------------------------- la course
+            *(short*)(e + 0x34) += (short)(*(short*)(e + 0x5c) * -10);
+            if (*(short*)(e + 0x34) < 0) *(short*)(e + 0x34) += 0x1000;
+
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * *(int*)(e + 0x5c);   // Ghidra: 0x00545a1c
+            *(int*)(e + 0x1c) -= Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * *(int*)(e + 0x5c);        // Ghidra: 0x00545a16
+
+            if (*(int*)(e + 0x24) > *(short*)(e + 0x16) << 0xc)
+            {
+                // Ghidra: magie 0x51EB851F avec `sar edx,6` — une division signee par 200.
+                int bit = (*(short*)(e + 0x16) + 0x320) / 200;
+                *(uint*)Mem.EntityState(0x0057182c) |= 1u << bit;
+
+                *(short*)(e + 0x16) += 0xc8;
+                if (*(short*)(e + 0x16) == 0xc8) *(short*)(e + 0x32) = 0x400;
+                *(int*)(e + 0x5c) += 1;
+            }
+
+            // ------------------------------------------------- les virages du couloir
+            short mark = *(short*)(e + 0x16);
+            if (mark == -0xc8) *(short*)(e + 0x32) += 0x0f;
+            if (mark == 0) *(short*)(e + 0x32) += -0x14;
+            if (mark == 0xc8) *(short*)(e + 0x32) += -0x19;
+            if (mark == 0x190) *(short*)(e + 0x32) += 0x19;
+            if (mark == 0x258) *(short*)(e + 0x32) += -0x23;
+            if (mark == 0x320) *(short*)(e + 0x32) += 0x23;
+            if (mark == 0x3e8) *(short*)(e + 0x32) += -0x19;
+            if (mark == 0x4b0) *(short*)(e + 0x32) += 0x19;
+            if (mark == 0x708) *(short*)(e + 0x10) = 4;
+
+            // ------------------------------------------------- les rebonds
+            if (*(short*)(e + 0x14) == -1)
+            {
+                *(short*)(e + 0x12) += 1;
+                if (*(short*)(e + 0x12) == 0x0a)
+                {
+                    *(short*)(e + 0x14) = 0;
+                    *(short*)(e + 0x12) = 2;
+                }
+            }
+
+            if (*(short*)(e + 0x14) == 0)
+            {
+                *(short*)(e + 0x12) += 1;
+                *(int*)(e + 0x20) -= *(short*)(e + 0x12) << 0xc;
+
+                if (*(int*)(e + 0x20) <= -0x208000)
+                {
+                    *(int*)(e + 0x20) = -0x208000;
+                    *(short*)(e + 0x14) = 1;
+                    TryPublishCameraEffectNearEntity(
+                        (uint*)e, 0x3e7, *(short*)(e + 0x12), 0x3e7, 0, 0);
+                    TryPlaySoundNearEntity((uint*)e, ZoneSound(0x1a), 0x400, 0x1200, 0, 0);   // Ghidra: FUN_00468080
+
+                    for (int i = 6; i != 0; i--) SprayGrit_00469480(e, 0);
+                }
+            }
+
+            if (*(short*)(e + 0x14) == 1)
+            {
+                *(short*)(e + 0x12) += -2;
+                *(int*)(e + 0x20) += *(short*)(e + 0x12) << 0xc;
+
+                if (*(short*)(e + 0x12) < 0 && *(int*)(e + 0x20) <= -0x208000)
+                {
+                    *(int*)(e + 0x20) = -0x208000;
+                    *(short*)(e + 0x14) = 3;
+                    TryPublishCameraEffectNearEntity(
+                        (uint*)e, 0x3e7, *(short*)(e + 0x12), 0x3e7, 0, 0);
+
+                    // Douze tirages jetes : la gerbe a ete retiree, ses tirages sont restes.
+                    for (int i = 4; i != 0; i--) { CrtRand(); CrtRand(); CrtRand(); }
+                }
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 4)
+        {
+            *(short*)(e + 0x28) += -0xc8;
+            *(short*)(e + 0x2a) += -0xc8;
+            *(short*)(e + 0x2c) += -0xc8;
+
+            if (*(short*)(e + 0x28) <= 0)
+            {
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(short*)(e + 0x10) = 5;
+            }
+        }
+
+        StrikePartyMembers_0045DA40(e, 0x0a, 0, 0, 0);              // Ghidra: FUN_0045da40
+    }
+
+    /// <summary>Un grain de la gerbe du rouleau : l'entite se porte a un point tire au hasard,
+    /// fait naitre un <c>0x36</c> et revient. <paramref name="depthBias"/> vaut <c>-0x50</c> dans la
+    /// gerbe a deux du premier rebond et <c>0</c> dans celle a six du second — c'est leur seule
+    /// difference.</summary>
+    private static void SprayGrit_00469480(byte* e, int depthBias)
+    {
+        int ox = CrtRand() % 0x96 - 0x4b;
+        int oy = CrtRand() % 0x28 - 0x14 - 100;
+        int oz = CrtRand() % 0xc8 - 0x64 + depthBias;
+
+        int savedX = *(int*)(e + 0x1c);
+        int savedY = *(int*)(e + 0x20);
+        int savedZ = *(int*)(e + 0x24);
+
+        *(int*)(e + 0x1c) = (ox << 0xc) + savedX;
+        *(int*)(e + 0x20) = (oy << 0xc) + savedY;
+        *(int*)(e + 0x24) = (oz << 0xc) + savedZ;
+
+        SpawnEffectNearCamera_00468110(e, 0x36, 0, -1);             // Ghidra: FUN_00468110
+
+        *(int*)(e + 0x24) = savedZ;
+        *(int*)(e + 0x1c) = savedX;
+        *(int*)(e + 0x20) = savedY;
+    }
 }

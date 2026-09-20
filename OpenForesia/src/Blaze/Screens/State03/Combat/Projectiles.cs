@@ -4098,7 +4098,7 @@ public static unsafe partial class Blaze
     /// <para>
     /// <b>Elle n'applique qu'une fois par membre</b>, et seulement une fois assez grande : tant que
     /// <c>+0x28</c> reste sous <c>+0x48 - 0xbb8</c>, rien ne part. Ensuite, tout membre vivant à
-    /// moins de <c>+0x28 / 100</c> unités <b>en plan</b> et dont le bit n'est pas encore dans le
+    /// moins de <c>+0x28 / 50</c> unités <b>en plan</b> et dont le bit n'est pas encore dans le
     /// masque <c>+0x14</c> reçoit l'effet d'état que <c>+0x44</c> désigne.
     /// </para>
     /// <para>
@@ -4177,7 +4177,7 @@ public static unsafe partial class Blaze
                 int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
 
                 int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
-                if (distance >= *(short*)(e + 0x28) / 100) continue;
+                if (distance >= *(short*)(e + 0x28) / 50) continue;
 
                 int bit = 1 << slot;
                 if ((*(short*)(e + 0x14) & bit) != 0) continue;
