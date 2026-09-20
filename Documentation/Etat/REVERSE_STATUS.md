@@ -25500,3 +25500,67 @@ dans la grotte. `check-descriptors.sh` : 0 tableau en désaccord, 114 marges cou
 prouvées** (quatre neuves scellées, et **trois re-scellées** : la paramétrisation de
 `TickObliqueFallingRock` avait périmé leur preuve, ce qui est exactement ce que le sceau sert à
 faire). **Non exercé en jeu.**
+
+## 2026-09-20 (suite 2) — Grotte scellée, lot 9 : la catégorie « C » est vide, 324 sur 349
+
+**303 sur 349 devient 324 sur 349**, et avec lui **la catégorie « C » de la grotte n'a plus rien à
+transcrire** — dans aucune zone, puisque la grotte était la dernière à en avoir. Vingt et un corps
+pour vingt et une lectures : plus aucun jumeau. Huit viennent de `Blaze.c`, treize du désassembleur.
+
+**Cinq morts de membre de plus** (`Cutscene/SealedCaveScenes.cs`, qui passe de deux à sept corps) —
+la grotte tue de sept façons :
+
+- **par le froid** (`0x0043C900`, salles 11-12) : deux souffles `0x20` à des cadences qui se croisent
+  (une toutes les six images, l'autre toutes les vingt et une), la victime qui perd 1 par canal et
+  par image **sans plancher** — l'octet boucle quand il passe sous zéro, et le binaire ne s'en soucie
+  pas —, puis la rupture à la soixante-dixième image. **C'est la seule des sept qui ne rend pas la
+  main aux entités** : pas de `UnfreezeAllEntities` ;
+- **par le cri** (`0x0043D4D0`) : deux cents images, un fond blanc posé **avant** que l'ancien soit
+  retenu, la victime qui s'étire vers le haut et s'assombrit, et une partition de onze sons dont la
+  voix `0x20` qui monte de ton cinq fois ;
+- **par la foudre** (`0x0043CEE0`) : le ciel repeint à **chaque image** en `(0x96, 0x96, r)`, `r`
+  tiré entre `0xb4` et `0xef` ; un craquement irrégulier — un tirage sur dix, ou vingt images
+  écoulées ; et une décharge qui sème `0xfc` puis `0xfd`. Le tirage qui précède le `0xfc` est rangé
+  dans la pile et **jamais relu** ;
+- **dans la lumière** (`0x00441EB0`, salles 13-15) : son tampon de secours est **sur la pile**,
+  0xa0 octets mis à zéro à l'entrée, et non `0x005de558` comme ses six sœurs. Et son appel au script
+  passe **zéro** en victime là où les autres passent l'emplacement du groupe ;
+- **en chantant** (`0x004417F0`) : trente hauteurs bâties sur la pile à chaque image — une gamme qui
+  monte d'un demi-ton, puis d'un ton, puis d'une quarte —, parcourue un degré par image impaire ;
+  arrivé au bout, le dernier degré est tenu quarante images de plus.
+
+Et **la combustion des salles 11-12** (`0x0043DB30`) est celle du lot 8 à trois écarts : pas de bit
+`0x4000` sur la victime, la caméra rendue à la fin, et **l'appel au script gardé par la sous-zone** —
+il ne part que dans la seizième. `EntityHandler_00437790` est devenu `TickBurningDeath`, paramétré.
+
+**Ce qui blesse** (`Combat/Projectiles.cs`) :
+
+- **le coup en gerbe** (`0x00486720`) et sa sœur doublée (`0x00485A40`). Le premier **ne vérifie pas
+  que son balayage a trouvé quelqu'un** : le binaire écrase le résultat par `0x005de0b8` et ne teste
+  que celui-là (`mov edi,eax ; mov eax,[5DE0B8h] ; test eax,eax`), alors que sa sœur teste la
+  victime. Relevé tel quel ;
+- **le tourbillon qui se charge puis fauche** (`0x00486B10`) : le bit `0x2000000` de son mot d'état
+  sépare l'amorce du tourbillon — un corps, deux vies, comme la boule du lot 8 ;
+- **les deux gestes** (`0x00485C00`, `0x00485F50`). Ghidra perd **trois registres** dans le premier
+  (`unaff_BX`, `unaff_retaddr` ×2) ; le désassemblage montre qu'ils sont tous le **même tirage**, un
+  cap calculé une fois et relu pour le sinus, le cosinus et `+0x32`. Le second **vise** : il prend le
+  `+0x6c` de son propre porteur — la cible de sa cible —, corrige l'élévation de la *hauteur de
+  bulle* de celle-ci (`StatusBubbleHeight_00538BC0`, arrondie au pair et décalée de 11), ajoute un
+  bruit de `±0x200` aux deux angles et en tire sa vitesse par `SetVectorFromAngles_00532AD0`.
+
+**Ce qui naît et s'éteint** (`Effects/SealedCaveParticles.cs`) : la troisième sœur des colonnes, la
+bulle en deux tailles — dont le relèvement se calcule **différemment selon la salle** —, la gerbe
+tournante à deux planches, la sphère qui gonfle et la bulle qui pleut, l'étincelle sphérique en deux
+sens (la même charpente que celle du lot 7, **sans planche**), l'éclair de lumière, la couronne qui
+blanchit la salle, et la braise en hélice qui se resserre puis s'ouvre.
+
+**Une planche trop courte pour son lecteur** : `0x00551250` porte cinq enregistrements et
+`0x0043D190` en lit sept. Les deux qui débordent tombent sur la planche voisine, qui porte de vrais
+descripteurs — deux images du cycle montrent la tuile du voisin. Relevée entière en C# pour que la
+transcription lise les mêmes octets ; voir `DataSymbols.md`.
+
+Contrôles : `dotnet build` 0 erreur, aucun avertissement nouveau ;
+`census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **324 / 349**, 0 « B », **0 « C »**,
+25 « D » (18 lectures) ; **25 à transcrire**, tous dans la grotte et tous « gros ».
+`check-descriptors.sh` : 0 tableau en désaccord, 117 marges courtes dont **115 prouvées** (trois
+neuves scellées ; restent les deux de la tour). **Non exercé en jeu.**

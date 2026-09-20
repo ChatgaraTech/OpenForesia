@@ -3362,4 +3362,712 @@ public static unsafe partial class Blaze
 
         if (*(short*)(e + 0x10) == 2) *(uint*)e &= 0x7fffffff;
     }
+
+    // =============================================================================================
+    // LA GROTTE SCELLEE, LOT 9 (2026-09-20) — CE QUI BLESSE, BLOC 13-14-15
+    // =============================================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_00551bb0</c> — une tuile <c>0x18 x 0x18</c> a <c>x = 0x30</c>,
+    /// le <b>premier</b> enregistrement de la plage <c>0x00551ba0</c> que la vieille tour a déjà
+    /// relevée. <see cref="EntityHandler_00485C00"/> et <see cref="EntityHandler_00485F50"/> la
+    /// passent a leurs eclats ; aucun des deux n'ecrit <c>+0x40</c>.</summary>
+    private static byte* Descriptors00551BB0() => Descriptors00551BA0() + 0x10;
+
+    private static readonly byte[] s_SoundScript_00552758 =
+    [
+        0x11, 0x01, 0x01, 0x00, 0xaa, 0x04, 0x00, 0x18,   // 0x00552758
+        0x11, 0x00, 0x01, 0x00, 0xff, 0x04, 0x00, 0x18,   // 0x00552760 — delai nul : fin
+    ];
+
+    private static readonly byte[] s_SoundScript_00552768 =
+    [
+        0x25, 0x01, 0x01, 0x00, 0xaa, 0x04, 0x00, 0x18,   // 0x00552768
+        0x28, 0x01, 0x01, 0x00, 0x00, 0x08, 0x00, 0x18,   // 0x00552770
+        0x28, 0x00, 0x01, 0x00, 0xaa, 0x08, 0x00, 0x18,   // 0x00552778 — fin
+    ];
+
+    private static readonly byte[] s_SoundScript_00552780 =
+    [
+        0x10, 0x01, 0x01, 0x00, 0x00, 0x08, 0x00, 0x18,   // 0x00552780
+        0x26, 0x00, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552788 — fin
+    ];
+
+    private static readonly byte[] s_SoundScript_00552790 =
+    [
+        0x10, 0x01, 0x01, 0x00, 0x00, 0x08, 0x00, 0x18,   // 0x00552790
+        0x10, 0x00, 0x01, 0x00, 0xaa, 0x08, 0x00, 0x18,   // 0x00552798 — fin
+    ];
+
+    private static readonly byte[] s_SoundScript_005527A0 =
+    [
+        0x2d, 0x03, 0x01, 0x00, 0xa9, 0x05, 0x00, 0x18,   // 0x005527a0
+        0x2d, 0x01, 0x01, 0x00, 0x52, 0x0b, 0x00, 0x18,   // 0x005527a8
+        0x2c, 0x00, 0x01, 0x00, 0xa9, 0x05, 0x00, 0x18,   // 0x005527b0 — fin
+    ];
+
+    /// <summary>Neuf enregistrements ; <b>sa queue est le script <c>0x005527f0</c></b>, que le
+    /// binaire partage.</summary>
+    private static readonly byte[] s_SoundScript_005527B8 =
+    [
+        0x1f, 0x01, 0x01, 0x00, 0x00, 0x10, 0x00, 0x18,   // 0x005527b8
+        0x1e, 0x02, 0x01, 0x00, 0x52, 0x0b, 0x00, 0x18,   // 0x005527c0
+        0x1c, 0x01, 0x01, 0x00, 0x00, 0x08, 0x00, 0x18,   // 0x005527c8
+        0x25, 0x02, 0x01, 0x00, 0x00, 0x10, 0x00, 0x18,   // 0x005527d0
+        0x25, 0x02, 0x01, 0x00, 0x00, 0x10, 0x00, 0x18,   // 0x005527d8
+        0x25, 0x02, 0x01, 0x00, 0x00, 0x10, 0x00, 0x18,   // 0x005527e0
+        0x25, 0x02, 0x01, 0x00, 0x00, 0x10, 0x00, 0x18,   // 0x005527e8
+        0x31, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x18,   // 0x005527f0
+        0x31, 0x00, 0x01, 0x00, 0x2a, 0x01, 0x00, 0x18,   // 0x005527f8 — fin
+    ];
+
+    private static readonly byte[] s_SoundScript_005527F0 =
+    [
+        0x31, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x18,   // 0x005527f0
+        0x31, 0x00, 0x01, 0x00, 0x2a, 0x01, 0x00, 0x18,   // 0x005527f8 — fin
+    ];
+
+    private static readonly byte[] s_SoundScript_00552800 =
+    [
+        0x0d, 0x01, 0x01, 0x00, 0x00, 0x08, 0x00, 0x18,   // 0x00552800
+        0x0d, 0x01, 0x01, 0x00, 0xa7, 0x07, 0x00, 0x18,   // 0x00552808
+        0x30, 0x01, 0x01, 0x00, 0x00, 0x08, 0x00, 0x18,   // 0x00552810
+        0x1b, 0x00, 0x01, 0x00, 0x00, 0x02, 0x00, 0x18,   // 0x00552818 — fin
+    ];
+
+    private static readonly byte[] s_SoundScript_00552820 =
+    [
+        0x18, 0x01, 0x01, 0x00, 0xa9, 0x05, 0x00, 0x18,   // 0x00552820
+        0x0b, 0x03, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552828
+        0x0b, 0x03, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552830
+        0x0b, 0x03, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552838
+        0x0b, 0x03, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552840
+        0x0b, 0x00, 0x01, 0x00, 0x00, 0x04, 0x00, 0x18,   // 0x00552848 — fin
+    ];
+
+    private static byte* s_SoundScript00552758Storage;
+    private static byte* s_SoundScript00552768Storage;
+    private static byte* s_SoundScript00552780Storage;
+    private static byte* s_SoundScript00552790Storage;
+    private static byte* s_SoundScript005527A0Storage;
+    private static byte* s_SoundScript005527B8Storage;
+    private static byte* s_SoundScript005527F0Storage;
+    private static byte* s_SoundScript00552800Storage;
+    private static byte* s_SoundScript00552820Storage;
+
+    /// <summary>
+    /// Ghidra: <c>0x00486720</c> — sous-zones 13, 14 et 15. <b>Absente de <c>Blaze.c</c></b> ;
+    /// 129 instructions, <c>Legacy/Raw/Blaze/SealedCave/FUN_00486720.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le coup qui part en gerbe.</b> A l'etat 1 et tant que <c>+0x12</c> n'est pas nul, elle
+    /// sauve sa position, s'ecarte de 100 unites sur son cap moins un quart de tour, se met a
+    /// l'echelle <c>0x200</c>, lance l'incantation que le repertoire de zone designe
+    /// (<c>+0xd0</c>, octet <c>+7</c>, plus <c>0xc0</c>), fait varier son cap de <c>±0x200</c>, et
+    /// <b>remet tout en place</b>.
+    /// </para>
+    /// <para>
+    /// Sous la dixieme image, sa teinte monte de <c>0x40408</c> par image jusqu'a <c>0x404080</c>,
+    /// son echelle rejoint <c>0x2000</c> par quarts, et elle balaie le camp adverse
+    /// (<see cref="SweepOpposingSideForMeleeHit_00474C70"/>, gabarit
+    /// <c>{-0x400, -0x1e, 0x1e, 0xc8, 0, 0xa0}</c>). Au-dela, la teinte redescend de
+    /// <c>0x40408</c> et l'emplacement se vide quand elle atteint exactement zero.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne verifie pas que le balayage a trouve quelqu'un.</b> Le binaire ecrase le resultat
+    /// par <c>0x005de0b8</c> et ne teste que celui-la (<c>mov edi,eax ; mov eax,[5DE0B8h] ; test
+    /// eax,eax</c>) : sa sœur <see cref="EntityHandler_00485A40"/>, elle, teste la victime. Releve
+    /// tel quel — un balayage vide mene donc a un acces fautif, comme dans le binaire.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00486720(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = -0x400;
+        probe[1] = unchecked((short)0xffe2);
+        probe[2] = 0x1e;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0xa0;
+
+        if (*(short*)(e + 0x10) == 1 && *(short*)(e + 0x12) != 0)
+        {
+            short savedCourse = *(short*)(e + 0x32);
+            short savedScale = *(short*)(e + 0x2a);
+            int savedX = *(int*)(e + 0x1c);
+            int savedY = *(int*)(e + 0x20);
+            int savedZ = *(int*)(e + 0x24);
+
+            *(short*)(e + 0x12) -= 1;
+
+            short spread = (short)(savedCourse - 0x400);
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(spread) * 100;
+            *(short*)(e + 0x2a) = 0x200;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(spread) * 100;
+
+            *(short*)(e + 0x32) += (short)((CrtRand() & 0x3ff) - 0x200);
+
+            byte subtype = (byte)((*(byte**)(*(byte**)(s_Unknown_005e97cc + 0xd0)))[7] + 0xc0);
+            SpawnCastEntity_0047AAE0(e, subtype, 1, 0x0d);          // Ghidra: FUN_0047aae0
+
+            *(int*)(e + 0x1c) = savedX;
+            *(int*)(e + 0x20) = savedY;
+            *(int*)(e + 0x24) = savedZ;
+            *(short*)(e + 0x32) = savedCourse;
+            *(short*)(e + 0x2a) = savedScale;
+        }
+
+        if (*(short*)(e + 0x10) >= 0x0a)
+        {
+            if (*(uint*)(e + 0x38) != 0)
+            {
+                *(uint*)(e + 0x38) += 0xfffbfbf8;
+                if (*(uint*)(e + 0x38) == 0) *(uint*)e = 0;
+            }
+
+            *(short*)(e + 0x10) += 1;
+            return;
+        }
+
+        if (*(uint*)(e + 0x38) >= 0x404080)
+        {
+            *(short*)(e + 0x10) += 1;
+            return;
+        }
+
+        *(uint*)(e + 0x38) += 0x40408;
+
+        int scale = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)(((0x2000 - scale) >> 2) + scale);
+
+        byte* victim = SweepOpposingSideForMeleeHit_00474C70(e, probe);   // Ghidra: FUN_00474c70
+
+        if (*Mem.Camera(0x005de0b8) == 0)
+        {
+            *(short*)(e + 0x10) += 1;
+            return;
+        }
+
+        ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);     // Ghidra: FUN_00539b80
+        *(short*)(victim + 0x96) = 8;
+        *(uint*)victim |= 0x40;
+
+        Aud.PlayPositionalSound(3, 0x400, 0x1800, (int*)(e + 0x1c));      // Ghidra: FUN_0053db20
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00485a40</c> — sous-zones 13, 14 et 15. <b>Absente de <c>Blaze.c</c></b> ;
+    /// 139 instructions, <c>Legacy/Raw/Blaze/SealedCave/FUN_00485A40.asm</c>. La sœur de
+    /// <see cref="EntityHandler_00486720"/>, decalee dans le temps et doublee.
+    ///
+    /// <para>
+    /// Elle lance <b>deux</b> incantations a l'etat 4 (l'octet <c>+3</c> du repertoire, plus
+    /// <c>0xc0</c>), la premiere avec un ecart de cap positif et la seconde negatif — le binaire
+    /// deroule la boucle a l'envers, et le test <c>edi == 2</c> vaut pour la <b>premiere</b>
+    /// iteration. Son ecartement est de 200 unites et non 100.
+    /// </para>
+    /// <para>
+    /// Sa teinte monte par <c>0x80808</c> jusqu'a <c>0x808080</c>, en <b>rendant la main a chaque
+    /// image</b> — vingt images de montee au lieu de dix. Ensuite l'echelle rejoint <c>0x3000</c>
+    /// par quarts et le gabarit <c>{-0x400, -0x1e, 0x1e, 0xc8, 0, 0x104}</c> cherche une victime
+    /// (<see cref="ProbeMeleeTarget_00474CA0"/>, qui est ici <b>testee</b>). Au-dela de la
+    /// vingtieme image, la teinte redescend de <c>0x80808</c> jusqu'a zero.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00485A40(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = -0x400;
+        probe[1] = unchecked((short)0xffe2);
+        probe[2] = 0x1e;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x104;
+
+        if (*(short*)(e + 0x10) == 4 && *(short*)(e + 0x12) != 0)
+        {
+            short savedCourse = *(short*)(e + 0x32);
+            int savedX = *(int*)(e + 0x1c);
+            int savedY = *(int*)(e + 0x20);
+            int savedZ = *(int*)(e + 0x24);
+
+            *(short*)(e + 0x12) -= 1;
+
+            short spread = (short)(savedCourse - 0x400);
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(spread) * 200;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(spread) * 200;
+
+            byte subtype = (byte)((*(byte**)(*(byte**)(s_Unknown_005e97cc + 0xd0)))[3] + 0xc0);
+
+            for (int shot = 2; shot != 0; shot--)
+            {
+                int offset = CrtRand() & 0x1ff;
+                if (shot != 2) offset = -offset;
+
+                *(short*)(e + 0x32) = (short)(*(short*)(e + 0x32) + offset);
+                SpawnCastEntity_0047AAE0(e, subtype, 1, 1);          // Ghidra: FUN_0047aae0
+            }
+
+            *(int*)(e + 0x1c) = savedX;
+            *(int*)(e + 0x20) = savedY;
+            *(int*)(e + 0x24) = savedZ;
+            *(short*)(e + 0x32) = savedCourse;
+        }
+
+        if (*(short*)(e + 0x10) >= 0x14)
+        {
+            if (*(uint*)(e + 0x38) != 0)
+            {
+                *(uint*)(e + 0x38) += 0xfff7f7f8;
+                if (*(uint*)(e + 0x38) == 0) *(uint*)e = 0;
+            }
+
+            *(short*)(e + 0x10) += 1;
+            return;
+        }
+
+        if (*(uint*)(e + 0x38) < 0x808080)
+        {
+            *(uint*)(e + 0x38) += 0x80808;
+            *(short*)(e + 0x10) += 1;
+            return;
+        }
+
+        int scale = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)(((0x3000 - scale) >> 2) + scale);
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);          // Ghidra: FUN_00474ca0
+
+        if (victim != null)
+        {
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);
+            *(short*)(victim + 0x96) = 8;
+            *(uint*)victim |= 0x40;
+            Aud.PlayPositionalSound(3, 0x400, 0x1800, (int*)(e + 0x1c));   // Ghidra: FUN_0053db20
+        }
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00486b10</c> — sous-zones 13, 14 et 15. <b>Absente de <c>Blaze.c</c></b> ;
+    /// 174 instructions, <c>Legacy/Raw/Blaze/SealedCave/FUN_00486B10.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le tourbillon qui se charge puis fauche.</b> Le bit <c>0x2000000</c> de son mot d'etat
+    /// separe les deux vies : <b>absent</b>, c'est l'amorce — elle prend son porteur <c>+0x6c</c>
+    /// pour lanceur, se met au modele <c>0x3b</c>, lance une incantation
+    /// (<c>+0xd0</c>, octet <c>+0x12</c>), tourne de <c>0x80</c>, et range le script
+    /// <c>0x00552800</c>. <b>Present</b>, c'est le tourbillon lui-meme.
+    /// </para>
+    /// <para>
+    /// Sous l'etat <c>0x11</c>, il relance la meme incantation a chaque image et tourne de
+    /// <c>0x100</c>. A l'etat <c>0x11</c> pile, le script <c>0x00552820</c>. Ensuite, a chaque
+    /// image, <b>quatre eclaboussures</b> (<c>0xbe</c> sur la planche <c>0x00551a08</c>) semees sur
+    /// un cercle de 50 a 449 unites autour de lui, avec une vitesse de <c>sin/cos &lt;&lt; 6</c> et
+    /// <c>0x40000</c> vers le haut ; puis son cap gagne <c>0x100</c> et le gabarit
+    /// <c>{0, -0x100, 0x100, 0x96, 0, 0x200}</c> cherche une victime. A l'etat <c>0x21</c>,
+    /// l'emplacement se vide.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00486B10(byte* e)
+    {
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = unchecked((short)0xff00);
+        probe[2] = 0x100;
+        probe[3] = 0x96;
+        probe[4] = 0;
+        probe[5] = 0x200;
+
+        byte* owner = *(byte**)(e + 0x6c);
+        byte subtype = (byte)((*(byte**)(*(byte**)(s_Unknown_005e97cc + 0xd0)))[0x12] + 0xc0);
+
+        if ((*(uint*)e & 0x2000000) == 0)
+        {
+            // ------------------------------------------------- l'amorce
+            if (*(short*)(e + 0x10) != 0) return;
+
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x74) = owner;
+            *(byte**)(e + 0x70) = e;
+            *(short*)(e + 0x36) = 4;
+            e[4] = 0x3b;
+            *(int*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0x200;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(short*)(e + 0x16) = 0;
+
+            SpawnCastEntity_0047AAE0(e, subtype, 1, 1);             // Ghidra: FUN_0047aae0
+            *(short*)(e + 0x32) += 0x80;
+
+            *(byte**)(e + 0x70) = null;
+            *(int*)(e + 0x28) = 0x10001800;
+            *(short*)(e + 0x2c) = 0x11f8;
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_00552800, ref s_SoundScript00552800Storage),
+                (int*)(e + 0x1c));                                  // Ghidra: FUN_0053dbe0
+            return;
+        }
+
+        // ------------------------------------------------- le tourbillon
+        if (*(short*)(e + 0x10) < 0x11)
+        {
+            *(short*)(e + 0x10) += 1;
+            *(short*)(e + 0x16) = 1;
+            SpawnCastEntity_0047AAE0(e, subtype, 1, 1);
+            *(short*)(e + 0x32) += 0x100;
+            return;
+        }
+
+        if (*(short*)(e + 0x10) == 0x11)
+        {
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_00552820, ref s_SoundScript00552820Storage),
+                (int*)(e + 0x1c));
+        }
+
+        *(short*)(e + 0x10) += 1;
+        *(short*)(e + 0x1a) = 7;
+        short course = *(short*)(e + 0x32);
+        *(uint*)(e + 0x38) = 0x01606060;
+        *(short*)(e + 0x12) = 3;
+        *(int*)(e + 0x28) = 0x20002000;
+        *(short*)(e + 0x14) = 0x4000;
+        *(short*)(e + 0x16) = 2;
+
+        for (int i = 4; i != 0; i--)
+        {
+            int radius = CrtRand() % 0x190 + 0x32;
+            short spread = (short)((CrtRand() & 0xff) - 0x80 + course);
+
+            int* splash = stackalloc int[3];
+            splash[0] = (int)Winsys3d.GetSinTableEntry(spread) * radius + *(int*)(e + 0x1c);
+            splash[1] = *(int*)(e + 0x20);
+            splash[2] = Winsys3d.GetCosTableEntry(spread) * radius + *(int*)(e + 0x24);
+
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(spread) << 6;
+            *(int*)(e + 0x54) = 0x40000;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(spread) << 6;
+
+            SpawnStatusEffectEntity_0047AC40(e, splash, SplashDescriptors(), 0xbe, 1, 1);   // Ghidra: FUN_0047ac40
+        }
+
+        *(short*)(e + 0x32) = (short)(course + 0x100);
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+        if (victim != null)
+        {
+            ResolveMeleeHit_00539B80(*(uint**)(e + 0x74), (uint*)victim);
+            *(short*)(victim + 0x96) = 8;
+            *(uint*)victim |= 0x40;
+        }
+
+        if (*(short*)(e + 0x10) >= 0x21) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00485c00 @ 0x00485c00 — sous-zones 13, 14 et 15. Decompilee dans <c>Blaze.c</c>,
+    /// mais <b>trois registres y sont perdus</b> (<c>unaff_BX</c>, <c>unaff_retaddr</c>) ; le corps
+    /// est repris sur <c>Legacy/Raw/Blaze/SealedCave/FUN_00485C00.asm</c>, 197 instructions.
+    ///
+    /// <para>
+    /// <b>Le geste en trois temps, colle a son porteur.</b> Elle suit la position de son
+    /// <c>+0x6c</c> a chaque image. A la premiere, elle se donne une vitesse de 200 unites sur son
+    /// cap plus <c>0x12c</c> et <c>0x1ae000</c> vers le haut, un gabarit <c>0x4000</c>, la teinte
+    /// <c>0x01f0f0f0</c>, et fait naitre l'eclaboussure <c>0xbe</c> sur <c>0x00551bb0</c> ; le
+    /// script <c>0x00552758</c> part.
+    /// </para>
+    /// <para>
+    /// <b>A la quatorzieme image, la charge s'ouvre</b> : l'echelle passe a <c>0x3ffc</c>, l'entite
+    /// glisse de sa vitesse, prend le mode de dessin 4 et l'echelle <c>0x6000 / 0x7000</c>, et lance
+    /// <b>deux</b> incantations <c>0x83</c> a un demi-tour d'ecart, modele tire entre 8 et 11.
+    /// <c>0x005e93a0</c> recoit <c>0x4000ff</c> et <c>0x005e93a4</c> <c>0x40</c> — le fondu rouge.
+    /// Script <c>0x00552768</c>.
+    /// </para>
+    /// <para>
+    /// <b>Au-dela de la trentieme image, une fois sur quatre</b>, elle se jette a un cap tire, a une
+    /// distance de 0 a <c>0x1ff</c>, se replace sur le sol <c>+0x60</c>, lance l'incantation que le
+    /// repertoire designe (<c>+0xd0</c>, octet <c>+4</c>), puis se remet a plat — vitesses nulles,
+    /// gabarit <c>0x4000</c> sur les trois axes, teinte <c>0x808080</c>, modele <c>0x26</c> — et
+    /// lance <c>0x6c</c>. Script <c>0x00552780</c>. A la soixantieme image, l'emplacement se vide.
+    /// </para>
+    /// <para>
+    /// <b>Les trois registres que Ghidra perd</b> sont tous le meme tirage : le cap est calcule une
+    /// fois (<c>[esp+14h]</c>) et relu pour le sinus, le cosinus et <c>+0x32</c>. Et
+    /// <c>param_1[0x18]</c> est <c>+0x60</c>, la hauteur de sol.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00485C00(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+
+        *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(carrier + 0x20);
+        *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            short course = (short)(*(short*)(e + 0x32) + 0x12c);
+            *(byte**)(e + 0x74) = carrier;
+            *(byte**)(e + 0x70) = carrier;
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+            *(short*)(e + 0x12) = 0x1f;
+
+            *(int*)(e + 0x44) = (int)Winsys3d.GetSinTableEntry(course) * 100;
+            *(int*)(e + 0x4c) = Winsys3d.GetCosTableEntry(course) * 100;
+            *(int*)(e + 0x48) = 0x1ae000;
+            *(int*)(e + 0x28) = 0;
+            *(short*)(e + 0x14) = 0x4000;
+            *(short*)(e + 0x16) = 2;
+            *(uint*)(e + 0x38) = 0x01f0f0f0;
+            *(short*)(e + 0x1a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BB0(), 0xbe, 1, 0x0d);   // Ghidra: FUN_0047ac40
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_00552758, ref s_SoundScript00552758Storage),
+                (int*)(e + 0x1c));                                            // Ghidra: FUN_0053dbe0
+        }
+
+        if (*(short*)(e + 0x10) == 0x0e)
+        {
+            *(int*)(e + 0x28) = 0x3ffc;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 3;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(short*)(e + 0x1a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BB0(), 0xbe, 1, 0x0d);
+
+            *(int*)(e + 0x1c) += *(int*)(e + 0x44);
+            *(short*)(e + 0x34) = 0x400;
+            *(int*)(e + 0x20) += *(int*)(e + 0x48);
+            *(int*)(e + 0x24) += *(int*)(e + 0x4c);
+            *(short*)(e + 0x36) = 4;
+            *(short*)(e + 0x2e) = unchecked((short)0xfff0);
+            *(int*)(e + 0x28) = 0x70006000;
+            *(short*)(e + 0x2c) = 0x7000;
+
+            e[4] = (byte)((CrtRand() & 3) + 8);
+            SpawnCastEntity_0047AAE0(e, 0x83, 1, 0x0d);             // Ghidra: FUN_0047aae0
+            *(short*)(e + 0x32) += 0x400;
+            e[4] = (byte)((CrtRand() & 3) + 8);
+            SpawnCastEntity_0047AAE0(e, 0x83, 1, 0x0d);
+
+            *(uint*)Mem.Arena(0x005e93a0) = 0x004000ff;             // Ghidra: _DAT_005e93a0
+            *(short*)Mem.Arena(0x005e93a4) = 0x40;
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_00552768, ref s_SoundScript00552768Storage),
+                (int*)(e + 0x1c));
+        }
+
+        if (*(short*)(e + 0x10) > 0x1e && (*(ushort*)(e + 0x10) & 3) == 0)
+        {
+            short course = (short)CrtRand();                        // Ghidra: `unaff_BX` / `unaff_retaddr`
+            int reach = CrtRand() & 0x1ff;
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * reach;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * reach;
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(short*)(e + 0x32) = course;
+            *(short*)(e + 0x34) = 0x400;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(short*)(e + 0x36) = 4;
+            *(short*)(e + 0x2e) = unchecked((short)0xfff0);
+            *(int*)(e + 0x28) = 0x70006000;
+            *(short*)(e + 0x2c) = 0x7000;
+
+            e[4] = (byte)((CrtRand() & 3) + 8);
+            byte subtype = (byte)((*(byte**)(*(byte**)(s_Unknown_005e97cc + 0xd0)))[4] + 0xc0);
+            SpawnCastEntity_0047AAE0(e, subtype, 1, 0x0d);
+
+            *(byte**)(e + 0x70) = null;
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(int*)(e + 0x50) = 0x4000;
+            *(int*)(e + 0x54) = 0x4000;
+            *(int*)(e + 0x58) = 0x4000;
+            *(uint*)(e + 0x38) = 0x00808080;
+            *(int*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x34) = 0;
+            e[4] = 0x26;
+
+            SpawnCastEntity_0047AAE0(e, 0x6c, 1, 0x0d);
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_00552780, ref s_SoundScript00552780Storage),
+                (int*)(e + 0x1c));
+        }
+
+        *(short*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 0x3c) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00485f50 @ 0x00485f50 — sous-zones 13, 14 et 15. Decompilee dans <c>Blaze.c</c> ;
+    /// 197 instructions. La sœur longue de <see cref="EntityHandler_00485C00"/> : quatre temps au
+    /// lieu de trois, et un <b>visee</b> a la fin.
+    ///
+    /// <para>
+    /// Elle suit son porteur, et sous la quatorzieme image elle <b>frissonne</b> : cap et rotation
+    /// tires a chaque image, echelle <c>0x100</c>, teinte noire, modele 0, et l'incantation que le
+    /// repertoire designe (<c>+0xd0</c>, octet <c>+5</c>). A la vingtieme, l'eclaboussure
+    /// <c>0xbe</c> et le script <c>0x005527a0</c> ; a la trente-quatrieme, une seconde, plus le
+    /// fondu <c>0x005e93a0 = 0x400040</c> / <c>0x005e93a4 = 0xff</c> et le script
+    /// <c>0x005527b8</c>.
+    /// </para>
+    /// <para>
+    /// <b>Au-dela, elle vise.</b> Elle prend le <c>+0x6c</c> de son propre porteur — la cible de sa
+    /// cible —, avance de sa vitesse, et calcule deux angles vers elle : le cap par
+    /// <c>Ordinal_457</c> sur l'ecart horizontal, l'elevation par le meme sur la hauteur, corrigee
+    /// de la <b>hauteur de bulle</b> de la cible (<see cref="StatusBubbleHeight_00538BC0"/>,
+    /// arrondie au pair et decalee de 11). Les deux recoivent un bruit de <c>±0x200</c>, et
+    /// <see cref="SetVectorFromAngles_00532AD0"/> en tire la vitesse a 100 unites. Le modele passe
+    /// a <c>0x3f</c>, l'incantation <c>+6</c> du repertoire part, les coordonnees sont rendues, et
+    /// le script <c>0x005527f0</c> avec. A la quarante-huitieme image, l'emplacement se vide.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00485F50(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+
+        *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(carrier + 0x20);
+        *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            short course = (short)(*(short*)(e + 0x32) + 0x12c);
+            *(byte**)(e + 0x74) = carrier;
+            *(byte**)(e + 0x70) = carrier;
+
+            *(int*)(e + 0x44) = (int)Winsys3d.GetSinTableEntry(course) * 100;
+            *(int*)(e + 0x4c) = Winsys3d.GetCosTableEntry(course) * 100;
+            *(int*)(e + 0x48) = 0x1ae000;
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_00552790, ref s_SoundScript00552790Storage),
+                (int*)(e + 0x1c));                                  // Ghidra: FUN_0053dbe0
+        }
+
+        if (*(short*)(e + 0x10) < 0x0e)
+        {
+            *(short*)(e + 0x32) = (short)CrtRand();
+            *(short*)(e + 0x34) = (short)CrtRand();
+            *(short*)(e + 0x36) = 4;
+            *(int*)(e + 0x28) = 0x100;
+            *(short*)(e + 0x2c) = 0x100;
+            *(uint*)(e + 0x38) = 0;
+            *(short*)(e + 0x12) = 0x320;
+            *(short*)(e + 0x14) = 0x40;
+            e[4] = 0;
+
+            byte subtype = (byte)((*(byte**)(*(byte**)(s_Unknown_005e97cc + 0xd0)))[5] + 0xc0);
+            SpawnCastEntity_0047AAE0(e, subtype, 1, 7);             // Ghidra: FUN_0047aae0
+        }
+
+        if (*(short*)(e + 0x10) == 0x14)
+        {
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+            *(short*)(e + 0x12) = 0x1f;
+            *(int*)(e + 0x28) = 0;
+            *(short*)(e + 0x14) = 0x4000;
+            *(short*)(e + 0x16) = 2;
+            *(uint*)(e + 0x38) = 0x01f0f0f0;
+            *(short*)(e + 0x1a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BB0(), 0xbe, 1, 7);      // Ghidra: FUN_0047ac40
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_005527A0, ref s_SoundScript005527A0Storage),
+                (int*)(e + 0x1c));
+        }
+
+        if (*(short*)(e + 0x10) == 0x22)
+        {
+            *(int*)(e + 0x28) = 0x3ffc;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 3;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(short*)(e + 0x1a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BB0(), 0xbe, 1, 7);
+
+            *(uint*)Mem.Arena(0x005e93a0) = 0x00400040;             // Ghidra: DAT_005e93a0
+            *(short*)Mem.Arena(0x005e93a4) = 0xff;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(int*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0x640;
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_005527B8, ref s_SoundScript005527B8Storage),
+                (int*)(e + 0x1c));
+        }
+
+        if (*(short*)(e + 0x10) > 0x22)
+        {
+            byte* holder = *(byte**)(e + 0x6c);
+            byte* target = *(byte**)(holder + 0x6c);
+            *(byte**)(e + 0x74) = holder;
+
+            int savedX = *(int*)(e + 0x1c);
+            int savedY = *(int*)(e + 0x20);
+            int savedZ = *(int*)(e + 0x24);
+
+            *(int*)(e + 0x1c) = savedX + *(int*)(e + 0x44);
+            *(int*)(e + 0x20) = savedY + *(int*)(e + 0x48);
+            *(int*)(e + 0x24) = savedZ + *(int*)(e + 0x4c);
+            *(byte**)(e + 0x78) = target;
+
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int bubble = StatusBubbleHeight_00538BC0((uint*)target);   // Ghidra: FUN_00538bc0
+            int dy = ((bubble & ~1) << 0x0b) + *(int*)(target + 0x20) - *(int*)(e + 0x20);
+            dy >>= 0xc;
+
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            short course = (short)(Winsys3d.Ordinal_457(dz, dx) + (CrtRand() & 0x3ff) + 0xa00);
+            *(short*)(e + 0x32) = course;
+
+            int pitchBase = Winsys3d.Ordinal_457(flat, dy);
+            short pitch = (short)((CrtRand() & 0x3ff) - 0x200 - pitchBase);
+            *(short*)(e + 0x34) = pitch;
+
+            SetVectorFromAngles_00532AD0((int*)(e + 0x50), course - 0x400, pitch, 100);   // Ghidra: FUN_00532ad0
+
+            e[4] = 0x3f;
+            byte subtype = (byte)((*(byte**)(*(byte**)(s_Unknown_005e97cc + 0xd0)))[6] + 0xc0);
+            SpawnCastEntity_0047AAE0(e, subtype, 1, 7);
+
+            *(int*)(e + 0x1c) = savedX;
+            *(int*)(e + 0x20) = savedY;
+            *(int*)(e + 0x24) = savedZ;
+
+            Aud.QueueDelayedSoundScript(
+                NativeCopy(s_SoundScript_005527F0, ref s_SoundScript005527F0Storage),
+                (int*)(e + 0x1c));
+        }
+
+        *(short*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 0x30) *(uint*)e = 0;
+    }
 }

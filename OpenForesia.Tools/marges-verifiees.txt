@@ -177,3 +177,8 @@ EntityHandler_00438380 | 0x00550F30 | +0x00 | EntityHandler_00438380 | 24dde37f2
 EntityHandler_00438CF0 | 0x00551130 | +0x00 | EntityHandler_00438CF0,SpawnStatusEffectEntity_0047AC40 | 78e4edc27aee | n'ecrit jamais +0x40 ; table 0x0056b2c8, debordement de 0x0056afc8, que seul le pool 0x005f2d40 atteint — donc ne par FUN_0047ac40, qui le met a 0
 EntityHandler_0043B400 | 0x00551068 | +0x00 | EntityHandler_0043B400,TickObliqueFallingRock | daa1985ed28b | pose 0 aux etats 0 et 2 ; le seul endroit qui l'avance est l'etat 3, ou +0x3c porte deja la planche d'eclat 0x00550fd0 (7 enregistrements)
 EntityHandler_0043C120 | 0x00551150 | +0x00 | EntityHandler_0043C120,TickObliqueFallingRock | 9592b986a232 | idem, sous-zone 1 (eclat 0x00551138, 3 enregistrements, marge exacte)
+
+# ---- lot 9 de la grotte scellee (2026-09-20)
+EntityHandler_0043E690 | 0x00551240 | +0x00 | EntityHandler_0043E690 | b40a2a3fd823 | pose 0 a la naissance (`mov byte [esi+40h],0`) et ne l'ecrit plus, dans aucun de ses deux roles
+EntityHandler_0043E820 | 0x00551518 | +0x00 | EntityHandler_0043E820 | 9a07d4194d09 | tire +0x40 a 0 ou 1 a la naissance et ne l'ecrit plus ; marge 2, plafond 1
+EntityHandler_004403B0 | 0x005514F0 | +0x08 | EntityHandler_004403B0 | 4aae4845ab36 | pose 0 a la naissance (`mov [esi+40h],bl`, 0x004403cf) et ne l'ecrit plus, dans aucun de ses deux etats

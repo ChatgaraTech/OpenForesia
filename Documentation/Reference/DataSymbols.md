@@ -3712,3 +3712,38 @@ image, puis `s = (s >> 2) - s` à chaque image — elle décroît en changeant d
 **`0x005de52c`, l'octet de sous-zone, sert de sélecteur de rendu.** `0x00437C80` en tire sa couche de
 dessin : `0x10` → 9, autre → 6, et `4` → 2, le second test écrasant le premier. `0x0046E410` s'en
 sert autrement : dans la salle 7, un voisin sous `0x258000` fait taire sa gerbe.
+
+## La grotte scellée, lot 9 (2026-09-20) — la catégorie « C » vidée
+
+| plage | forme | corps | marge |
+|---|---|---|---|
+| `0x005512b0` | 7 tuiles `0x1f x 0x1f` à `y = 0x50`, **page 6** | la colonne des salles 11-12 (`0x0043CBE0`) | exacte |
+| `0x00551278` | les mêmes, **page 5** | la gerbe tournante, rôle 0 (`0x0043D190`) | exacte |
+| `0x00551250` | 5 tuiles `0x2f x 0x2f` page 5 | la gerbe tournante, rôle 1 | **voir ci-dessous** |
+| `0x00551240` | une tuile `0x10 x 0x10` | la bulle en deux tailles (`0x0043E690`) | 1, prouvée |
+| `0x00551518` | 2 tuiles `0x0f x 0x0f` à `y = 0xa8` | l'étincelle en spirale (`0x0043E820`) | 2, prouvée |
+| `0x00551bb0` | une tuile `0x18 x 0x18` — le **premier** enregistrement de `0x00551ba0` | les deux gestes `0x00485C00` / `0x00485F50` | large |
+
+**Une planche trop courte pour son lecteur.** `0x0043D190` fait tourner `+0x40` de 0 à 6 dans ses
+**deux** rôles, mais le rôle 1 pose `0x00551250`, qui ne porte que **cinq** enregistrements : les
+indices 5 et 6 tombent sur `0x00551278`. Ce ne sont pas des octets non initialisés — la planche
+voisine porte de vrais descripteurs, page 5 elle aussi —, donc deux images du cycle montrent la
+tuile du voisin, et rien ne casse. Défaut de donnée de 1998. **La plage est relevée entière en C#**
+(sept enregistrements) pour que la transcription lise les mêmes octets que le binaire ; c'est la
+leçon de `0x005646c0`, appliquée à l'envers.
+
+**Neuf scripts de sons différés** : `0x00552758`, `0x00552768`, `0x00552780`, `0x00552790`,
+`0x005527a0`, `0x005527b8`, `0x005527f0`, `0x00552800`, `0x00552820`. Ils **se chevauchent** :
+`0x005527b8` compte neuf enregistrements et sa queue *est* `0x005527f0`, qui en compte deux. Le
+binaire partage la fin d'un script entre deux lecteurs.
+
+**`0x005e93a0` / `0x005e93a4`, le fondu plein cadre des gestes** : `0x00485C00` y pose
+`0x004000ff` / `0x40`, `0x00485F50` y pose `0x00400040` / `0xff`.
+
+**`0x005edec4` sert de base de modèle**, pas seulement à l'onde de la vieille tour : `0x004412D0`
+dessine `s_Unknown_005edec4 + 2`.
+
+**Le fond de salle, cinq usages de plus.** Les cinq morts de membre du lot 9 écrivent
+`0x005e9160`..`0x66` : sable (`0x00437DD0`), blanc mode 2 (`0x0043D4D0`, `0x00441EB0`), blanc mode 1
+(`0x00442870`), et **un ciel qui clignote** chez `0x0043CEE0` — repeint à *chaque image* en
+`(0x96, 0x96, r)` avec `r` tiré entre `0xb4` et `0xef`, mode 1.

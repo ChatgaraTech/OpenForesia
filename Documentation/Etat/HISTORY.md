@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-20
 
+- feat : **grotte scellée, lot 9 — 324 sur 349, la catégorie « C » est vide** : les vingt et un
+  derniers des salles 11-12 et 13-15 — la gerbe tournante, la colonne, la braise en hélice, le
+  tourbillon qui fauche, les deux gestes dont l'un vise la cible de sa cible
+- feat : **cinq morts de membre de plus** — par le froid, par le cri, par la foudre, dans la lumière
+  et en chantant ; `Cutscene/SealedCaveScenes.cs` passe de deux à sept scènes
+- fix : `EntityHandler_00437790` devient `TickBurningDeath`, paramétrée — la combustion des salles
+  11-12 ne marque pas la victime, rend la caméra et garde son script sur la sous-zone
+- doc : six planches, neuf scripts de sons qui se chevauchent, et **une planche de cinq
+  enregistrements dont le lecteur en lit sept** — relevée entière pour que le C# lise les mêmes
+  octets que le binaire (`DataSymbols.md`) ; trois marges prouvées et scellées
 - feat : **grotte scellée, lot 8 — 303 sur 349** : les « C » des blocs 4-9 et 6-7, vingt-sept corps —
   la boule qui éclate en douze, le pilon qui fait trembler la salle, la détonation qui rend la main à
   son porteur, l'impact qui empoisonne, le coup qui tourne avec son rôle d'effet d'état

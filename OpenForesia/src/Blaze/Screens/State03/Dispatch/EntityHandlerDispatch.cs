@@ -2705,6 +2705,36 @@ public static unsafe partial class Blaze
             case 0x0046E410: EntityHandler_0046E410(record); return;
             case 0x0046EDE0: EntityHandler_0046EDE0(record); return;
 
+            // ZONE 10 — LOT 9 (2026-09-20) : les vingt et un derniers « C », blocs 11-12 et
+            // 13-14-15. La categorie est vide apres celui-ci.
+
+            // Ce qui nait et s'eteint — Effects/SealedCaveParticles.cs.
+            case 0x0043CBE0: EntityHandler_0043CBE0(record); return;
+            case 0x0043E690: EntityHandler_0043E690(record); return;
+            case 0x0043D190: EntityHandler_0043D190(record); return;
+            case 0x0043D850: EntityHandler_0043D850(record); return;
+            case 0x0043E820: EntityHandler_0043E820(record); return;
+            case 0x00441670: EntityHandler_00441670(record); return;
+            case 0x00441C30: EntityHandler_00441C30(record); return;
+            case 0x004412D0: EntityHandler_004412D0(record); return;
+            case 0x00442870: EntityHandler_00442870(record); return;
+            case 0x004403B0: EntityHandler_004403B0(record); return;
+
+            // Ce qui enleve des points de vie — Combat/Projectiles.cs.
+            case 0x00486720: EntityHandler_00486720(record); return;
+            case 0x00485A40: EntityHandler_00485A40(record); return;
+            case 0x00486B10: EntityHandler_00486B10(record); return;
+            case 0x00485C00: EntityHandler_00485C00(record); return;
+            case 0x00485F50: EntityHandler_00485F50(record); return;
+
+            // Les cinq morts de membre de plus — Cutscene/SealedCaveScenes.cs.
+            case 0x0043DB30: EntityHandler_0043DB30(record); return;
+            case 0x0043C900: EntityHandler_0043C900(record); return;
+            case 0x0043D4D0: EntityHandler_0043D4D0(record); return;
+            case 0x0043CEE0: EntityHandler_0043CEE0(record); return;
+            case 0x00441EB0: EntityHandler_00441EB0(record); return;
+            case 0x004417F0: EntityHandler_004417F0(record); return;
+
             // Ce qui compte le groupe — Handlers/SealedCaveMecanismes.cs.
             case 0x0046C540: EntityHandler_0046C540(record); return;
             case 0x0046CF10: EntityHandler_0046CF10(record); return;

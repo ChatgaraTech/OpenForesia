@@ -305,12 +305,13 @@ seulement `Effects/SealedCaveParticles.cs` et `Handlers/SealedCave.cs`, à côt�
 premier corps — `Handlers/SealedCaveMecanismes.cs` s'est ouvert au lot 2 avec la dalle de pression,
 et **`Cutscene/SealedCaveScenes.cs` au lot 8** (2026-09-20) avec les deux morts de membre des
 sous-zones 4 et 9, qui gèlent la partie. La zone a donc ses quatre fichiers, et c'est la règle
-annoncée qui les a ouverts, un rôle à la fois.
+annoncée qui les a ouverts, un rôle à la fois. **Le lot 9 y a porté les scènes à sept** — la grotte
+tue un membre du groupe de sept façons, et chacune est une scène complète (922 lignes au total).
 
-**Le fichier d'effets a dépassé le seuil annoncé** : à 3 749 lignes après le lot 8, `Effects/SealedCaveParticles.cs`
+**Le fichier d'effets a dépassé le seuil annoncé** : à 4 791 lignes après le lot 9, `Effects/SealedCaveParticles.cs`
 est **à couper par bloc de sous-zones** (0 / 2-3 / 5-8-10, 4-9, 6-7, 11-12, 13-14-15). La coupe se
 propose, elle ne se fait pas d'office — mais elle n'est plus hypothétique. `Combat/Projectiles.cs`
-(3 365 lignes) est à surveiller pour la même raison, avec la nuance qu'il n'est pas propre à une
+(4 073 lignes) est à surveiller pour la même raison, avec la nuance qu'il n'est pas propre à une
 zone.
 
 Au lot 3 (les intelligences), **une bête par fichier** dans `Ai/SealedCave/` : `ZombieDragon.cs`,
