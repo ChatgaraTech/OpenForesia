@@ -168,6 +168,12 @@ EntityHandler_00434D10 | 0x00550E68 | +0x18 | EntityHandler_00434D10,TickInwardS
 EntityHandler_00431F20 | 0x00550CB8 | +0x00 | EntityHandler_00431F20,TickFadingTwinTurnHalo,SpawnStatusEffectEntity_0047AC40 | 7613a525bf19 | n'ecrit jamais +0x40 ; table 0x0056b2c8, debordement de 0x0056afc8, que seul le pool 0x005f2d40 atteint — donc ne par FUN_0047ac40, qui le met a 0
 EntityHandler_004335E0 | 0x00550DA8 | +0x00 | EntityHandler_004335E0,TickFadingTwinTurnHalo,SpawnStatusEffectEntity_0047AC40 | b367995e0750 | idem, copie du bloc 2-3
 EntityHandler_00435180 | 0x00550EB8 | +0x00 | EntityHandler_00435180,TickFadingTwinTurnHalo,SpawnStatusEffectEntity_0047AC40 | 94e7f0fe7385 | idem, copie du bloc 5-8-10
-EntityHandler_004329D0 | 0x00550C88 | +0x00 | EntityHandler_004329D0,TickObliqueFallingRock | 836bd5c85407 | pose 0 aux etats 0 et 2 ; le seul endroit qui l'avance est l'etat 3, ou +0x3c porte deja la planche de fumee 0x00550bd0 (7 enregistrements)
-EntityHandler_00433F00 | 0x00550D78 | +0x00 | EntityHandler_00433F00,TickObliqueFallingRock | 8ae0441c958d | idem, copie du bloc 2-3 (fumee 0x00550ce0)
-EntityHandler_00435AA0 | 0x00550E88 | +0x00 | EntityHandler_00435AA0,TickObliqueFallingRock | eb423d6ed219 | idem, copie du bloc 5-8-10 (fumee 0x00550dd0)
+EntityHandler_004329D0 | 0x00550C88 | +0x00 | EntityHandler_004329D0,TickObliqueFallingRock | 9d9a9d8e8290 | pose 0 aux etats 0 et 2 ; le seul endroit qui l'avance est l'etat 3, ou +0x3c porte deja la planche de fumee 0x00550bd0 (7 enregistrements)
+EntityHandler_00433F00 | 0x00550D78 | +0x00 | EntityHandler_00433F00,TickObliqueFallingRock | 47acf1cc54fe | idem, copie du bloc 2-3 (fumee 0x00550ce0)
+EntityHandler_00435AA0 | 0x00550E88 | +0x00 | EntityHandler_00435AA0,TickObliqueFallingRock | 1179c889a46e | idem, copie du bloc 5-8-10 (fumee 0x00550dd0)
+
+# ---- lot 8 de la grotte scellee (2026-09-20)
+EntityHandler_00438380 | 0x00550F30 | +0x00 | EntityHandler_00438380 | 24dde37f2454 | pose 0 a la naissance (`mov [esi+40h],bl`, 0x004383cd) et ne l'ecrit plus
+EntityHandler_00438CF0 | 0x00551130 | +0x00 | EntityHandler_00438CF0,SpawnStatusEffectEntity_0047AC40 | 78e4edc27aee | n'ecrit jamais +0x40 ; table 0x0056b2c8, debordement de 0x0056afc8, que seul le pool 0x005f2d40 atteint — donc ne par FUN_0047ac40, qui le met a 0
+EntityHandler_0043B400 | 0x00551068 | +0x00 | EntityHandler_0043B400,TickObliqueFallingRock | daa1985ed28b | pose 0 aux etats 0 et 2 ; le seul endroit qui l'avance est l'etat 3, ou +0x3c porte deja la planche d'eclat 0x00550fd0 (7 enregistrements)
+EntityHandler_0043C120 | 0x00551150 | +0x00 | EntityHandler_0043C120,TickObliqueFallingRock | 9592b986a232 | idem, sous-zone 1 (eclat 0x00551138, 3 enregistrements, marge exacte)

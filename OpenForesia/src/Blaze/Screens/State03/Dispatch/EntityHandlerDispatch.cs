@@ -2674,6 +2674,37 @@ public static unsafe partial class Blaze
             case 0x00468E30: EntityHandler_00468E30(record); return;
             case 0x0046DBD0: EntityHandler_0046DBD0(record); return;
 
+            // ZONE 10 — LOT 8 (2026-09-20) : les « C » des sous-zones 4-9 et 6-7.
+            case 0x00437630: EntityHandler_00437630(record); return;
+            case 0x00438CF0: EntityHandler_00438CF0(record); return;
+            case 0x00436FA0: EntityHandler_00436FA0(record); return;
+            case 0x0043B060: EntityHandler_0043B060(record); return;   // Combat/Projectiles.cs
+            case 0x0043B400: EntityHandler_0043B400(record); return;   // Combat/Projectiles.cs
+            case 0x0043C120: EntityHandler_0043C120(record); return;   // Combat/Projectiles.cs, sous-zone 1
+            case 0x0043ABF0: EntityHandler_0043ABF0(record); return;   // Combat/Projectiles.cs
+            case 0x00438850: EntityHandler_00438850(record); return;   // Combat/Projectiles.cs
+            case 0x00439BD0: EntityHandler_00439BD0(record); return;
+            case 0x0046EB10: EntityHandler_0046EB10(record); return;
+            case 0x00438EA0: EntityHandler_00438EA0(record); return;
+            case 0x0046E890: EntityHandler_0046E890(record); return;   // Handlers/SealedCaveMecanismes.cs
+            // Les deux morts de membre — Cutscene/SealedCaveScenes.cs.
+            case 0x00437DD0: EntityHandler_00437DD0(record); return;
+            case 0x00437790: EntityHandler_00437790(record); return;
+            // Lot 8, seconde moitie — les corps releves au desassembleur.
+            case 0x00437C80: EntityHandler_00437C80(record); return;
+            case 0x00438380: EntityHandler_00438380(record); return;
+            case 0x0043A8E0: EntityHandler_0043A8E0(record); return;
+            case 0x0043A440: EntityHandler_0043A440(record); return;
+            case 0x004384F0: EntityHandler_004384F0(record); return;
+            case 0x00485450: EntityHandler_00485450(record); return;   // Combat/Projectiles.cs
+            case 0x00484860: EntityHandler_00484860(record); return;   // Combat/Projectiles.cs
+            case 0x004372B0: EntityHandler_004372B0(record); return;   // Combat/Projectiles.cs
+            case 0x0043A160: EntityHandler_0043A160(record); return;   // Combat/Projectiles.cs
+            case 0x004370E0: EntityHandler_004370E0(record); return;
+            case 0x00439FA0: EntityHandler_00439FA0(record); return;
+            case 0x0046E410: EntityHandler_0046E410(record); return;
+            case 0x0046EDE0: EntityHandler_0046EDE0(record); return;
+
             // Ce qui compte le groupe — Handlers/SealedCaveMecanismes.cs.
             case 0x0046C540: EntityHandler_0046C540(record); return;
             case 0x0046CF10: EntityHandler_0046CF10(record); return;

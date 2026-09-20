@@ -6,6 +6,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-20
 
+- feat : **grotte scellée, lot 8 — 303 sur 349** : les « C » des blocs 4-9 et 6-7, vingt-sept corps —
+  la boule qui éclate en douze, le pilon qui fait trembler la salle, la détonation qui rend la main à
+  son porteur, l'impact qui empoisonne, le coup qui tourne avec son rôle d'effet d'état
+- feat : **`Cutscene/SealedCaveScenes.cs` ouvert** avec les deux morts de membre — la dessiccation et
+  la combustion, chacune gelant la partie, animant la victime et repeignant le fond
+- feat : le décor — l'effondrement en quatre temps, la chose qui remonte le couloir en flottant,
+  l'escalier tournant qui attend tout le groupe, deux colonnes qui s'élèvent, l'anneau qui se
+  referme, la grande flamme qui éclaire la salle et marque le groupe
+- doc : sept planches, deux scripts de sons, le voile plein cadre `0x005de024` et l'octet de
+  sous-zone `0x005de52c` employé comme sélecteur de rendu (`DataSymbols.md`) ; quatre marges prouvées
+  et trois re-scellées après paramétrisation
 - feat : **grotte scellée, lot 7 — 276 sur 349** : les « C » du bloc de sous-zones 0 / 2-3 / 5-8-10,
   trente-six corps pour vingt-deux lectures — l'étincelle qui rentre au centre, la traînée en
   spirale, le halo qui tourne à plat, le mur qui balaie le couloir, le vide sous la salle, le nuage

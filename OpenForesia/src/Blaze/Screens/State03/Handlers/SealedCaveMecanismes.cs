@@ -853,4 +853,115 @@ public static unsafe partial class Blaze
             if (left - 1 < 0) *(short*)(e + 0x10) = 0;
         }
     }
+
+    // =====================================================================
+    // LOT 8 (2026-09-20) — SOUS-ZONES 6 ET 7
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0046e890 @ 0x0046e890 — sous-zones 6 et 7. Decompilee dans <c>Blaze.c</c> ;
+    /// 129 instructions.
+    ///
+    /// <para>
+    /// <b>L'escalier tournant entre deux paliers.</b> Il ne part que lorsque <b>tout le groupe</b>
+    /// est dessus : le compte des rattaches (<see cref="CountPartyMembersMatching"/>, bit
+    /// <c>0x10</c>) doit egaler <see cref="ActivePartySlotCount_00466D70"/>. Sa hauteur de depart
+    /// decide du sens — a <c>0xc8000</c> il monte (<c>+0x32</c> de <c>0x32</c>, <c>+0x14</c> de
+    /// <c>10</c>), sinon il descend (<c>-0x32</c>, <c>-10</c>).
+    /// </para>
+    /// <para>
+    /// <b>Et il se declenche aussi tout seul</b> : au palier haut (<c>0x190000</c>), il suffit
+    /// qu'un membre vivant soit <b>plus bas que le palier</b> — quelqu'un est tombe — pour qu'il
+    /// parte vers le bas, groupe ou pas.
+    /// </para>
+    /// <para>
+    /// Pendant la course, il tourne et glisse de 20 unites par image sur son cap. <b>Le sens du
+    /// glissement suit celui du tour</b> : a la montee, Z gagne le sinus et X perd le cosinus ; a
+    /// la descente, l'inverse, plus <b>une unite de moins en X a chaque image</b> — un decalage
+    /// d'une unite entiere, pas de <c>0x1000</c>, releve tel quel.
+    /// </para>
+    /// <para>
+    /// A l'arrivee il se <b>repose exactement</b> : <c>(0xdac000, 0xc8000, 0x11f8000)</c> en bas,
+    /// <c>(0xeb1000, 0x190000, 0x10fd000)</c> en haut — des coordonnees absolues en dur, donc un
+    /// escalier unique. L'etat 2 attend que tout le monde en soit descendu pour se rearmer.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046E890(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            short aboard = (short)CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+            if (aboard == ActivePartySlotCount_00466D70())                          // Ghidra: FUN_00466d70
+            {
+                if (*(int*)(e + 0x20) == 0xc8000)
+                {
+                    *(short*)(e + 0x12) = 0x32;
+                    *(short*)(e + 0x14) = 10;
+                }
+                else
+                {
+                    *(short*)(e + 0x12) = unchecked((short)0xffce);
+                    *(short*)(e + 0x14) = unchecked((short)0xfff6);
+                }
+
+                *(short*)(e + 0x10) = 1;
+            }
+
+            if (*(int*)(e + 0x20) == 0x190000)
+            {
+                byte* member = Inp.s_SlotFlags_005e93c0;            // 0x005e93c0
+
+                for (int i = 4; i != 0; i--, member += 0x9c)
+                {
+                    uint flags = *(uint*)member;
+                    if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+                    if (*(int*)(member + 0x20) >= 0x190000) continue;
+
+                    *(short*)(e + 0x12) = unchecked((short)0xffce);
+                    *(short*)(e + 0x14) = unchecked((short)0xfff6);
+                    *(short*)(e + 0x10) = 1;
+                }
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) += *(short*)(e + 0x12);
+            *(int*)(e + 0x20) += *(short*)(e + 0x14) * 0x1000;
+
+            short course = *(short*)(e + 0x32);
+
+            if (*(short*)(e + 0x12) < 1)
+            {
+                *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * 0x14;
+                *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * -0x14;
+                *(int*)(e + 0x1c) -= 0x1000;
+            }
+            else
+            {
+                *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * -0x14;
+                *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * 0x14;
+            }
+
+            if (*(int*)(e + 0x20) == 0xc8000)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(int*)(e + 0x1c) = 0xdac000;
+                *(int*)(e + 0x20) = 0xc8000;
+                *(int*)(e + 0x24) = 0x11f8000;
+            }
+
+            if (*(int*)(e + 0x20) == 0x190000)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(int*)(e + 0x1c) = 0xeb1000;
+                *(int*)(e + 0x20) = 0x190000;
+                *(int*)(e + 0x24) = 0x10fd000;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        if (CountPartyMembersMatching(e, 0x10, 0x40000000) == 0) *(short*)(e + 0x10) = 0;
+    }
 }

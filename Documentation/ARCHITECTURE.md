@@ -302,8 +302,16 @@ fichiers, même si Fougre emprunte les aides que `Griffin.cs` porte.
 **La grotte scellée (zone 10) s'ouvre au lot, pas d'un coup** (décision du 2026-09-19) : au lot 1,
 seulement `Effects/SealedCaveParticles.cs` et `Handlers/SealedCave.cs`, à côté de
 `Ai/SealedCave/Gremlin.cs` qui existait déjà. Les scènes et les mécanismes s'ouvriront avec leur
-premier corps — `Handlers/SealedCaveMecanismes.cs` s'est ouvert au lot 2 avec la dalle de pression. À 294 corps, **le fichier d'effets est à couper par bloc de sous-zones passé ~3 000
-lignes** — la coupe se propose alors, elle ne se fait pas d'office.
+premier corps — `Handlers/SealedCaveMecanismes.cs` s'est ouvert au lot 2 avec la dalle de pression,
+et **`Cutscene/SealedCaveScenes.cs` au lot 8** (2026-09-20) avec les deux morts de membre des
+sous-zones 4 et 9, qui gèlent la partie. La zone a donc ses quatre fichiers, et c'est la règle
+annoncée qui les a ouverts, un rôle à la fois.
+
+**Le fichier d'effets a dépassé le seuil annoncé** : à 3 749 lignes après le lot 8, `Effects/SealedCaveParticles.cs`
+est **à couper par bloc de sous-zones** (0 / 2-3 / 5-8-10, 4-9, 6-7, 11-12, 13-14-15). La coupe se
+propose, elle ne se fait pas d'office — mais elle n'est plus hypothétique. `Combat/Projectiles.cs`
+(3 365 lignes) est à surveiller pour la même raison, avec la nuance qu'il n'est pas propre à une
+zone.
 
 Au lot 3 (les intelligences), **une bête par fichier** dans `Ai/SealedCave/` : `ZombieDragon.cs`,
 `Cerberus.cs`, `Gorgon.cs`, `Eifridt.cs`, `Lordemon.cs`, `BlackAngel.cs`, `Beelzebub.cs`. Lordémon,

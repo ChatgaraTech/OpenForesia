@@ -3673,3 +3673,42 @@ quatuor de mots que les fins de la vieille tour repeignent puis restaurent.
 `0x82 << ((((rand() % 100) << 12) - 0x31ff4) & 0x1f)`. Les douze bits bas du terme de gauche étant
 nuls, le décalage vaut **toujours 12** et l'addition toujours `0x82000` — la même montée que
 `0x0046A9E0` écrit en clair. Relevé au désassembleur et transcrit tel quel.
+
+## La grotte scellée, lot 8 (2026-09-20) — sept planches, deux scripts, un fond de plus
+
+Les « C » des blocs 4-9 et 6-7. Comme aux lots précédents, la même suite de planches se recopie d'un
+bloc à l'autre.
+
+| planche | enregistrements | corps | marge |
+|---|---:|---|---|
+| `0x00550fb8` (4-9) | 3 | l'éclat porté par un couple (`0x00436FA0`) | exacte : `+0x40` tourne de 0 à 2 |
+| `0x005510c8` (6-7) | 4 | le nuage acide (`0x0043B060`), la même que `0x00550c48` | 4 : `+0x40` de 1 à 3 |
+| `0x00551130` (6-7) | 1 | la goutte devant la caméra (`0x00438CF0`) | 1, prouvée et scellée |
+| `0x00551068` (6-7) | 1 | la pierre en vol (`0x0043B400`) | 1, prouvée |
+| `0x00550fd0` (6-7) | 7 | son éclat, les mêmes octets que `0x00550bd0` | large |
+| `0x00551150` (sous-zone 1) | 1 | la pierre en vol (`0x0043C120`) | 1, prouvée |
+| `0x00551138` (sous-zone 1) | 3 | son éclat — **trois** seulement, la planche de vol le borne | exacte : `+0x40` meurt à 3 |
+
+**`0x00551bb8` n'est pas une planche neuve** : c'est le quatrième enregistrement de la plage
+`0x00551ba0`, déjà relevée pour l'éclaboussure de Pieds mouillés. Les douze éclats de `0x00484860`
+la lisent par le même `Descriptors00551BB8()`.
+
+**Deux scripts de sons différés** : `0x00552748` (deux enregistrements, voix `0x36`) pour l'impact
+`0x00485450`, et `0x005526d0` (deux enregistrements, voix `0x25`) pour l'éclatement `0x00484860`.
+Le second précède immédiatement l'émetteur `0x005526e0` du lot 1.
+
+**Le fond de la salle, encore.** `0x00437DD0` peint `0x005e9160`..`0x66` en `(0xfa, 0xe6, 0xd2)` — le
+sable — et `0x00437790` en `(0xfa, 0xfa, 0xfa)` au moment de l'éclat ; tous deux retiennent l'ancien
+dans `+0x50`..`+0x58` et le rendent à la fin. C'est le même quatuor que `0x00432390` du lot 7.
+
+**Le voile plein cadre `0x005de024`.** `0x004384F0` l'allume en gris (`0xaa` sur les trois canaux,
+octet d'affichage `0x005de027` à 1), le retire de 4 par canal et par image, puis remet les trois
+canaux à zéro **sans toucher l'octet d'affichage** : le voile reste posé, noir. Elle marque aussi les
+quatre membres du groupe du bit `8` le temps de la scène, et le leur retire à la fin.
+
+**`0x005de0ac`, la secousse de caméra**, est écrite par `0x00485450` : posée à 10 à la première
+image, puis `s = (s >> 2) - s` à chaque image — elle décroît en changeant de signe.
+
+**`0x005de52c`, l'octet de sous-zone, sert de sélecteur de rendu.** `0x00437C80` en tire sa couche de
+dessin : `0x10` → 9, autre → 6, et `4` → 2, le second test écrasant le premier. `0x0046E410` s'en
+sert autrement : dans la salle 7, un voisin sous `0x258000` fait taire sa gerbe.

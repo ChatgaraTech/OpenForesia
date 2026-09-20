@@ -1636,7 +1636,7 @@ public static unsafe partial class Blaze
     /// <c>+0x20</c>, qu'il n'a pourtant modifie que dans la variante haute. Releve tel quel.
     /// </para>
     /// </summary>
-    private static void TickNeighbourTether(byte* e, int spawnLift)
+    private static void TickNeighbourTether(byte* e, int spawnLift, bool guardsOnHeight = false)
     {
         if (*(short*)(e + 0x10) == 2)
         {
@@ -1683,11 +1683,19 @@ public static unsafe partial class Blaze
         {
             *(int*)(e + 0x20) += spawnLift;
 
-            for (short grain = 1; grain <= 6; grain++)
+            // La garde de 0x0046e410 : dans la salle 7, un voisin bas fait taire la gerbe.
+            bool sows = !guardsOnHeight
+                        || *(int*)(neighbour + 0x20) > 0x258000
+                        || (s_Unknown_005de52c & 0xff) != 7;        // Ghidra: DAT_005de52c
+
+            if (sows)
             {
-                *(short*)(e + 0x12) = grain;
-                *(short*)(e + 0x16) = (short)(CrtRand() % 3);
-                SpawnEffectNearCamera_00468110(e, 0x30, 0x10, -1);   // Ghidra: FUN_00468110
+                for (short grain = 1; grain <= 6; grain++)
+                {
+                    *(short*)(e + 0x12) = grain;
+                    *(short*)(e + 0x16) = (short)(CrtRand() % 3);
+                    SpawnEffectNearCamera_00468110(e, 0x30, 0x10, -1);   // Ghidra: FUN_00468110
+                }
             }
 
             if (flag != 0)
@@ -2099,5 +2107,646 @@ public static unsafe partial class Blaze
 
         TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2a), 0x400, 0x1000, 0, 0);   // Ghidra: FUN_00468080
         StrikePartyMembers_0045DA40(e, 10, 0, 0, 0);                              // Ghidra: FUN_0045da40
+    }
+
+    // =====================================================================
+    // LOT 8 (2026-09-20) — LE DECOR « C » DES BLOCS 4-9 ET 6-7
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00439bd0 @ 0x00439bd0 — sous-zones 6 et 7. Decompilee dans <c>Blaze.c</c> ;
+    /// 104 instructions.
+    ///
+    /// <para>
+    /// <b>Le souffle qui suit son porteur.</b> Il se colle a chaque image sur le <c>+0x6c</c> qui
+    /// l'a fait naitre — position, plus <c>0x50</c> de hauteur, et son cap —, et range ce porteur
+    /// dans son <c>+0x74</c> pour que ce qu'il seme en herite. Sans porteur, il suit l'entite par
+    /// defaut <c>0x005de558</c>.
+    /// </para>
+    /// <para>
+    /// <b>Sa voix depend de l'etat du porteur.</b> A la premiere image, le <c>+0x16</c> du porteur
+    /// valant 0 ou 1 lui donne le timbre 2, sinon le timbre 1 ; le souffle part alors sur
+    /// <c>0x1f</c> (identifiant brut, hauteur <c>0x6fd</c>). Ensuite, une image sur cinq, le timbre
+    /// choisi sonne — <c>0x23</c> pour le timbre 1, <c>0x20</c> pour le timbre 2.
+    /// </para>
+    /// <para>
+    /// <b>Il meurt avec son porteur</b> : l'octet <c>+0x43</c> du porteur a 1, ou le porteur marque
+    /// <c>0x40000000</c>, ou eteint. Sinon il avance de <c>0xb4</c> unites sur son cap, descend de
+    /// <c>0xa000</c>, et fait naitre <c>0xdf</c> a sa nouvelle position — a chaque image.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00439BD0(byte* e)
+    {
+        byte* raw = *(byte**)(e + 0x6c);
+        byte* carrier = raw != null ? raw : Res.s_EntityList_005de558;   // Ghidra: &DAT_005de558
+
+        *(byte**)(e + 0x74) = raw;
+
+        *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(carrier + 0x20) + 0x50000;
+        *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+        *(short*)(e + 0x32) = *(short*)(carrier + 0x32);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x9a) = (short)(*(short*)(carrier + 0x16) == 0 || *(short*)(carrier + 0x16) == 1 ? 2 : 1);
+            *(short*)(e + 0x10) = 1;
+            TryPlaySoundNearEntity((uint*)e, 0x1f, 0x6fd, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if (*(short*)(e + 0x98) == 1)
+        {
+            short voice = (short)(*(short*)(e + 0x9a) == 1 ? 0x23 : 0x20);
+            TryPlaySoundNearEntity((uint*)e, voice, 0x1000, 0x800, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        if (*(short*)(e + 0x98) == 5) *(short*)(e + 0x98) = 0;
+        *(short*)(e + 0x98) += 1;
+
+        if (carrier[0x43] == 1) *(uint*)e &= 0x7fffffff;
+        if ((*(uint*)carrier & 0x40000000) != 0 || (*(uint*)carrier & 0x80000000) == 0)
+        {
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) * 0xb4;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(*(short*)(e + 0x32)) * 0xb4;
+        *(int*)(e + 0x20) -= 0xa000;
+
+        SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xdf, 0, -1);   // Ghidra: FUN_0047ac40
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0046eb10 @ 0x0046eb10 — sous-zones 6 et 7. Decompilee dans <c>Blaze.c</c> ;
+    /// 232 instructions.
+    ///
+    /// <para>
+    /// <b>L'effondrement en quatre temps.</b> Rien ne bouge tant que la camera
+    /// (<c>0x005edebc</c>) n'est pas a moins de 500 unites. Alors :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>etat 2, trente images</term><description>il glisse de 5 unites sur le cap
+    ///     perpendiculaire, s'enfonce d'un pas qui gagne <c>0x708</c> par image, secoue la camera
+    ///     de <c>-2</c> a <c>+2</c> et seme <c>0x3d</c> une image sur deux. La voix <c>0x22</c> de
+    ///     la zone ouvre et ferme le temps, grave a l'ouverture, plus grave encore a la
+    ///     fermeture.</description></item>
+    ///   <item><term>etat 3, vingt images</term><description>il bascule — <c>+0x34</c> gagne un pas
+    ///     qui monte jusqu'a <c>0x28</c> — pendant que la secousse retombe de 20 a 0 <b>en changeant
+    ///     de signe a chaque image</b>.</description></item>
+    ///   <item><term>etat 4, dix images</term><description>il seme six <c>0x3d</c> par image depuis
+    ///     un point releve de <c>0x46</c> et avance de <c>0x3c</c> sur le cap <c>+0x32 + 0x400</c>,
+    ///     <b>puis remet ses trois coordonnees en place</b> ; la secousse retombe une seconde fois,
+    ///     et l'etat 99 l'arrete.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Ghidra perd la sauvegarde de Z</b> : sa pseudo-C ecrit <c>*(undefined4 *)(param_1 + 0x24)
+    /// = unaff_EBP;</c> sans que <c>unaff_EBP</c> vienne de nulle part. Le desassemblage le donne —
+    /// <c>mov eax,[esi+24h]</c> rangé dans <c>[esp+18h]</c> a l'entree de l'etat, rendu par
+    /// <c>mov [esi+24h],eax</c> a la fin. Transcrit d'apres le binaire.
+    /// </para>
+    /// <para>
+    /// <b>Et il rate deux fois la signature de la secousse</b>, comme ailleurs :
+    /// <c>FUN_00547140(999,0,0)</c> est <c>rand()</c> sans argument, et <c>FUN_0041be60</c> en prend
+    /// six.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046EB10(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0) *(short*)(e + 0x10) = 1;
+
+        int* camera = *(int**)Mem.Entity(0x005edebc);
+        int dx = (camera[0] >> 0xc) - (*(int*)(e + 0x1c) >> 0xc);
+        int dy = (camera[1] >> 0xc) - (*(int*)(e + 0x20) >> 0xc);
+        int dz = (camera[2] >> 0xc) - (*(int*)(e + 0x24) >> 0xc);
+
+        if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) < 500
+            && *(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x12) = 0;
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x22), 0x400, 0xa00, 0, 0);   // Ghidra: FUN_00468080
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            short course = *(short*)(e + 0x32);
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(course) * 5;
+            *(int*)(e + 0x1c) += Winsys3d.GetCosTableEntry(course) * -5;
+            *(int*)(e + 0x20) += *(short*)(e + 0x12) * -0x708;
+
+            TryPublishCameraEffectNearEntity((uint*)e, 999, CrtRand() % 5 - 2, 999, 0, 0);   // Ghidra: FUN_0041be60
+            if ((e[0x12] & 1) != 0) SpawnEffectNearCamera_00468110(e, 0x3d, 0, -1);          // Ghidra: FUN_00468110
+
+            *(short*)(e + 0x12) += 1;
+            if (*(short*)(e + 0x12) > 0x1d)
+            {
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x22), 0x200, 0x1000, 0, 0);
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x16) = 0x14;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            if (*(short*)(e + 0x16) > 0)
+            {
+                short left = (short)(*(short*)(e + 0x16) - 1);
+                *(short*)(e + 0x16) = left;
+                int jolt = (e[0x14] & 1) != 0 ? -left : left;
+                TryPublishCameraEffectNearEntity((uint*)e, 999, jolt, 999, 0, 0);
+            }
+
+            *(short*)(e + 0x34) += *(short*)(e + 0x12);
+            short faster = (short)(*(short*)(e + 0x12) + 1);
+            *(short*)(e + 0x14) += 1;
+            *(short*)(e + 0x12) = faster;
+            if (faster > 0x28) *(short*)(e + 0x12) = 0x28;
+
+            if (*(short*)(e + 0x14) == 0x14)
+            {
+                *(short*)(e + 0x10) = 4;
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x16) = 10;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 4) return;
+
+        int savedY = *(int*)(e + 0x20);
+        int savedX = *(int*)(e + 0x1c);
+        int savedZ = *(int*)(e + 0x24);                             // Ghidra: `unaff_EBP`
+
+        *(int*)(e + 0x20) = savedY + 0x46000;
+        short spread = (short)(*(short*)(e + 0x32) + 0x400);
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(spread) * 0x3c;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(spread) * 0x3c;
+
+        for (int i = 6; i != 0; i--) SpawnEffectNearCamera_00468110(e, 0x3d, 0, -1);   // Ghidra: FUN_00468110
+
+        *(int*)(e + 0x1c) = savedX;
+        *(int*)(e + 0x24) = savedZ;
+        *(int*)(e + 0x20) = savedY;
+
+        if (*(short*)(e + 0x16) > 0)
+        {
+            short left = (short)(*(short*)(e + 0x16) - 1);
+            *(short*)(e + 0x16) = left;
+            if (left == 0) *(short*)(e + 0x10) = 99;
+
+            int jolt = (e[0x14] & 1) != 0 ? -left : left;
+            TryPublishCameraEffectNearEntity((uint*)e, 999, jolt, 999, 0, 0);
+        }
+
+        *(short*)(e + 0x14) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00438ea0 @ 0x00438ea0 — sous-zones 6 et 7. Decompilee dans <c>Blaze.c</c> ;
+    /// 193 instructions.
+    ///
+    /// <para>
+    /// <b>Deux corps dans un.</b> L'entite se colle a la position de son porteur <c>+0x6c</c> a
+    /// chaque image, et son <c>+0x9a</c> — pose par la sous-zone — choisit lequel des deux
+    /// comportements elle joue. Si le porteur meurt (bit <c>0x40000000</c>, ou eteint), elle
+    /// s'eteint aussi, et <b>pour les roles 0 et 1 elle repeint le ciel</b> :
+    /// <c>0x005de027</c> a 1, les trois octets <c>0x005de024</c>..<c>26</c> a zero.
+    /// </para>
+    /// <para>
+    /// <b>Role 0 — l'incantation qui se charge.</b> Vingt images pendant lesquelles elle prend
+    /// l'image <c>0x3f</c>, se donne une vitesse de <c>0x50000</c> vers le haut, un cap tire entre
+    /// <c>0x400</c> et <c>0x7ff</c>, une rotation de face au hasard, une echelle <c>0x1fff</c> a
+    /// plat, et lance <c>0x70</c> a chaque image. Puis deux <c>0xdf</c> ouverts a <c>+200</c> et
+    /// <c>-200</c> sur <c>+0x5c</c>, et trente images d'attente.
+    /// </para>
+    /// <para>
+    /// <b>Role 2 — la volee d'eclats.</b> Onze <c>0xed</c> d'un coup, puis cinquante images ; si le
+    /// mot <c>+0x44</c> passe a 1, elle applique l'effet d'etat que <see cref="AfflictWithGuard"/>
+    /// porte (<c>FUN_00439130</c>), et <b>s'eteint si l'effet a pris</b>. Sinon elle seme un
+    /// <c>0xed</c> toutes les trois images pendant un compte tire entre 15 et 24, et s'eteint quand
+    /// ce compte passe sous <c>-0x22</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le lanceur de l'effet</b> est l'entite par defaut <c>0x005de558</c> quand <c>+0x78</c> est
+    /// nul, le porteur sinon — mais c'est <c>+0x78</c> lui-meme qui est passe en victime.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00438EA0(byte* e)
+    {
+        byte* raw = *(byte**)(e + 0x6c);
+        byte* carrier = raw != null ? raw : Res.s_EntityList_005de558;   // Ghidra: &DAT_005de558
+
+        *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(carrier + 0x20);
+        *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+
+        if ((*(uint*)carrier & 0x40000000) != 0 || (*(uint*)carrier & 0x80000000) == 0)
+        {
+            *(uint*)e &= 0x7fffffff;
+
+            if (*(short*)(e + 0x9a) == 0 || *(short*)(e + 0x9a) == 1)
+            {
+                // Ghidra: DAT_005de027 = 1 puis DAT_005de024..26 = 0 — le voile plein cadre, noir et affiche.
+                Mem.s_Unknown_005de024 = 0x01000000;
+            }
+
+            return;
+        }
+
+        if (*(short*)(e + 0x9a) == 0)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x16) = 0x14;
+                *(byte**)(e + 0x74) = raw;
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                *(short*)(e + 0x16) -= 1;
+                if (*(short*)(e + 0x16) < 1) *(short*)(e + 0x10) = 2;
+
+                e[4] = 0x3f;
+                e[0x0a] = 2;
+                e[0x0b] = 0;
+                *(byte**)(e + 0x70) = raw;
+                *(int*)(e + 0x44) = 0;
+                *(int*)(e + 0x48) = 0x50000;
+                *(int*)(e + 0x4c) = 0;
+
+                *(short*)(e + 0x32) = (short)(SignedMask(CrtRand(), 0x3ff) + 0x400);
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x34) = (short)SignedMask(CrtRand(), 0xfff);
+                *(short*)(e + 0x12) = 200;
+                *(short*)(e + 0x28) = 0x1fff;
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x2c) = 0x100;
+
+                SpawnCastEntity_0047AAE0(e, 0x70, 0, -1);           // Ghidra: FUN_0047aae0
+            }
+
+            if (*(short*)(e + 0x10) == 2)
+            {
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x16) = 0x1e;
+                *(int*)(e + 0x5c) = 200;
+                SpawnCastEntity_0047AAE0(e, 0xdf, 0, -1);
+                *(int*)(e + 0x5c) = -200;
+                SpawnCastEntity_0047AAE0(e, 0xdf, 0, -1);
+            }
+
+            if (*(short*)(e + 0x10) == 3)
+            {
+                *(short*)(e + 0x16) -= 1;
+                if (*(short*)(e + 0x16) < 0) *(uint*)e &= 0x7fffffff;
+            }
+        }
+
+        if (*(short*)(e + 0x9a) != 2) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(int*)(e + 0x44) = 0;
+            for (int i = 0x0b; i != 0; i--)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xed, 0, -1);   // Ghidra: FUN_0047ac40
+            }
+
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) += 1;
+            if (*(short*)(e + 0x12) > 0x32) *(uint*)e &= 0x7fffffff;
+
+            if (*(int*)(e + 0x44) == 1)
+            {
+                *(short*)(e + 0x10) = 2;
+                int spread = CrtRand();
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x12) = (short)(spread % 10 + 0x0f);
+
+                byte* caster = *(byte**)(e + 0x78) != null ? carrier : Res.s_EntityList_005de558;
+                if (AfflictWithGuard(caster, *(byte**)(e + 0x78), 0))   // Ghidra: FUN_00439130
+                {
+                    *(uint*)e &= 0x7fffffff;
+                    return;
+                }
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x14) += 1;
+        if (*(short*)(e + 0x14) != 3) return;
+
+        *(short*)(e + 0x14) = 0;
+        if (*(short*)(e + 0x12) > 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xed, 0, -1);
+        }
+
+        *(short*)(e + 0x12) -= 1;
+        if (*(short*)(e + 0x12) < -0x22) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: FUN_00439130 @ 0x00439130 — <b>l'effet d'etat 32 sous garde</b> : si
+    /// <see cref="IsEffectPairBlocked_004364B0"/> refuse la paire, rendre <c>true</c> tout de
+    /// suite ; sinon rendre « l'appliqueur a pris ». C'est la meme enveloppe de 22 instructions que
+    /// <c>FUN_0043a400</c> et <c>FUN_004365d0</c>, qui appliquent l'effet <b>13</b> a la
+    /// place.</summary>
+    private static bool AfflictWithGuard(byte* caster, byte* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0((uint*)caster, (uint*)victim) != 0) return true;
+        return ApplyStatusEffect_0053C5E0((uint*)caster, (uint*)victim, keep) != 0;
+    }
+
+    /// <summary>La jumelle des deux autres enveloppes, <c>FUN_0043a400</c> (sous-zones 6-7) et
+    /// <c>FUN_004365d0</c> (4-9) : meme garde, mais l'effet <b>13</b>.</summary>
+    private static bool AfflictWithGuard13(byte* caster, byte* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0((uint*)caster, (uint*)victim) != 0) return true;
+        return ApplyStatusEffect_0053B8F0((uint*)caster, (uint*)victim, keep) != 0;
+    }
+
+    // =====================================================================
+    // LOT 8, seconde moitie — le decor releve au desassembleur
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x004370e0</c> (sous-zones 4 et 9) et <c>0x00439fa0</c> (6 et 7). <b>Absentes de
+    /// <c>Blaze.c</c></b> ; 140 et 136 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_004370E0.asm</c>. <b>La sœur de
+    /// <see cref="EntityHandler_00439BD0"/></b> : meme ossature, mais deux hauteurs au lieu d'une,
+    /// et le porteur range dans <c>+0x78</c> et non <c>+0x74</c>.
+    ///
+    /// <para>
+    /// Son <c>+0x9a</c> — pose par la sous-zone — choisit la suspension : role 0, elle se tient
+    /// <c>0x96</c> unites au-dessus de son porteur et glisse de 50 unites par image sur son cap ;
+    /// role 1, <c>0x64</c> unites au-dessus et 220 par image. Les deux descendent de <c>0xa000</c>
+    /// et font naitre <c>0xde</c> a chaque image.
+    /// </para>
+    /// <para>
+    /// <b>Une seule instruction les separe, et elle change le son.</b> <c>0x004370e0</c> ouvre par
+    /// <c>if (+0x10 == 0) { +0x10 = 1; +0x16 = 0; }</c> — ce que sa jumelle n'a pas. Le bloc suivant
+    /// teste lui aussi <c>+0x10 == 0</c> pour sonner la naissance (voix <c>0x1f</c>) et rearmer
+    /// <c>+0x98</c> : pour <c>0x004370e0</c> ce test est <b>toujours faux</b>, si bien qu'elle
+    /// <b>ne sonne jamais</b> et que son compteur de voix part de ce que l'emplacement contenait.
+    /// Defaut de 1998, reproduit.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004370E0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        TickCarriedBreath(e);
+    }
+
+    private static void EntityHandler_00439FA0(byte* e) => TickCarriedBreath(e);
+
+    /// <summary>Le corps commun des deux souffles portes.</summary>
+    private static void TickCarriedBreath(byte* e)
+    {
+        byte* raw = *(byte**)(e + 0x6c);
+        byte* carrier = raw != null ? raw : Res.s_EntityList_005de558;   // Ghidra: &DAT_005de558
+
+        *(byte**)(e + 0x78) = raw;
+
+        short role = *(short*)(e + 0x9a);
+
+        if (role == 0)
+        {
+            *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(carrier + 0x20) + 0x96000;
+            *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+            *(short*)(e + 0x32) = *(short*)(carrier + 0x32);
+        }
+
+        if (role == 1)
+        {
+            *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(carrier + 0x20) + 0x64000;
+            *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+            *(short*)(e + 0x32) = *(short*)(carrier + 0x32);
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            TryPlaySoundNearEntity((uint*)e, 0x1f, 0x6fd, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if (*(short*)(e + 0x98) == 1)
+        {
+            short voice = (short)(*(short*)(e + 0x9a) == 1 ? 0x23 : 0x20);
+            TryPlaySoundNearEntity((uint*)e, voice, 0x1000, 0x800, 0, 0);
+        }
+
+        if (*(short*)(e + 0x98) == 5) *(short*)(e + 0x98) = 0;
+        *(short*)(e + 0x98) += 1;
+
+        if (carrier[0x43] == 1) *(uint*)e &= 0x7fffffff;
+        if ((*(uint*)carrier & 0x40000000) != 0 || (*(uint*)carrier & 0x80000000) == 0)
+        {
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        short course = *(short*)(e + 0x32);
+
+        if (role == 0)
+        {
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * 50;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * 50;
+            *(int*)(e + 0x20) -= 0xa000;
+        }
+
+        if (role == 1)
+        {
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * 220;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * 220;
+            *(int*)(e + 0x20) -= 0xa000;
+        }
+
+        SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xde, 0, -1);   // Ghidra: FUN_0047ac40
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0046e410</c> — sous-zones 6 et 7. <b>Absente de <c>Blaze.c</c></b> ;
+    /// 157 instructions, <c>Legacy/Raw/Blaze/SealedCave/FUN_0046E410.asm</c>. <b>Le lien du lot 7</b>
+    /// (<see cref="TickNeighbourTether"/>) dans sa variante haute, plus <b>une garde</b>.
+    ///
+    /// <para>
+    /// Quand le voisin est assez pres, les six grains ne partent que si <b>le voisin est au-dessus
+    /// de <c>0x258000</c></b>, ou si la sous-zone courante (<c>0x005de52c</c>) n'est pas la
+    /// septieme. Dans la salle 7, un voisin bas fait donc taire la gerbe — le drapeau, lui, tombe
+    /// quand meme.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0046E410(byte* e) => TickNeighbourTether(e, 0x82000, guardsOnHeight: true);
+
+    /// <summary>
+    /// Ghidra: <c>0x0046ede0</c> — sous-zones 6 et 7. <b>Absente de <c>Blaze.c</c></b> ;
+    /// 183 instructions, <c>Legacy/Raw/Blaze/SealedCave/FUN_0046EDE0.asm</c>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// <b>La chose qui remonte le couloir en flottant.</b> Elle avance sur Z de <c>+0x14</c> unites
+    /// par image, reste dans une gouttiere en X — sous <c>-0x69000</c> elle est repoussee de
+    /// <c>0x3000</c>, au-dessus de <c>-0x5f000</c> elle l'est de <c>-0x3000</c>, les bornes se
+    /// lisant sur les douze bits hauts — et <b>ondule</b> : son cap <c>+0x32</c> gagne <c>0x44</c>
+    /// par image et sa hauteur suit <c>(sin(+0x32) &lt;&lt; +0x12) + 0x64000</c>, <c>+0x12</c> etant
+    /// l'amplitude que la sous-zone a posee.
+    /// </para>
+    /// <para>
+    /// <b>Elle accelere quand elle frotte.</b> Toutes les quatre images, si le contact <c>0x100</c>
+    /// est present, <c>+0x14</c> gagne 1 jusqu'a <c>0x28</c>. Et elle garde dans <c>+0x9a</c> sa
+    /// hauteur en unites entieres, <b>relevee avant le placement</b>.
+    /// </para>
+    /// <para>
+    /// <b>Au choc</b> (<c>0x8800</c>), tout est remis comme avant — position, appui, face, contacts —
+    /// et les deux vitesses horizontales <b>changent de signe</b>. Sans contact <c>0x100</c> et avec
+    /// <c>+0x5c</c> nul, elle retient sa hauteur dans <c>+0x5c</c> : c'est le debut d'une chute, que
+    /// la suite deroule en posant <c>+0x20 = +0x5c &lt;&lt; 12</c> et en retirant 13 a <c>+0x5c</c>
+    /// par image, plancher <c>-10000</c>, tout en ralentissant <c>+0x14</c> d'une unite toutes les
+    /// deux images jusqu'a l'arret.
+    /// </para>
+    /// <para>
+    /// Le bit <c>0x20000000</c> l'eteint. L'etat <b>99</b> la remet a
+    /// <c>(-0x64000, -0xff0000, -0x871000)</c> avec <c>+0x12</c> nul et saute tout le reste — le
+    /// retour au depart —, et c'est le seul etat ou <see cref="TestTriggerVolumes_00534CD0"/> n'est
+    /// pas appele.
+    /// </para>
+    /// </remarks>
+    private static void EntityHandler_0046EDE0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0x63)
+        {
+            *(int*)(e + 0x1c) = unchecked((int)0xfff9c000);
+            *(int*)(e + 0x20) = unchecked((int)0xff010000);
+            *(int*)(e + 0x24) = unchecked((int)0xff78f000);
+            *(short*)(e + 0x12) = 0;
+        }
+        else
+        {
+            if (*(short*)(e + 0x10) == 2)
+            {
+                int wave = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) << e[0x12];
+                *(int*)(e + 0x20) += unchecked((int)0xfff9c000) - wave;
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x14) = 5;
+                *(short*)(e + 0x16) = 0;
+                *(int*)(e + 0x5c) = 0;
+            }
+
+            int saved80 = *(int*)(e + 0x80);
+            int saved84 = *(int*)(e + 0x84);
+            int saved88 = *(int*)(e + 0x88);
+            int saved8c = *(int*)(e + 0x8c);
+            int savedGroundX = *(int*)(e + 0x60);
+            int savedGroundZ = *(int*)(e + 0x64);
+            byte* savedFace = *(byte**)(e + 0x7c);
+            uint savedContacts = *(ushort*)(e + 0x90);
+
+            int x = *(int*)(e + 0x1c);
+            int y = *(int*)(e + 0x20);
+            int z = *(int*)(e + 0x24);
+
+            *(int*)(e + 0x44) = x;
+            *(int*)(e + 0x48) = y;
+            *(int*)(e + 0x4c) = z;
+
+            if ((x & unchecked((int)0xfffff000)) < unchecked((int)0xfff97000))
+            {
+                x += 0x3000;
+                *(int*)(e + 0x1c) = x;
+            }
+
+            x = *(int*)(e + 0x1c);
+            if ((x & unchecked((int)0xfffff000)) > unchecked((int)0xfffa1000))
+            {
+                x += unchecked((int)0xffffd000);
+                *(int*)(e + 0x1c) = x;
+            }
+
+            *(int*)(e + 0x24) = (*(short*)(e + 0x14) << 0xc) + z;
+
+            *(short*)(e + 0x16) += 1;
+            if (*(short*)(e + 0x16) > 3 && (*(uint*)(e + 0x90) & 0x100) != 0)
+            {
+                short faster = (short)(*(short*)(e + 0x14) + 1);
+                *(short*)(e + 0x16) = 0;
+                *(short*)(e + 0x14) = faster;
+                if (faster > 0x28) *(short*)(e + 0x14) = 0x28;
+            }
+
+            *(short*)(e + 0x9a) = (short)(y >> 0xc);
+            FinalizeEntityPlacement2((uint*)e);                     // Ghidra: FUN_00533940
+
+            if ((*(uint*)(e + 0x90) & 0x8800) != 0)
+            {
+                *(int*)(e + 0x60) = savedGroundX;
+                *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+                *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+                *(int*)(e + 0x64) = savedGroundZ;
+                *(int*)(e + 0x84) = saved84;
+                *(int*)(e + 0x88) = saved88;
+                *(int*)(e + 0x80) = saved80;
+                *(int*)(e + 0x8c) = saved8c;
+                *(byte**)(e + 0x7c) = savedFace;
+                *(uint*)(e + 0x90) = savedContacts & 0xffff;
+
+                *(int*)(e + 0x50) = -*(int*)(e + 0x50);
+                *(int*)(e + 0x58) = -*(int*)(e + 0x58);
+            }
+
+            if ((*(uint*)(e + 0x90) & 0x100) == 0 && *(int*)(e + 0x5c) == 0)
+            {
+                *(int*)(e + 0x5c) = *(short*)(e + 0x9a);
+            }
+
+            if ((*(uint*)e & 0x20000000) != 0) *(uint*)e &= 0x7fffffff;
+
+            if (*(int*)(e + 0x20) > *(int*)(e + 0x60)) *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+            int drop = *(int*)(e + 0x5c);
+            if (drop != 0)
+            {
+                *(int*)(e + 0x20) = drop << 0xc;
+                *(int*)(e + 0x5c) = drop - 13;
+                if (*(int*)(e + 0x5c) < -10000) *(int*)(e + 0x5c) = -10000;
+
+                if (*(int*)(e + 0x20) < *(int*)(e + 0x60)) *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+                *(short*)(e + 0x16) += 1;
+                if (*(short*)(e + 0x16) > 1)
+                {
+                    *(short*)(e + 0x14) -= 1;
+                    *(short*)(e + 0x16) = 0;
+                    if (*(short*)(e + 0x14) < 0) *(short*)(e + 0x14) = 0;
+                }
+            }
+        }
+
+        *(short*)(e + 0x32) += 0x44;
+        if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+        *(int*)(e + 0x20) += ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x32)) << e[0x12]) + 0x64000;
+
+        if (*(short*)(e + 0x10) != 0x63) TestTriggerVolumes_00534CD0((uint*)e);   // Ghidra: FUN_00534cd0
     }
 }

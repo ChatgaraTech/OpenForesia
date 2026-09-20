@@ -25418,3 +25418,85 @@ Contrôles : `dotnet build` 0 erreur, aucun avertissement nouveau ; `census-enti
 (18 lectures) ; 906 implémentés jamais appelés, **73 à transcrire** — tous dans la grotte.
 `check-descriptors.sh` : 0 tableau en désaccord, 110 marges courtes dont **108 prouvées** (les neuf
 du lot scellées ; restent les deux de la tour). **Non exercé en jeu.**
+
+## 2026-09-20 (suite) — Grotte scellée, lot 8 : les « C » des blocs 4-9 et 6-7, 303 sur 349
+
+**276 sur 349 devient 303 sur 349** : vingt-sept corps pour vingt-six lectures, le bloc de
+sous-zones 4-9 et 6-7 en entier. Quatorze corps viennent de `Blaze.c`, treize du désassembleur
+(treize fichiers neufs sous `Legacy/Raw/Blaze/SealedCave/`).
+
+**Un fichier neuf, prévu de longue date** : `Cutscene/SealedCaveScenes.cs`. ARCHITECTURE.md disait
+pour la grotte que « les scènes et les mécanismes s'ouvriront avec leur premier corps » ; ce corps
+est arrivé, et c'est même une paire.
+
+**Les deux morts de membre** (`0x00437DD0`, `0x00437790`) sont de la famille de
+`EntityHandler_0040E3A0` : même ossature — les deux appels de tête, le balayage des trente-deux
+entités de scène qui retient la **dernière** de `+0x0c` nul, le repli sur `0x005de558`, et la sortie
+par `RunEntityScript` + `UnfreezeAllEntities` + le bit `0x2004000`. L'une dessèche la victime — elle
+s'aplatit de `0x14` et s'élargit de 10 par image, perd 2 par canal au-delà de la vingtième et part en
+`0xf4` / `0xf5` ; l'autre la brûle, puis éclate en blanc à la cinquantième image. **Le même défaut de
+1998 que leurs cousines** : sans victime, le clip d'animation reste le pointeur d'entrée de la
+fonction, et la borne se lit dans le `+0x16` de la scène elle-même.
+
+**Ce qui blesse** — `Combat/Projectiles.cs` :
+
+- **la détonation qui rend la main** (`0x00438850`) : dix images, dix-huit éclats, puis 10 % à tout
+  membre à moins de 300 unités **en plan du porteur** — et elle écrit son `+0x98` dans le `+0x10` du
+  porteur : elle lui dit dans quel état reprendre ;
+- **le pilon qui fait trembler la salle** (`0x0043ABF0`) : il frappe à 20 % dans `0x78` unités, et à
+  l'impact vingt images de secousse **alternée**, l'amplitude se rapprochant de zéro d'une unité par
+  image en changeant de signe à chaque fois ;
+- **la pierre oblique, seconde manière** (`0x0043B400`, `0x0043C120`) : la même que le lot 7 mais
+  **sans consulter le décor** — elle éclate quand le produit `(+0x48 >> 12) * ((nouvelle hauteur -
+  +0x54) >> 12)` devient positif, c'est-à-dire au franchissement de la hauteur visée ;
+- **l'impact qui secoue et empoisonne** (`0x00485450`) : il pose `0x005de0ac` à 10, sème quatre
+  éclats de piège par image sur l'atlas de la forêt, et empoisonne trente fois sur cent ;
+- **la boule qui éclate en douze** (`0x00484860`) : **un corps, deux vies** — l'octet `+0x42` sépare
+  le vol de l'éclat, et les douze enfants naissent de la boule elle-même, qui se donne la vitesse de
+  chacun avant la naissance puis pose `+0x42 = 1`, que les enfants héritent. Le masque des victimes
+  est l'octet `+0x09` du **porteur commun** : les douze se partagent une seule liste. Son sous-type
+  se lit dans le répertoire de zone (`+0xd4`), pas en dur ;
+- **le coup qui tourne, avec un rôle** (`0x004372B0`, `0x0043A160`) : le corps du lot 7 plus un
+  `+0x9a` qui choisit — à zéro le coup amorti d'un quart, autrement l'effet d'état 13. Le premier
+  n'empoisonne **qu'une fois par emplacement**, en marquant le `+0x16` du **porteur** ; le second n'a
+  pas de masque du tout et ne replie pas un `+0x78` nul.
+
+**Le décor** — `Handlers/SealedCave.cs` :
+
+- **le souffle qui suit son porteur** (`0x00439BD0`) et ses deux sœurs (`0x004370E0`, `0x00439FA0`).
+  **Une seule instruction sépare les deux dernières, et elle coupe le son** : `0x004370E0` pose
+  `+0x10 = 1` avant le bloc qui teste `+0x10 == 0` pour sonner la naissance — ce test est donc
+  toujours faux, la voix `0x1f` ne part jamais, et le compteur `+0x98` part de ce que l'emplacement
+  contenait. Défaut de 1998, reproduit ;
+- **l'effondrement en quatre temps** (`0x0046EB10`), dont Ghidra perdait la sauvegarde de Z
+  (`unaff_EBP`), rendue par le désassemblage ;
+- **deux corps dans un** (`0x00438EA0`) : le `+0x9a` choisit l'incantation qui se charge ou la volée
+  d'éclats, et la mort du porteur **repeint le ciel** ;
+- **la chose qui remonte le couloir en flottant** (`0x0046EDE0`) : elle tient une gouttière en X sur
+  les douze bits hauts, ondule sur son cap, accélère quand elle frotte, rebondit en changeant le
+  signe de ses deux vitesses horizontales, et retient sa hauteur dans `+0x5c` pour dérouler une
+  chute ;
+- **le lien, troisième variante** (`0x0046E410`) : celui du lot 7 plus une garde — dans la salle 7,
+  un voisin sous `0x258000` fait taire la gerbe, mais le drapeau tombe quand même.
+
+**Ce qui compte le groupe** — `Handlers/SealedCaveMecanismes.cs` : **l'escalier tournant**
+(`0x0046E890`), qui ne part que lorsque tout le groupe est dessus, se déclenche aussi tout seul si
+quelqu'un tombe sous le palier haut, et se repose sur des coordonnées **absolues en dur** — donc un
+escalier unique.
+
+**Ce qui naît et s'éteint** — `Effects/SealedCaveParticles.cs` : la bulle qui monte et grossit,
+la goutte qui tombe devant la caméra (**elle tient deux positions et les échange à chaque image**,
+le trait d'une chute obtenu sans rien interpoler), l'éclat porté par un couple (le `+0x6c` sert de
+**table de décalages** dans le repère du `+0x74`), l'étincelle qui s'écarte en montant, l'anneau
+qui se referme de plus en plus vite, deux colonnes sœurs qui s'élèvent — **et dont le rayon, posé à
+zéro, n'est jamais écrit : elles montent droit** —, et **la grande flamme qui éclaire la salle**
+(`0x004384F0`), qui allume le voile plein cadre `0x005de024` et marque les quatre membres du groupe
+du bit `8` le temps de sa mort.
+
+Contrôles : `dotnet build` 0 erreur, aucun avertissement nouveau ;
+`census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **303 / 349**, 0 « B », **21 « C »
+(21 lectures)**, 25 « D » (18 lectures) ; 933 implémentés jamais appelés, **46 à transcrire** — tous
+dans la grotte. `check-descriptors.sh` : 0 tableau en désaccord, 114 marges courtes dont **112
+prouvées** (quatre neuves scellées, et **trois re-scellées** : la paramétrisation de
+`TickObliqueFallingRock` avait périmé leur preuve, ce qui est exactement ce que le sceau sert à
+faire). **Non exercé en jeu.**

@@ -1,11 +1,11 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lot 7). **Il ne
-reste que la grotte scellée — 276 / 349 ; toutes les routines d'IA du jeu, tous ses « B » et tous
-les « C » de ses blocs 0 / 2-3 / 5-8-10 sont écrits.** Les onze autres zones sont complètes :
-l’auberge, la mine, la montagne du dragon de feu, la forêt, la vieille tour, le Labyrinthe des
-morts, le château de l’immortel, les ruines souterraines, la vallée d’argent et les ruines dans le
-lac.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7 et 8). **Il
+ne reste que la grotte scellée — 303 / 349 ; toutes les routines d'IA du jeu, tous ses « B » et tous
+les « C » des blocs 0 / 2-3 / 5-8-10 et 4-9 / 6-7 sont écrits.** Les onze autres zones sont
+complètes : l’auberge, la mine, la montagne du dragon de feu, la forêt, la vieille tour, le
+Labyrinthe des morts, le château de l’immortel, les ruines souterraines, la vallée d’argent et les
+ruines dans le lac.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -18,28 +18,36 @@ déplacement.
 
 ---
 
-# GROTTE SCELLÉE, LOT 7 — LES « C » DU BLOC 0 / 2-3 / 5-8-10 (2026-09-20)
+# GROTTE SCELLÉE, LOTS 7 ET 8 — LA CATÉGORIE « C » AUX TROIS QUARTS (2026-09-20)
 
-**240 sur 349 devient 276 sur 349** : trente-six corps pour vingt-deux lectures, tous dans le même
-bloc de sous-zones — celui qui se recopie à `+0xf0` puis `+0x110`. Onze corps viennent de `Blaze.c`,
-onze du désassembleur (dix fichiers neufs sous `Legacy/Raw/Blaze/SealedCave/`).
+**240 sur 349 devient 303 sur 349** en deux lots, tous deux pris par bloc de sous-zones — celui qui
+se recopie à `+0xf0` puis `+0x110`, comme aux lots précédents.
 
-Les pièces de ce lot : **la pierre qui tombe en oblique et éclate** (elle blesse dans tous ses
-états, hors de tout test), **le coup qui tourne et s'enfonce** (il abaisse d'un quart l'attaque du
-lanceur, résout le coup, remet la valeur), **le lien qui tient tant que son voisin reste près** —
-dont le `+0x14` désigne un voisin dans la **même table d'entités**, `e + 0x9c * n` —, **le levier
-qui bascule son bit** là où la dalle du lot 2 ne fait que le poser, et **ce qu'on actionne et qui
-gèle la partie**, avec son message de refus distinct. Le détail est dans `REVERSE_STATUS.md`.
+**Lot 7 : les « C » du bloc 0 / 2-3 / 5-8-10** — trente-six corps pour vingt-deux lectures. Ses
+pièces : la pierre qui tombe en oblique et éclate (elle blesse dans tous ses états, hors de tout
+test), le coup qui tourne et s'enfonce (il abaisse d'un quart l'attaque du lanceur, résout le coup,
+remet la valeur), le lien dont le `+0x14` désigne un voisin dans la **même table d'entités**
+(`e + 0x9c * n`), le levier qui **bascule** son bit là où la dalle ne fait que le poser, et ce qu'on
+actionne et qui gèle la partie.
 
-**La suite** : **73 gestionnaires** — **48 « C » (47 lectures)** et 25 « D » (18 lectures),
-`Zone10ParComplexite.md`. Les « C » qui restent se lisent en trois blocs : **4-9 et 6-7** (le plus
-gros paquet), **11-12**, et **13-14-15**. La recherche de parenté ne compare que des corps de même
-longueur : une variante à longueur voisine (quelques instructions de plus ou de moins) trouverait
-sans doute d'autres cousins parmi eux — `0x00485330` en était un.
+**Lot 8 : les « C » des blocs 4-9 et 6-7** — vingt-sept corps pour vingt-six lectures, et
+**`Cutscene/SealedCaveScenes.cs` ouvert** avec les deux morts de membre. Ses pièces : la boule qui
+éclate en douze (**un corps, deux vies** — l'octet `+0x42` sépare le vol de l'éclat, et les douze
+enfants naissent de la boule elle-même), la détonation qui écrit dans le `+0x10` de son porteur
+l'état où reprendre, la chose qui remonte le couloir en flottant, et deux sœurs séparées par **une
+seule instruction qui coupe le son** (`0x004370e0` pose `+0x10 = 1` avant le bloc qui teste
+`+0x10 == 0` pour sonner : la voix ne part jamais).
 
-Cinq « C » portent une **appelée inconnue** (`0x0043AD70`, `0x00439130`, `0x0043A400`, `0x0043EB20`,
-`0x004365D0`) : ce sont les seuls du lot à demander un détour avant d'être écrits.
+Le détail des deux lots est dans `REVERSE_STATUS.md`.
 
+**La suite** : **46 gestionnaires** — **21 « C » (21 lectures)** et 25 « D » (18 lectures),
+`Zone10ParComplexite.md`. Il ne reste plus **aucun jumeau** parmi les « C » : chaque corps est une
+lecture. Ils se lisent en deux blocs, **11-12** (8 corps) et **13-14-15** (13 corps), et **un seul**
+porte encore une appelée inconnue, `0x0043E820` → `0x0043EB20`.
+
+Les 25 « D » gardent leurs familles : cinq copies de `0x00468AC0`, trois de `0x0046AD70`, deux de
+`0x00436070` — huit corps pour trois lectures. Restent les deux à table de sauts (`0x00436070`,
+`0x0043EC60`), celui de 610 instructions (`0x00471150`) et celui de 477 (`0x00440840`).
 
 # TOUTES LES INTELLIGENCES ÉCRITES — GROTTE SCELLÉE, LOT 3 (2026-09-19)
 
