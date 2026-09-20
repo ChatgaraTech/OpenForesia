@@ -25564,3 +25564,58 @@ Contrôles : `dotnet build` 0 erreur, aucun avertissement nouveau ;
 25 « D » (18 lectures) ; **25 à transcrire**, tous dans la grotte et tous « gros ».
 `check-descriptors.sh` : 0 tableau en désaccord, 117 marges courtes dont **115 prouvées** (trois
 neuves scellées ; restent les deux de la tour). **Non exercé en jeu.**
+
+## 2026-09-20 (suite 3) — Grotte scellée, lot 10 : les trois familles de « D », 334 sur 349
+
+**324 sur 349 devient 334 sur 349** : dix corps pour **trois lectures**. Les trois familles de
+copies de la catégorie « D » sont vidées, et **il ne reste plus un seul jumeau dans le dépôt** — les
+quinze gestionnaires restants sont quinze corps distincts.
+
+Les trois familles ont d'abord été vérifiées copie par copie au désassembleur : `0x0046B6E0`,
+`0x0046D860`, `0x0046FAD0` et `0x004702D0` sont identiques à `0x00468AC0` ; `0x0046D070` et
+`0x0046F2E0` à `0x0046AD70` ; `0x0043EC60` à `0x00436070` — instruction pour instruction, adresses
+mises à part, **tables de sauts comprises**.
+
+**La tourelle** (`0x00468AC0` ×5, `Handlers/SealedCave.cs`). Trois champs que la sous-zone lui pose
+deviennent ses réglages : `+0x14` la portée, `+0x30` le décalage de vitesse de rotation, `+0x16` la
+demi-ouverture du cône — celle-là relue à chaque image, jamais rangée. Elle retient **le plus proche
+des quatre membres** dans son cône ; à égalité le dernier l'emporte, le binaire ne s'arrêtant pas au
+premier. Elle tourne de l'écart divisé par `2 ^ +0x48`, et arme un tir de trente images quand son cap
+s'est stabilisé à moins de 5 de celui de l'image précédente. Pendant le tir elle **publie la position
+de sa cible dans `+0x50`..`+0x58`**, ce que le rayon lit.
+
+- **Une garde qui ne peut pas échouer** : l'armement teste aussi l'octet haut de `+0x48`
+  (`test ch,0FFh`). Comme `+0x48` vient d'un `movsx` d'un petit décalage, cet octet est toujours nul.
+  Transcrit tel quel.
+- **Le test de cône n'est pas un si-sinon** : un angle nul ou négatif sous l'ouverture ne fait pas
+  rejeter tout de suite, il tombe sur le second intervalle. Les deux tests sont un OU, et la
+  transcription le dit.
+
+**La navette** (`0x0046AD70` ×3, `Handlers/SealedCaveMecanismes.cs`), le plus gros corps du lot avec
+459 instructions. Elle porte le groupe d'un bout à l'autre d'une course droite et revient, en huit
+états — deux repos, deux courses, deux attentes de débarquement, deux fondus quand quelqu'un tombe en
+route.
+
+- **Elle calcule son point d'arrivée en déroulant tout le voyage à sa première image**, en boucle,
+  puis rend la position de départ. Les deux bouts sont ensuite rangés **deux par dword** : le départ
+  dans les seize bits hauts de `+0x44`/`+0x48`/`+0x4c`, l'arrivée dans les seize bits bas. Le seul
+  endroit relevé où le jeu empaquette deux points par axe.
+- **Et elle se téléporte au bout le plus proche de la caméra** quand le groupe n'est pas entier à
+  bord : elle est donc toujours du côté du joueur, sans qu'on la voie voyager à vide.
+
+**La bulle d'effet d'état** (`0x00436070` ×2, `Combat/Projectiles.cs`), et avec elle **les vingt et
+une « appelées inconnues »** que le recensement portait sur ces deux corps. Ce sont leurs deux jeux
+privés d'enveloppes gardées, et **leurs deux tables de sauts sont celle de `0x0040a30c`** — mêmes
+douze effets, même ordre, même entrée 9 qui redouble l'entrée 4. Le binaire porte trois copies du
+même jeu ; une seule est transcrite, `AfflictMember_00409F40`, à qui `keep` a été ajouté : la forêt
+y passe zéro, la grotte **le numéro d'emplacement du membre**. Voir `DataSymbols.md` pour la table.
+
+La bulle elle-même n'applique qu'**une fois par membre** (masque `+0x14`) et seulement une fois assez
+grande ; son `+0x5c` sépare la bulle de l'éclat qu'elle sème, dont la teinte rejoint le blanc par
+moitiés puis retombe au noir par huitièmes. Son lanceur est le **grand-porteur** : le `+0x6c` de son
+`+0x6c`.
+
+Contrôles : `dotnet build` 0 erreur, aucun avertissement nouveau ;
+`census-entity-handlers.sh` / `census-zone-complexity.sh 10` : **334 / 349**, 0 « B », 0 « C »,
+**15 « D » pour 15 lectures** ; 15 à transcrire, tous dans la grotte.
+`check-descriptors.sh` : inchangé — aucun des trois corps ne pose de planche. **Non exercé en jeu.**

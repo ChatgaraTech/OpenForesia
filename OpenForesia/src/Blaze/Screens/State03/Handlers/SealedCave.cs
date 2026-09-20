@@ -2749,4 +2749,199 @@ public static unsafe partial class Blaze
 
         if (*(short*)(e + 0x10) != 0x63) TestTriggerVolumes_00534CD0((uint*)e);   // Ghidra: FUN_00534cd0
     }
+
+    // =====================================================================
+    // LOT 10 (2026-09-20) — LA TOURELLE, CINQ COPIES
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00468ac0</c> (bloc 0), <c>0x0046b6e0</c> (2-3), <c>0x0046d860</c> (5-8-10),
+    /// <c>0x0046fad0</c> (6-7) et <c>0x004702d0</c> (sous-zone 1). <b>Absentes de <c>Blaze.c</c></b> ;
+    /// 261 instructions, <c>Legacy/Raw/Blaze/SealedCave/FUN_00468AC0.asm</c>. <b>Les cinq corps sont
+    /// identiques instruction pour instruction</b>, adresses mises à part.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// <b>La tourelle qui suit un membre du groupe.</b> Trois champs que la sous-zone lui pose
+    /// deviennent ses réglages à la première image : <c>+0x14</c> la <b>portée</b> (rangée dans
+    /// <c>+0x44</c>), <c>+0x30</c> le <b>décalage de vitesse de rotation</b> (rangé dans
+    /// <c>+0x48</c>, puis remis à zéro), et <c>+0x16</c> la <b>demi-ouverture du cône de vue</b> —
+    /// celle-là est relue à chaque image, jamais rangée. Son cap de repos est <c>+0x12</c>.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>état 1, la recherche</term><description>elle mesure les quatre membres vivants
+    ///     <b>en plan</b>, garde ceux qui sont plus près que la portée et dans le cône —
+    ///     l'angle relatif au cap de repos doit tomber entre <c>0</c> et l'ouverture, ou entre
+    ///     <c>0x1000 - ouverture</c> et <c>0x1000</c> —, et retient <b>le plus proche</b> ; à égalité,
+    ///     le dernier des quatre l'emporte, le binaire ne s'arrêtant pas au premier. Sans personne,
+    ///     elle revient vers son cap de repos d'un huitième par image.</description></item>
+    ///   <item><term>état 2, la poursuite</term><description>elle tourne vers sa cible de l'écart
+    ///     divisé par <c>2 ^ +0x48</c>. Quand son cap s'est stabilisé — moins de 5 d'écart avec
+    ///     celui de l'image précédente, gardé dans <c>+0x4c</c> — elle arme un tir de trente images.
+    ///     Perdre la cible, hors de portée ou hors du cône <b>élargi de <c>0x12c</c></b>, la ramène à
+    ///     l'état 1.</description></item>
+    ///   <item><term>le tir</term><description>tant que <c>+0x9a</c> descend, elle publie la
+    ///     position de sa cible dans <c>+0x50</c>..<c>+0x58</c> et sème <c>0x31</c> à chaque image,
+    ///     avec la voix <c>0x28</c> de la zone <b>une seule fois</b> (verrou <c>+0x98</c>). Une cible
+    ///     qui passe plus haut que la tourelle plus <c>0xb4</c> interrompt le tir sur-le-champ.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Une garde qui ne peut pas échouer.</b> L'armement du tir teste aussi l'octet haut de
+    /// <c>+0x48</c> (<c>test ch,0FFh</c>) : comme <c>+0x48</c> vient d'un <c>movsx</c> d'un petit
+    /// décalage, cet octet est toujours nul et le test passe toujours. Relevé tel quel.
+    /// </para>
+    /// <para>
+    /// <b>Le verrou de son</b> est remis à zéro à chaque image où <c>+0x5c</c> vaut <c>-1</c>,
+    /// c'est-à-dire tant qu'aucune cible n'est retenue.
+    /// </para>
+    /// </remarks>
+    private static void TickBeamTurret_00468AC0(byte* e)
+    {
+        short fov = *(short*)(e + 0x16);
+        short rest = (short)(0x1000 - fov);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = *(short*)(e + 0x32);
+            *(int*)(e + 0x44) = *(short*)(e + 0x14);
+            *(int*)(e + 0x48) = *(short*)(e + 0x30);
+            *(short*)(e + 0x30) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(int*)(e + 0x5c) = -1;
+            *(short*)(e + 0x9a) = 0;
+            *(short*)(e + 0x98) = 0;
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(int*)(e + 0x5c) == -1) *(short*)(e + 0x98) = 0;
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            // ------------------------------------------------- la recherche
+            *(int*)(e + 0x5c) = -1;
+
+            short* seen = stackalloc short[4];
+            byte* member = Inp.s_SlotFlags_005e93c0;                // 0x005e93c0
+
+            for (int slot = 0; slot < 4; slot++, member += 0x9c)
+            {
+                seen[slot] = 0x270f;
+
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                int dx = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+                int angle = Winsys3d.Ordinal_457(dz, dx) + (0x800 - *(short*)(e + 0x12));
+
+                if (distance >= *(int*)(e + 0x44)) continue;
+
+                // Le binaire ne rejette pas tout de suite un angle nul ou negatif sous l ouverture :
+                // il tombe sur le second intervalle. Les deux tests sont donc un OU.
+                bool inCone = (angle < fov && angle > 0) || (angle < 0x1000 && angle > rest);
+
+                if (inCone) seen[slot] = (short)distance;
+            }
+
+            short nearest = 0x270f;
+            for (int slot = 0; slot < 4; slot++)
+            {
+                if (seen[slot] < nearest) nearest = seen[slot];
+            }
+
+            if (nearest == 0x270f)
+            {
+                short course = *(short*)(e + 0x32);
+                *(short*)(e + 0x32) = (short)(((*(short*)(e + 0x12) - course) >> 3) + course);
+                return;
+            }
+
+            // Le binaire ne s'arrete pas au premier : a egalite, le dernier l'emporte.
+            for (int slot = 0; slot < 4; slot++)
+            {
+                if (seen[slot] == nearest) *(int*)(e + 0x5c) = slot;
+            }
+
+            *(short*)(e + 0x10) = 2;
+            return;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            // ------------------------------------------------- la poursuite
+            byte* target = Inp.s_SlotFlags_005e93c0 + *(int*)(e + 0x5c) * 0x9c;
+
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int swing = ((Winsys3d.Ordinal_457(dz, dx) - *(short*)(e + 0x32)) & 0xfff) - 0x800;
+            *(short*)(e + 0x32) += (short)(swing >> *(int*)(e + 0x48));
+
+            int drift = (short)(*(int*)(e + 0x4c) - *(short*)(e + 0x32));
+            if (drift < 0) drift = -drift;
+
+            if (drift < 5)
+            {
+                // Ghidra: `test ch,0FFh` sur +0x48 — toujours nul, la garde passe toujours.
+                if (*(short*)(e + 0x9a) == 0 && ((*(int*)(e + 0x48) >> 8) & 0xff) == 0)
+                {
+                    *(short*)(e + 0x9a) = 0x1e;
+                }
+            }
+            else if (*(short*)(e + 0x9a) == 0)
+            {
+                *(short*)(e + 0x98) = 0;
+            }
+
+            int angle = Winsys3d.Ordinal_457(dz, dx) + (0x800 - *(short*)(e + 0x12));
+            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            bool lost = distance > *(int*)(e + 0x44);
+            if (!lost && angle > fov + 0x12c && angle < rest - 0x12c) lost = true;
+
+            if (lost)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x9a) = 0;
+            }
+
+            *(int*)(e + 0x4c) = *(short*)(e + 0x32);
+        }
+
+        // ------------------------------------------------- le tir
+        if (*(short*)(e + 0x9a) <= 0) return;
+
+        *(short*)(e + 0x9a) -= 1;
+
+        byte* aim = Inp.s_SlotFlags_005e93c0 + *(int*)(e + 0x5c) * 0x9c;
+        *(int*)(e + 0x50) = *(int*)(aim + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(aim + 0x20);
+        *(int*)(e + 0x58) = *(int*)(aim + 0x24);
+
+        if ((*(int*)(e + 0x20) >> 0xc) + 0xb4 > (*(int*)(e + 0x54) >> 0xc))
+        {
+            SpawnEffectNearCamera_00468110(e, 0x31, 0, -1);         // Ghidra: FUN_00468110
+
+            if (*(short*)(e + 0x98) == 0)
+            {
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x28), 0x800, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+                *(short*)(e + 0x98) = 1;
+            }
+        }
+        else
+        {
+            *(short*)(e + 0x9a) = 0;
+        }
+
+        if (*(short*)(e + 0x9a) == 0) *(short*)(e + 0x10) = 1;
+    }
+
+    private static void EntityHandler_00468AC0(byte* e) => TickBeamTurret_00468AC0(e);
+    private static void EntityHandler_0046B6E0(byte* e) => TickBeamTurret_00468AC0(e);
+    private static void EntityHandler_0046D860(byte* e) => TickBeamTurret_00468AC0(e);
+    private static void EntityHandler_0046FAD0(byte* e) => TickBeamTurret_00468AC0(e);
+    private static void EntityHandler_004702D0(byte* e) => TickBeamTurret_00468AC0(e);
 }

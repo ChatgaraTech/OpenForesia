@@ -964,4 +964,272 @@ public static unsafe partial class Blaze
 
         if (CountPartyMembersMatching(e, 0x10, 0x40000000) == 0) *(short*)(e + 0x10) = 0;
     }
+
+    // =====================================================================
+    // LOT 10 (2026-09-20) — LA NAVETTE, TROIS COPIES
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x0046ad70</c> (sous-zones 2 et 3), <c>0x0046d070</c> (5, 8 et 10) et
+    /// <c>0x0046f2e0</c> (6 et 7). <b>Absentes de <c>Blaze.c</c></b> ; 459 instructions,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_0046AD70.asm</c>. <b>Les trois corps sont identiques
+    /// instruction pour instruction</b>, adresses mises à part. C'est le plus gros corps de la
+    /// catégorie « D » après celui de la sous-zone 1.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// <b>La navette qui fait la navette.</b> Elle porte le groupe d'un bout à l'autre d'une course
+    /// droite et revient. Trois champs de la sous-zone la règlent : <c>+0x16</c> la vitesse
+    /// maximale, <c>+0x14</c> la longueur de la course, <c>+0x30</c> le pas vertical (rangé dans
+    /// <c>+0x9a</c> à la naissance), et <c>+0x32</c> le cap.
+    /// </para>
+    /// <para>
+    /// <b>Elle calcule son point d'arrivée en déroulant tout le voyage à sa première image.</b> La
+    /// première passe est une boucle qui avance jusqu'au bout, puis rend la position de départ. Le
+    /// résultat est rangé d'une façon qui mérite d'être dite : <c>+0x44</c>, <c>+0x48</c> et
+    /// <c>+0x4c</c> portent chacun <b>deux positions en unités entières</b>, le départ dans les
+    /// seize bits hauts (<c>(p &amp; ~0xfff) &lt;&lt; 4</c>) et l'arrivée dans les seize bits bas.
+    /// Un dword par axe, deux points.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>états 8 et 2</term><description>au repos au départ et à l'arrivée. Le groupe
+    ///     entier à bord lance la course (états 1 et 3).</description></item>
+    ///   <item><term>états 1 et 3</term><description>la course, aller et retour. La vitesse
+    ///     <c>+0x5c</c> monte jusqu'à <c>+0x16</c> puis redescend une fois la longueur parcourue ;
+    ///     à zéro, l'état 4 ou 5.</description></item>
+    ///   <item><term>états 4 et 5</term><description>arrivée : elle attend que <b>plus personne</b>
+    ///     ne soit à bord pour se rearmer (2 et 8).</description></item>
+    ///   <item><term>états 6 et 7</term><description>quelqu'un est tombé en route. Elle rétrécit de
+    ///     200 par axe et par image jusqu'à disparaître, puis <b>reparaît à l'autre bout</b>.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Et elle se téléporte au bout le plus proche de la caméra.</b> Au repos, si le groupe n'est
+    /// pas entier à bord, elle compare la distance en plan de la caméra à chacun de ses deux bouts
+    /// et s'y pose — en passant à l'autre état si elle a changé de bout. La navette est donc
+    /// toujours du côté où le joueur se trouve, sans qu'on la voie voyager à vide.
+    /// </para>
+    /// <para>
+    /// Hors des états 6 et 7, ses trois échelles rejoignent <c>0x1000</c> par huitièmes à chaque
+    /// image : la réapparition se fait en grandissant.
+    /// </para>
+    /// </remarks>
+    private static void TickPartyShuttle_0046AD70(byte* e)
+    {
+        short state = *(short*)(e + 0x10);
+
+        if (state != 6 && state != 7)
+        {
+            *(short*)(e + 0x28) = (short)(((0x1000 - *(short*)(e + 0x28)) >> 3) + *(short*)(e + 0x28));
+            *(short*)(e + 0x2a) = (short)(((0x1000 - *(short*)(e + 0x2a)) >> 3) + *(short*)(e + 0x2a));
+            *(short*)(e + 0x2c) = (short)(((0x1000 - *(short*)(e + 0x2c)) >> 3) + *(short*)(e + 0x2c));
+        }
+
+        if (state == 0)
+        {
+            // ------------------------------------------------- le voyage a blanc
+            short lift = *(short*)(e + 0x30);
+            int keptX = *(int*)(e + 0x1c);
+            int keptY = *(int*)(e + 0x20);
+            int keptZ = *(int*)(e + 0x24);
+
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x9a) = lift;
+            *(short*)(e + 0x30) = 0;
+
+            *(int*)(e + 0x44) = (keptX & unchecked((int)0xfffff000)) << 4;
+            *(int*)(e + 0x48) = (keptY & unchecked((int)0xfffff000)) << 4;
+            *(int*)(e + 0x4c) = (keptZ & unchecked((int)0xfffff000)) << 4;
+
+            do
+            {
+                ShuttleTravelStep(e, outward: true);
+            }
+            while (*(short*)(e + 0x10) == 0);
+
+            *(int*)(e + 0x44) |= (*(int*)(e + 0x1c) >> 0xc) & 0xffff;
+            *(int*)(e + 0x48) |= (*(int*)(e + 0x20) >> 0xc) & 0xffff;
+            *(int*)(e + 0x4c) |= (*(int*)(e + 0x24) >> 0xc) & 0xffff;
+
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x20) = keptY;
+            *(int*)(e + 0x24) = keptZ;
+        }
+
+        // ------------------------------------------------- les deux bouts, depaquetes
+        int startX = *(int*)(e + 0x44) >> 0x10;
+        int startY = *(int*)(e + 0x48) >> 0x10;
+        int startZ = *(int*)(e + 0x4c) >> 0x10;
+        short endX = *(short*)(e + 0x44);
+        short endY = *(short*)(e + 0x48);
+        short endZ = *(short*)(e + 0x4c);
+
+        int riders = CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+
+        if (ActivePartySlotCount_00466D70() != riders && *(short*)(e + 0x10) == 8)
+        {
+            // Au depart, groupe incomplet : se poser au bout le plus proche de la camera.
+            if (CameraDistanceTo(startX, startZ) > CameraDistanceTo(endX, endZ))
+            {
+                PlaceShuttle(e, endX, endY, endZ);
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x2c) = 0;
+            }
+            else
+            {
+                PlaceShuttle(e, startX, startY, startZ);
+            }
+
+            return;
+        }
+
+        if (ActivePartySlotCount_00466D70() != riders && *(short*)(e + 0x10) == 2)
+        {
+            if (CameraDistanceTo(startX, startZ) < CameraDistanceTo(endX, endZ))
+            {
+                PlaceShuttle(e, startX, startY, startZ);
+                *(short*)(e + 0x10) = 8;
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x2c) = 0;
+            }
+            else
+            {
+                PlaceShuttle(e, endX, endY, endZ);
+            }
+
+            return;
+        }
+
+        // ------------------------------------------------- l'aller
+        if (ActivePartySlotCount_00466D70() == riders && *(short*)(e + 0x10) == 8)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            ShuttleTravelStep(e, outward: true);
+
+            if (ActivePartySlotCount_00466D70() != CountPartyMembersMatching(e, 0x20, 0x40000000))
+            {
+                *(short*)(e + 0x10) = 6;
+                *(int*)(e + 0x5c) = 0;
+            }
+        }
+
+        // ------------------------------------------------- le retour
+        if (ActivePartySlotCount_00466D70() == riders && *(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x10) = 3;
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            ShuttleTravelStep(e, outward: false);
+
+            if (ActivePartySlotCount_00466D70() != CountPartyMembersMatching(e, 0x20, 0x40000000))
+            {
+                *(short*)(e + 0x10) = 7;
+                *(int*)(e + 0x5c) = 0;
+            }
+        }
+
+        // ------------------------------------------------- les deux attentes et les deux fondus
+        if (*(short*)(e + 0x10) == 4 && riders == 0) *(short*)(e + 0x10) = 2;
+        if (*(short*)(e + 0x10) == 5 && riders == 0) *(short*)(e + 0x10) = 8;
+
+        if (*(short*)(e + 0x10) == 6 && *(int*)(e + 0x5c) == 0 && ShuttleShrink(e))
+        {
+            *(short*)(e + 0x10) = 8;
+        }
+
+        if (*(short*)(e + 0x10) == 7 && *(int*)(e + 0x5c) == 0 && ShuttleShrink(e))
+        {
+            *(short*)(e + 0x10) = 2;
+        }
+    }
+
+    /// <summary>Un pas de course de la navette. Le binaire écrit ce bloc trois fois — une pour le
+    /// voyage à blanc, une pour l'aller, une pour le retour, au signe près et à l'état d'arrivée
+    /// près (4 à l'aller, 5 au retour ; 8 pour le voyage à blanc).</summary>
+    private static void ShuttleTravelStep(byte* e, bool outward)
+    {
+        if (*(int*)(e + 0x5c) < *(short*)(e + 0x16) && *(short*)(e + 0x12) < *(short*)(e + 0x14))
+        {
+            *(int*)(e + 0x5c) += 1;
+        }
+
+        int speed = *(int*)(e + 0x5c);
+        short course = *(short*)(e + 0x32);
+        int climb = *(short*)(e + 0x9a) << 0xc;
+
+        if (outward)
+        {
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * speed;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * speed;
+            *(int*)(e + 0x20) += climb;
+        }
+        else
+        {
+            *(int*)(e + 0x1c) -= (int)Winsys3d.GetSinTableEntry(course) * speed;
+            *(int*)(e + 0x24) -= Winsys3d.GetCosTableEntry(course) * speed;
+            *(int*)(e + 0x20) -= climb;
+        }
+
+        *(short*)(e + 0x12) += (short)speed;
+
+        if (*(short*)(e + 0x12) <= *(short*)(e + 0x14)) return;
+
+        *(int*)(e + 0x5c) = speed - 1;
+        if (speed - 1 != -1) return;
+
+        // Le voyage a blanc tourne a l'etat 0 : il s'arrete sur 8. Les deux courses reelles
+        // s'arretent sur 4 et 5.
+        *(short*)(e + 0x10) = *(short*)(e + 0x10) == 0 ? (short)8 : (short)(outward ? 4 : 5);
+    }
+
+    /// <summary>La distance en plan de la caméra à un point donné en unités entières.</summary>
+    private static int CameraDistanceTo(int x, int z)
+    {
+        int dx = (*Mem.Camera(0x005de068) >> 0xc) - x;
+        int dz = (*Mem.Camera(0x005de070) >> 0xc) - z;
+
+        return (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+    }
+
+    /// <summary>Poser la navette sur un point donné en unités entières.</summary>
+    private static void PlaceShuttle(byte* e, int x, int y, int z)
+    {
+        *(int*)(e + 0x1c) = x << 0xc;
+        *(int*)(e + 0x20) = y << 0xc;
+        *(int*)(e + 0x24) = z << 0xc;
+    }
+
+    /// <summary>Le fondu des états 6 et 7 : 200 de moins par axe et par image.</summary>
+    /// <returns><c>true</c> quand la navette a entièrement disparu.</returns>
+    private static bool ShuttleShrink(byte* e)
+    {
+        *(short*)(e + 0x28) -= 200;
+        *(short*)(e + 0x2a) -= 200;
+        *(short*)(e + 0x2c) -= 200;
+
+        if (*(short*)(e + 0x28) > 0) return false;
+
+        *(short*)(e + 0x28) = 0;
+        *(short*)(e + 0x2a) = 0;
+        *(short*)(e + 0x2c) = 0;
+        return true;
+    }
+
+    private static void EntityHandler_0046AD70(byte* e) => TickPartyShuttle_0046AD70(e);
+    private static void EntityHandler_0046D070(byte* e) => TickPartyShuttle_0046AD70(e);
+    private static void EntityHandler_0046F2E0(byte* e) => TickPartyShuttle_0046AD70(e);
 }

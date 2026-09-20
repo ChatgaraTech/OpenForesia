@@ -3747,3 +3747,38 @@ dessine `s_Unknown_005edec4 + 2`.
 `0x005e9160`..`0x66` : sable (`0x00437DD0`), blanc mode 2 (`0x0043D4D0`, `0x00441EB0`), blanc mode 1
 (`0x00442870`), et **un ciel qui clignote** chez `0x0043CEE0` — repeint à *chaque image* en
 `(0x96, 0x96, r)` avec `r` tiré entre `0xb4` et `0xef`, mode 1.
+
+## La grotte scellée, lot 10 (2026-09-20) — trois tables de sauts qui n'en font qu'une
+
+**`0x00436434` et `0x0043f024` sont `0x0040a30c`.** Les deux tables de sauts des bulles d'effet
+d'état de la grotte ont été relevées mot par mot : douze entrées chacune, **les mêmes effets dans le
+même ordre** que la table déjà transcrite de la forêt, y compris l'entrée 9 qui redouble l'entrée 4.
+
+| entrée | applicateur | effet |
+|---:|---|---|
+| 0 | `0x0053bb20` | 16 |
+| 1 | `0x0053bc60` | 18 |
+| 2 | `0x0053c420` | piège |
+| 3 | `0x0053b3c0` | 7 |
+| 4 | `0x0053bf00` | 22 |
+| 5 | `0x0053b4b0` | 8 |
+| 6 | `0x0053b660` | 10 |
+| 7 | `0x0053b580` | 9 |
+| 8 | `0x0053b8f0` | 13 |
+| 9 | `0x0053bf00` | 22 — **doublon de l'entrée 4** |
+| 10 | `0x0053c040` | 24 |
+| 11 | `0x0053c1f0` | 27 |
+
+Les **vingt et une « appelées inconnues »** que le recensement portait sur `0x00436070` et
+`0x0043EC60` étaient leurs deux jeux privés d'enveloppes gardées — `0x00436470`..`0x00436750` et
+`0x0043f060`..`0x0043f2e0`, vingt-deux fonctions de quatre lignes qui font toutes
+`IsEffectPairBlocked_004364B0` puis un applicateur fixe. Le binaire porte donc **trois copies** du
+même jeu de douze enveloppes, une par appelant. Une seule est transcrite,
+`AfflictMember_00409F40`, à qui `keep` a été ajouté : la forêt y passe zéro, la grotte **le numéro
+d'emplacement du membre**.
+
+**Deux positions dans un dword.** La navette `0x0046AD70` range ses deux bouts de course dans
+`+0x44`, `+0x48` et `+0x4c` : le départ dans les seize bits hauts (`(p & ~0xfff) << 4`, c'est-à-dire
+la position en unités entières décalée de 16) et l'arrivée dans les seize bits bas. Elle obtient
+l'arrivée en **déroulant tout le voyage dans sa première image**, en boucle, puis en rendant la
+position de départ. C'est le seul endroit relevé où le jeu empaquette deux points par axe.

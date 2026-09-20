@@ -2735,6 +2735,26 @@ public static unsafe partial class Blaze
             case 0x00441EB0: EntityHandler_00441EB0(record); return;
             case 0x004417F0: EntityHandler_004417F0(record); return;
 
+            // ZONE 10 — LOT 10 (2026-09-20) : les trois familles de « D ». Dix corps, trois
+            // lectures — chaque famille est une copie exacte, instruction pour instruction.
+
+            // LA BULLE D'EFFET D'ETAT et son eclat — Combat/Projectiles.cs. Leurs deux tables de
+            // sauts sont celle de 0x0040a30c, deja transcrite.
+            case 0x00436070: EntityHandler_00436070(record); return;
+            case 0x0043EC60: EntityHandler_0043EC60(record); return;
+
+            // LA TOURELLE qui suit un membre du groupe — Handlers/SealedCave.cs.
+            case 0x00468AC0: EntityHandler_00468AC0(record); return;
+            case 0x0046B6E0: EntityHandler_0046B6E0(record); return;
+            case 0x0046D860: EntityHandler_0046D860(record); return;
+            case 0x0046FAD0: EntityHandler_0046FAD0(record); return;
+            case 0x004702D0: EntityHandler_004702D0(record); return;
+
+            // LA NAVETTE qui porte le groupe — Handlers/SealedCaveMecanismes.cs.
+            case 0x0046AD70: EntityHandler_0046AD70(record); return;
+            case 0x0046D070: EntityHandler_0046D070(record); return;
+            case 0x0046F2E0: EntityHandler_0046F2E0(record); return;
+
             // Ce qui compte le groupe — Handlers/SealedCaveMecanismes.cs.
             case 0x0046C540: EntityHandler_0046C540(record); return;
             case 0x0046CF10: EntityHandler_0046CF10(record); return;

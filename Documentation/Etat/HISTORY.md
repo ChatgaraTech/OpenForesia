@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-20
 
+- feat : **grotte scellée, lot 10 — 334 sur 349** : les trois familles de « D », dix corps pour trois
+  lectures — la tourelle qui suit un membre du groupe, la navette qui le porte d'un bout à l'autre,
+  et la bulle d'effet d'état. **Plus un seul jumeau dans le dépôt**
+- doc : **les vingt et une « appelées inconnues » des deux tables de sauts n'en étaient pas** — leurs
+  deux tables sont celle de `0x0040a30c`, mêmes douze effets dans le même ordre ;
+  `AfflictMember_00409F40` prend un `keep`, que la grotte remplit avec le numéro d'emplacement
+- doc : la navette empaquette **deux positions par dword** (`+0x44`, `+0x48`, `+0x4c`), départ en
+  haut et arrivée en bas, et obtient l'arrivée en déroulant tout son voyage à la première image
 - feat : **grotte scellée, lot 9 — 324 sur 349, la catégorie « C » est vide** : les vingt et un
   derniers des salles 11-12 et 13-15 — la gerbe tournante, la colonne, la braise en hélice, le
   tourbillon qui fauche, les deux gestes dont l'un vise la cible de sa cible

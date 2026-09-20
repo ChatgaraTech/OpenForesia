@@ -1016,25 +1016,25 @@ public static unsafe partial class Blaze
     /// <c>0x0040a131</c>.
     /// </para>
     /// </summary>
-    private static void AfflictMember_00409F40(int kind, uint* caster, uint* member)
+    private static void AfflictMember_00409F40(int kind, uint* caster, uint* member, int keep = 0)
     {
         if ((uint)kind > 11) return;
         if (IsEffectPairBlocked_004364B0(caster, member) != 0) return;
 
         switch (kind)
         {
-            case 0:  ApplyStatusEffect_0053BB20(caster, member, 0); break;   // 0x0040a480, effet 16
-            case 1:  ApplyStatusEffect_0053BC60(caster, member, 0); break;   // 0x0040a4c0, effet 18
-            case 2:  ApplyTrapEffect_0053C420(caster, member, 0); break;     // 0x0040a5c0
-            case 3:  ApplyStatusEffect_0053B3C0(caster, member, 0); break;   // 0x0040a340
-            case 4:  ApplyStatusEffect_0053BF00(caster, member, 0); break;   // 0x0040a500, effet 22
-            case 5:  ApplyStatusEffect_0053B4B0(caster, member, 0); break;   // 0x0040a380, effet 8
-            case 6:  ApplyStatusEffect_0053B660(caster, member, 0); break;   // 0x0040a400, effet 10
-            case 7:  ApplyStatusEffect_0053B580(caster, member, 0); break;   // 0x0040a3c0, effet 9
-            case 8:  ApplyStatusEffect_0053B8F0(caster, member, 0); break;   // 0x0040a440, effet 13
-            case 9:  ApplyStatusEffect_0053BF00(caster, member, 0); break;   // 0x0040a500, effet 22
-            case 10: ApplyStatusEffect_0053C040(caster, member, 0); break;   // 0x0040a540, effet 24
-            case 11: ApplyStatusEffect_0053C1F0(caster, member, 0); break;   // 0x0040a580, effet 27
+            case 0:  ApplyStatusEffect_0053BB20(caster, member, keep); break;   // 0x0040a480, effet 16
+            case 1:  ApplyStatusEffect_0053BC60(caster, member, keep); break;   // 0x0040a4c0, effet 18
+            case 2:  ApplyTrapEffect_0053C420(caster, member, keep); break;     // 0x0040a5c0
+            case 3:  ApplyStatusEffect_0053B3C0(caster, member, keep); break;   // 0x0040a340
+            case 4:  ApplyStatusEffect_0053BF00(caster, member, keep); break;   // 0x0040a500, effet 22
+            case 5:  ApplyStatusEffect_0053B4B0(caster, member, keep); break;   // 0x0040a380, effet 8
+            case 6:  ApplyStatusEffect_0053B660(caster, member, keep); break;   // 0x0040a400, effet 10
+            case 7:  ApplyStatusEffect_0053B580(caster, member, keep); break;   // 0x0040a3c0, effet 9
+            case 8:  ApplyStatusEffect_0053B8F0(caster, member, keep); break;   // 0x0040a440, effet 13
+            case 9:  ApplyStatusEffect_0053BF00(caster, member, keep); break;   // 0x0040a500, effet 22
+            case 10: ApplyStatusEffect_0053C040(caster, member, keep); break;   // 0x0040a540, effet 24
+            case 11: ApplyStatusEffect_0053C1F0(caster, member, keep); break;   // 0x0040a580, effet 27
         }
     }
 
@@ -4070,4 +4070,184 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x10) += 1;
         if (*(short*)(e + 0x10) >= 0x30) *(uint*)e = 0;
     }
+
+    // =============================================================================================
+    // LA GROTTE SCELLEE, LOT 10 (2026-09-20) — LA BULLE D'EFFET D'ETAT, DEUX FAMILLES DE COPIES
+    // =============================================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00436070</c> (sous-zones 4 et 9) et <c>0x0043ec60</c> (13, 14 et 15).
+    /// <b>Absentes de <c>Blaze.c</c></b> ; 311 instructions chacune,
+    /// <c>Legacy/Raw/Blaze/SealedCave/FUN_00436070.asm</c>. <b>Les deux corps sont identiques
+    /// instruction pour instruction</b>, adresses mises à part — y compris leurs deux tables de
+    /// sauts.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// <b>Un corps, deux vies, séparées par <c>+0x5c</c>.</b> A zéro c'est <b>la bulle qui
+    /// s'étend</b>, à un c'est <b>l'éclat qu'elle sème</b>.
+    /// </para>
+    /// <para>
+    /// <b>La bulle.</b> Modèle 7, teinte <c>0xfa</c>, et une hauteur de départ
+    /// <c>(0x19 - +0x12) * 400</c> — le <c>+0x12</c> que la sous-zone a posé décide donc de sa
+    /// taille verticale. Son <c>+0x36</c> reçoit le bit 2 et perd le bit 0. Chaque image, ses deux
+    /// échelles horizontales rejoignent <c>+0x48</c> par huitièmes, sa teinte perd <c>7 / 7 / 5</c>,
+    /// et elle s'éteint quand son bleu atteint zéro.
+    /// </para>
+    /// <para>
+    /// <b>Elle n'applique qu'une fois par membre</b>, et seulement une fois assez grande : tant que
+    /// <c>+0x28</c> reste sous <c>+0x48 - 0xbb8</c>, rien ne part. Ensuite, tout membre vivant à
+    /// moins de <c>+0x28 / 100</c> unités <b>en plan</b> et dont le bit n'est pas encore dans le
+    /// masque <c>+0x14</c> reçoit l'effet d'état que <c>+0x44</c> désigne.
+    /// </para>
+    /// <para>
+    /// <b>La table de sauts est celle qu'on connaît déjà.</b> Ses douze entrées, relevées à
+    /// <c>0x00436434</c> et <c>0x0043f024</c>, sont <b>exactement</b> celles de
+    /// <c>0x0040a30c</c> — mêmes effets, même ordre, et la même entrée 9 qui redouble l'entrée 4.
+    /// Les vingt-et-une « appelées inconnues » que le recensement signalait sur ces deux corps sont
+    /// leurs deux jeux privés d'enveloppes gardées, identiques aux douze de
+    /// <see cref="AfflictMember_00409F40"/>. C'est donc cette fonction qui est appelée, avec
+    /// <c>keep</c> — que le binaire remplit ici avec <b>le numéro d'emplacement</b> du membre, et
+    /// non avec zéro.
+    /// </para>
+    /// <para>
+    /// <b>Le lanceur est le grand-porteur</b> : <c>+0x6c</c> de son <c>+0x6c</c>, chacun replié sur
+    /// l'entité par défaut <c>0x005de558</c> s'il est nul.
+    /// </para>
+    /// <para>
+    /// <b>L'éclat.</b> Modèle <c>0x30</c>, trois échelles tirées entre <c>0xc8</c> et <c>0x18f</c>,
+    /// un cap tiré, une teinte partie du noir et un départ relevé de 0 à <c>0xc7</c> unités. Six
+    /// images pendant lesquelles il tourne de <c>-0x96</c>, grandit de 100 par axe et sa teinte
+    /// <b>rejoint le blanc par moitiés</b> ; puis vingt images où elle <b>retombe au noir par
+    /// huitièmes</b>, et l'emplacement se vide.
+    /// </para>
+    /// </remarks>
+    private static void TickStatusBubble_00436070(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+        if (carrier == null) carrier = Res.s_EntityList_005de558;   // Ghidra: &DAT_005de558
+
+        byte* caster = *(byte**)(carrier + 0x6c);
+        if (caster == null) caster = Res.s_EntityList_005de558;
+
+        if (*(int*)(e + 0x5c) == 0)
+        {
+            // ------------------------------------------------- la bulle
+            if (*(short*)(e + 0x10) == 0)
+            {
+                short tall = (short)(0x19 - *(short*)(e + 0x12));
+                short mode = (short)(*(short*)(e + 0x36) & ~1);
+
+                e[4] = 7;
+                e[0x38] = 0xfa;
+                e[0x39] = 0xfa;
+                e[0x3a] = 0xfa;
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x2a) = (short)(tall * 400);
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x2e) = unchecked((short)0xffc4);
+                *(short*)(e + 0x36) = (short)(mode | 2);
+            }
+
+            if (*(short*)(e + 0x10) != 1) return;
+
+            BrightenEntityTint_00404DE0(e, -7, -7, -5);             // Ghidra: FUN_00404de0
+
+            int target = *(int*)(e + 0x48);
+            *(short*)(e + 0x28) = (short)(((target - *(short*)(e + 0x28)) >> 3) + *(short*)(e + 0x28));
+            *(short*)(e + 0x2c) = (short)(((target - *(short*)(e + 0x2c)) >> 3) + *(short*)(e + 0x2c));
+
+            if (e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+
+            if (*(short*)(e + 0x16) != 0) return;
+            if (*(short*)(e + 0x28) >= target - 0xbb8) return;
+
+            byte* member = Inp.s_SlotFlags_005e93c0;                // 0x005e93c0
+
+            for (int slot = 0; slot < 4; slot++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                int dx = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+                if (distance >= *(short*)(e + 0x28) / 100) continue;
+
+                int bit = 1 << slot;
+                if ((*(short*)(e + 0x14) & bit) != 0) continue;
+                *(short*)(e + 0x14) |= (short)bit;
+
+                AfflictMember_00409F40(*(int*)(e + 0x44), (uint*)caster, (uint*)member, slot);
+            }
+
+            return;
+        }
+
+        if (*(int*)(e + 0x5c) != 1) return;
+
+        // ------------------------------------------------- l'eclat
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[4] = 0x30;
+            *(short*)(e + 0x28) = (short)(CrtRand() % 0xc8 + 0xc8);
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 0xc8 + 0xc8);
+            *(short*)(e + 0x2c) = (short)(CrtRand() % 0xc8 + 0xc8);
+            *(short*)(e + 0x32) = (short)SignedMask(CrtRand(), 0xfff);
+
+            int lift = CrtRand() % 0x1f4;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x30) = (short)lift;
+
+            *(short*)(e + 0x2e) = unchecked((short)0xffc4);
+            *(int*)(e + 0x20) += (CrtRand() % 0xc8) << 0xc;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) += unchecked((short)0xff6a);        // -0x96
+
+            e[0x38] = (byte)(e[0x38] + (byte)((0xfa - e[0x38]) >> 1));
+            e[0x39] = (byte)(e[0x39] + (byte)((0xfa - e[0x39]) >> 1));
+            e[0x3a] = (byte)(e[0x3a] + (byte)((0xfa - e[0x3a]) >> 1));
+
+            *(short*)(e + 0x12) += 1;
+            if (*(short*)(e + 0x12) > 5)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+
+            *(short*)(e + 0x28) += 100;
+            *(short*)(e + 0x2a) += 100;
+            *(short*)(e + 0x2c) += 100;
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x32) += unchecked((short)0xff6a);
+
+        e[0x38] = (byte)(e[0x38] + (byte)(-e[0x38] >> 3));
+        e[0x39] = (byte)(e[0x39] + (byte)(-e[0x39] >> 3));
+        e[0x3a] = (byte)(e[0x3a] + (byte)(-e[0x3a] >> 3));
+
+        *(short*)(e + 0x12) += 1;
+        if (*(short*)(e + 0x12) > 0x14) *(uint*)e &= 0x7fffffff;
+
+        *(short*)(e + 0x28) += 100;
+        *(short*)(e + 0x2a) += 100;
+        *(short*)(e + 0x2c) += 100;
+    }
+
+    private static void EntityHandler_00436070(byte* e) => TickStatusBubble_00436070(e);
+    private static void EntityHandler_0043EC60(byte* e) => TickStatusBubble_00436070(e);
 }

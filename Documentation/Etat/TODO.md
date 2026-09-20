@@ -1,11 +1,11 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7, 8 et 9).
-**Il ne reste que la grotte scellée — 324 / 349 —, et il n'y reste que des « D ».** Toutes les
-routines d'IA du jeu, tous les « B » et **toute la catégorie « C » du dépôt** sont écrits. Les onze
-autres zones sont complètes : l’auberge, la mine, la montagne du dragon de feu, la forêt, la vieille
-tour, le Labyrinthe des morts, le château de l’immortel, les ruines souterraines, la vallée d’argent
-et les ruines dans le lac.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-20** (grotte scellée, lots 7 à 10).
+**Il ne reste que la grotte scellée — 334 / 349 —, et il n'y reste que quinze « D », tous
+distincts : plus un seul jumeau dans le dépôt.** Toutes les routines d'IA du jeu, tous les « B » et
+toute la catégorie « C » sont écrits. Les onze autres zones sont complètes : l’auberge, la mine, la
+montagne du dragon de feu, la forêt, la vieille tour, le Labyrinthe des morts, le château de
+l’immortel, les ruines souterraines, la vallée d’argent et les ruines dans le lac.
 L'historique détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que
 l'état courant et la suite à faire.
 
@@ -18,63 +18,44 @@ déplacement.
 
 ---
 
-# GROTTE SCELLÉE, LOTS 7 À 9 — LA CATÉGORIE « C » VIDÉE (2026-09-20)
+# GROTTE SCELLÉE, LOTS 7 À 10 — 240 → 334 SUR 349 (2026-09-20)
 
-**240 sur 349 devient 324 sur 349** en trois lots, chacun pris par bloc de sous-zones. Le détail est
-dans `REVERSE_STATUS.md` ; voici ce qu'il faut retenir.
+Quatre lots, chacun pris par bloc de sous-zones ou par famille de copies. Le détail est dans
+`REVERSE_STATUS.md` ; voici ce qu'il faut retenir.
 
-**Lot 7 — bloc 0 / 2-3 / 5-8-10**, 36 corps pour 22 lectures. La pierre oblique qui éclate (elle
-blesse dans *tous* ses états), le coup qui abaisse d'un quart l'attaque de son lanceur puis la remet,
-le lien dont le `+0x14` désigne un voisin **dans la même table d'entités** (`e + 0x9c * n`), le
-levier qui *bascule* son bit là où la dalle ne fait que le poser.
+**Lots 7, 8 et 9 — toute la catégorie « C »**, 84 corps. La pierre oblique qui blesse dans *tous* ses
+états ; le coup qui abaisse d'un quart l'attaque de son lanceur puis la remet ; le lien dont le
+`+0x14` désigne un voisin **dans la même table d'entités** ; la boule qui éclate en douze en passant
+son octet `+0x42` à ses enfants ; deux sœurs séparées par **une seule instruction qui coupe le son**
+de l'une ; et **sept morts de membre**, chacune une scène complète
+(`Cutscene/SealedCaveScenes.cs`, ouvert au lot 8).
 
-**Lot 8 — blocs 4-9 et 6-7**, 27 corps, et **`Cutscene/SealedCaveScenes.cs` ouvert**. La boule qui
-éclate en douze (un corps, deux vies : l'octet `+0x42` sépare le vol de l'éclat, et les enfants
-naissent de la boule elle-même), la détonation qui écrit dans le `+0x10` de son porteur l'état où
-reprendre, et deux sœurs séparées par **une seule instruction qui coupe le son**.
+**Lot 10 — les trois familles de « D »**, dix corps pour trois lectures. **La tourelle** qui suit le
+plus proche des quatre membres dans son cône et publie la position de sa cible dans
+`+0x50`..`+0x58` ; **la navette** qui porte le groupe, calcule son point d'arrivée en déroulant tout
+son voyage à la première image, empaquette ses deux bouts **deux par dword**, et se téléporte au bout
+le plus proche de la caméra quand le groupe n'est pas à bord ; **la bulle d'effet d'état**, dont les
+deux tables de sauts se sont révélées être celle de `0x0040a30c` — les vingt et une « appelées
+inconnues » du recensement étaient deux jeux privés d'enveloppes gardées.
 
-**Lot 9 — blocs 11-12 et 13-14-15**, 21 corps, **plus aucun jumeau**. Cinq morts de membre de plus —
-la grotte tue de sept façons —, le tourbillon qui se charge puis fauche, et le geste qui **vise la
-cible de sa cible** en corrigeant l'élévation de sa hauteur de bulle.
+**La suite** : **15 gestionnaires, 15 lectures**, `Zone10ParComplexite.md`. Ils se rangent en trois
+groupes.
 
-**La suite** : **25 gestionnaires, 18 lectures**, tous des « D » (> 250 instructions),
-`Zone10ParComplexite.md`. Ils gardent leurs familles — **cinq copies de `0x00468AC0`** (261
-instructions), **trois de `0x0046AD70`** (459) et **deux de `0x00436070`** (311) : dix corps pour
-trois lectures, c'est par là qu'il faut commencer.
-
-Restent ensuite les quatre pièces lourdes : les deux à **table de sauts** (`0x00436070` et
-`0x0043EC60`, qui portent en plus huit et dix appelées inconnues chacune), celui de **610
-instructions** (`0x00471150`, sous-zone 1, cinq appelées inconnues) et celui de **477**
-(`0x00440840`). Leurs appelées inconnues ne sont plus une inconnue — voir juste en dessous.
-
-## Reconnaissance du lot 10, faite le 2026-09-20 — à ne pas refaire
-
-**Les dix-sept « appelées inconnues » n'en sont pas.** `0x00436470`, `0x004365d0`, `0x00436610`,
-`0x00436650`, `0x00436690`, `0x004366d0`, `0x00436710`, `0x00436750` (celles de `0x00436070`) et
-`0x0043f0a0`..`0x0043f2e0` (celles de `0x0043EC60`) sont **toutes la même enveloppe de quatre
-lignes** : `IsEffectPairBlocked_004364B0`, puis un appliqueur d'effet d'état fixe. C'est
-exactement la forme de `AfflictWithGuard`, `AfflictWithGuard11` et `AfflictWithGuard13` déjà
-écrites. Les dix-sept se transcrivent donc en **un** corps paramétré, sur le modèle de
-`AfflictMember_00409F40` et de ses douze enveloppes. Aucune des deux tables de sauts n'est un
-obstacle : ce sont deux choix d'effet d'état.
-
-**`0x00468AC0` est relevée.** C'est **la tourelle qui suit un membre du groupe** : un cône de vue
-dont la demi-ouverture est `+0x16` et la portée `+0x44`, un balayage qui retient **le plus proche
-des quatre** (tableau de quatre shorts sur la pile, initialisés à `0x270f`), un pivotement de
-`delta >> +0x48` par image, et un tir armé quand le cap s'est stabilisé à moins de 5 — trente images
-de `0x31` semé, avec la voix `0x28` de la zone une seule fois. Elle publie la position de sa cible
-dans `+0x50`..`+0x58`, ce que le rayon doit lire. Perdre la cible (hors portée, ou hors du cône
-élargi de `0x12c`) la ramène à l'état 1.
-
-**`0x0046AD70` est la pièce à lire en premier**, et la plus difficile : elle empile **deux positions
-dans trois dwords**, `+0x44`, `+0x48` et `+0x4c` portant chacun un demi-mot « départ » en haut et un
-demi-mot « arrivée » en bas (`and 0xfffff000 ; shl 4` à la pose, `sar 0x10` à la lecture). Elle
-compte aussi le groupe (`CountPartyMembersMatching` contre `ActivePartySlotCount_00466D70`) et lit la
-caméra. À traiter à tête reposée.
+- **La sous-zone 0, quatre corps qui partagent leurs appelées** : `0x00469100` (284),
+  `0x00469BC0` (263), `0x00469F60` (342) et `0x00469480` (363). Les trois premiers appellent
+  `0x0046A5A0` et `0x0046A630` (et `0x0046A3F0` pour le dernier des trois) — **commencer par lire ces
+  trois feuilles**, elles serviront quatre fois.
+- **La sous-zone 1, trois corps** : `0x0043B870` (369, décompilée), `0x00470C20` (385) et
+  `0x00471150` (610, le plus gros du dépôt). Ils partagent `0x00471DD0`, `0x004725A0` et
+  `0x00472630`. C'est la salle de la machine à trois mots d'état du lot 4.
+- **Le reste, huit corps isolés** : `0x00440060` (256, décompilée), `0x004424B0`, `0x00486320`,
+  `0x004396E0`, `0x0043C4A0`, `0x0043FB80` (décompilée), `0x00436950` (436, table de sauts —
+  **ses appelées sont les mêmes enveloppes gardées que le lot 10**, plus `0x00436F20` et
+  `0x00436F60`), `0x00440840` (477).
 
 **Deux fichiers ont franchi le seuil de coupe** annoncé dans `ARCHITECTURE.md` :
 `Effects/SealedCaveParticles.cs` (4 791 lignes) est **à couper par bloc de sous-zones**, et
-`Combat/Projectiles.cs` (4 073 lignes) est à surveiller. La coupe se propose, elle ne se fait pas
+`Combat/Projectiles.cs` (4 253 lignes) est à surveiller. La coupe se propose, elle ne se fait pas
 d'office.
 
 # TOUTES LES INTELLIGENCES ÉCRITES — GROTTE SCELLÉE, LOT 3 (2026-09-19)

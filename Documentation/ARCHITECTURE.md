@@ -311,7 +311,7 @@ tue un membre du groupe de sept façons, et chacune est une scène complète (92
 **Le fichier d'effets a dépassé le seuil annoncé** : à 4 791 lignes après le lot 9, `Effects/SealedCaveParticles.cs`
 est **à couper par bloc de sous-zones** (0 / 2-3 / 5-8-10, 4-9, 6-7, 11-12, 13-14-15). La coupe se
 propose, elle ne se fait pas d'office — mais elle n'est plus hypothétique. `Combat/Projectiles.cs`
-(4 073 lignes) est à surveiller pour la même raison, avec la nuance qu'il n'est pas propre à une
+(4 253 lignes) est à surveiller pour la même raison, avec la nuance qu'il n'est pas propre à une
 zone.
 
 Au lot 3 (les intelligences), **une bête par fichier** dans `Ai/SealedCave/` : `ZombieDragon.cs`,
