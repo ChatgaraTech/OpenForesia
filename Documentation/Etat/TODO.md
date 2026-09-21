@@ -2,6 +2,9 @@
 
 Point d’entrée entre deux sessions. Mis à jour le **2026-09-20**.
 
+> **Chantier en cours : se passer des cinq DLL de 1998.** Son point de reprise est
+> [`byebye-dll.md`](byebye-dll.md) — le lire en premier, puis `DLLAtteignables.md` pour les chiffres.
+
 # IL N'Y A PLUS DE GESTIONNAIRE À TRANSCRIRE
 
 `GestionnairesEntites.md` affiche **« à transcrire : 0 »**. Les **1 430 gestionnaires d'entité
