@@ -219,11 +219,15 @@ internal static unsafe class Winsys3d
 
     // winsys3d.c FUN_00a05ac0 â€” libgpu `SetDefDispEnv(DISPENV*, x, y, w, h)`. Writes disp={x,y,w,h},
     // screen={0,0,0x100,0xf0}, isinter=0, isrgb24=0 (18 of the struct's 20 bytes).
-    [DllImport("winsys3d.dll", EntryPoint = "#658")] internal static extern void SetDefDispEnv(void* dispEnv, short x, short y, short w, short h);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05ac0 @ 0x00a05ac0.</summary>
+    internal static void SetDefDispEnv(void* dispEnv, short x, short y, short w, short h)
+        => Libraries.Winsys3dListeAffichage.SetDefDispEnv(dispEnv, x, y, w, h);
 
     // winsys3d.c FUN_00a05b50 â€” libgpu `SetDefDrawEnv(DRAWENV*, x, y, w, h)`. Writes clip={x,y,w,h},
     // ofs={x,y}, tw={0,0,0,0}, tpage=10, dtd=1, dfe=1, isbg=0, r0=g0=b0=0 (first 28 bytes of 92).
-    [DllImport("winsys3d.dll", EntryPoint = "#661")] internal static extern void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05b50 @ 0x00a05b50.</summary>
+    internal static void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h)
+        => Libraries.Winsys3dListeAffichage.SetDefDrawEnv(drawEnv, x, y, w, h);
 
     // Game-state-0 ordinals. winsys3d.c declares all of these with no parameters, but that is the
     // same decompiler artifact seen throughout this project â€” the **call sites are authoritative**,
@@ -247,11 +251,13 @@ internal static unsafe class Winsys3d
     // Frame ordinals. 688 is libgpu `ClearOTagR(u_long *ot, int n)` â€” winsys3d.c FUN_00a06160 keeps
     // both parameters, unlike its neighbours. 657/660 take a DISPENV/DRAWENV (PutDispEnv/PutDrawEnv
     // shaped), 701 takes the ordering table (DrawOTag shaped).
-    [DllImport("winsys3d.dll", EntryPoint = "#688")] internal static extern uint* Ordinal_688(uint* ot, int count);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a06160 @ 0x00a06160 — ClearOTagR.</summary>
+    internal static uint* Ordinal_688(uint* ot, int count) => Libraries.Winsys3dListeAffichage.ClearOTagR(ot, count);
 
     [DllImport("winsys3d.dll", EntryPoint = "#657")] internal static extern int Ordinal_657(void* env);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#660")] internal static extern int Ordinal_660(void* env);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05b30 @ 0x00a05b30.</summary>
+    internal static int Ordinal_660(void* env) => Libraries.Winsys3dListeAffichage.PutDrawEnv(env);
 
     [DllImport("winsys3d.dll", EntryPoint = "#701")] internal static extern void Ordinal_701(uint* ot);
 

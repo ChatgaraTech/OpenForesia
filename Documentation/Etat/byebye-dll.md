@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-21** (souches, trigonométrie, section critique).
+chiffres à jour. Dernière mise à jour : **2026-09-21** (souches, trigonométrie, section critique, liste d'affichage).
 
 ## Le but
 
@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 49 / 83 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 65 | 16 / 242 | **en cours** ; souches, trigonométrie et section critique faites |
+| `winsys3d` | 61 | 21 / 243 | **en cours** ; les quatre lots faciles sont faits |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -75,7 +75,7 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
 
 ## Le prochain lot : `winsys3d`
 
-65 points d'entrée restants, 242 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
+61 points d'entrée restants, 243 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
 d'affichage sort par la vtable du device de `3dhelp`, une arête que le relevé ne voit pas.
 
 Découper par sous-arbre, dans cet ordre suggéré (les ordinaux se groupent d'eux-mêmes) :
@@ -85,9 +85,26 @@ Découper par sous-arbre, dans cet ordre suggéré (les ordinaux se groupent d'e
    `Libraries/winsys3d/Trigonometrie.cs`. **337, 376, 378, 379 restent natifs** — voir la règle 6 ;
 3. ~~la section critique~~ — **fait le 2026-09-21** : 40 et 41, `SectionCritique.cs`. Le clavier
    était déjà fait. Reste `Setup3DDevice` (823) et la sous-couche carte mémoire ;
-4. la liste d'affichage libgpu (657–677) — **le gros morceau**, et celui qui touche à
-   `DeviceShim`/`SyntheticDevice` : une fois en C#, le détournement de `GetProcAddress` n'a plus
-   d'objet et le chemin devient « libgpu C# → `D3D11Backend` » en direct.
+4. ~~la liste d'affichage~~ — **partiellement fait le 2026-09-21** : 658, 660, 661, 688 portés
+   (`ListeAffichage.cs`). **Les dix autres sont bloqués**, le tableau corps par corps est dans
+   l'en-tête de ce fichier.
+
+## Ce qui reste est UN SEUL LOT, et il faut le savoir avant de commencer
+
+`DrawOTag` (701) est le cœur : treize globales de la DLL, sept appels internes, **quatre
+emplacements de la vtable du device de 3dhelp**. Par la règle 6, il entraîne avec lui tout ce qui
+partage ces globales — c'est-à-dire l'essentiel des 222 corps restants. Il n'y a plus de petit lot
+à prendre : les quatre faciles sont épuisés.
+
+Deux conséquences pour la suite :
+
+- **le prochain pas n'est pas un portage mais une carte** : quelles globales de `winsys3d` le
+  chemin d'affichage partage, et où sont les coupures possibles. `census-dll-surface.sh` ne le
+  dit pas — il faudrait un relevé globale → corps qui l'écrivent / le lisent ;
+- **le device de 3dhelp est la vraie couture.** Les quatre appels de vtable de `DrawOTag` vont
+  déjà chez nous quand `SyntheticDevice` est actif. Porter `DrawOTag` revient donc à faire
+  appeler `DeviceShim` par du C# plutôt que par du natif — ce qui fait disparaître le
+  détournement de `GetProcAddress`, mais demande que les treize globales soient portées d'abord.
 
 Lire `Documentation/DLL/winsys3d.md` avant de commencer — 52 Ko déjà accumulés.
 

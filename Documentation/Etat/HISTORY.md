@@ -6,6 +6,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-21
 
+- feat : **`winsys3d` — ce qui se détache de la liste d'affichage** (65 → 61 imports) :
+  `SetDefDispEnv` (658), `SetDefDrawEnv` (661), `ClearOTagR` (688) et le casier d'environnement
+  (659/660), dans `Libraries/winsys3d/ListeAffichage.cs`
+- doc : **`DrawOTag` (701) n'est pas portable, et le relevé dit pourquoi** — treize globales de la
+  DLL, sept appels internes, **quatre emplacements de la vtable du device de 3dhelp**. Le tableau
+  corps par corps des quatorze entrées libgpu est dans l'en-tête du fichier : 4 portables, 10
+  bloquées. Le reste de `winsys3d` est essentiellement **un seul lot indivisible**
+- doc : `ClearOTagR` confirme que **la liste est adressée sur 24 bits** — l'octet de poids fort
+  porte la taille de la primitive. La pseudo-C écrit une danse de XOR que le compilateur a bien
+  émise (`and 0FFFFFFh ; xor ; and 0FFFFFFh ; xor`, forme MSVC 1996 d'un champ de bits) et qui se
+  réduit à `précédent & 0xffffff` — prouvé algébriquement et sur le code machine
 - feat : **`winsys3d` — la section critique portée** (67 → 65 imports) : ordinaux 40 et 41,
   `Libraries/winsys3d/SectionCritique.cs`. Elle ne protège **rien à l'intérieur de la DLL** —
   `DAT_00b6d6d8` n'apparaît que dans ces deux corps et son initialiseur, sur 27 000 lignes : elle

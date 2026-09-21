@@ -42,11 +42,11 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 83 | 3 682 | 1 926 | 6 % | 49 |
-| `winsys3d` | 604 | 27 092 | 65 | 242 | 13 335 | 1 181 | 49 % | 16 |
+| `winsys3d` | 604 | 27 092 | 61 | 243 | 13 356 | 1 181 | 49 % | 21 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
-| **total** | | **135 623** | | | **17 017** | | **12 %** | |
+| **total** | | **135 623** | | | **17 038** | | **12 %** | |
 
 La colonne **cloture** compte les fonctions a transcrire, **portees** celles qui le sont deja, **lignes** leur taille cumulee en lignes de
 Ghidra, et **dont CRT** ce que la cloture traverse de bibliotheque standard liee statiquement — qui
@@ -297,17 +297,17 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**65 points d'entree employes**, dont la cloture d'appels couvre **267 fonctions**,
-soit **14 516 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
-1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 335 lignes,
+**61 points d'entree employes**, dont la cloture d'appels couvre **268 fonctions**,
+soit **14 537 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
+1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 356 lignes,
 49 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**15 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**20 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (65)
+### Les points d'entree employes (61)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
@@ -343,9 +343,6 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 439 | — | `0x00a25910` | `FUN_00a25910` | 40 | **non** |
 | 442 | — | `0x00a25b50` | `FUN_00a25b50` | 26 | **non** |
 | 657 | — | `0x00a05a00` | `FUN_00a05a00` | 42 | **non** |
-| 658 | — | `0x00a05ac0` | `FUN_00a05ac0` | 23 | **non** |
-| 660 | — | `0x00a05b30` | `FUN_00a05b30` | 21 | **non** |
-| 661 | — | `0x00a05b50` | `FUN_00a05b50` | 30 | **non** |
 | 662 | — | `0x00a05bd0` | `FUN_00a05bd0` | 34 | **non** |
 | 665 | — | `0x00a05e90` | `FUN_00a05e90` | 39 | **non** |
 | 668 | — | `0x00a020a0` | `FUN_00a020a0` | 34 | **non** |
@@ -353,7 +350,6 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 676 | — | `0x00a05df0` | `FUN_00a05df0` | 52 | **non** |
 | 677 | — | `0x00a05bb0` | `FUN_00a05bb0` | 13 | **non** |
 | 684 | — | `0x00a05f50` | `FUN_00a05f50` | 43 | **non** |
-| 688 | — | `0x00a06160` | `FUN_00a06160` | 27 | **non** |
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | **non** |
 | 710 | — | `0x00a026e0` | `FUN_00a026e0` | 40 | **non** |
 | 749 | `ChangeResolution` | `0x00a069c0` | `ChangeResolution` | 28 | **non** |
@@ -377,7 +373,7 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 823 | `Setup3DDevice` | `0x00a01910` | `Setup3DDevice` | 118 | **non** |
 | 824 | `ShiftVertices` | `0x00a057b0` | `ShiftVertices` | 25 | **non** |
 
-### La cloture — ce qu'il faut transcrire (242 fonctions, 13 335 lignes)
+### La cloture — ce qu'il faut transcrire (243 fonctions, 13 356 lignes)
 
 Triee par taille decroissante : c'est le devis, du plus cher au moins cher. **Les lignes
 sont des lignes de Ghidra**, declarations de variables comprises — une mesure de cout,
@@ -533,7 +529,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a04270` | `FUN_00a04270` | 31 | 2 | **non** |
 | `0x00a040d0` | **`FUN_00a040d0`** | 30 | 0 | **non** |
 | `0x00a05810` | **`SetShift`** | 30 | 1 | **non** |
-| `0x00a05b50` | **`FUN_00a05b50`** | 30 | 0 | **non** |
+| `0x00a05b50` | **`FUN_00a05b50`** | 30 | 0 | oui |
 | `0x00a07ca0` | `FUN_00a07ca0` | 30 | 3 | **non** |
 | `0x00a269b0` | `FUN_00a269b0` | 30 | 1 | **non** |
 | `0x00a27730` | `FUN_00a27730` | 30 | 1 | **non** |
@@ -544,7 +540,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a06070` | `FUN_00a06070` | 28 | 1 | **non** |
 | `0x00a069c0` | **`ChangeResolution`** | 28 | 0 | **non** |
 | `0x00a03db0` | `FUN_00a03db0` | 27 | 33 | **non** |
-| `0x00a06160` | **`FUN_00a06160`** | 27 | 0 | **non** |
+| `0x00a06160` | **`FUN_00a06160`** | 27 | 0 | oui |
 | `0x00a27180` | `FUN_00a27180` | 27 | 1 | **non** |
 | `0x00a27560` | `FUN_00a27560` | 27 | 1 | **non** |
 | `0x00a027a0` | `FUN_00a027a0` | 26 | 1 | **non** |
@@ -562,14 +558,15 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a276d0` | `FUN_00a276d0` | 24 | 1 | **non** |
 | `0x00a27920` | `FUN_00a27920` | 24 | 1 | **non** |
 | `0x00a27fb0` | `FUN_00a27fb0` | 24 | 1 | **non** |
-| `0x00a05ac0` | **`FUN_00a05ac0`** | 23 | 0 | **non** |
+| `0x00a05ac0` | **`FUN_00a05ac0`** | 23 | 0 | oui |
 | `0x00a27140` | `FUN_00a27140` | 23 | 2 | **non** |
 | `0x00a033c0` | `FUN_00a033c0` | 22 | 1 | **non** |
 | `0x00a03f10` | **`GetKBChar`** | 22 | 0 | oui |
 | `0x00a27530` | `FUN_00a27530` | 22 | 1 | **non** |
 | `0x00a275a0` | `FUN_00a275a0` | 22 | 5 | **non** |
 | `0x00a28010` | `FUN_00a28010` | 22 | 2 | **non** |
-| `0x00a05b30` | **`FUN_00a05b30`** | 21 | 0 | **non** |
+| `0x00a05b10` | **`FUN_00a05b10`** | 21 | 0 | oui |
+| `0x00a05b30` | **`FUN_00a05b30`** | 21 | 0 | oui |
 | `0x00a063d0` | **`SetTextureFilterMode`** | 21 | 2 | **non** |
 | `0x00a20540` | **`FUN_00a20540`** | 21 | 0 | **non** |
 | `0x00a20eb0` | **`FUN_00a20eb0`** | 21 | 0 | **non** |
