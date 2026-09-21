@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-21** (souches, trigonométrie, section critique, liste d'affichage).
+chiffres à jour. Dernière mise à jour : **2026-09-21** (souches, trigo, section critique, liste d'affichage, carte des globales).
 
 ## Le but
 
@@ -89,22 +89,32 @@ Découper par sous-arbre, dans cet ordre suggéré (les ordinaux se groupent d'e
    (`ListeAffichage.cs`). **Les dix autres sont bloqués**, le tableau corps par corps est dans
    l'en-tête de ce fichier.
 
-## Ce qui reste est UN SEUL LOT, et il faut le savoir avant de commencer
+## Ce qui reste, mesuré par `DLLGlobales.md`
 
-`DrawOTag` (701) est le cœur : treize globales de la DLL, sept appels internes, **quatre
-emplacements de la vtable du device de 3dhelp**. Par la règle 6, il entraîne avec lui tout ce qui
-partage ces globales — c'est-à-dire l'essentiel des 222 corps restants. Il n'y a plus de petit lot
-à prendre : les quatre faciles sont épuisés.
+`sh OpenForesia.Tools/census-dll-globals.sh winsys3d` soude les corps par leurs appels et par les
+globales qu'ils écrivent, et sort les composantes. Une composante se porte entière ou pas du tout.
 
-Deux conséquences pour la suite :
+**La masse** — composante 1 : **425 corps, 22 415 lignes, 33 points d'entrée**, dont `DrawOTag`
+(701), `InitTrigTables` (337), toute la géométrie et la carte mémoire. `DrawOTag` seul touche
+treize globales, sept appelées et **quatre emplacements de la vtable du device de 3dhelp**.
+C'est un chantier à part entière, pas un lot.
 
-- **le prochain pas n'est pas un portage mais une carte** : quelles globales de `winsys3d` le
-  chemin d'affichage partage, et où sont les coupures possibles. `census-dll-surface.sh` ne le
-  dit pas — il faudrait un relevé globale → corps qui l'écrivent / le lisent ;
-- **le device de 3dhelp est la vraie couture.** Les quatre appels de vtable de `DrawOTag` vont
-  déjà chez nous quand `SyntheticDevice` est actif. Porter `DrawOTag` revient donc à faire
-  appeler `DeviceShim` par du C# plutôt que par du natif — ce qui fait disparaître le
-  détournement de `GetProcAddress`, mais demande que les treize globales soient portées d'abord.
+**Mais treize composantes indépendantes restent**, 21 corps et ~530 lignes au total :
+
+| composante | corps | lignes | ordinaux |
+|---:|---:|---:|---|
+| 2 | 7 | 245 | 18, 19, 20, 21 |
+| 4 | 2 | 47 | 677, 662 |
+| 6 | 2 | 28 | 136 |
+| 3, 5, 7-14 | 1 chacune | 12-52 | 767, 765, 794, 97, 24, 25, 10, 23, 22, 92 |
+
+**C'est par là qu'il faut continuer** : treize imports retirables sans toucher à la masse. Faire
+la composante 2 (la famille `FindFirstFile` de la carte mémoire) d'abord — c'est la plus grosse
+et la plus cohérente.
+
+Pour la masse, le vrai levier est ailleurs : `DAT_011be760`, le pointeur de device, est touché par
+**73 corps mais écrit par un seul**. C'est le genre de globale où une coupure est possible — et
+c'est aussi la couture que `SyntheticDevice` occupe déjà.
 
 Lire `Documentation/DLL/winsys3d.md` avant de commencer — 52 Ko déjà accumulés.
 

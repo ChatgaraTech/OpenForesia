@@ -20,13 +20,21 @@
 //     661      FUN_00a05b50    0         0       0        PORTE
 //     688      FUN_00a06160    0         0       0        PORTE
 //     660      FUN_00a05b30    1         0       0        PORTE — voir ci-dessous
-//     677      FUN_00a05bb0    1         0       0        bloque, globale a 10 lecteurs natifs
-//     662      FUN_00a05bd0    1         0       0        bloque, la meme
+//     677      FUN_00a05bb0    1         0       0        PORTABLE — corrige, voir ci-dessous
+//     662      FUN_00a05bd0    1         0       0        PORTABLE — la meme globale, la meme paire
 //     665/674/676/684  ...     2         1       0        bloques
 //     710      FUN_00a026e0    4         3       0        bloque
 //     668      FUN_00a020a0    10        0       0        bloque
 //     657      FUN_00a05a00    14        1       2        bloque
 //     701      FUN_00a061b0    13        7       4        bloque — le cœur
+//
+// **CORRECTION DU 2026-09-21, par `census-dll-globals.sh`.** Les ordinaux 677 et 662 sont marques
+// « bloques » ci-dessus dans la premiere version de ce fichier, sur le compte des REFERENCES a leur
+// globale `DAT_011be790` — dix — pris pour un compte de lecteurs. La carte des globales montre que
+// ces dix references se repartissent sur DEUX corps seulement, ces deux-la : une reference dans 677
+// et neuf dans 662. La paire est donc une composante fermee, portable d'un bloc, exactement comme
+// 659/660. Compter des references quand la question porte sur des corps : la carte existe pour que
+// cette erreur-la ne se refasse pas a la main.
 //
 // **L'ordinal 660 passe malgre sa globale**, et c'est un cas de figure a retenir : le bloc
 // `DAT_011be6d8` (23 mots) n'a que DEUX references dans les 27 000 lignes de `winsys3d.c` — 660

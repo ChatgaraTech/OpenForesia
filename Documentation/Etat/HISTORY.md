@@ -6,6 +6,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-21
 
+- feat : **`census-dll-globals.sh` — la carte des globales**, avec `census-dll-globals.awk` et
+  `Documentation/Etat/DLLGlobales.md`. Il soude les corps par deux relations — un appel vers une
+  fonction non exportée, et une globale qu'un corps **écrit** pendant qu'un autre la touche — et
+  sort les composantes. Une composante se porte entière ou pas du tout
+- doc : **la conclusion « il n'y a plus de petit lot » était fausse.** La carte trouve, à côté de
+  la masse soudée (composante 1 : **425 corps, 22 415 lignes, 33 points d'entrée**), **treize
+  composantes indépendantes** totalisant 21 corps et ~530 lignes : les ordinaux 10, 18-25, 92, 97,
+  136, 662, 677, 765, 767, 794. Portables tout de suite, une par une
+- fix : `ListeAffichage.cs` donnait 677 et 662 pour bloqués sur « dix lecteurs natifs ». C'étaient
+  dix **références** réparties sur **deux corps** — ces deux-là. La paire est une composante
+  fermée. Compter des références quand la question porte sur des corps : c'est précisément
+  l'erreur que la carte existe pour ne plus refaire à la main
 - feat : **`winsys3d` — ce qui se détache de la liste d'affichage** (65 → 61 imports) :
   `SetDefDispEnv` (658), `SetDefDrawEnv` (661), `ClearOTagR` (688) et le casier d'environnement
   (659/660), dans `Libraries/winsys3d/ListeAffichage.cs`
