@@ -119,7 +119,7 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#69")] internal static extern int Ordinal_69(int unused); // real: FUN_00a050f0 — même corps qu'Ordinal_67, deux ordinaux pour la même adresse
 
-    [DllImport("winsys3d.dll", EntryPoint = "#72")] internal static extern uint Ordinal_72(int unused); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
+    internal static uint Ordinal_72(int unused) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
 
     [DllImport("winsys3d.dll", EntryPoint = "#684")] internal static extern uint Ordinal_684(short* rect, void* destination); // real: FUN_00a05f50, copie rectangulaire VRAM→mémoire (icône de sauvegarde) ; rect = {x,y,w,h}
 
@@ -128,26 +128,26 @@ internal static unsafe class Winsys3d
     // Ordinal_45 : souche `xor eax,eax; ret 4` (0x00a02e20). **UN seul argument** — le `ret 4` le dit
     // sans ambiguite. Il en portait DEUX ici jusqu'au 2026-08-21, ce qui laissait 4 octets sur la pile
     // a chaque appel en stdcall. Corrige sur la foi du code machine, pas de la pseudo-C.
-    [DllImport("winsys3d.dll", EntryPoint = "#45")] internal static extern int Ordinal_45(void* a);
+    internal static int Ordinal_45(void* a) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
     // Ordinal_46 : souche `xor eax,eax; ret` (0x00a02490), cdecl sans argument. Rend toujours 0,
     // donc le test `Ordinal_46() < 0` de FUN_00513dd0 est toujours faux dans cette version de la DLL.
-    [DllImport("winsys3d.dll", EntryPoint = "#46", CallingConvention = CallingConvention.Cdecl)] internal static extern int Ordinal_46();
+    internal static int Ordinal_46() => (int)Libraries.Winsys3dSouches.RendZero();
 
     [DllImport("winsys3d.dll", EntryPoint = "#92")] internal static extern void* Ordinal_92(void* a, void* b); // confirmed no-op (FUN_00a05160 ignores its args)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#104")] internal static extern uint Ordinal_104(void* a); // confirmed no-op, returns 0 (FUN_00a02e20)
+    internal static uint Ordinal_104(void* a) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op, returns 0 (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#110")] internal static extern void Ordinal_110(int a); // confirmed no-op (FUN_00a02e20)
+    internal static void Ordinal_110(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#116")] internal static extern uint Ordinal_116(); // confirmed no-op, returns 0 (FUN_00a02490)
+    internal static uint Ordinal_116() => Libraries.Winsys3dSouches.RendZero(); // confirmed no-op, returns 0 (FUN_00a02490)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#129")] internal static extern void Ordinal_129(); // confirmed no-op (FUN_00a02490)
+    internal static void Ordinal_129() => _ = Libraries.Winsys3dSouches.RendZero(); // confirmed no-op (FUN_00a02490)
 
     [DllImport("winsys3d.dll", EntryPoint = "#132")] internal static extern int Ordinal_132(int a); // real: winsys3d.c FUN_00a053e0, VSync/frame-pacing wait â€” DLL-internal timing state
 
     [DllImport("winsys3d.dll", EntryPoint = "#136")] internal static extern int Ordinal_136(int a); // real: winsys3d.c FUN_00a05770, get/set DAT_011be6a4 ("frame time offset"?), returns previous value
 
-    [DllImport("winsys3d.dll", EntryPoint = "#138")] internal static extern void Ordinal_138(); // confirmed no-op (FUN_00a26470)
+    internal static void Ordinal_138() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
     [DllImport("winsys3d.dll", EntryPoint = "#368")] internal static extern void Ordinal_368(void* eightDwordStruct); // real: winsys3d.c FUN_00a20ed0, copies 8 dwords into DLL-internal "shading defaults" state (EXT_011d0828); exact field semantics TODO(REVERSE)
 
@@ -222,19 +222,19 @@ internal static unsafe class Winsys3d
     // and the argument counts below are theirs (Blaze.c: FUN_00529a80 and FUN_00542160).
     [DllImport("winsys3d.dll", EntryPoint = "#97")] internal static extern int Ordinal_97(int a, int b, int c);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#762")] internal static extern void Ordinal_762(void* p);
+    internal static void Ordinal_762(void* p) => Libraries.Winsys3dSouches.RienUnArgument();
 
     [DllImport("winsys3d.dll", EntryPoint = "#765")] internal static extern int Ordinal_765(int a, uint rgb);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#766")] internal static extern int Ordinal_766(void* p);
+    internal static int Ordinal_766(void* p) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
     [DllImport("winsys3d.dll", EntryPoint = "#767")] internal static extern void Ordinal_767(int a, uint rgb);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#768")] internal static extern int Ordinal_768(int a);
+    internal static int Ordinal_768(int a) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#769")] internal static extern int Ordinal_769(int a);
+    internal static int Ordinal_769(int a) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#770")] internal static extern int Ordinal_770(void* p);
+    internal static int Ordinal_770(void* p) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
     // Frame ordinals. 688 is libgpu `ClearOTagR(u_long *ot, int n)` â€” winsys3d.c FUN_00a06160 keeps
     // both parameters, unlike its neighbours. 657/660 take a DISPENV/DRAWENV (PutDispEnv/PutDrawEnv
@@ -258,7 +258,7 @@ internal static unsafe class Winsys3d
     // TODO(REVERSE): left un-renamed until that is explained rather than assumed.
     [DllImport("winsys3d.dll", EntryPoint = "#665")] internal static extern int Ordinal_665(void* rect, byte r, byte g, uint b);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#667")] internal static extern void Ordinal_667(int a); // confirmed no-op (FUN_00a02e20)
+    internal static void Ordinal_667(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
     [DllImport("winsys3d.dll", EntryPoint = "#668")] internal static extern int Ordinal_668(int a, int b, int c, int d, int e, int f); // real: winsys3d.c FUN_00a020a0, registers a debug/console text channel slot (unused feature in the shipped build)
 
@@ -276,15 +276,15 @@ internal static unsafe class Winsys3d
     // has no CLUT and it writes mode=2, crect=null, caddr=null.
     [DllImport("winsys3d.dll", EntryPoint = "#662")] internal static extern void ReadTim(Resources.TimImage* image);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#681")] internal static extern void Ordinal_681(int a); // confirmed no-op (FUN_00a02e20)
+    internal static void Ordinal_681(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
     [DllImport("winsys3d.dll", EntryPoint = "#710")] internal static extern void Ordinal_710(int width, int height); // real: winsys3d.c FUN_00a026e0, (re)creates the DLL's text/console overlay bitmap at the given size
 
-    [DllImport("winsys3d.dll", EntryPoint = "#712")] internal static extern void Ordinal_712(int a); // confirmed no-op (FUN_00a02870)
+    internal static void Ordinal_712(int a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#720")] internal static extern void Ordinal_720(nint a); // confirmed no-op (FUN_00a02870)
+    internal static void Ordinal_720(nint a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#771")] internal static extern void Ordinal_771(); // confirmed no-op (FUN_00a26470)
+    internal static void Ordinal_771() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
     [DllImport("winsys3d.dll", EntryPoint = "#789")] internal static extern int Ordinal_789(int a, int b); // real: winsys3d.c FUN_00a06420, device (re)init/teardown dispatcher; inert when a==0 besides storing b
 
@@ -298,11 +298,11 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#40")] internal static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument
 
-    [DllImport("winsys3d.dll", EntryPoint = "#63")] internal static extern void Ordinal_63(int a); // confirmed no-op (FUN_00a02870)
+    internal static void Ordinal_63(int a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#64")] internal static extern int Ordinal_64(); // confirmed no-op, returns 0 (FUN_00a02490)
+    internal static int Ordinal_64() => (int)Libraries.Winsys3dSouches.RendZero(); // confirmed no-op, returns 0 (FUN_00a02490)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#66")] internal static extern void Ordinal_66(); // confirmed no-op (FUN_00a26470)
+    internal static void Ordinal_66() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
     [DllImport("winsys3d.dll", EntryPoint = "#750")] internal static extern void* Ordinal_750(); // real: winsys3d.c FUN_00a01e30, returns the DLL's main device-interface pointer (DAT_011be760)
 

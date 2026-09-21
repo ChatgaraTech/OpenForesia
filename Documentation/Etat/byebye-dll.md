@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-21**.
+chiffres à jour. Dernière mise à jour : **2026-09-21** (souches winsys3d).
 
 ## Le but
 
@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 49 / 83 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 91 | 5 / 241 | **le prochain chantier**, 13 323 l. |
+| `winsys3d` | 70 | 9 / 241 | **en cours**, 13 323 l. ; souches vides faites |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -65,13 +65,12 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
 
 ## Le prochain lot : `winsys3d`
 
-91 points d'entrée, 241 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
+70 points d'entrée restants, 241 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
 d'affichage sort par la vtable du device de `3dhelp`, une arête que le relevé ne voit pas.
 
 Découper par sous-arbre, dans cet ordre suggéré (les ordinaux se groupent d'eux-mêmes) :
 
-1. les souches vides et les no-op — 10 ordinaux pointent sur `FUN_00a02e20`, 4 sur `FUN_00a02870`,
-   4 sur `FUN_00a02490` : débranchement quasi gratuit de ~18 imports ;
+1. ~~les souches vides~~ — **fait le 2026-09-21** : 21 imports retirés, `Libraries/winsys3d/Souches.cs` ;
 2. les tables trigonométriques (337 / 450 / 451) et libgte (376 / 378 / 379 / 457) — pur calcul ;
 3. la section critique (40 / 41), le clavier (déjà fait) ;
 4. la liste d'affichage libgpu (657–677) — **le gros morceau**, et celui qui touche à

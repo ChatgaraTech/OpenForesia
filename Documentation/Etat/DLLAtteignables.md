@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 83 | 3 682 | 1 926 | 6 % | 49 |
-| `winsys3d` | 604 | 27 092 | 91 | 241 | 13 323 | 1 181 | 49 % | 5 |
+| `winsys3d` | 604 | 27 092 | 70 | 241 | 13 323 | 1 181 | 49 % | 9 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -297,17 +297,17 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**91 points d'entree employes**, dont la cloture d'appels couvre **266 fonctions**,
+**70 points d'entree employes**, dont la cloture d'appels couvre **266 fonctions**,
 soit **14 504 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
 1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 323 lignes,
 49 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**5 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**9 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (91)
+### Les points d'entree employes (70)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
@@ -324,25 +324,14 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 25 | — | `0x00a046b0` | `FUN_00a046b0` | 18 | **non** |
 | 40 | — | `0x00a04fd0` | `FUN_00a04fd0` | 13 | **non** |
 | 41 | — | `0x00a04fe0` | `FUN_00a04fe0` | 13 | **non** |
-| 45 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
-| 46 | — | `0x00a02490` | `FUN_00a02490` | 33 | **non** |
 | 57 | — | `0x00a05060` | `FUN_00a05060` | 20 | **non** |
-| 63 | — | `0x00a02870` | `FUN_00a02870` | 52 | **non** |
-| 64 | — | `0x00a02490` | `FUN_00a02490` | 33 | **non** |
-| 66 | — | `0x00a26470` | `FUN_00a26470` | 44 | **non** |
 | 67 | — | `0x00a050f0` | `FUN_00a050f0` | 14 | **non** |
 | 68 | — | `0x00a050d0` | `FUN_00a050d0` | 13 | **non** |
 | 69 | — | `0x00a050f0` | `FUN_00a050f0` | 14 | **non** |
-| 72 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
 | 92 | — | `0x00a05160` | `FUN_00a05160` | 12 | **non** |
 | 97 | — | `0x00a046e0` | `FUN_00a046e0` | 20 | **non** |
-| 104 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
-| 110 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
-| 116 | — | `0x00a02490` | `FUN_00a02490` | 33 | **non** |
-| 129 | — | `0x00a02490` | `FUN_00a02490` | 33 | **non** |
 | 132 | — | `0x00a053e0` | `FUN_00a053e0` | 143 | **non** |
 | 136 | — | `0x00a05770` | `FUN_00a05770` | 16 | **non** |
-| 138 | — | `0x00a26470` | `FUN_00a26470` | 44 | **non** |
 | 337 | — | `0x00a1df00` | `FUN_00a1df00` | 62 | **non** |
 | 360 | — | `0x00a20630` | `FUN_00a20630` | 116 | **non** |
 | 366 | — | `0x00a20e70` | `FUN_00a20e70` | 19 | **non** |
@@ -364,29 +353,19 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 661 | — | `0x00a05b50` | `FUN_00a05b50` | 30 | **non** |
 | 662 | — | `0x00a05bd0` | `FUN_00a05bd0` | 34 | **non** |
 | 665 | — | `0x00a05e90` | `FUN_00a05e90` | 39 | **non** |
-| 667 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
 | 668 | — | `0x00a020a0` | `FUN_00a020a0` | 34 | **non** |
 | 674 | — | `0x00a05d50` | `FUN_00a05d50` | 47 | **non** |
 | 676 | — | `0x00a05df0` | `FUN_00a05df0` | 52 | **non** |
 | 677 | — | `0x00a05bb0` | `FUN_00a05bb0` | 13 | **non** |
-| 681 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
 | 684 | — | `0x00a05f50` | `FUN_00a05f50` | 43 | **non** |
 | 688 | — | `0x00a06160` | `FUN_00a06160` | 27 | **non** |
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | **non** |
 | 710 | — | `0x00a026e0` | `FUN_00a026e0` | 40 | **non** |
-| 712 | — | `0x00a02870` | `FUN_00a02870` | 52 | **non** |
-| 720 | — | `0x00a02870` | `FUN_00a02870` | 52 | **non** |
 | 749 | `ChangeResolution` | `0x00a069c0` | `ChangeResolution` | 28 | **non** |
 | 750 | — | `0x00a01e30` | `FUN_00a01e30` | 12 | **non** |
 | 756 | `CreateTranslationTables` | `0x00a02f50` | `CreateTranslationTables` | 64 | **non** |
-| 762 | — | `0x00a02870` | `FUN_00a02870` | 52 | **non** |
 | 765 | — | `0x00a02e10` | `FUN_00a02e10` | 33 | **non** |
-| 766 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
 | 767 | — | `0x00a02e40` | `FUN_00a02e40` | 52 | **non** |
-| 768 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
-| 769 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
-| 770 | — | `0x00a02e20` | `FUN_00a02e20` | 64 | **non** |
-| 771 | — | `0x00a26470` | `FUN_00a26470` | 44 | **non** |
 | 776 | `GetAbsShift` | `0x00a05930` | `GetAbsShift` | 14 | **non** |
 | 785 | `ReInitializeAllTextures` | `0x00a27980` | `ReInitializeAllTextures` | 13 | **non** |
 | 788 | `ReleaseTexture` | `0x00a27990` | `ReleaseTexture` | 13 | **non** |
@@ -472,7 +451,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a11a90` | `FUN_00a11a90` | 71 | 1 | **non** |
 | `0x00a116e0` | `FUN_00a116e0` | 66 | 1 | **non** |
 | `0x00a13220` | `FUN_00a13220` | 65 | 1 | **non** |
-| `0x00a02e20` | **`FUN_00a02e20`** | 64 | 1 | **non** |
+| `0x00a02e20` | **`FUN_00a02e20`** | 64 | 1 | oui |
 | `0x00a02f50` | **`CreateTranslationTables`** | 64 | 1 | **non** |
 | `0x00a0d3d0` | `FUN_00a0d3d0` | 64 | 1 | **non** |
 | `0x00a0d990` | `FUN_00a0d990` | 64 | 1 | **non** |
@@ -506,7 +485,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a111c0` | `FUN_00a111c0` | 53 | 1 | **non** |
 | `0x00a118e0` | `FUN_00a118e0` | 53 | 1 | **non** |
 | `0x00a12190` | `FUN_00a12190` | 53 | 1 | **non** |
-| `0x00a02870` | **`FUN_00a02870`** | 52 | 0 | **non** |
+| `0x00a02870` | **`FUN_00a02870`** | 52 | 0 | oui |
 | `0x00a02e40` | **`FUN_00a02e40`** | 52 | 0 | **non** |
 | `0x00a05df0` | **`FUN_00a05df0`** | 52 | 0 | **non** |
 | `0x00a0d260` | `FUN_00a0d260` | 52 | 1 | **non** |
@@ -531,7 +510,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a1fba0` | `FUN_00a1fba0` | 45 | 2 | **non** |
 | `0x00a26670` | `FUN_00a26670` | 45 | 1 | **non** |
 | `0x00a26720` | `FUN_00a26720` | 45 | 1 | **non** |
-| `0x00a26470` | **`FUN_00a26470`** | 44 | 0 | **non** |
+| `0x00a26470` | **`FUN_00a26470`** | 44 | 0 | oui |
 | `0x00a05f50` | **`FUN_00a05f50`** | 43 | 0 | **non** |
 | `0x00a01f00` | `FUN_00a01f00` | 42 | 1 | **non** |
 | `0x00a05a00` | **`FUN_00a05a00`** | 42 | 0 | **non** |
@@ -553,7 +532,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a26490` | `FUN_00a26490` | 35 | 1 | **non** |
 | `0x00a020a0` | **`FUN_00a020a0`** | 34 | 1 | **non** |
 | `0x00a05bd0` | **`FUN_00a05bd0`** | 34 | 0 | **non** |
-| `0x00a02490` | **`FUN_00a02490`** | 33 | 0 | **non** |
+| `0x00a02490` | **`FUN_00a02490`** | 33 | 0 | oui |
 | `0x00a02e10` | **`FUN_00a02e10`** | 33 | 0 | **non** |
 | `0x00a27770` | `FUN_00a27770` | 33 | 2 | **non** |
 | `0x00a04270` | `FUN_00a04270` | 31 | 2 | **non** |

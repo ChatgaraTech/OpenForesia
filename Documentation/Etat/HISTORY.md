@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-21
 
+- feat : **`winsys3d` — les souches vides, 21 imports en moins** (91 → 70). Quatre corps seulement :
+  `0x00a02490` et `0x00a26470` sans argument, `0x00a02e20` et `0x00a02870` à un argument. Sur les
+  **830 exports** de la DLL, **149 pointent sur l'un de ces quatre** — le portage PSY-Q a gardé les
+  exports pour que le source du jeu compile, et leur a donné un corps vide
+- doc : les quatre `ret N`, relus au désassembleur, confirment que les 21 signatures d'`Interop/`
+  concordent avec le corps qu'elles atteignent. Contrôle déjà fait le 2026-08-21 — il avait alors
+  trouvé `Ordinal_45` déclaré à deux arguments pour un corps en `ret 4`, soit quatre octets laissés
+  sur la pile à chaque appel
 - feat : **la famille tableau est portée — `wsyskern` n'a plus que deux `[DllImport]`**, tous deux
   la passerelle de tas. `Tableaux.cs` : l'objet C++ de vingt octets, ses trois classes concrètes
   (entiers, chaînes, flottants), les quatre emplacements de vtable employés, le flux de lecture de
