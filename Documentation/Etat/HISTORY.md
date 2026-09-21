@@ -6,6 +6,19 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-21
 
+- feat : **`winsys3d` — la trigonométrie libgte portée** (70 → 67 imports) : `rcos` (450/452),
+  `rsin` (451/453) et `ratan2` (457). Table de 5 120 entrées, **4 096 pas par tour et 4 096 pour
+  1.0** — la convention PSX de bout en bout, les trois constantes relevées dans le binaire tombant
+  juste au dernier chiffre
+- fix : **les deux `fmul` d'échelle manquaient à la pseudo-C.** Ghidra rend `fsin(...)` puis
+  `__ftol()` à la suite, ce qui aurait donné une table de zéros et de ±1. Le désassemblage montre
+  `fmul [0A2A0D8h]` avant et `fmul [0A2A0E0h]` après. Transcrire depuis `winsys3d.c` seul aurait
+  produit un corps qui compile et rend faux partout
+- doc : **`winsys3d` ne se porte pas au détail comme `wsyskern`.** `InitTrigTables` (337), et les
+  ordinaux 376, 378 et 379 écrivent des globales de la DLL que 21 corps encore natifs relisent :
+  les porter isolément laisserait la copie native à zéro. Ils restent natifs jusqu'à ce que leurs
+  consommateurs le soient. Les trois portés ici ne le sont que parce que leur table est une
+  **fonction pure de constantes** — deux copies identiques par construction, pas de l'état partagé
 - feat : **`winsys3d` — les souches vides, 21 imports en moins** (91 → 70). Quatre corps seulement :
   `0x00a02490` et `0x00a26470` sans argument, `0x00a02e20` et `0x00a02870` à un argument. Sur les
   **830 exports** de la DLL, **149 pointent sur l'un de ces quatre** — le portage PSY-Q a gardé les

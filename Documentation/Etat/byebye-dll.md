@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-21** (souches winsys3d).
+chiffres à jour. Dernière mise à jour : **2026-09-21** (souches + trigonométrie winsys3d).
 
 ## Le but
 
@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 49 / 83 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 70 | 9 / 241 | **en cours**, 13 323 l. ; souches vides faites |
+| `winsys3d` | 67 | 13 / 241 | **en cours**, 13 323 l. ; souches et trigonométrie faites |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -32,7 +32,7 @@ sh OpenForesia.Tools/census-dll-surface.sh > Documentation/Etat/DLLAtteignables.
 Le document donne, par DLL : les points d'entrée employés, la clôture d'appels triée par taille
 (le devis, du plus cher au moins cher), la CRT écartée, et ce qui sort vers Win32.
 
-## Les six règles apprises en chemin
+## Les sept règles apprises en chemin
 
 1. **Porter par sous-arbre complet d'un point d'entrée**, jamais par sujet. Le tas, les vtables et
    les sections critiques sont des représentations partagées : les couper en deux donne une
@@ -46,7 +46,12 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
    pesaient 40 corps et 1 655 lignes.
 5. **Le commentaire de traçabilité porte les trois pièces** — `// Ghidra: wsyskern.c LoadBitmapEx
    @ 0x1000bac0`. C'est ce que le recensement lit. Une mention en prose n'est pas une transcription.
-6. **La façade `Interop/` ne bouge pas.** Porter = y remplacer un `[DllImport]` par un renvoi.
+6. **Une globale de DLL relue par du code encore natif bloque le portage de qui l'écrit.**
+   `InitTrigTables` (337) remplit cinq tables que 21 corps natifs relisent : le porter les mettrait
+   à zéro côté DLL. En revanche une table qui est une **fonction pure de constantes** (la table de
+   sinus) peut exister en double sans danger — les deux copies sont identiques par construction.
+   C'est ce qui distingue ce cas de la règle 1.
+7. **La façade `Interop/` ne bouge pas.** Porter = y remplacer un `[DllImport]` par un renvoi.
    Aucun appelant ne change (1 970 sites `Winsys3d.*` dans 154 fichiers).
 
 ## À vérifier — la dette du chantier
@@ -58,6 +63,11 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
   basculer sur `NativeMemory`, établir qu'**aucun pointeur alloué par `winsys3d.dll` (encore
   native, et qui alloue dans le tas de wsyskern) ne remonte jusqu'à nous**. Tombera de soi-même
   quand `winsys3d` sera porté — c'est le bon moment.
+- **La table de sinus, au dernier bit.** Le 387 calcule `fsin` sur 80 bits, `Math.Sin` sur 64. Un
+  écart d'un ulp ne changerait l'entier tronqué que si `sin * 4096` tombait à moins de ~1e-13 d'un
+  entier ; ce n'est le cas qu'aux indices 0, 1024, 2048 et 3072, où les deux donnent exactement 0,
+  4096, 0 et -4096. Probabilité cumulée ailleurs : ~1e-9. Vérifiable pour de bon en appelant
+  l'ordinal 337 natif et en relisant `base + 0x1cb420` — non fait.
 - **`TODO(REVERSE)` ouverts** : le bloc par thread de `wsyskern` (`+0x11c` sortie fatale, `+0x120`
   crochet de message, `+0x124` caractère d'échappement) — rien dans la clôture ne les écrit, donc
   ils valent zéro ; trouver qui les pose. Et `FUN_10012020`, la conversion en flottant du genre 2,
@@ -65,13 +75,14 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
 
 ## Le prochain lot : `winsys3d`
 
-70 points d'entrée restants, 241 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
+67 points d'entrée restants, 241 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
 d'affichage sort par la vtable du device de `3dhelp`, une arête que le relevé ne voit pas.
 
 Découper par sous-arbre, dans cet ordre suggéré (les ordinaux se groupent d'eux-mêmes) :
 
 1. ~~les souches vides~~ — **fait le 2026-09-21** : 21 imports retirés, `Libraries/winsys3d/Souches.cs` ;
-2. les tables trigonométriques (337 / 450 / 451) et libgte (376 / 378 / 379 / 457) — pur calcul ;
+2. ~~la trigonométrie~~ — **fait le 2026-09-21** : `rcos`, `rsin`, `ratan2` (450/451/457),
+   `Libraries/winsys3d/Trigonometrie.cs`. **337, 376, 378, 379 restent natifs** — voir la règle 7 ;
 3. la section critique (40 / 41), le clavier (déjà fait) ;
 4. la liste d'affichage libgpu (657–677) — **le gros morceau**, et celui qui touche à
    `DeviceShim`/`SyntheticDevice` : une fois en C#, le détournement de `GetProcAddress` n'a plus

@@ -69,9 +69,11 @@ internal static unsafe class Winsys3d
     // (`table[(a + 0x400) & 0xfff]`). 0x1000 steps per full turn, the PlayStation convention, which
     // is what makes `i << 8` sixteen evenly spaced positions in the character carousel.
     // Ordinals 452/453 are aliases of these same two entries.
-    [DllImport("winsys3d.dll", EntryPoint = "#450")] internal static extern int GetCosTableEntry(int index);
+    /// <summary>Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25c20 @ 0x00a25c20.</summary>
+    internal static int GetCosTableEntry(int index) => Libraries.Winsys3dTrigonometrie.Rcos(index);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#451")] internal static extern uint GetSinTableEntry(int index);
+    /// <summary>Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25c40 @ 0x00a25c40.</summary>
+    internal static uint GetSinTableEntry(int index) => Libraries.Winsys3dTrigonometrie.Rsin((uint)index);
 
     [DllImport("winsys3d.dll", EntryPoint = "#790")] internal static extern void SetDeviceLostCallback(void* callback);
 
@@ -159,7 +161,12 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#379")] internal static extern void Ordinal_379(int h); // real: winsys3d.c FUN_00a21040 â€” libgte SetGeomScreen: stores the projection distance, then rebuilds the 0x10000-entry reciprocal table at EXT_011d0898
 
-    [DllImport("winsys3d.dll", EntryPoint = "#457")] internal static extern int Ordinal_457(int y, int x); // real: winsys3d.c FUN_00a25d10 â€” libgte ratan2
+    /// <summary>
+    /// Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25d10 @ 0x00a25d10 —
+    /// libgte ratan2. L'ordre des arguments est confirme par le desassemblage (`fild [esp+4]` puis
+    /// `fild [esp+8]`, et `fpatan` divise st(1) par st(0)) : c'est bien `ratan2(y, x)`.
+    /// </summary>
+    internal static int Ordinal_457(int y, int x) => Libraries.Winsys3dTrigonometrie.Ratan2(y, x);
 
     // Ghidra nomme ce thunk `ReleaseTexture` parce qu'il l'a resolu par la table d'imports ; le nom
     // vient donc de la DLL elle-meme. Le corps est winsys3d.c 25890 : un renvoi d'une ligne vers
