@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-21** (souches + trigonométrie winsys3d).
+chiffres à jour. Dernière mise à jour : **2026-09-21** (souches, trigonométrie, section critique).
 
 ## Le but
 
@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 49 / 83 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 67 | 13 / 241 | **en cours**, 13 323 l. ; souches et trigonométrie faites |
+| `winsys3d` | 65 | 16 / 242 | **en cours** ; souches, trigonométrie et section critique faites |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -75,15 +75,16 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
 
 ## Le prochain lot : `winsys3d`
 
-67 points d'entrée restants, 241 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
+65 points d'entrée restants, 242 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
 d'affichage sort par la vtable du device de `3dhelp`, une arête que le relevé ne voit pas.
 
 Découper par sous-arbre, dans cet ordre suggéré (les ordinaux se groupent d'eux-mêmes) :
 
 1. ~~les souches vides~~ — **fait le 2026-09-21** : 21 imports retirés, `Libraries/winsys3d/Souches.cs` ;
 2. ~~la trigonométrie~~ — **fait le 2026-09-21** : `rcos`, `rsin`, `ratan2` (450/451/457),
-   `Libraries/winsys3d/Trigonometrie.cs`. **337, 376, 378, 379 restent natifs** — voir la règle 7 ;
-3. la section critique (40 / 41), le clavier (déjà fait) ;
+   `Libraries/winsys3d/Trigonometrie.cs`. **337, 376, 378, 379 restent natifs** — voir la règle 6 ;
+3. ~~la section critique~~ — **fait le 2026-09-21** : 40 et 41, `SectionCritique.cs`. Le clavier
+   était déjà fait. Reste `Setup3DDevice` (823) et la sous-couche carte mémoire ;
 4. la liste d'affichage libgpu (657–677) — **le gros morceau**, et celui qui touche à
    `DeviceShim`/`SyntheticDevice` : une fois en C#, le détournement de `GetProcAddress` n'a plus
    d'objet et le chemin devient « libgpu C# → `D3D11Backend` » en direct.

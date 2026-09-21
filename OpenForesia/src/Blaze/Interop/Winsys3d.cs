@@ -125,7 +125,8 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#684")] internal static extern uint Ordinal_684(short* rect, void* destination); // real: FUN_00a05f50, copie rectangulaire VRAM→mémoire (icône de sauvegarde) ; rect = {x,y,w,h}
 
-    [DllImport("winsys3d.dll", EntryPoint = "#41")] internal static extern void Ordinal_41(); // real: LeaveCriticalSection on the DLL's internal device lock
+    /// <summary>Porte : <c>Libraries/winsys3d/SectionCritique.cs</c>, winsys3d.c FUN_00a04fe0 @ 0x00a04fe0.</summary>
+    internal static void Ordinal_41() => Libraries.Winsys3dSectionCritique.Sortir();
 
     // Ordinal_45 : souche `xor eax,eax; ret 4` (0x00a02e20). **UN seul argument** — le `ret 4` le dit
     // sans ambiguite. Il en portait DEUX ici jusqu'au 2026-08-21, ce qui laissait 4 octets sur la pile
@@ -303,7 +304,8 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#10")] internal static extern int Ordinal_10(void* handle); // real: winsys3d.c FUN_00a04220 — **arme** le gestionnaire (état 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#40")] internal static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument
+    /// <summary>Porte : <c>Libraries/winsys3d/SectionCritique.cs</c>, winsys3d.c FUN_00a04fd0 @ 0x00a04fd0. winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument</summary>
+    internal static void Ordinal_40() => Libraries.Winsys3dSectionCritique.Entrer();
 
     internal static void Ordinal_63(int a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 

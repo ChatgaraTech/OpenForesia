@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-21
 
+- feat : **`winsys3d` — la section critique portée** (67 → 65 imports) : ordinaux 40 et 41,
+  `Libraries/winsys3d/SectionCritique.cs`. Elle ne protège **rien à l'intérieur de la DLL** —
+  `DAT_00b6d6d8` n'apparaît que dans ces deux corps et son initialiseur, sur 27 000 lignes : elle
+  est prêtée au jeu, pas interne. C'est ce qui rend le portage possible là où l'ordinal 337 reste
+  bloqué
+- doc : **le jeu relâche la section une fois de trop.** `Startup.cs` la prend une fois (l. 384) et
+  la relâche deux (l. 406 et l. 541, à l'extinction, sans prise correspondante). Win32 ne dit rien
+  sur un `LeaveCriticalSection` non possédé ; `Monitor.Exit` lève. Le portage passe donc par les
+  **vraies fonctions kernel32** sur notre propre `CRITICAL_SECTION` — un `lock` C# aurait fait
+  planter l'extinction. L'appel en trop est dans `Blaze.c`, donc reproduit
 - feat : **`winsys3d` — la trigonométrie libgte portée** (70 → 67 imports) : `rcos` (450/452),
   `rsin` (451/453) et `ratan2` (457). Table de 5 120 entrées, **4 096 pas par tour et 4 096 pour
   1.0** — la convention PSX de bout en bout, les trois constantes relevées dans le binaire tombant

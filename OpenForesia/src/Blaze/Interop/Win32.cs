@@ -197,4 +197,12 @@ internal static unsafe class Win32
     [DllImport("gdi32.dll")] internal static extern uint RealizePalette(IntPtr hdc);
     [DllImport("gdi32.dll")] internal static extern IntPtr CreateDIBitmap(IntPtr hdc, void* lpbmih, uint fdwInit, void* lpbInit, void* lpbmi, uint fuUsage);
 
+    // La section critique de `winsys3d` (ordinaux 40 et 41, `&DAT_00b6d6d8`). Ce sont les VRAIES
+    // fonctions Win32 et non un verrou .NET : `LeaveCriticalSection` sans possession ne dit rien,
+    // la ou `Monitor.Exit` leve. Le jeu relache une fois de trop a l'extinction — voir
+    // `Libraries/winsys3d/SectionCritique.cs`.
+    [DllImport("kernel32.dll")] internal static extern void InitializeCriticalSection(void* lpCriticalSection);
+    [DllImport("kernel32.dll")] internal static extern void EnterCriticalSection(void* lpCriticalSection);
+    [DllImport("kernel32.dll")] internal static extern void LeaveCriticalSection(void* lpCriticalSection);
+
 }

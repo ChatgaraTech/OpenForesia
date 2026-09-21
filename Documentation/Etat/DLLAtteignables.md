@@ -42,11 +42,11 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 83 | 3 682 | 1 926 | 6 % | 49 |
-| `winsys3d` | 604 | 27 092 | 67 | 241 | 13 323 | 1 181 | 49 % | 13 |
+| `winsys3d` | 604 | 27 092 | 65 | 242 | 13 335 | 1 181 | 49 % | 16 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
-| **total** | | **135 623** | | | **17 005** | | **12 %** | |
+| **total** | | **135 623** | | | **17 017** | | **12 %** | |
 
 La colonne **cloture** compte les fonctions a transcrire, **portees** celles qui le sont deja, **lignes** leur taille cumulee en lignes de
 Ghidra, et **dont CRT** ce que la cloture traverse de bibliotheque standard liee statiquement — qui
@@ -297,17 +297,17 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**67 points d'entree employes**, dont la cloture d'appels couvre **266 fonctions**,
-soit **14 504 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
-1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 323 lignes,
+**65 points d'entree employes**, dont la cloture d'appels couvre **267 fonctions**,
+soit **14 516 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
+1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 335 lignes,
 49 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**12 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**15 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (67)
+### Les points d'entree employes (65)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
@@ -322,8 +322,6 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 23 | — | `0x00a04660` | `FUN_00a04660` | 14 | **non** |
 | 24 | — | `0x00a04680` | `FUN_00a04680` | 18 | **non** |
 | 25 | — | `0x00a046b0` | `FUN_00a046b0` | 18 | **non** |
-| 40 | — | `0x00a04fd0` | `FUN_00a04fd0` | 13 | **non** |
-| 41 | — | `0x00a04fe0` | `FUN_00a04fe0` | 13 | **non** |
 | 57 | — | `0x00a05060` | `FUN_00a05060` | 20 | **non** |
 | 67 | — | `0x00a050f0` | `FUN_00a050f0` | 14 | **non** |
 | 68 | — | `0x00a050d0` | `FUN_00a050d0` | 13 | **non** |
@@ -379,7 +377,7 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 823 | `Setup3DDevice` | `0x00a01910` | `Setup3DDevice` | 118 | **non** |
 | 824 | `ShiftVertices` | `0x00a057b0` | `ShiftVertices` | 25 | **non** |
 
-### La cloture — ce qu'il faut transcrire (241 fonctions, 13 323 lignes)
+### La cloture — ce qu'il faut transcrire (242 fonctions, 13 335 lignes)
 
 Triee par taille decroissante : c'est le devis, du plus cher au moins cher. **Les lignes
 sont des lignes de Ghidra**, declarations de variables comprises — une mesure de cout,
@@ -617,8 +615,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a279d0` | `DirectDrawEnumerateA` | 14 | 1 | **non** |
 | `0x00a279d6` | `DirectDrawCreate` | 14 | 1 | **non** |
 | `0x00a04650` | **`FUN_00a04650`** | 13 | 0 | **non** |
-| `0x00a04fd0` | **`FUN_00a04fd0`** | 13 | 0 | **non** |
-| `0x00a04fe0` | **`FUN_00a04fe0`** | 13 | 0 | **non** |
+| `0x00a04fd0` | **`FUN_00a04fd0`** | 13 | 0 | oui |
+| `0x00a04fe0` | **`FUN_00a04fe0`** | 13 | 0 | oui |
 | `0x00a050d0` | **`FUN_00a050d0`** | 13 | 0 | **non** |
 | `0x00a05bb0` | **`FUN_00a05bb0`** | 13 | 0 | **non** |
 | `0x00a06410` | **`FUN_00a06410`** | 13 | 0 | **non** |
@@ -629,6 +627,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a27980` | **`ReInitializeAllTextures`** | 13 | 1 | **non** |
 | `0x00a27990` | **`ReleaseTexture`** | 13 | 0 | **non** |
 | `0x00a01e30` | **`FUN_00a01e30`** | 12 | 0 | **non** |
+| `0x00a04ff0` | **`FUN_00a04ff0`** | 12 | 0 | oui |
 | `0x00a05160` | **`FUN_00a05160`** | 12 | 0 | **non** |
 
 ### La CRT liee statiquement (25 fonctions, 1 181 lignes) — hors devis
@@ -668,7 +667,7 @@ conversion ; `__local_unwind2` et `__amsg_exit` sont le deroulage SEH ; le reste
 | `0x00a27d5c` | `__ftol` | 18 |
 | `0x00a28620` | `FUN_00a28620` | 12 |
 
-### Ce qui sort de la DLL (73 appels distincts)
+### Ce qui sort de la DLL (74 appels distincts)
 
 Les appels que la cloture adresse en dehors de la DLL. Ils ne se transcrivent pas — ils
 se rebranchent : sur `Platform/Win32.cs` pour Win32, sur `Platform/Crt.cs` pour la CRT,
@@ -713,6 +712,7 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `GetPrivateProfileIntA` | 1 | — |
 | `GetStringTypeA` | 1 | — |
 | `GetStringTypeW` | 1 | — |
+| `InitializeCriticalSection` | 1 | — |
 | `LCMapStringA` | 1 | — |
 | `LCMapStringW` | 1 | — |
 | `LeaveCriticalSection` | 1 | — |
