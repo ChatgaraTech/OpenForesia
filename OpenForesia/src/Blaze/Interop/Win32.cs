@@ -172,4 +172,29 @@ internal static unsafe class Win32
 
     [DllImport("kernel32.dll")] internal static extern nuint VirtualQuery(void* lpAddress, out Blaze.MEMORY_BASIC_INFORMATION lpBuffer, nuint dwLength);
 
+    // -----------------------------------------------------------------------------------------
+    // Ce que les DLL d'aide de 1998 appellent, et que `src/Libraries/` reprend en les transcrivant.
+    // Ces declarations ne servent a aucun corps de `Blaze.c` : elles sont ici parce que c'est le
+    // seul endroit du depot ou vit la surface P/Invoke du systeme, et qu'une DLL reconstruite
+    // appelle Win32 exactement comme le jeu le fait.
+    // -----------------------------------------------------------------------------------------
+
+    // `wvsprintfA` et non `sprintf` : c'est ce que wsyskern appelle, et son jeu de conversions est
+    // plus pauvre que celui de la CRT (%s %d %u %x %c %%, pas de flottant). Transcrire les appels
+    // vers la CRT changerait le rendu des messages d'erreur sur les formats que wvsprintf refuse.
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] internal static extern int wvsprintfA(byte* lpOutput, byte* lpFormat, void* arglist);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr FindResourceA(IntPtr hModule, byte* lpName, byte* lpType);
+    [DllImport("kernel32.dll")] internal static extern IntPtr LoadResource(IntPtr hModule, IntPtr hResInfo);
+    [DllImport("kernel32.dll")] internal static extern void* LockResource(IntPtr hResData);
+    [DllImport("kernel32.dll")] internal static extern int FreeResource(IntPtr hResData);
+
+    [DllImport("user32.dll")] internal static extern IntPtr GetDC(IntPtr hWnd);
+    [DllImport("user32.dll")] internal static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    [DllImport("gdi32.dll")] internal static extern IntPtr CreatePalette(void* lplgpl);
+    [DllImport("gdi32.dll")] internal static extern IntPtr SelectPalette(IntPtr hdc, IntPtr hpal, int bForceBackground);
+    [DllImport("gdi32.dll")] internal static extern uint RealizePalette(IntPtr hdc);
+    [DllImport("gdi32.dll")] internal static extern IntPtr CreateDIBitmap(IntPtr hdc, void* lpbmih, uint fdwInit, void* lpbInit, void* lpbmi, uint fuUsage);
+
 }

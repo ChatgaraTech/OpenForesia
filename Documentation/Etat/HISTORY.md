@@ -4,6 +4,69 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-21
+
+- feat : **la famille tableau est portée — `wsyskern` n'a plus que deux `[DllImport]`**, tous deux
+  la passerelle de tas. `Tableaux.cs` : l'objet C++ de vingt octets, ses trois classes concrètes
+  (entiers, chaînes, flottants), les quatre emplacements de vtable employés, le flux de lecture de
+  lignes, le remplacement d'échappements, et `strtolong`. **49 corps sur 83 portés**
+- doc : **le recensement sous-estimait, et il l'annonçait** — les douze corps de vtable sont
+  atteints par POINTEUR, donc invisibles à la clôture ; six manquaient même à `wsyskern.c`, Ghidra
+  ne décompilant pas le code atteint par sa seule adresse. Transcrits au désassembleur, relevés
+  sous `Legacy/Raw/Wsyskern/`. La clôture de `wsyskern` passe de 53 à 83 corps une fois les
+  transcriptions vues
+- doc : `disasm` marche sur les DLL d'aide autant que sur `Blaze.exe` — la base de chargement sort
+  de l'`ImageBase` du PE, rien n'est codé en dur pour `Blaze.exe`
+- doc : `strtolong` (0x10011f50) **n'est pas `strtol`** : `$` force l'hexadécimal à la Pascal, `0b`
+  le binaire, et surtout **un zéro suivi d'un chiffre se lit en base dix** — « 010 » vaut dix, pas
+  huit. Une donnée du CD lue avec `strtol` sortirait fausse sans rien signaler
+- feat : **le codec de `wsyskern` est transcrit** — `Codec.cs`, `Fichiers.cs`, `Data.cs` : les dix-huit
+  corps de décompression, `decrypt`, `LoadFile` et `LoadBitmapFile`. **35 corps sur 53 portés**, et
+  il ne reste que la famille tableau (4 exports)
+- doc : **le décompresseur est LHA `-lh5-` (LZHUF)**, établi sur les constantes et non sur une
+  ressemblance : `NC` 510, `NT` 19, `NP` 14, seuil 3, dictionnaire 8 192, `left`/`right` à
+  `2 * NC - 1`. Un seul écart avec LHA d'origine — `fillbuf` consulte **deux** compteurs d'entrée,
+  donc un en-tête qui ment fait entrer des zéros au lieu de lire au-delà du tampon. Correspondance
+  des corps et disposition de l'en-tête dans `Documentation/DLL/wsyskern.md`
+- doc : la table de `decrypt` (`DAT_10049b88`) relevée dans le binaire — **neuf octets**,
+  `ea 7b 22 25 0c 35 2d 1f 47`. Neuf et non huit : la rotation prend `rang & 7`, le ou exclusif
+  prend `rang % 9`. À huit octets, un octet sur neuf serait déchiffré faux
+- doc : `LB-033` la double fermeture de handle de `LoadBitmapFile` sur le chemin compressé, `LB-034`
+  le mode « stocké » du décompresseur, inatteignable parce que sa garde n'accepte pas son propre
+  code de format — code mort dans le binaire vendu
+- feat : **`src/Libraries/` existe, et `wsyskern` y entre** — un répertoire par DLL, sa source de
+  vérité étant `wsyskern.c` et non `Blaze.c` ; `LISEZMOI.md` pose les cinq règles. Premier lot :
+  `Gamma`, `DIBCopyBlock`, `LoadBitmapEx`, `PaletteFromDIB` et les sept corps de messages —
+  **trois `[DllImport]` en moins**, aucun site d'appel touché, la façade `Interop/` renvoyant
+  désormais vers `Libraries/`
+- doc : **la règle découverte en écrivant le lot — ne pas couper une représentation en deux.** Le
+  tas (`Malloc` sert, `Free` rend), les vtables de `CreateArray`, et l'état du codec sous section
+  critique interdisent de porter par sujet : on porte par **sous-arbre complet d'un point
+  d'entrée**. `Malloc` et `Free` restent donc des passerelles vers le natif — un seul tas — jusqu'à
+  ce que la DLL soit portée en entier
+- fix : le recensement comptait la CRT liée statiquement comme du travail à faire. Ghidra n'en
+  préfixe qu'une partie d'un souligné ; sur `wsyskern` **40 fonctions et 1 655 lignes** restaient en
+  `FUN_` anonyme, dont `_NMSG_WRITE` et le tas à petits blocs de MSVC. `crt-dll.txt` porte les
+  amorces avec leur preuve, et le script en prend la descendance : le devis de `wsyskern` passe de
+  93 corps à **53**, celui des cinq DLL de 17 832 lignes à **15 319**
+
+- feat : **`census-dll-surface.sh` — la feuille de route des cinq DLL d'aide**, avec son compagnon
+  `census-dll-surface.awk`, son raccourci `tests/update-DLLAtteignables.bat` et le document généré
+  `Documentation/Etat/DLLAtteignables.md`. Il lit la **table d'exports directement dans les
+  binaires** (aucun `dotnet`), résout chaque `[DllImport]` en adresse, et calcule la **clôture**
+  des appels : le devis réel est de **17 832 lignes sur 135 623 — 13 %**, pas la somme des cinq
+  décompilations
+- doc : `playst.dll` (41 713 l.) n'est nommée par aucun binaire du jeu — c'est le SDK PSY-Q de Sony,
+  vraisemblablement la génération qui a précédé `winsys3d`, restée sur le CD ; `3dhelp` et `gldhelp`
+  n'exportent qu'une fonction chacune, tout le reste passant par la vtable du device
+- feat : forme canonique de traçabilité pour un corps de DLL transcrit —
+  `// Ghidra: winsys3d.c FUN_00a05060 @ 0x00a05060`, les trois pièces ensemble. Les cinq corps déjà
+  écrits (`EnableKBInput`, `GetKBChar`, `FUN_00a03f50`, `FUN_00a261e0`, `FUN_00a26220`) y sont
+  ramenés. Une règle plus lâche comptait 14 corps portés là où il y en avait 5 : le dépôt cite ces
+  fonctions en prose, et une mention n'est pas une transcription
+
+---
+
 ## 2026-09-20
 
 - feat : **la grotte scellée est complète — 349 sur 349, et le dépôt avec elle** : les 1 430

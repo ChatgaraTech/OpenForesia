@@ -1749,3 +1749,45 @@ une Sacuba reçoit un jour une altération.
 `TickSceneEntityAi_004D9D90` (`Ai/ImmortalCastle/Sacuba.cs`) le transcrit tel quel, garde comprise.
 **Ne pas sortir le second bloc de la garde** : c'est vraisemblablement l'intention de l'auteur,
 mais ce serait une déviation.
+
+## LB-033 — `LoadBitmapFile` ferme deux fois le même handle sur le chemin compressé
+
+**Où** : `wsyskern.c`, `LoadBitmapFile` @ `0x10010500` (export 115) et `FUN_10003260` @ `0x10003260`.
+
+Quand le fichier n'est pas un `.BMP` brut, `LoadBitmapFile` le confie à `FUN_10003260`, qui lit le
+fichier en entier puis appelle `CloseHandle` lui-même. De retour, `LoadBitmapFile` rappelle
+`CloseHandle` sur le même handle :
+
+```c
+psVar3 = (short *)FUN_10003260(hFile);   /* ferme deja hFile */
+CloseHandle(hFile);                      /* une seconde fois */
+```
+
+**Conséquence** : aucune, en pratique. Sous Win32, fermer un handle déjà fermé échoue avec
+`ERROR_INVALID_HANDLE` et le code ne teste pas le retour. Le seul risque théorique serait qu'un
+autre thread se voie attribuer la même valeur de handle entre les deux appels — le jeu ne charge
+pas d'image depuis deux threads.
+
+**Reproduit tel quel** dans `src/Libraries/wsyskern/Fichiers.cs`. Le chemin `BM` direct, lui, ne
+ferme qu'une fois : la double fermeture ne concerne que les fichiers compressés.
+
+## LB-034 — Le mode « stocké » du décompresseur est inatteignable
+
+**Où** : `wsyskern.c`, `FUN_10003480` @ `0x10003480`.
+
+Le pilote de décompression porte deux chemins : décoder par Huffman, ou **recopier tel quel** quand
+le code de format vaut `'0'` (`_Val == 0x30`). Mais la garde placée juste avant n'accepte que trois
+codes :
+
+```c
+pcVar1 = _strchr("45x", _Val);
+if (pcVar1 != (char *)0x0) { ... if (_Val == 0x30) { /* recopie directe */ } ... }
+```
+
+`strchr("45x", '0')` rend `NULL`, donc un fichier marqué `'0'` est refusé avant d'atteindre la
+branche qui saurait le traiter. **La recopie directe n'est donc jamais exécutée** : c'est du code
+mort dans le binaire vendu, vraisemblablement un mode retiré de l'outil de compression sans que la
+garde soit mise à jour.
+
+**Reproduit tel quel** : la branche est transcrite dans `Codec.cs` avec sa garde, parce que ce n'est
+pas à la transcription de décider si c'est un oubli.

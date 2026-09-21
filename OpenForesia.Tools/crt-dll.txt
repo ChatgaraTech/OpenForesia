@@ -1,0 +1,23 @@
+# LES AMORCES DE CRT, par DLL — lues par `census-dll-surface.sh`.
+#
+# Ces DLL de 1998 embarquent leur bibliotheque standard : le lieur a recopie la CRT de MSVC dans
+# chaque binaire. La cloture d'appels la traverse donc, et sans ce fichier elle la compterait comme
+# du travail a faire. Elle ne l'est pas : `__alldiv` est un `long` en C#, `_malloc` est le tas du
+# runtime, `_free` est un `Free()`. Ces corps se REBRANCHENT, ils ne se transcrivent pas.
+#
+# POURQUOI UN FICHIER ET PAS UNE REGLE. Ghidra nomme une partie de la CRT depuis sa base de
+# signatures — `_strncpy`, `__ftol`, `__alldiv` —, et le souligne en tete suffit a les reconnaitre.
+# Mais il en laisse beaucoup en `FUN_…` anonyme, et celles-la ne se distinguent d'un corps de la DLL
+# par AUCUNE propriete mecanique. Sur wsyskern elles pesaient 40 fonctions et 1 655 lignes : le
+# devis sortait a 93 corps la ou il y en a 53. Une adresse ne rentre donc ici qu'avec sa preuve, en
+# clair, sur la ligne — c'est le meme contrat que `marges-verifiees.txt`.
+#
+# CE QUE LE SCRIPT EN FAIT. Il prend ces adresses pour amorces, y ajoute les fonctions dont le nom
+# Ghidra commence par un souligne, et marque CRT tout ce qu'elles atteignent. Une amorce mal posee
+# emporte donc toute sa descendance : n'en ajouter qu'apres avoir LU le corps.
+#
+# Format : <dll> <adresse sans 0x> <nom Ghidra> <la preuve>
+
+wsyskern 10014270 FUN_10014270  _malloc — `Malloc` (export 124) l'appelle puis remplit le bloc de zeros et signale `outofmemory` s'il rend zero ; sa descendance est le tas a petits blocs de MSVC
+wsyskern 100144f0 FUN_100144f0  _free — `Free` (export 89) ne fait que l'appeler, sous un cadre SEH monte a la main
+wsyskern 100132e0 FUN_100132e0  l'arrondi du chemin `pow()` de `Gamma` (export 91), dont le corps est un `log2`/`f2xm1`/`fscale` x87 inline suivi d'un `__ftol`

@@ -37,7 +37,7 @@ public static unsafe partial class Blaze
     private static int s_TypedRingWrite;                            // DAT_00b6d5a4
     private static uint s_TypedRingArmed;                           // DAT_00b6dbcc
 
-    /// <summary>winsys3d.c @ 0x00a03ef0 — arme ou désarme la file et remet ses deux curseurs.</summary>
+    /// <summary>Ghidra: winsys3d.c EnableKBInput @ 0x00a03ef0 — arme ou désarme la file et remet ses deux curseurs.</summary>
     private static uint EnableKBInput(uint enable)
     {
         uint previous = s_TypedRingArmed;
@@ -47,7 +47,7 @@ public static unsafe partial class Blaze
         return previous;
     }
 
-    /// <summary>winsys3d.c @ 0x00a03f10 — dépile un caractère, ou 0 si désarmée ou vide.</summary>
+    /// <summary>Ghidra: winsys3d.c GetKBChar @ 0x00a03f10 — dépile un caractère, ou 0 si désarmée ou vide.</summary>
     private static byte GetKBChar()
     {
         if (s_TypedRingArmed == 0) return 0;
@@ -57,7 +57,7 @@ public static unsafe partial class Blaze
         return value;
     }
 
-    /// <summary>winsys3d.c @ 0x00a03f50 — l'écrivain, appelé par notre WM_CHAR.</summary>
+    /// <summary>Ghidra: winsys3d.c FUN_00a03f50 @ 0x00a03f50 — l'écrivain, appelé par notre WM_CHAR.</summary>
     internal static void PushTypedCharacter(byte value)
     {
         if (s_TypedRingArmed == 0) return;
@@ -671,7 +671,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: winsys3d.c FUN_00a261e0 â€” the path normalizer every winsys3d file-open call runs its
+    /// Ghidra: winsys3d.c FUN_00a261e0 @ 0x00a261e0 â€” the path normalizer every winsys3d file-open call runs its
     /// argument through first. It does two things, both of which matter here:
     /// <list type="bullet">
     /// <item>skips one leading backslash, so a template like <c>"\SND\BASE.SND"</c> is relative</item>
@@ -700,7 +700,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: winsys3d.dll ordinal 331 (winsys3d.c: FUN_00a26220). All three RunApplication call
+    /// Ghidra: winsys3d.dll ordinal 331 (winsys3d.c FUN_00a26220 @ 0x00a26220). All three RunApplication call
     /// sites pass mode 0 (read-only):
     /// CreateFileA(NormalizePath(path), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
     /// FILE_ATTRIBUTE_NORMAL, NULL).
