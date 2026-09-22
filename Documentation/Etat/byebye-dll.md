@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-21** (souches, trigo, section critique, liste d'affichage, carte des globales).
+chiffres à jour. Dernière mise à jour : **2026-09-22** — tout ce qui se détachait est porté ; la masse est cartographiée.
 
 ## Le but
 
@@ -13,14 +13,15 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
-| `wsyskern` | **2** (`Malloc`, `Free`) | 49 / 83 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 61 | 21 / 243 | **en cours** ; les quatre lots faciles sont faits |
+| `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
+| `winsys3d` | 44 | 42 / 246 | **en cours** ; sept lots faits — **il ne reste que la masse** |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
 
 `wsyskern` est fait : messages, images, codec, famille tableau. Tout compile, **rien n'a encore
-tourné** — voir « à vérifier ».
+tourné** — voir « à vérifier ». Les quatre corps ajoutés le 2026-09-22 (`_splitpath`, `_makepath`
+et leurs deux appelées) n'ont pas d'import : c'est `winsys3d` qui les appelait, pas le jeu.
 
 ## Reprendre demain
 
@@ -56,6 +57,16 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
 
 ## À vérifier — la dette du chantier
 
+- **La famille de fichiers de la carte mémoire n'a pas tourné non plus** (2026-09-22). Elle se
+  valide en une manœuvre : l'écran de sauvegarde (state 4) liste les fichiers par les ordinaux
+  18/19, en ouvre un par le 21, le lit par le 24 et le referme par le 22 — et `SaveSlots.cs` passe
+  par les quatre. **Si la liste sort vide alors qu'une sauvegarde existe**, regarder d'abord la
+  convention `~` : c'est le seul endroit où la transcription décide quelque chose de non trivial.
+- **Les quatre derniers corps isolés non plus** (2026-09-22), mais trois d'entre eux ne peuvent
+  guère échouer : `CdSearchFile` rend une adresse fixe, `EnableEvent` écrit un mot, le casier
+  135/136 est jeté par son unique appelant. **Le seul qui calcule vraiment est `ScaleMatrix`**
+  (794) — neuf produits en virgule fixe 4.12 — et il se voit à l'œil : un facteur d'échelle
+  appliqué de travers déforme ou aplatit un modèle.
 - **Rien de `wsyskern` n'a été exercé.** Le codec et la famille tableau se valident ensemble :
   `LoadArray` → `LoadFile` → `Unpack` est le chemin qui fait passer du vrai flux compressé. Une
   session de jeu suffit à le dire.
@@ -73,48 +84,270 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
   ils valent zéro ; trouver qui les pose. Et `FUN_10012020`, la conversion en flottant du genre 2,
   dont le corps n'a pas été lu — ne pas supposer qu'elle est standard, `strtolong` ne l'était pas.
 
-## Le prochain lot : `winsys3d`
+## `winsys3d` — les sept lots faits, et ce qu'il reste
 
-61 points d'entrée restants, 243 corps, 13 323 lignes — et, vu la leçon n° 2, **davantage** : le chemin
+44 points d'entrée restants, 246 corps, 13 402 lignes — et, vu la leçon n° 2, **davantage** : le chemin
 d'affichage sort par la vtable du device de `3dhelp`, une arête que le relevé ne voit pas.
 
-Découper par sous-arbre, dans cet ordre suggéré (les ordinaux se groupent d'eux-mêmes) :
+**Les sept lots ci-dessous ont vidé tout ce qui se détachait.** Les 44 points d'entrée restants
+sont tous dans la masse ; la suite n'est plus un découpage par sous-arbre mais une décision, voir
+« Ce qui reste » plus bas.
 
-1. ~~les souches vides~~ — **fait le 2026-09-21** : 21 imports retirés, `Libraries/winsys3d/Souches.cs` ;
+L'ordre suivi (les ordinaux se groupent d'eux-mêmes) :
+
+1. ~~les souches vides~~ — **fait le 2026-09-21** : 21 imports retirés, `Libraries/winsys3d/Souches.cs`.
+   **Le relevé était incomplet : il y a HUIT corps de souche, pas quatre** — 223 exports, pas 149.
+   Les quatre manquants sont sortis le 2026-09-22 : `FUN_00a02e10` (`xor eax,eax ; ret 8`, 22 ord.,
+   **765**), `FUN_00a02e40` (`ret 8`, 41 ord., **767**), `FUN_00a046e0` (`xor eax,eax ; ret 0Ch`,
+   9 ord., **97**) et `FUN_00a046f0` (`mov eax,1 ; ret 4`, 2 ord., importée par personne). Les deux
+   premières sont les jumelles à **deux** arguments de souches déjà connues, à trente octets de
+   distance ; les deux autres vivent au milieu du `libapi`. **La leçon** : chercher par le corps
+   (`grep -c "0x2e10  *[0-9]" winsys3d.c`), jamais par l'ordinal importé — c'est l'erreur
+   symétrique de celle que `ListeAffichage.cs` documente pour 677/662 ;
 2. ~~la trigonométrie~~ — **fait le 2026-09-21** : `rcos`, `rsin`, `ratan2` (450/451/457),
    `Libraries/winsys3d/Trigonometrie.cs`. **337, 376, 378, 379 restent natifs** — voir la règle 6 ;
 3. ~~la section critique~~ — **fait le 2026-09-21** : 40 et 41, `SectionCritique.cs`. Le clavier
    était déjà fait. Reste `Setup3DDevice` (823) et la sous-couche carte mémoire ;
 4. ~~la liste d'affichage~~ — **partiellement fait le 2026-09-21** : 658, 660, 661, 688 portés
    (`ListeAffichage.cs`). **Les dix autres sont bloqués**, le tableau corps par corps est dans
-   l'en-tête de ce fichier.
+   l'en-tête de ce fichier ;
+5. ~~la famille de fichiers de la carte mémoire~~ — **fait le 2026-09-22** : **8 imports retirés**
+   (18 à 25), `Libraries/winsys3d/CarteMemoire.cs`, plus le pivot `FUN_00a03f80` et les ordinaux
+   29 et 30 que la composante lui soude sans que rien les importe. Les composantes 2, 9, 10, 12 et
+   13 de l'ancien relevé ont disparu d'un coup. Deux corps de `wsyskern` ont suivi — `_splitpath`
+   et `_makepath` (ordinaux 4 et 5), que `winsys3d` importe et que le jeu n'appelle jamais :
+   `Libraries/wsyskern/Chemins.cs` ;
+6. ~~le lecteur de conteneur TIM~~ — **fait le 2026-09-22** : 677 et 662 (`OpenTIM`/`ReadTIM`),
+   `Libraries/winsys3d/Tim.cs`. Deux corps, une globale (`DAT_011be790`) dont les dix références
+   tiennent dans la paire. **Ils n'ont pas rejoint `ListeAffichage.cs`** : lire un conteneur
+   d'image n'est pas tenir la liste d'affichage, et `LISEZMOI.md` veut qu'un sujet identifiable
+   prenne son fichier. Sont partis avec eux les ordinaux **765 et 767**, qui se sont révélés être
+   deux *souches* de plus (voir le point 1) ;
+7. ~~les quatre derniers corps isolés~~ — **fait le 2026-09-22**, et c'est **la fin de tout ce qui
+   se détachait**. Quatre familles PSY-Q différentes, un fichier chacune, chacun amorce du lot que
+   la masse rendra un jour :
+   - **92** → `Cdrom.cs`, la `libcd`. `CdSearchFile`, vidé : il ignore ses deux arguments et rend
+     l'adresse d'une `CdlFILE` statique **que rien n'écrit** (une seule référence dans toute la
+     DLL). Le nom est établi par trois preuves concordantes — voir le pavé de tête ;
+   - **794** → `Matrices.cs`, la `libgte`. `ScaleMatrix`, le **seul des neuf ordinaux libgte
+     importés qui ne touche aucun registre émulé du GTE** ; les huit autres sont dans la masse ;
+   - **10** → `Evenements.cs`, la `libapi`. `EnableEvent`, le seul des huit ordinaux 6-13 qui ne
+     parcourt pas la liste chaînée — il n'écrit que dans le nœud que l'appelant lui donne ;
+   - **135/136** → `Cadence.cs`. Un casier (`DAT_011be6a4`) et ses deux seuls accesseurs. **Le
+     rôle n'est pas établi** : les deux corps gardent un nom d'adresse, et le nom du fichier dit
+     le voisinage d'ordinaux (132, la temporisation d'image), pas le rôle.
+
+**Trois choses apprises sur le lot de la carte mémoire**, toutes dans les pavés de tête :
+
+- **la convention `~` de la carte mémoire.** `FUN_00a03f80` remplace le premier `:` d'un chemin, à
+  partir de l'octet 2, par un `~` ; l'énumération (18 et 19) fait la lecture inverse en sautant les
+  4 ou 5 premiers octets quand elle voit un `~`. Les deux bouts se lisent ensemble ou pas du tout ;
+- **l'ordinal 29 ne peut pas fonctionner.** Il résout ses deux descripteurs dans le *même* casier
+  statique `DAT_00dedc58`, donc `MoveFileA` reçoit deux fois le nom d'arrivée. C'est sans doute
+  pourquoi rien ne l'appelle. Transcrit tel quel — voir `Reference/legacy-bug.md` ;
+- **la CRT MBCS ne change rien sur une page à un octet.** `_ismbblead` et `_mbsdec` dépendent de
+  `_mbctype`, que `_setmbcp` remet à zéro pour toute page dont `GetCPInfo` dit `MaxCharSize < 2`.
+  Les deux branches des quatre corps concernés coïncident alors octet pour octet. La preuve tient
+  en quatre lignes et elle est écrite dans `wsyskern/Chemins.cs` — ne pas la refaire.
 
 ## Ce qui reste, mesuré par `DLLGlobales.md`
 
 `sh OpenForesia.Tools/census-dll-globals.sh winsys3d` soude les corps par leurs appels et par les
 globales qu'ils écrivent, et sort les composantes. Une composante se porte entière ou pas du tout.
 
-**La masse** — composante 1 : **425 corps, 22 415 lignes, 33 points d'entrée**, dont `DrawOTag`
-(701), `InitTrigTables` (337), toute la géométrie et la carte mémoire. `DrawOTag` seul touche
-treize globales, sept appelées et **quatre emplacements de la vtable du device de 3dhelp**.
-C'est un chantier à part entière, pas un lot.
+**Depuis le 2026-09-22 il ne reste QU'UNE composante**, et c'est la masse. Les treize autres sont
+parties : plus rien ne se détache sans l'attaquer. Le relevé n'a donc plus de liste de courses,
+il a un front unique.
 
-**Mais treize composantes indépendantes restent**, 21 corps et ~530 lignes au total :
+**La masse** — composante 1 : **425 corps, 22 415 lignes, 44 points d'entrée**, dont `DrawOTag`
+(701), `InitTrigTables` (337), toute la géométrie, `Setup3DDevice` et la sous-couche d'affichage.
+`DrawOTag` seul touche treize globales, sept appelées et **quatre emplacements de la vtable du
+device de 3dhelp**. C'est un chantier à part entière, pas un lot.
 
-| composante | corps | lignes | ordinaux |
-|---:|---:|---:|---|
-| 2 | 7 | 245 | 18, 19, 20, 21 |
-| 4 | 2 | 47 | 677, 662 |
-| 6 | 2 | 28 | 136 |
-| 3, 5, 7-14 | 1 chacune | 12-52 | 767, 765, 794, 97, 24, 25, 10, 23, 22, 92 |
+### `DAT_011be760` n'est PAS le levier — mesuré le 2026-09-22
 
-**C'est par là qu'il faut continuer** : treize imports retirables sans toucher à la masse. Faire
-la composante 2 (la famille `FindFirstFile` de la carte mémoire) d'abord — c'est la plus grosse
-et la plus cohérente.
+**La note qui figurait ici était fausse, et elle était de la veille.** Elle disait : « le pointeur
+de device est touché par 73 corps et écrit par un seul, c'est le genre de globale où une coupure
+est possible ». Le raisonnement était bon, le résultat non. Mesure, en relançant
+`census-dll-globals.awk` avec `DAT_011be760` **retiré de la carte** :
 
-Pour la masse, le vrai levier est ailleurs : `DAT_011be760`, le pointeur de device, est touché par
-**73 corps mais écrit par un seul**. C'est le genre de globale où une coupure est possible — et
-c'est aussi la couture que `SyntheticDevice` occupe déjà.
+| | composantes | plus gros morceau |
+|---|---:|---|
+| carte normale | 1 | 425 corps, 22 415 lignes |
+| sans `DAT_011be760` | **2** | **419 corps, 22 326 lignes** |
+
+Le seul corps qui se détache est **l'ordinal 750** (`FUN_00a01e30`, 12 lignes), qui n'est rien
+d'autre que `return DAT_011be760;`. Les 419 autres restent soudés par autre chose. **Retirer le
+pointeur de device ne sert à rien.**
+
+### Et ce n'en a jamais été une, de soudure
+
+Le relevé le comptait parce que la règle est volontairement pessimiste, mais la valeur de
+`DAT_011be760` est **une poignée vers un objet que nous possédons déjà** :
+
+- `Host/SyntheticDevice.cs` détourne `GetProcAddress` dans la table d'imports de `winsys3d` et
+  rend sa propre fabrique. Le `DAT_011be760` de la DLL native **pointe donc déjà sur un objet C#** ;
+- `Screens/State00/Options.cs` s'en sert depuis `src/Blaze/` sans passer par `Libraries/` :
+  `UiDeviceVtable => *(void***)Winsys3d.Ordinal_750()`, puis des appels `Thiscall` directs sur la
+  vtable. Cela tourne en production depuis le 2026-08-12.
+
+Un corps porté n'a donc pas besoin d'une copie de la globale : **il la relit à la demande par
+l'ordinal 750**, ce qui est exactement ce que fait l'original — il relit la globale à chaque usage,
+il ne la met pas en cache.
+
+**Et c'est pourquoi il ne faut PAS porter l'ordinal 750.** Notre copie serait vide : l'écrivain est
+`FUN_00a06420` (789), resté natif. Le `[DllImport]` de 750 *est* la fenêtre sur la globale native,
+et le remplacer par une lecture du `.data` de la DLL chargée serait un faux portage — le même
+travail, déguisé. Il reste natif tant que 789 l'est.
+
+### Ce qui soude vraiment : deux familles disjointes
+
+Le chemin d'affichage de `winsys3d` est en **deux moitiés qui ne se touchent pas**. C'est la
+mesure la plus utile de la journée, et elle n'était écrite nulle part :
+
+| famille | reconnue à | corps | lignes | squelettes distincts |
+|---|---|---:|---:|---:|
+| les **producteurs** | ils écrivent `DAT_011be7dc` | 38 | 4 886 | **11** |
+| les **appelants de device** | ils lisent `DAT_011be760` | 73 | 4 696 | 36 |
+| *recouvrement* | | **0** | | |
+
+**Zéro recouvrement, vérifié.** Aucun des 38 producteurs n'appelle le device ; aucun des 73
+appelants n'écrit le tampon. Ensemble ils font 111 corps et 9 582 lignes — moins de la moitié de
+la masse (22 415) : le reste est la géométrie, les textures et l'initialisation.
+
+**Les producteurs sont le morceau bon marché.** Onze squelettes de contrôle pour trente-huit
+corps, et les six familles les plus peuplées en couvrent trente. Ce sont des émetteurs de
+primitive, un par genre : chacun pose une commande d'état *si le cache dit qu'elle a changé*,
+écrit trois ou quatre sommets (`DAT_011be7a8 += 0x18` ou `0x20`, soit 3 ou 4 `TLVERTEX` de
+32 octets) et avance le curseur. **C'est la leçon de `FUN_004747F0` appliquée** : ce qui prédit
+le coût est le nombre de formes, pas le nombre de lignes.
+
+Ce qu'ils partagent, et qui interdit de les couper en deux :
+
+| globale | rôle | ampleur |
+|---|---|---|
+| `DAT_011be7ac` | la base du tampon, allouée par `FUN_00a0c480` (`Malloc(n * 0x94)`) | 46 corps |
+| `DAT_011be7dc` | **le curseur d'écriture** | **1 572 références dans 38 corps** |
+| `DAT_011be7a8` | la zone de sommets, à `base + n * 0x14` dans le même bloc | 38 corps |
+| `DAT_00a2c480/484/488/48c` | le cache « quel état ai-je déjà émis » | 85, 53, 84, 33 corps |
+| `DAT_00a2c578`, `DAT_00a2c57c` | la dernière commande d'état écrite | 38 corps chacune |
+
+`FUN_00a0c480` les remet toutes ensemble — curseur à 2, tous les mémos à `-1`.
+
+**C'est le cache qui interdit la coupure**, plus encore que le curseur. Deux curseurs dans un
+tampon, cela se voit ; deux caches de « quel état est posé », non : la moitié portée croirait
+l'état déjà émis parce que la moitié native l'a émis, et sauterait la commande. Une primitive
+sortirait avec le mélange de la précédente, une image sur cent. C'est exactement le défaut que la
+règle 1 décrit, à son pire.
+
+**CORRECTION du 2026-09-22.** Une version antérieure de ce paragraphe disait que `DAT_011be7ac`
+était « un symbole réutilisé par des corps sans rapport, les comptes de soudure sont surévalués ».
+**C'est faux.** En remontant la chaîne jusqu'au consommateur, la globale a un sens unique et net :
+c'est **le paquet courant** — celui qu'on remplit pendant la construction, celui qu'on rejoue
+pendant l'affichage, celui qu'on libère quand le nœud disparaît (`FUN_00a0c440`, ordinal 754,
+lit son en-tête puis le `Free`). Ce n'est pas de la réutilisation de compilateur, c'est une
+variable de travail parfaitement cohérente. Les comptes de `DLLGlobales.md` ne sont pas
+surévalués pour elle.
+
+### La chaîne complète, du producteur à l'écran
+
+Trouvée le 2026-09-22 en remontant les appelants. **Le consommateur est `FUN_00a0cd20`**, 46 lignes.
+
+```
+  CONSTRUCTION, pendant l'image
+    FUN_00a0dde0 (ordinal 752)          le point d'entrée : un paquet, un genre de primitive
+      -> FUN_00a0c480(n)                Malloc(n * 0x94), curseur à 2, tous les mémos à -1
+      -> switch (genre) -> l'un des ~31 producteurs    écrit les commandes et les sommets
+      -> *noeud = paquet | 0x80000000   LIE LE PAQUET DANS L'OT DU JEU, pointeur taggé
+
+  AFFICHAGE, à DrawOTag
+    FUN_00a061b0 (ordinal 701, DrawOTag)
+      device[0x60 ou 0x5c](0,0) ; device[0xb0]()        BeginScene
+      parcours de l'OT (liens sur 24 bits, sentinelle 0x00ffffff)
+        -> FUN_00a13400(noeud)          540 lignes
+             -> FUN_00a0cdd0            DAT_011be7ac = *noeud
+                  -> FUN_00a0cd20()     ** LE CONSOMMATEUR **
+      device[0xb4]()                                    EndScene
+```
+
+### Le format du paquet
+
+En-tête de 8 octets — `[0]` le lien OT, `[1]` la longueur —, puis des enregistrements de **0x10
+octets** à partir de l'offset 8 (ce qui est exactement le `DAT_011be7dc = 2` de l'initialisation).
+Le parcours s'arrête quand le mot d'opcode **suivant** vaut `0xffffffff` ; chaque producteur écrit
+ses quatre mots puis pose cette sentinelle sans avancer, de sorte que le producteur d'après
+l'écrase.
+
+| opcode | ce que le consommateur en fait |
+|---|---|
+| `0xfffffffb` | `device[0x64](0)` — délie la texture |
+| `0xfffffffc` | `FUN_00a27880(arg0, arg2, 0, 0)` |
+| `0xfffffffd` | rien — un trou, laissé exprès |
+| `0xfffffffe` | `device[0x8c](arg0)` |
+| **≥ 0** | `device[0xbc](opcode, arg0, arg1, arg2, 0)` — **`DrawPrimitive`** |
+
+Le cas par défaut dit tout : l'enregistrement **est** un appel `DrawPrimitive` sérialisé —
+`[type de primitive][type de sommet][pointeur de sommets][nombre]`. Le slot `+0xbc` est confirmé
+par `Documentation/DLL/3dhelp.md` et par `Options.cs`, qui l'appelle déjà directement.
+
+### Ce n'est pas un cache anti-doublons : c'est un LOT
+
+La raison pour laquelle les producteurs ne se coupent pas est plus forte que ce que disait la
+section précédente. Un producteur qui trouve l'état inchangé n'omet pas seulement sa commande —
+**il allonge celle d'avant** :
+
+```c
+DAT_011be7ac[DAT_011be7dc + -1] = DAT_011be7ac[DAT_011be7dc + -1] + uVar8;   /* nombre += n */
+```
+
+Le mot « nombre » du dernier enregistrement est incrémenté sur place, et les sommets viennent se
+poser à la suite dans la zone partagée. **Deux primitives consécutives de même état deviennent un
+seul `DrawPrimitive`.** Porter la moitié des producteurs ferait allonger par l'un un enregistrement
+écrit par l'autre, avec des sommets rangés de part et d'autre d'une frontière qu'aucun des deux ne
+connaît. Ce n'est pas une coupure risquée, c'est une coupure impossible.
+
+### Donc : par où, vraiment — et la piste « le rejeu d'abord » est morte aussi
+
+**CORRECTION du 2026-09-22.** Cette section recommandait « le rejeu d'abord : 97 corps, il ne
+construit rien, il lit un format connu ». **Faux.** La clôture de `DrawOTag` contient **20 des
+38 producteurs** (1 883 lignes) et **68 de ses 134 corps touchent un mémo d'état** — `DrawOTag`
+lui-même remet `DAT_00a2c484/488/48c` à `-1` et `DAT_00a2c480` à 8 au début de chaque image. Le
+porter seul laisserait les producteurs natifs relire des mémos que plus personne ne réinitialise :
+ils croiraient l'état posé depuis l'image précédente et allongeraient un enregistrement mort.
+
+C'est la troisième piste ouverte puis fermée en une journée — `DAT_011be760`, le tampon seul, le
+rejeu seul. Toutes les trois pour la même raison de fond : **le chemin d'affichage est un seul
+organisme**, et le mesurer corps par corps ne le disait pas.
+
+**Le périmètre réel est fermé et il est mesuré** : `sh OpenForesia.Tools/census-display-path.sh`
+le régénère dans `Documentation/Etat/CheminAffichage.md`.
+
+| | |
+|---|---|
+| corps | **157** |
+| lignes | **12 408** — 55 % de la masse |
+| formes distinctes | **70** |
+| points d'entrée importés dedans | **1** — l'ordinal 701, `DrawOTag` |
+| coutures restées dehors | 26 corps, tous de 13 à 123 lignes |
+
+**Un seul `[DllImport]` pour 12 408 lignes**, et c'est ce qui rend la décision difficile : le
+rapport est mauvais si on compte les imports, excellent si on compte ce qu'il ouvre — l'ordinal
+701 *est* l'affichage du jeu. Après lui, `winsys3d` n'a plus de raison d'être chargée pour autre
+chose que la géométrie et les textures.
+
+**Deux façons de le prendre, et c'est une décision de projet :**
+
+1. **Le portage fidèle intégral** — les 157 corps, 70 formes, avec leurs globales. Aucune
+   globale du noyau ne peut exister en double : elles partent toutes, d'un bloc. Plusieurs
+   séances, et rien ne tourne avant la fin.
+2. **Le portage par aliasing des globales** — notre copie C# du chemin lit et écrit **le `.data`
+   réel de `winsys3d.dll` chargée** (base connue, adresses fixes), au lieu d'en tenir une copie.
+   C'est ce que fait déjà l'ordinal 750 pour le device, et `Options.cs` pour sa vtable. Le lot
+   devient alors **divisible** : un corps porté et son voisin natif partagent la même mémoire, la
+   même que dans la DLL. Beaucoup plus rapide, et vérifiable au fur et à mesure — mais cela change
+   ce que `Libraries/` veut dire, et `LISEZMOI.md` ne prévoit pas ce troisième cas.
+
+La question à trancher avant d'écrire une ligne est celle-là, pas le découpage.
 
 Lire `Documentation/DLL/winsys3d.md` avant de commencer — 52 Ko déjà accumulés.
 

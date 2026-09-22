@@ -2,10 +2,6 @@
 
 **Genere** par `sh OpenForesia.Tools/census-dll-globals.sh` — ne pas editer a la main.
 
-**Portee : `winsys3d` seul.** `wsyskern` n'a plus que deux imports, tous deux la passerelle de
-tas, et ce sont des exports NOMMES : le script resout ses racines par ordinal, il n'aurait rien a
-dire. Les trois autres DLL n'ont aucun import.
-
 Ce document repond a une question que `DLLAtteignables.md` ne sait pas poser : **quels
 corps sont obliges de partir ensemble**. Deux relations les soudent — un appel vers une
 fonction non exportee, et une globale qu'un corps ECRIT pendant qu'un autre la touche.
@@ -23,19 +19,6 @@ verifie a la main.
 | # | corps | lignes | portes | points d'entree |
 |---:|---:|---:|---:|---|
 | 1 | 425 | 22 415 | 14 | 750, 668, 710, 793, 6, 9, 57, 68, 67/69, 132, 657, 674, 676, 665, 684, 701, 790, 789, 337, 360, 366, 367, 368, 369, 376, 378, 379, 418, 795, 792, 439, 442, 788 |
-| 2 | 7 | 245 | 0 | 18, 19, 20, 21 |
-| 3 | 1 | 52 | 0 | 767 |
-| 4 | 2 | 47 | 0 | 677, 662 |
-| 5 | 1 | 33 | 0 | 765 |
-| 6 | 2 | 28 | 0 | 136 |
-| 7 | 1 | 21 | 0 | 794 |
-| 8 | 1 | 20 | 0 | 97 |
-| 9 | 1 | 18 | 0 | 24 |
-| 10 | 1 | 18 | 0 | 25 |
-| 11 | 1 | 16 | 0 | 10 |
-| 12 | 1 | 14 | 0 | 23 |
-| 13 | 1 | 13 | 0 | 22 |
-| 14 | 1 | 12 | 0 | 92 |
 
 ## Les globales qui soudent le plus
 

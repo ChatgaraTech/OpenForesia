@@ -41,12 +41,12 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `wsyskern` | 1 386 | 62 159 | 2 | 83 | 3 682 | 1 926 | 6 % | 49 |
-| `winsys3d` | 604 | 27 092 | 61 | 243 | 13 356 | 1 181 | 49 % | 21 |
+| `wsyskern` | 1 386 | 62 159 | 2 | 87 | 3 953 | 1 926 | 6 % | 53 |
+| `winsys3d` | 604 | 27 092 | 44 | 246 | 13 402 | 1 181 | 49 % | 43 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
-| **total** | | **135 623** | | | **17 038** | | **12 %** | |
+| **total** | | **135 623** | | | **17 355** | | **12 %** | |
 
 La colonne **cloture** compte les fonctions a transcrire, **portees** celles qui le sont deja, **lignes** leur taille cumulee en lignes de
 Ghidra, et **dont CRT** ce que la cloture traverse de bibliotheque standard liee statiquement — qui
@@ -61,13 +61,13 @@ rapporte le devis a la taille de la DLL entiere.
 La feuille du graphe : tout le monde en depend, elle ne depend d'aucune des notres. Services
 generaux — bitmaps et DIB, gamma, tableaux de chaines, memoire.
 
-**2 points d'entree employes**, dont la cloture d'appels couvre **128 fonctions**,
-soit **5 608 lignes de Ghidra sur 62 159**. Retranchee la CRT liee statiquement — 45 fonctions,
-1 926 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **3 682 lignes,
+**2 points d'entree employes**, dont la cloture d'appels couvre **132 fonctions**,
+soit **5 879 lignes de Ghidra sur 62 159**. Retranchee la CRT liee statiquement — 45 fonctions,
+1 926 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **3 953 lignes,
 6 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**47 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**51 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
@@ -78,7 +78,7 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 89 | `Free` | `0x1000bc30` | `Free` | 24 | oui |
 | 124 | `Malloc` | `0x1000bbc0` | `Malloc` | 29 | oui |
 
-### La cloture — ce qu'il faut transcrire (83 fonctions, 3 682 lignes)
+### La cloture — ce qu'il faut transcrire (87 fonctions, 3 953 lignes)
 
 Triee par taille decroissante : c'est le devis, du plus cher au moins cher. **Les lignes
 sont des lignes de Ghidra**, declarations de variables comprises — une mesure de cout,
@@ -92,6 +92,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x10003bb0` | **`FUN_10003bb0`** | 157 | 2 | oui |
 | `0x10020d20` | `FUN_10020d20` | 153 | 1 | **non** |
 | `0x10013930` | `FUN_10013930` | 124 | 1 | **non** |
+| `0x10013160` | **`FUN_10013160`** | 105 | 0 | oui |
 | `0x10003870` | **`FUN_10003870`** | 99 | 1 | oui |
 | `0x10004060` | **`FUN_10004060`** | 99 | 1 | oui |
 | `0x10003480` | **`FUN_10003480`** | 97 | 2 | oui |
@@ -102,7 +103,9 @@ directement par la reconstruction, et son nom est en gras.
 | `0x10010230` | **`LoadFile`** | 77 | 1 | oui |
 | `0x100077c0` | **`decrypt`** | 76 | 1 | oui |
 | `0x10014730` | `FUN_10014730` | 75 | 1 | **non** |
+| `0x10017e80` | **`FUN_10017e80`** | 73 | 1 | oui |
 | `0x1000fe80` | **`FUN_1000fe80`** | 65 | 1 | oui |
+| `0x10012ef0` | **`FUN_10012ef0`** | 64 | 0 | oui |
 | `0x10022570` | **`FUN_10022570`** | 60 | 1 | oui |
 | `0x1001e770` | `FUN_1001e770` | 59 | 1 | **non** |
 | `0x10020040` | `FUN_10020040` | 56 | 1 | **non** |
@@ -133,6 +136,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x10004400` | `FUN_10004400` | 29 | 1 | **non** |
 | `0x10004a50` | `FUN_10004a50` | 29 | 1 | **non** |
 | `0x1000bbc0` | **`Malloc`** | 29 | 13 | oui |
+| `0x100173b0` | **`FUN_100173b0`** | 29 | 1 | oui |
 | `0x100046c0` | `FUN_100046c0` | 28 | 1 | **non** |
 | `0x10003450` | **`FUN_10003450`** | 26 | 1 | oui |
 | `0x1001ff70` | `FUN_1001ff70` | 25 | 1 | **non** |
@@ -297,39 +301,27 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**61 points d'entree employes**, dont la cloture d'appels couvre **268 fonctions**,
-soit **14 537 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
-1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 356 lignes,
+**44 points d'entree employes**, dont la cloture d'appels couvre **271 fonctions**,
+soit **14 583 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
+1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 402 lignes,
 49 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**20 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**41 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (61)
+### Les points d'entree employes (44)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
 | 6 | — | `0x00a040d0` | `FUN_00a040d0` | 30 | **non** |
 | 9 | — | `0x00a041d0` | `FUN_00a041d0` | 18 | **non** |
-| 10 | — | `0x00a04220` | `FUN_00a04220` | 16 | **non** |
-| 18 | — | `0x00a044c0` | `FUN_00a044c0` | 60 | **non** |
-| 19 | — | `0x00a04560` | `FUN_00a04560` | 56 | **non** |
-| 20 | — | `0x00a045e0` | `FUN_00a045e0` | 17 | **non** |
-| 21 | — | `0x00a04600` | `FUN_00a04600` | 17 | **non** |
-| 22 | — | `0x00a04650` | `FUN_00a04650` | 13 | **non** |
-| 23 | — | `0x00a04660` | `FUN_00a04660` | 14 | **non** |
-| 24 | — | `0x00a04680` | `FUN_00a04680` | 18 | **non** |
-| 25 | — | `0x00a046b0` | `FUN_00a046b0` | 18 | **non** |
 | 57 | — | `0x00a05060` | `FUN_00a05060` | 20 | **non** |
 | 67 | — | `0x00a050f0` | `FUN_00a050f0` | 14 | **non** |
 | 68 | — | `0x00a050d0` | `FUN_00a050d0` | 13 | **non** |
 | 69 | — | `0x00a050f0` | `FUN_00a050f0` | 14 | **non** |
-| 92 | — | `0x00a05160` | `FUN_00a05160` | 12 | **non** |
-| 97 | — | `0x00a046e0` | `FUN_00a046e0` | 20 | **non** |
 | 132 | — | `0x00a053e0` | `FUN_00a053e0` | 143 | **non** |
-| 136 | — | `0x00a05770` | `FUN_00a05770` | 16 | **non** |
 | 337 | — | `0x00a1df00` | `FUN_00a1df00` | 62 | oui |
 | 360 | — | `0x00a20630` | `FUN_00a20630` | 116 | **non** |
 | 366 | — | `0x00a20e70` | `FUN_00a20e70` | 19 | **non** |
@@ -343,20 +335,16 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 439 | — | `0x00a25910` | `FUN_00a25910` | 40 | **non** |
 | 442 | — | `0x00a25b50` | `FUN_00a25b50` | 26 | **non** |
 | 657 | — | `0x00a05a00` | `FUN_00a05a00` | 42 | **non** |
-| 662 | — | `0x00a05bd0` | `FUN_00a05bd0` | 34 | **non** |
 | 665 | — | `0x00a05e90` | `FUN_00a05e90` | 39 | **non** |
 | 668 | — | `0x00a020a0` | `FUN_00a020a0` | 34 | **non** |
 | 674 | — | `0x00a05d50` | `FUN_00a05d50` | 47 | **non** |
 | 676 | — | `0x00a05df0` | `FUN_00a05df0` | 52 | **non** |
-| 677 | — | `0x00a05bb0` | `FUN_00a05bb0` | 13 | **non** |
 | 684 | — | `0x00a05f50` | `FUN_00a05f50` | 43 | **non** |
-| 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | **non** |
+| 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | oui |
 | 710 | — | `0x00a026e0` | `FUN_00a026e0` | 40 | **non** |
 | 749 | `ChangeResolution` | `0x00a069c0` | `ChangeResolution` | 28 | **non** |
 | 750 | — | `0x00a01e30` | `FUN_00a01e30` | 12 | **non** |
 | 756 | `CreateTranslationTables` | `0x00a02f50` | `CreateTranslationTables` | 64 | **non** |
-| 765 | — | `0x00a02e10` | `FUN_00a02e10` | 33 | **non** |
-| 767 | — | `0x00a02e40` | `FUN_00a02e40` | 52 | **non** |
 | 776 | `GetAbsShift` | `0x00a05930` | `GetAbsShift` | 14 | **non** |
 | 785 | `ReInitializeAllTextures` | `0x00a27980` | `ReInitializeAllTextures` | 13 | **non** |
 | 788 | `ReleaseTexture` | `0x00a27990` | `ReleaseTexture` | 13 | **non** |
@@ -365,7 +353,6 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 791 | `SetAbsShift` | `0x00a05950` | `SetAbsShift` | 18 | **non** |
 | 792 | — | `0x00a22dd0` | `FUN_00a22dd0` | 24 | **non** |
 | 793 | — | `0x00a03e70` | `FUN_00a03e70` | 39 | **non** |
-| 794 | — | `0x00a20540` | `FUN_00a20540` | 21 | **non** |
 | 795 | — | `0x00a226c0` | `FUN_00a226c0` | 170 | **non** |
 | 796 | `SetShift` | `0x00a05810` | `SetShift` | 30 | **non** |
 | 798 | `SetTextureFilterMode` | `0x00a063d0` | `SetTextureFilterMode` | 21 | **non** |
@@ -373,7 +360,7 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 823 | `Setup3DDevice` | `0x00a01910` | `Setup3DDevice` | 118 | **non** |
 | 824 | `ShiftVertices` | `0x00a057b0` | `ShiftVertices` | 25 | **non** |
 
-### La cloture — ce qu'il faut transcrire (243 fonctions, 13 356 lignes)
+### La cloture — ce qu'il faut transcrire (246 fonctions, 13 402 lignes)
 
 Triee par taille decroissante : c'est le devis, du plus cher au moins cher. **Les lignes
 sont des lignes de Ghidra**, declarations de variables comprises — une mesure de cout,
@@ -450,10 +437,10 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a10df0` | `FUN_00a10df0` | 64 | 1 | **non** |
 | `0x00a11310` | `FUN_00a11310` | 64 | 1 | **non** |
 | `0x00a1df00` | **`FUN_00a1df00`** | 62 | 1 | oui |
-| `0x00a03f80` | `FUN_00a03f80` | 61 | 3 | **non** |
+| `0x00a03f80` | **`FUN_00a03f80`** | 61 | 5 | oui |
 | `0x00a03c80` | `FUN_00a03c80` | 60 | 15 | **non** |
-| `0x00a044c0` | **`FUN_00a044c0`** | 60 | 0 | **non** |
-| `0x00a061b0` | **`FUN_00a061b0`** | 59 | 0 | **non** |
+| `0x00a044c0` | **`FUN_00a044c0`** | 60 | 0 | oui |
+| `0x00a061b0` | **`FUN_00a061b0`** | 59 | 0 | oui |
 | `0x00a0e970` | `FUN_00a0e970` | 59 | 1 | **non** |
 | `0x00a0f090` | `FUN_00a0f090` | 59 | 1 | **non** |
 | `0x00a0d310` | `FUN_00a0d310` | 58 | 1 | **non** |
@@ -466,7 +453,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a12e60` | `FUN_00a12e60` | 57 | 1 | **non** |
 | `0x00a267d0` | `FUN_00a267d0` | 57 | 1 | **non** |
 | `0x00a268c0` | `FUN_00a268c0` | 57 | 1 | **non** |
-| `0x00a04560` | **`FUN_00a04560`** | 56 | 0 | **non** |
+| `0x00a04560` | **`FUN_00a04560`** | 56 | 0 | oui |
 | `0x00a0d730` | `FUN_00a0d730` | 56 | 1 | **non** |
 | `0x00a0dce0` | `FUN_00a0dce0` | 56 | 1 | **non** |
 | `0x00a05c60` | `FUN_00a05c60` | 55 | 3 | **non** |
@@ -477,7 +464,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a118e0` | `FUN_00a118e0` | 53 | 1 | **non** |
 | `0x00a12190` | `FUN_00a12190` | 53 | 1 | **non** |
 | `0x00a02870` | **`FUN_00a02870`** | 52 | 0 | oui |
-| `0x00a02e40` | **`FUN_00a02e40`** | 52 | 0 | **non** |
+| `0x00a02e40` | **`FUN_00a02e40`** | 52 | 0 | oui |
 | `0x00a05df0` | **`FUN_00a05df0`** | 52 | 0 | **non** |
 | `0x00a0d260` | `FUN_00a0d260` | 52 | 1 | **non** |
 | `0x00a0d7f0` | `FUN_00a0d7f0` | 52 | 1 | **non** |
@@ -522,9 +509,9 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a21040` | **`FUN_00a21040`** | 35 | 0 | **non** |
 | `0x00a26490` | `FUN_00a26490` | 35 | 1 | **non** |
 | `0x00a020a0` | **`FUN_00a020a0`** | 34 | 1 | **non** |
-| `0x00a05bd0` | **`FUN_00a05bd0`** | 34 | 0 | **non** |
+| `0x00a05bd0` | **`FUN_00a05bd0`** | 34 | 0 | oui |
 | `0x00a02490` | **`FUN_00a02490`** | 33 | 0 | oui |
-| `0x00a02e10` | **`FUN_00a02e10`** | 33 | 0 | **non** |
+| `0x00a02e10` | **`FUN_00a02e10`** | 33 | 0 | oui |
 | `0x00a27770` | `FUN_00a27770` | 33 | 2 | **non** |
 | `0x00a04270` | `FUN_00a04270` | 31 | 2 | **non** |
 | `0x00a040d0` | **`FUN_00a040d0`** | 30 | 0 | **non** |
@@ -568,11 +555,11 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a05b10` | **`FUN_00a05b10`** | 21 | 0 | oui |
 | `0x00a05b30` | **`FUN_00a05b30`** | 21 | 0 | oui |
 | `0x00a063d0` | **`SetTextureFilterMode`** | 21 | 2 | **non** |
-| `0x00a20540` | **`FUN_00a20540`** | 21 | 0 | **non** |
+| `0x00a20540` | **`FUN_00a20540`** | 21 | 0 | oui |
 | `0x00a20eb0` | **`FUN_00a20eb0`** | 21 | 0 | **non** |
 | `0x00a20ed0` | **`FUN_00a20ed0`** | 21 | 0 | **non** |
 | `0x00a024a0` | `FUN_00a024a0` | 20 | 1 | **non** |
-| `0x00a046e0` | **`FUN_00a046e0`** | 20 | 0 | **non** |
+| `0x00a046e0` | **`FUN_00a046e0`** | 20 | 0 | oui |
 | `0x00a05060` | **`FUN_00a05060`** | 20 | 0 | **non** |
 | `0x00a017d0` | `FUN_00a017d0` | 19 | 1 | **non** |
 | `0x00a0cdd0` | `FUN_00a0cdd0` | 19 | 1 | **non** |
@@ -580,17 +567,19 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a26ab0` | `FUN_00a26ab0` | 19 | 1 | **non** |
 | `0x00a03ef0` | **`EnableKBInput`** | 18 | 0 | oui |
 | `0x00a041d0` | **`FUN_00a041d0`** | 18 | 0 | **non** |
-| `0x00a04680` | **`FUN_00a04680`** | 18 | 0 | **non** |
-| `0x00a046b0` | **`FUN_00a046b0`** | 18 | 0 | **non** |
+| `0x00a04680` | **`FUN_00a04680`** | 18 | 0 | oui |
+| `0x00a046b0` | **`FUN_00a046b0`** | 18 | 0 | oui |
+| `0x00a04700` | **`FUN_00a04700`** | 18 | 0 | oui |
 | `0x00a05950` | **`SetAbsShift`** | 18 | 1 | **non** |
 | `0x00a06930` | `FUN_00a06930` | 18 | 1 | **non** |
 | `0x00a27700` | `FUN_00a27700` | 18 | 4 | **non** |
 | `0x00a27880` | `FUN_00a27880` | 18 | 31 | **non** |
 | `0x00a03430` | `FUN_00a03430` | 17 | 2 | **non** |
-| `0x00a045e0` | **`FUN_00a045e0`** | 17 | 0 | **non** |
-| `0x00a04600` | **`FUN_00a04600`** | 17 | 0 | **non** |
-| `0x00a04220` | **`FUN_00a04220`** | 16 | 0 | **non** |
-| `0x00a05770` | **`FUN_00a05770`** | 16 | 0 | **non** |
+| `0x00a045e0` | **`FUN_00a045e0`** | 17 | 0 | oui |
+| `0x00a04600` | **`FUN_00a04600`** | 17 | 0 | oui |
+| `0x00a04220` | **`FUN_00a04220`** | 16 | 0 | oui |
+| `0x00a04730` | **`FUN_00a04730`** | 16 | 0 | oui |
+| `0x00a05770` | **`FUN_00a05770`** | 16 | 0 | oui |
 | `0x00a0e000` | `FUN_00a0e000` | 16 | 2 | **non** |
 | `0x00a03400` | `FUN_00a03400` | 15 | 4 | **non** |
 | `0x00a03f50` | **`FUN_00a03f50`** | 15 | 0 | oui |
@@ -601,7 +590,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a27850` | `FUN_00a27850` | 15 | 1 | **non** |
 | `0x00a01e20` | `PollMessages` | 14 | 1 | **non** |
 | `0x00a02340` | `FUN_00a02340` | 14 | 1 | **non** |
-| `0x00a04660` | **`FUN_00a04660`** | 14 | 0 | **non** |
+| `0x00a04660` | **`FUN_00a04660`** | 14 | 0 | oui |
 | `0x00a050f0` | **`FUN_00a050f0`** | 14 | 0 | **non** |
 | `0x00a05930` | **`GetAbsShift`** | 14 | 0 | **non** |
 | `0x00a21020` | **`FUN_00a21020`** | 14 | 0 | **non** |
@@ -611,11 +600,11 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a27120` | `FUN_00a27120` | 14 | 3 | **non** |
 | `0x00a279d0` | `DirectDrawEnumerateA` | 14 | 1 | **non** |
 | `0x00a279d6` | `DirectDrawCreate` | 14 | 1 | **non** |
-| `0x00a04650` | **`FUN_00a04650`** | 13 | 0 | **non** |
+| `0x00a04650` | **`FUN_00a04650`** | 13 | 0 | oui |
 | `0x00a04fd0` | **`FUN_00a04fd0`** | 13 | 0 | oui |
 | `0x00a04fe0` | **`FUN_00a04fe0`** | 13 | 0 | oui |
 | `0x00a050d0` | **`FUN_00a050d0`** | 13 | 0 | **non** |
-| `0x00a05bb0` | **`FUN_00a05bb0`** | 13 | 0 | **non** |
+| `0x00a05bb0` | **`FUN_00a05bb0`** | 13 | 0 | oui |
 | `0x00a06410` | **`FUN_00a06410`** | 13 | 0 | **non** |
 | `0x00a069b0` | `FUN_00a069b0` | 13 | 1 | **non** |
 | `0x00a133e0` | `FUN_00a133e0` | 13 | 1 | **non** |
@@ -625,7 +614,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a27990` | **`ReleaseTexture`** | 13 | 0 | **non** |
 | `0x00a01e30` | **`FUN_00a01e30`** | 12 | 0 | **non** |
 | `0x00a04ff0` | **`FUN_00a04ff0`** | 12 | 0 | oui |
-| `0x00a05160` | **`FUN_00a05160`** | 12 | 0 | **non** |
+| `0x00a05160` | **`FUN_00a05160`** | 12 | 0 | oui |
+| `0x00a05760` | **`FUN_00a05760`** | 12 | 0 | oui |
 
 ### La CRT liee statiquement (25 fonctions, 1 181 lignes) — hors devis
 
@@ -664,7 +654,7 @@ conversion ; `__local_unwind2` et `__amsg_exit` sont le deroulage SEH ; le reste
 | `0x00a27d5c` | `__ftol` | 18 |
 | `0x00a28620` | `FUN_00a28620` | 12 |
 
-### Ce qui sort de la DLL (74 appels distincts)
+### Ce qui sort de la DLL (76 appels distincts)
 
 Les appels que la cloture adresse en dehors de la DLL. Ils ne se transcrivent pas — ils
 se rebranchent : sur `Platform/Win32.cs` pour Win32, sur `Platform/Crt.cs` pour la CRT,
@@ -714,6 +704,7 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `LCMapStringW` | 1 | — |
 | `LeaveCriticalSection` | 1 | — |
 | `MessageBoxA` | 1 | — |
+| `MoveFileA` | 1 | — |
 | `Ordinal_3` | 1 | — |
 | `Ordinal_4` | 1 | — |
 | `Ordinal_5` | 1 | — |
@@ -727,6 +718,7 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `ScaleMatrix` | 1 | `wsyskern, playst` |
 | `SelectObject` | 1 | — |
 | `SetBkMode` | 1 | — |
+| `SetCurrentDirectoryA` | 1 | — |
 | `SetEvent` | 1 | — |
 | `SetFilePointer` | 1 | — |
 | `SetTextColor` | 1 | — |
@@ -750,7 +742,7 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `timeSetEvent` | 1 | — |
 | `wsprintfA` | 1 | — |
 
-### Appeles par `Blaze.c`, pas encore importes (5)
+### Appeles par `Blaze.c`, pas encore importes (4)
 
 Ces ordinaux apparaissent dans la decompilation du jeu mais aucun `[DllImport]` ne les
 declare : la fonction appelante n'est pas encore transcrite. Ils rejoindront la
@@ -760,7 +752,6 @@ un plafond.
 | ordinal | adresse | fonction | lignes |
 |---:|---|---|---:|
 | 28 | `0x00a046f0` | `FUN_00a046f0` | 13 |
-| 333 | `0x00a04660` | `FUN_00a04660` | 14 |
 | 334 | `0x00a262a0` | `FUN_00a262a0` | 15 |
 | 336 | `0x00a26300` | `FUN_00a26300` | 13 |
 | 680 | `0x00a069b0` | `FUN_00a069b0` | 13 |

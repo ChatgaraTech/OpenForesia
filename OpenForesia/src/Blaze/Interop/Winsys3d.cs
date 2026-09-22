@@ -94,26 +94,52 @@ internal static unsafe class Winsys3d
     // plantage natif.
     [DllImport("winsys3d.dll", EntryPoint = "#9")] internal static extern int Ordinal_9(int* transferState); // real: FUN_00a041d0, ResetEvent + un contrôle d'état sur *param_1
 
-    [DllImport("winsys3d.dll", EntryPoint = "#18")] internal static extern byte* Ordinal_18(void* pathDescriptor, byte* dest); // real: FUN_00a044c0, FindFirstFileA + copie du nom tronqué et de la taille dans *dest ; null si aucune entrée
+    // ------------------------------------------------------------------------------------------
+    // LA FAMILLE DE FICHIERS DE LA CARTE MEMOIRE — portée le 2026-09-22.
+    //
+    // Les huit ordinaux 18 à 25 sont maintenant dans `Libraries/winsys3d/CarteMemoire.cs`, avec
+    // le pivot `FUN_00a03f80` qui résout un descripteur en chemin Win32. Ce sont les composantes
+    // 2, 9, 10, 12 et 13 de `DLLGlobales.md` : elles ne touchent que deux globales, et aucune
+    // fonction restée native ne les partage. Les commentaires de rôle sont conservés sur place —
+    // la polarité inversée de l'ordinal 20 et le 0xffffffff des ordinaux 24/25 sont des pièges,
+    // pas des détails.
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>real: FUN_00a044c0, FindFirstFileA + copie du nom tronqué et de la taille dans
+    /// <c>*dest</c> ; null si aucune entrée.</summary>
+    internal static byte* Ordinal_18(void* pathDescriptor, byte* dest)
+        => Libraries.Winsys3dCarteMemoire.TrouverPremier((byte*)pathDescriptor, dest);
 
     // real: FUN_00a04560, FindNextFileA + même copie. Ghidra le décompile `void`, mais FUN_005126c0
     // (Legacy/Raw/Blaze/FUN_005126c0.asm:36, `TEST EAX,EAX` juste après le CALL) teste bien EAX au
     // retour : le premier `return;` de la fonction laisse BVar2(=le FindNextFileA FALSE) dans EAX par
     // convention de code-gen, donc EAX vaut 0 exactement quand il n'y a plus d'entrée — déclaré `int`
     // ici pour pouvoir lire cette valeur, même si le vrai prototype ne la nomme pas.
-    [DllImport("winsys3d.dll", EntryPoint = "#19")] internal static extern int Ordinal_19(byte* dest);
+    internal static int Ordinal_19(byte* dest) => Libraries.Winsys3dCarteMemoire.TrouverSuivant(dest);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#20")] internal static extern int Ordinal_20(void* pathDescriptor); // real: FUN_00a045e0, DeleteFileA — **polarité inversée** : rend 1 si la suppression a ÉCHOUÉ, 0 si elle a réussi (`NEG EAX; SBB EAX,EAX; INC EAX` en fin de corps)
+    /// <summary>real: FUN_00a045e0, DeleteFileA — **polarité inversée** : rend 1 si la suppression
+    /// a ÉCHOUÉ, 0 si elle a réussi (<c>NEG EAX; SBB EAX,EAX; INC EAX</c> en fin de corps).</summary>
+    internal static int Ordinal_20(void* pathDescriptor)
+        => Libraries.Winsys3dCarteMemoire.Supprimer((byte*)pathDescriptor);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#21")] internal static extern IntPtr Ordinal_21(void* pathDescriptor, uint flags); // real: FUN_00a04600, CreateFileA
+    /// <summary>real: FUN_00a04600, CreateFileA.</summary>
+    internal static IntPtr Ordinal_21(void* pathDescriptor, uint flags)
+        => Libraries.Winsys3dCarteMemoire.Ouvrir((byte*)pathDescriptor, flags);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#22")] internal static extern int Ordinal_22(IntPtr handle); // real: FUN_00a04650, CloseHandle
+    /// <summary>real: FUN_00a04650, CloseHandle.</summary>
+    internal static int Ordinal_22(IntPtr handle) => Libraries.Winsys3dCarteMemoire.Fermer(handle);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#23")] internal static extern int Ordinal_23(IntPtr handle, int offset, uint method); // real: FUN_00a04660, SetFilePointer
+    /// <summary>real: FUN_00a04660, SetFilePointer.</summary>
+    internal static int Ordinal_23(IntPtr handle, int offset, uint method)
+        => Libraries.Winsys3dCarteMemoire.Deplacer(handle, offset, method);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#24")] internal static extern uint Ordinal_24(IntPtr handle, void* buffer, uint size); // real: FUN_00a04680, ReadFile (0xffffffff sur échec)
+    /// <summary>real: FUN_00a04680, ReadFile (0xffffffff sur échec).</summary>
+    internal static uint Ordinal_24(IntPtr handle, void* buffer, uint size)
+        => Libraries.Winsys3dCarteMemoire.Lire(handle, buffer, size);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#25")] internal static extern uint Ordinal_25(IntPtr handle, void* buffer, uint size); // real: FUN_00a046b0, WriteFile (0xffffffff sur échec)
+    /// <summary>real: FUN_00a046b0, WriteFile (0xffffffff sur échec).</summary>
+    internal static uint Ordinal_25(IntPtr handle, void* buffer, uint size)
+        => Libraries.Winsys3dCarteMemoire.Ecrire(handle, buffer, size);
 
     [DllImport("winsys3d.dll", EntryPoint = "#67")] internal static extern int Ordinal_67(int unused); // real: FUN_00a050f0, RET 4 confirmé — un paramètre ignoré ; rend toujours 1
 
@@ -136,7 +162,11 @@ internal static unsafe class Winsys3d
     // donc le test `Ordinal_46() < 0` de FUN_00513dd0 est toujours faux dans cette version de la DLL.
     internal static int Ordinal_46() => (int)Libraries.Winsys3dSouches.RendZero();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#92")] internal static extern void* Ordinal_92(void* a, void* b); // confirmed no-op (FUN_00a05160 ignores its args)
+    // real: winsys3d.c FUN_00a05160 — libcd `CdSearchFile`, vidé par le portage PC : il ignore ses
+    // deux arguments et rend l'adresse d'une `CdlFILE` statique de 24 octets que personne n'écrit.
+    // L'original passe ici `(&DAT_005e9040, "BLAZE_ALL.1")` ; le site C# passe `null, null`, ce qui
+    // ne change rien puisque le corps ne les lit pas. Voir `Libraries/winsys3d/Cdrom.cs`.
+    internal static void* Ordinal_92(void* a, void* b) => Libraries.Winsys3dCdrom.CdSearchFile(a, (byte*)b);
 
     internal static uint Ordinal_104(void* a) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op, returns 0 (FUN_00a02e20)
 
@@ -148,7 +178,10 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#132")] internal static extern int Ordinal_132(int a); // real: winsys3d.c FUN_00a053e0, VSync/frame-pacing wait â€” DLL-internal timing state
 
-    [DllImport("winsys3d.dll", EntryPoint = "#136")] internal static extern int Ordinal_136(int a); // real: winsys3d.c FUN_00a05770, get/set DAT_011be6a4 ("frame time offset"?), returns previous value
+    // real: winsys3d.c FUN_00a05770, get/set DAT_011be6a4 ("frame time offset"?), returns previous
+    // value. Porté avec l'ordinal 135, son lecteur, que personne n'importe — une composante se porte
+    // entière. Le rôle reste non établi : voir `Libraries/winsys3d/Cadence.cs`.
+    internal static int Ordinal_136(int a) => (int)Libraries.Winsys3dCadence.Unknown_00a05770((uint)a);
 
     internal static void Ordinal_138() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
@@ -206,7 +239,11 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#793")] internal static extern void Ordinal_793(void* normals, void* outColours, uint triangleCount); // real: winsys3d.c FUN_00a03e70 â€” batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
 
-    [DllImport("winsys3d.dll", EntryPoint = "#794")] internal static extern void Ordinal_794(void* matrix, void* scale); // real: winsys3d.c FUN_00a20540 â€” libgte ScaleMatrix: scales each of the matrix's three columns by one component of `scale`.
+    // real: winsys3d.c FUN_00a20540 â€” libgte ScaleMatrix: scales each of the matrix's three columns
+    // by one component of `scale`, in 4.12 fixed point. Le seul des neuf ordinaux libgte importés
+    // qui ne touche aucun registre émulé du GTE : voir `Libraries/winsys3d/Matrices.cs`.
+    internal static void Ordinal_794(void* matrix, void* scale)
+        => Libraries.Winsys3dMatrices.ScaleMatrix((short*)matrix, (short*)scale);
 
     // real: winsys3d.c FUN_00a226c0 â€” the depth-less sibling of ordinal 418, taken when the model's
     // 0x400 flag is set. **Three** parameters, not two: Ghidra names them (param_1, param_2,
@@ -232,15 +269,21 @@ internal static unsafe class Winsys3d
     // Game-state-0 ordinals. winsys3d.c declares all of these with no parameters, but that is the
     // same decompiler artifact seen throughout this project â€” the **call sites are authoritative**,
     // and the argument counts below are theirs (Blaze.c: FUN_00529a80 and FUN_00542160).
-    [DllImport("winsys3d.dll", EntryPoint = "#97")] internal static extern int Ordinal_97(int a, int b, int c);
+    //
+    // 2026-09-22 : l'ordinal 97 est une SOUCHE, `xor eax,eax ; ret 0Ch` (FUN_00a046e0). Le `ret 0Ch`
+    // confirme les trois arguments ci-dessus, et le corps confirme qu'il ne fait rien.
+    internal static int Ordinal_97(int a, int b, int c) => (int)Libraries.Winsys3dSouches.RendZeroTroisArguments();
 
     internal static void Ordinal_762(void* p) => Libraries.Winsys3dSouches.RienUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#765")] internal static extern int Ordinal_765(int a, uint rgb);
+    // 2026-09-22 : SOUCHE, `xor eax,eax ; ret 8` (FUN_00a02e10, 22 ordinaux). Le `ret 8` confirme
+    // les deux arguments ci-dessus.
+    internal static int Ordinal_765(int a, uint rgb) => (int)Libraries.Winsys3dSouches.RendZeroDeuxArguments();
 
     internal static int Ordinal_766(void* p) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#767")] internal static extern void Ordinal_767(int a, uint rgb);
+    // 2026-09-22 : SOUCHE, `ret 8` (FUN_00a02e40, 41 ordinaux). Meme controle d arite.
+    internal static void Ordinal_767(int a, uint rgb) => Libraries.Winsys3dSouches.RienDeuxArguments();
 
     internal static int Ordinal_768(int a) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
@@ -259,7 +302,28 @@ internal static unsafe class Winsys3d
     /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05b30 @ 0x00a05b30.</summary>
     internal static int Ordinal_660(void* env) => Libraries.Winsys3dListeAffichage.PutDrawEnv(env);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#701")] internal static extern void Ordinal_701(uint* ot);
+    // ------------------------------------------------------------------------------------------
+    // ORDINAL 701, `DrawOTag` — la PORTE du chemin d'affichage, portée le 2026-09-22.
+    //
+    // C'est le seul `[DllImport]` du périmètre de `Documentation/Etat/CheminAffichage.md` : 157
+    // corps et 12 408 lignes sont derrière lui. Seul le corps de `DrawOTag` est transcrit pour
+    // l'instant ; ses sept appelées restent natives, appelées **par adresse** (`Natif.cs`), et ses
+    // globales sont celles de la DLL, aliasées (`Data.cs`). L'image doit donc être identique.
+    //
+    // **`OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche l'original**, pour pouvoir comparer les deux à
+    // l'écran — c'est la seule vérification qui vaille sur ce lot, et le même genre d'échappatoire
+    // que `OPENFORESIA_LEGACY_3DHELP`. À retirer quand le périmètre sera porté.
+    // ------------------------------------------------------------------------------------------
+    [DllImport("winsys3d.dll", EntryPoint = "#701")] private static extern void Ordinal_701_Natif(uint* ot);
+
+    private static readonly bool s_DrawOTagLegacy =
+        Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_DRAWOTAG") == "1";
+
+    internal static void Ordinal_701(uint* ot)
+    {
+        if (s_DrawOTagLegacy) { Ordinal_701_Natif(ot); return; }
+        Libraries.Winsys3dCheminAffichage.DrawOTag(ot);
+    }
 
     // libgpu MoveImage(RECT* src, int dstX, int dstY) â€” copies a rectangle inside the emulated
     // VRAM. Body confirmed at winsys3d.c:5348 (`/* 0x5df0  676 */`): it walks `src->h` rows of
@@ -281,14 +345,24 @@ internal static unsafe class Winsys3d
     // rect.y > 0x1ff, confirming a 1024x512 VRAM addressing scheme.
     [DllImport("winsys3d.dll", EntryPoint = "#674")] internal static extern int Ordinal_674(void* rect, void* srcBuffer);
 
+    // ------------------------------------------------------------------------------------------
+    // LE LECTEUR DE CONTENEUR TIM — porté le 2026-09-22, `Libraries/winsys3d/Tim.cs`. C'était la
+    // composante 3 de `DLLGlobales.md` : deux corps, une seule globale (`DAT_011be790`), dont les
+    // dix références tiennent dans cette paire.
+    // ------------------------------------------------------------------------------------------
+
     // winsys3d.c FUN_00a05bb0 â€” libgpu `OpenTIM(u_long *addr)`. Parks a cursor at `addr + 4` in the
     // DLL global DAT_011be790; ReadTIM below consumes and clears it, so the pair is one-shot.
-    [DllImport("winsys3d.dll", EntryPoint = "#677")] internal static extern int OpenTim(void* timData);
+    internal static int OpenTim(void* timData) => Libraries.Winsys3dTim.OpenTim(timData);
 
     // winsys3d.c FUN_00a05bd0 â€” libgpu `ReadTIM(TIM_IMAGE*)`. Parses the TIM header the cursor
     // points at and fills the 5-dword TIM_IMAGE below. When the header's bit 3 is clear the image
     // has no CLUT and it writes mode=2, crect=null, caddr=null.
-    [DllImport("winsys3d.dll", EntryPoint = "#662")] internal static extern void ReadTim(Resources.TimImage* image);
+    //
+    // Le renvoi prend un `uint*` et non un `TimImage*` : `Libraries/` ne connait pas les types de
+    // `src/Blaze/`, et ne doit pas — ce sont deux programmes distincts (LISEZMOI.md). La structure
+    // fait exactement cinq mots, c'est ce que la DLL ecrit, et c'est le cast qui le dit.
+    internal static void ReadTim(Resources.TimImage* image) => Libraries.Winsys3dTim.ReadTim((uint*)image);
 
     internal static void Ordinal_681(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
@@ -308,7 +382,11 @@ internal static unsafe class Winsys3d
     // (de)registration bookkeeping â€” see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
     [DllImport("winsys3d.dll", EntryPoint = "#6")] internal static extern void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback); // real: winsys3d.c FUN_00a040d0, registers a handler, returns an opaque handle
 
-    [DllImport("winsys3d.dll", EntryPoint = "#10")] internal static extern int Ordinal_10(void* handle); // real: winsys3d.c FUN_00a04220 — **arme** le gestionnaire (état 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130)
+    // real: winsys3d.c FUN_00a04220 — libapi `EnableEvent` : **arme** le gestionnaire (état
+    // 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130).
+    // Le nœud appartient à l'appelant — il vient de l'ordinal 6, resté natif, donc du tas de
+    // `wsyskern` : une seule mémoire, vue des deux côtés. Voir `Libraries/winsys3d/Evenements.cs`.
+    internal static int Ordinal_10(void* handle) => Libraries.Winsys3dEvenements.EnableEvent(handle);
 
     /// <summary>Porte : <c>Libraries/winsys3d/SectionCritique.cs</c>, winsys3d.c FUN_00a04fd0 @ 0x00a04fd0. winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument</summary>
     internal static void Ordinal_40() => Libraries.Winsys3dSectionCritique.Entrer();

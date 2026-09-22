@@ -72,3 +72,46 @@ restée native. Trois cas rencontrés dès le premier lot de `wsyskern` :
 
 D'où l'ordre de travail : **par sous-arbre complet d'un point d'entrée**, jamais par sujet. La
 colonne « appelants » de `DLLAtteignables.md` est là pour ça.
+
+## La sixième règle, découverte au chemin d'affichage : **aliaser plutôt que dupliquer**
+
+La règle 2 dit qu'une globale de DLL ne rejoint jamais `GameMemory`. Elle reste vraie. Mais elle
+supposait qu'une DLL se porte **entièrement**, d'un bloc, avec ses globales recréées en C#.
+
+Le chemin d'affichage de `winsys3d` a montré la limite : **157 corps, 12 408 lignes**, indivisible
+en transcription classique parce qu'à état inchangé un producteur **allonge l'enregistrement
+précédent** du tampon de commandes (`paquet[curseur - 1] += n`). Deux moitiés ne peuvent pas
+coexister avec deux copies des mémos. Trois découpages plus courts ont été essayés et **mesurés**,
+tous faux — le détail est dans `Documentation/Etat/CheminAffichage.md`.
+
+**D'où le troisième cas.** Quand un lot est trop gros pour partir d'un bloc, ses globales ne se
+recréent pas : elles se **désignent**, dans le `.data` réel de la DLL chargée.
+
+```csharp
+private static byte* At(nuint va) => Base + (va - ImageBase);   // Base = GetModuleHandleA
+internal static ref int Curseur_011be7dc => ref *(int*)At(0x011be7dc);
+```
+
+Il n'y a alors plus deux copies : il n'y en a qu'une, celle de 1998. Le lot redevient divisible
+corps par corps, et chaque étape se vérifie à l'écran. C'est `winsys3d/Data.cs`.
+
+Son complément obligé est `winsys3d/Natif.cs` : les corps pas encore portés ne sont **pas
+exportés**, donc aucun `[DllImport]` ne les atteint. On les appelle par adresse, base + RVA, avec
+l'arité **prouvée au désassembleur** — un `call` sans `add esp, N` derrière prouve à la fois le
+nombre d'arguments et la convention `stdcall`.
+
+**Les quatre garde-fous, qui ne sont pas négociables :**
+
+1. **Une adresse aliasée ne doit jamais exister en double côté C#.** Tant qu'un seul corps reste
+   natif, une copie serait morte à la seconde où le natif écrirait la vraie.
+2. **`Natif.cs` est un échafaudage, pas une transcription.** Chaque entrée y est une dette, et le
+   fichier doit avoir disparu quand le périmètre est porté. Il sert de tableau de bord.
+3. **La base se résout paresseusement**, jamais dans un initialiseur statique : la DLL n'est pas
+   forcément chargée quand la classe l'est. Le dépôt a déjà payé ce prix une fois.
+4. **Le jour où la DLL part entièrement**, `Data.cs` se remplace par de vraies variables d'un seul
+   geste, sans toucher aux appelants — c'est pour cela que tout passe par des propriétés `ref` et
+   que personne ne manipule la base directement.
+
+**Ceci n'autorise pas l'aliasing par confort.** Une DLL qui se porte d'un bloc se porte d'un bloc,
+avec ses propres globales : c'est le cas de `wsyskern`, et c'est resté le cas par défaut. Le
+troisième cas ne s'ouvre que sur un lot dont on a **mesuré** qu'il est indivisible autrement.

@@ -4,6 +4,114 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-22
+
+- feat : **le chemin d'affichage est ouvert — `DrawOTag` (ordinal 701) est en C#.** Premiere pierre
+  d'un perimetre de 157 corps : `Libraries/winsys3d/CheminAffichage.cs`, avec ses sept appelees
+  encore natives et ses globales aliasees. **`OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche l'original**
+  pour comparer les deux a l'ecran
+- feat : **`Libraries/winsys3d/Data.cs` — les globales de `winsys3d` aliasees sur le `.data` reel
+  de la DLL chargee** (base par `GetModuleHandleA`, RVA = VA - 0x00a00000). Il n'y a plus deux
+  copies, il n'y en a qu'une : le lot redevient divisible corps par corps. Sixieme regle ecrite
+  dans `src/Libraries/LISEZMOI.md`, avec ses quatre garde-fous
+- feat : `Libraries/winsys3d/Natif.cs` — les corps pas encore portes, appeles **par adresse**
+  (ils ne sont pas exportes, aucun `[DllImport]` ne les atteint). Echafaudage et tableau de bord :
+  il doit avoir disparu quand le perimetre sera porte. Arites prouvees au desassembleur
+- doc : le desassemblage de `DrawOTag` corrige Ghidra sur trois points — `VSyncDelayed` est
+  `DAT_011be67c`, l'arene est un **double tampon** (`x = 0x40000 - x`, pas une accumulation), et
+  les deux ecritures d'arene sont dans l'ordre inverse
+- fix : `Natif.cs` portait la **vignette canonique** `winsys3d.c <nom> @ <adresse>` sur ses sept
+  entrees, et le recensement a compte huit corps portes la ou il y en avait un. Forme neutralisee,
+  piege documente dans le fichier — c'est la lecon « une mention n'est pas une transcription »
+  prise par l'autre bout
+- doc : **le rejeu n'est pas séparable non plus — troisième piste fermée par la mesure.** La
+  clôture de `DrawOTag` contient **20 des 38 producteurs** (1 883 l.) et 68 de ses 134 corps
+  touchent un mémo d'état ; `DrawOTag` lui-même remet `DAT_00a2c484/488/48c` à -1 à chaque image.
+  Le porter seul laisserait les producteurs natifs allonger un enregistrement mort
+- feat : **`census-display-path.sh` + `.awk`**, et `Documentation/Etat/CheminAffichage.md` — la
+  carte du dernier lot. Graine (tampon ou mémo) + fermeture descendante : **157 corps, 12 408
+  lignes, 70 formes, 26 coutures externes toutes de 13 à 123 lignes, et UN SEUL `[DllImport]`
+  dedans** — l'ordinal 701. L'ordre de travail est par forme de squelette, pas par taille
+- doc : `CLAUDE.md` référence le nouveau document ; `byebye-dll.md` garde la trace des **trois**
+  pistes ouvertes puis fermées dans la journée (`DAT_011be760`, le tampon seul, le rejeu seul),
+  pour qu'on ne refasse pas le chemin
+- doc : **le consommateur du tampon de commandes est `FUN_00a0cd20`** (46 lignes), atteint par
+  `DrawOTag` (701) -> `FUN_00a13400` -> `FUN_00a0cdd0`. La chaîne est fermée : `FUN_00a0dde0`
+  (ordinal 752) construit un paquet et le lie dans l'OT du jeu avec le tag `| 0x80000000` ;
+  `DrawOTag` parcourt l'OT deux fois — textures, puis rejeu — entre `BeginScene` et `EndScene`
+- doc : **le format du paquet** — en-tête de 8 octets, enregistrements de 0x10, sentinelle
+  `0xffffffff` sur le mot d'opcode suivant. Quatre opcodes négatifs et un cas par défaut qui **est
+  un `DrawPrimitive` sérialisé** : `[type prim][type sommet][sommets][nombre]`, slot `+0xbc`
+- doc : **le mémo d'état sert à GROUPER, pas à dédoublonner** — à état inchangé le producteur
+  incrémente sur place le mot « nombre » de l'enregistrement précédent et range ses sommets à la
+  suite. Deux primitives deviennent un `DrawPrimitive`. C'est la vraie raison pour laquelle les
+  38 producteurs sont indivisibles
+- fix : `DAT_011be7ac` **n'est pas un symbole réutilisé** — ma note du même jour était fausse.
+  `winsys3d.c:8718` est `FUN_00a0c440` (ordinal 754) qui **libère un paquet** en lisant son en-tête
+  pour recoudre l'OT. La globale veut dire « le paquet courant », partout
+- doc : le devis mesuré — `FUN_00a0cd20` seul 46 l. (mais non exporté), le rejeu 97 corps /
+  7 022 l., `DrawOTag` entier 134 corps / 9 091 l., les producteurs 38 corps / 4 886 l. et
+  11 formes. **L'ordre est le rejeu d'abord** : c'est le seul lot qui franchisse une frontière déjà
+  matérielle
+- doc : **`DAT_011be760` n'est pas le levier de la masse — mesuré, et ma note de la veille était
+  fausse.** En retirant la globale de la carte, la masse passe de 425 à 419 corps : le seul qui se
+  détache est l'ordinal 750, qui est `return DAT_011be760;`. Et ce n'en était pas une, de soudure :
+  la valeur pointe déjà sur un objet C# (`SyntheticDevice` détourne `GetProcAddress`), et
+  `Options.cs` appelle sa vtable directement depuis `src/Blaze/` depuis le 2026-08-12
+- doc : **le chemin d'affichage de `winsys3d` est en deux familles DISJOINTES** — 38 producteurs
+  qui écrivent le tampon de commandes (`DAT_011be7dc`, 4 886 l., **11 squelettes**) et 73 appelants
+  de device (`DAT_011be760`, 4 696 l., 36 squelettes), **zéro recouvrement**. Les producteurs sont
+  le lot identifié : cohérent, fermé, et sans besoin ni du device ni de la vtable
+- doc : ce qui soude vraiment la masse est le **cache d'état** du tampon (`DAT_00a2c480/484/488/48c`,
+  `DAT_00a2c578/57c`) : deux caches feraient sauter une commande d'état posée par l'autre moitié —
+  une primitive avec le mélange de la précédente, par intermittence
+- doc : **`DAT_011be7ac` est un symbole réutilisé** (nœud de liste chaînée en `winsys3d.c:8718`,
+  base du tampon en 8737). Les comptes de soudure de `DLLGlobales.md` sont donc surévalués pour
+  cette globale, et probablement pour d'autres — lire les sites avant de bâtir un lot sur un chiffre
+- feat : **les quatre derniers corps isolés de `winsys3d` sont portés — il ne reste que la masse.**
+  `Cdrom.cs` (92, `CdSearchFile`), `Matrices.cs` (794, libgte `ScaleMatrix`), `Evenements.cs`
+  (10, libapi `EnableEvent`) et `Cadence.cs` (135/136, un casier et ses deux accesseurs). Quatre
+  familles PSY-Q, un fichier chacune, chacun amorce du lot que la masse rendra un jour
+- doc : **l'ordinal 92 est `CdSearchFile`**, établi par trois preuves concordantes — `DAT_00dedd58`
+  fait 0x18 octets, soit exactement une `CdlFILE` ; la signature `(CdlFILE*, char*) -> CdlFILE*` ;
+  et le site d'appel qui passe `"BLAZE_ALL.1"`. C'est l'ordinal 94 (`CdComstr`, non importé) qui
+  nomme la famille : son `switch` rend `"CdlNop"`, `"CdlSetloc"`, `"CdlPlay"`…
+- doc : la `CdlFILE` que rend l'ordinal 92 **n'est écrite par personne** — une seule référence à
+  `DAT_00dedd58` dans les 27 000 lignes de `winsys3d.c`. Vingt-quatre octets de zéros dont
+  l'adresse circule, et dont l'unique appelant jette le retour
+- doc : `byebye-dll.md` n'a plus de liste de courses mais un front unique. Le levier de la masse
+  est `DAT_011be760`, le pointeur de device : **touché par 73 corps, écrit par un seul**, et c'est
+  la couture que `Host/SyntheticDevice.cs` occupe déjà côté 3dhelp
+- feat : **le lecteur de conteneur TIM quitte `winsys3d.dll`** — les ordinaux 677 et 662
+  (`OpenTIM`/`ReadTIM`) dans `src/Libraries/winsys3d/Tim.cs`, c'était la composante 3 : deux corps,
+  une seule globale (`DAT_011be790`) dont les dix références tiennent dans la paire
+- feat : les ordinaux **765 et 767** partent avec eux — ils se sont révélés être deux **souches
+  vides** de plus, `FUN_00a02e10` (`xor eax,eax ; ret 8`) et `FUN_00a02e40` (`ret 8`)
+- doc : le relevé des souches de `Souches.cs` était incomplet — **huit corps et 223 exports**, pas
+  quatre et 149. Les quatre manquants ont deux ou trois arguments, là où le relevé n'avait cherché
+  que des arités 0 et 1 ; la recette pour les trouver toutes (compter les corps, pas les ordinaux)
+  est écrite dans le pavé de tête
+- feat : **la famille de fichiers de la carte mémoire quitte `winsys3d.dll`** — les ordinaux 18 à
+  25 (`firstfile`, `nextfile`, `erase`, `open`, `close`, `lseek`, `read`, `write`) sont transcrits
+  dans `src/Libraries/winsys3d/CarteMemoire.cs`, avec leur pivot `FUN_00a03f80` et les ordinaux 29
+  et 30 que la composante lui soude. **8 imports retirés** ; les composantes 2, 9, 10, 12 et 13 de
+  `DLLGlobales.md` disparaissent d'un coup
+- feat : `_splitpath` et `_makepath` (wsyskern, ordinaux 4 et 5) dans
+  `src/Libraries/wsyskern/Chemins.cs` — c'est `winsys3d` qui les importe, pas le jeu, donc le
+  relevé ne les voyait pas
+- feat : l'ordinal 97 rejoint `Souches.cs` — `FUN_00a046e0` est une **cinquième souche vide**
+  (`xor eax,eax ; ret 0Ch`, 9 ordinaux), trouvée au milieu du `libapi` et non avec les quatre
+  autres ; une sixième existe (`FUN_00a046f0`, ordinaux 28 et 73), que personne n'importe
+- doc : **LB-035** — l'ordinal 29 de `winsys3d` résout ses deux descripteurs dans le même casier
+  statique et renomme donc un fichier en lui-même. Cassé dans le binaire vendu, reproduit tel quel
+- doc : `Documentation/DLL/winsys3d.md` — la convention `~` des noms de carte mémoire (écrite par
+  `FUN_00a03f80`, relue par 18 et 19), les drapeaux de l'ordinal 21, et les cinq ordinaux de
+  `wsyskern` que `winsys3d` importe
+- doc : `byebye-dll.md`, `DLLAtteignables.md` et `DLLGlobales.md` remis à jour — `winsys3d` passe
+  de 61 à 44 points d'entrée et de 21 à 42 corps portés sur la journée ; **des quatorze
+  composantes, il n'en reste qu'une** — la masse, 425 corps et 22 415 lignes
+
+
 ## 2026-09-21
 
 - feat : **`census-dll-globals.sh` — la carte des globales**, avec `census-dll-globals.awk` et

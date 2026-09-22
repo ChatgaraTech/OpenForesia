@@ -1791,3 +1791,31 @@ garde soit mise à jour.
 
 **Reproduit tel quel** : la branche est transcrite dans `Codec.cs` avec sa garde, parce que ce n'est
 pas à la transcription de décider si c'est un oubli.
+
+## LB-035 — L'ordinal 29 de `winsys3d` renomme un fichier en lui-même
+
+**Où** : `winsys3d.c`, `FUN_00a04700` @ `0x00a04700` (ordinal 29), et son appelée
+`FUN_00a03f80` @ `0x00a03f80`.
+
+`FUN_00a03f80` résout un descripteur de carte mémoire en chemin Win32, **dans un casier statique**
+— `DAT_00dedc58`, 0x100 octets — dont il rend l'adresse. L'ordinal 29 l'appelle deux fois de
+suite, une par descripteur :
+
+```c
+lpExistingFileName = (LPCSTR)FUN_00a03f80(param_1);   /* ecrit DAT_00dedc58 */
+lpNewFileName      = (LPCSTR)FUN_00a03f80(param_2);   /* le REECRIT */
+MoveFileA(lpExistingFileName,lpNewFileName);          /* deux fois le meme pointeur */
+```
+
+Les deux pointeurs valent `&DAT_00dedc58`, et le contenu est celui de la **seconde** résolution.
+`MoveFileA` reçoit donc deux fois le nom d'arrivée, et renomme ce fichier en lui-même — ou échoue
+s'il n'existe pas encore, ce qui est le cas nominal d'un renommage.
+
+**Conséquence** : aucune, parce que rien n'appelle cet ordinal. Ni `Blaze.c` ni la reconstruction
+ne l'importent, et c'est vraisemblablement la raison : le défaut aurait sauté aux yeux au premier
+essai. Le même piège guette l'ordinal 30 (`SetCurrentDirectoryA`), qui n'a qu'un descripteur et
+s'en tire donc indemne.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/CarteMemoire.cs` : les deux appels y sont, dans
+l'ordre, sur le même casier. Le correctif, s'il en fallait un, tiendrait en une copie du premier
+chemin dans un tampon local avant la seconde résolution.

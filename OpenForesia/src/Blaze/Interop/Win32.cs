@@ -205,4 +205,19 @@ internal static unsafe class Win32
     [DllImport("kernel32.dll")] internal static extern void EnterCriticalSection(void* lpCriticalSection);
     [DllImport("kernel32.dll")] internal static extern void LeaveCriticalSection(void* lpCriticalSection);
 
+    // La famille de fichiers de la carte memoire (`winsys3d`, ordinaux 18 a 25, 29 et 30). Voir
+    // `Libraries/winsys3d/CarteMemoire.cs` : ce sont des enveloppes d'une ligne autour de ces
+    // appels-ci, plus la resolution du descripteur en chemin.
+    //
+    // `lpFindFileData` est un `void*` et non une structure : les deux corps qui l'emploient
+    // lisent `WIN32_FIND_DATAA` par offsets (nFileSizeLow a 0x20, cFileName a 0x2c), exactement
+    // comme le cadre de pile de l'original.
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr FindFirstFileA(byte* lpFileName, void* lpFindFileData);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int FindNextFileA(IntPtr hFindFile, void* lpFindFileData);
+    [DllImport("kernel32.dll")] internal static extern int FindClose(IntPtr hFindFile);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int DeleteFileA(byte* lpFileName);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int MoveFileA(byte* lpExistingFileName, byte* lpNewFileName);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int SetCurrentDirectoryA(byte* lpPathName);
+    [DllImport("kernel32.dll")] internal static extern int WriteFile(IntPtr hFile, void* lpBuffer, uint nNumberOfBytesToWrite, uint* lpNumberOfBytesWritten, void* lpOverlapped);
+
 }

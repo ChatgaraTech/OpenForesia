@@ -20,8 +20,8 @@
 //     661      FUN_00a05b50    0         0       0        PORTE
 //     688      FUN_00a06160    0         0       0        PORTE
 //     660      FUN_00a05b30    1         0       0        PORTE — voir ci-dessous
-//     677      FUN_00a05bb0    1         0       0        PORTABLE — corrige, voir ci-dessous
-//     662      FUN_00a05bd0    1         0       0        PORTABLE — la meme globale, la meme paire
+//     677      FUN_00a05bb0    1         0       0        PORTE le 2026-09-22 dans `Tim.cs`
+//     662      FUN_00a05bd0    1         0       0        PORTE le 2026-09-22 dans `Tim.cs`
 //     665/674/676/684  ...     2         1       0        bloques
 //     710      FUN_00a026e0    4         3       0        bloque
 //     668      FUN_00a020a0    10        0       0        bloque
@@ -35,6 +35,11 @@
 // et neuf dans 662. La paire est donc une composante fermee, portable d'un bloc, exactement comme
 // 659/660. Compter des references quand la question porte sur des corps : la carte existe pour que
 // cette erreur-la ne se refasse pas a la main.
+//
+// **La paire est partie le 2026-09-22**, et pas ici : `OpenTIM`/`ReadTIM` lisent un conteneur
+// d'image, ils ne touchent pas a la liste d'affichage. Ils ont pris leur fichier, `Tim.cs`, comme
+// `src/Libraries/LISEZMOI.md` le demande des qu'un sujet est identifiable. La ligne reste dans ce
+// releve parce que c'est ce releve qui avait pose la question.
 //
 // **L'ordinal 660 passe malgre sa globale**, et c'est un cas de figure a retenir : le bloc
 // `DAT_011be6d8` (23 mots) n'a que DEUX references dans les 27 000 lignes de `winsys3d.c` — 660
