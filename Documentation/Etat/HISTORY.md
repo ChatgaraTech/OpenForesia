@@ -6,6 +6,23 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-22
 
+- feat : **`FUN_00a13400`, le repartiteur de primitives, est en C#** — 118 etiquettes de `case`,
+  42 gestionnaires, le pavage des sprites et les cinq blocs de matrice.
+  `Libraries/winsys3d/CheminAffichage.RejouerNoeud`. Les 48 appelees restent natives, appelees par
+  adresse. **Controle mecanique : 118 etiquettes des deux cotes, aucun code de primitive en ecart**
+- doc : `Legacy/Raw/Winsys3d/FUN_00a13400.arites.txt` — les arites des 49 appelees, lues dans le
+  binaire (`ret N`) puis **recoupees avec les sites d'appel**. 47 concordaient du premier coup ;
+  deux ont demande le desassembleur, dont `FUN_00a0e040` que le releve automatique donnait a zero
+  argument alors qu'il en prend un (le releve avait franchi la fin du corps). **Un releve
+  automatique d'arite n'est pas une preuve**
+- doc : quatre points que Ghidra seul ne tranche pas sur ce corps, tous resolus — `local_50` du cas
+  0xe3 est `param_1 + 2` (`lea eax,[esi+8]` a 0x00a13a12) ; le cas 0xe2 **chute** dans les cas 0..3
+  sans `break` ; le drapeau `Elo_NoLighting` est **OU-e dans la cle du switch**, il redirige vers la
+  variante non eclairee au lieu de tester ; et `DAT_00a2c5a0` vaut **-1 sans jamais etre ecrit**,
+  c'est le marqueur « ce paquet ne porte pas de matrice »
+- doc : `_DAT_00a2a0b8` vaut `0x39800000`, soit **1/4096** — la virgule fixe 4.12 de la libgte, la
+  meme que le `>> 12` de `ScaleMatrix`. La matrice 3x3 du paquet part vers le device **transposee**
+  en 4x4 de flottants : la PlayStation range par lignes, Direct3D attend l'autre sens
 - feat : **le chemin d'affichage est ouvert — `DrawOTag` (ordinal 701) est en C#.** Premiere pierre
   d'un perimetre de 157 corps : `Libraries/winsys3d/CheminAffichage.cs`, avec ses sept appelees
   encore natives et ses globales aliasees. **`OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche l'original**

@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 87 | 3 953 | 1 926 | 6 % | 53 |
-| `winsys3d` | 604 | 27 092 | 44 | 246 | 13 402 | 1 181 | 49 % | 43 |
+| `winsys3d` | 604 | 27 092 | 44 | 246 | 13 402 | 1 181 | 49 % | 44 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -307,7 +307,7 @@ soit **14 583 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement
 49 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**41 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**42 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
@@ -370,7 +370,7 @@ directement par la reconstruction, et son nom est en gras.
 
 | adresse | fonction | lignes | appelants | implemente |
 |---|---|---:|---:|---|
-| `0x00a13400` | `FUN_00a13400` | 540 | 1 | **non** |
+| `0x00a13400` | **`FUN_00a13400`** | 540 | 1 | oui |
 | `0x00a03460` | `FUN_00a03460` | 316 | 1 | **non** |
 | `0x00a0c4f0` | `FUN_00a0c4f0` | 259 | 1 | **non** |
 | `0x00a142a0` | `FUN_00a142a0` | 235 | 1 | **non** |

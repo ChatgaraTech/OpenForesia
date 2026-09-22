@@ -18,7 +18,7 @@ moities ne peuvent pas coexister ; l'une allongerait un enregistrement ecrit par
 |---|---:|---:|
 | graine (tampon ou memo) | 94 | |
 | **perimetre ferme** | **157** | **12 408** |
-| deja transcrits | 3 | |
+| deja transcrits | 4 | |
 
 **26 corps restent dehors tout en appelant le perimetre** — ce sont les coutures, et elles sont toutes minuscules :
 

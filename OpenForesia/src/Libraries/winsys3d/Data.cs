@@ -206,4 +206,64 @@ internal static unsafe class Winsys3dData
 
     /// <summary>DAT_00a2c57c — son argument.</summary>
     internal static ref int DerniereCommandeArg_00a2c57c => ref *(int*)At(0x00a2c57c);
+
+    // ----------------------------------------------------------------------------------------
+    // Ce que le repartiteur de primitives (`FUN_00a13400`) lit et ecrit en plus.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Elo_NoLighting @ 0x011be758 — le drapeau « pas d'eclairage ». Le repartiteur l'OU-e dans le
+    /// code de primitive quand celui-ci est sous 0x80 : il **redirige vers la variante non
+    /// eclairee** de chaque primitive, il ne se contente pas d'un test. Ghidra le nomme deja ainsi.
+    /// </summary>
+    internal static ref int EloNoLighting_011be758 => ref *(int*)At(0x011be758);
+
+    /// <summary>
+    /// _DAT_00a2a0b8 — **1/4096**, releve dans `.rdata` (0x39800000). C'est l'echelle de la
+    /// virgule fixe 4.12 de la libgte, la meme que le `&gt;&gt; 12` de `ScaleMatrix`.
+    /// </summary>
+    internal static float EchelleFixe_00a2a0b8 => *(float*)At(0x00a2a0b8);
+
+    /// <summary>
+    /// DAT_00a2c5a0 — **la constante -1**, relevee dans `.data` (0xffffffff). Aucun corps de la
+    /// DLL ne l'ecrit : c'est le marqueur « ce paquet ne porte pas de matrice ». Le repartiteur
+    /// compare le mot de queue du paquet a cette valeur avant de poser une transformation.
+    /// </summary>
+    internal static int PasDeMatrice_00a2c5a0 => *(int*)At(0x00a2c5a0);
+
+    /// <summary>DAT_011cb1e0 — non nul, les sprites sont **paves** ; nul, ils partent d'un bloc.</summary>
+    internal static ref int Pavage_011cb1e0 => ref *(int*)At(0x011cb1e0);
+
+    /// <summary>DAT_011cb1d8 — la largeur de tuile du pavage.</summary>
+    internal static ref int LargeurTuile_011cb1d8 => ref *(int*)At(0x011cb1d8);
+
+    /// <summary>DAT_011cb1dc — la hauteur de tuile du pavage.</summary>
+    internal static ref int HauteurTuile_011cb1dc => ref *(int*)At(0x011cb1dc);
+
+    /// <summary>_DAT_011cb1d0 et _DAT_011cb1d4 — les deux autres champs que l'opcode 0xe2 depaquete.</summary>
+    internal static ref int Pavage_011cb1d0 => ref *(int*)At(0x011cb1d0);
+
+    /// <summary>Voir <see cref="Pavage_011cb1d0"/>.</summary>
+    internal static ref int Pavage_011cb1d4 => ref *(int*)At(0x011cb1d4);
+
+    /// <summary>DAT_011be6ec — l'opcode 0xe1 y depose **un demi-mot**, pas un mot.</summary>
+    internal static ref ushort Demi_011be6ec => ref *(ushort*)At(0x011be6ec);
+
+    /// <summary>DAT_011cb1bc, DAT_011cb1b8, DAT_011be7e0 — le decalage de vue sauvegarde par l'opcode 0xfb.</summary>
+    internal static ref int DecalSauveX_011cb1bc => ref *(int*)At(0x011cb1bc);
+
+    /// <summary>Voir <see cref="DecalSauveX_011cb1bc"/>.</summary>
+    internal static ref int DecalSauveY_011cb1b8 => ref *(int*)At(0x011cb1b8);
+
+    /// <summary>Voir <see cref="DecalSauveX_011cb1bc"/>.</summary>
+    internal static ref int DecalSauveZoom_011be7e0 => ref *(int*)At(0x011be7e0);
+
+    /// <summary>DAT_011be778, DAT_011be77c, DAT_00a2c498 — le decalage de vue courant, que l'opcode 0xfb sauvegarde.</summary>
+    internal static ref int DecalX_011be778 => ref *(int*)At(0x011be778);
+
+    /// <summary>Voir <see cref="DecalX_011be778"/>.</summary>
+    internal static ref int DecalY_011be77c => ref *(int*)At(0x011be77c);
+
+    /// <summary>Voir <see cref="DecalX_011be778"/>.</summary>
+    internal static ref int Zoom_00a2c498 => ref *(int*)At(0x00a2c498);
 }
