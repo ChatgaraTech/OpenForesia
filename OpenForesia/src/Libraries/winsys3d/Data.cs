@@ -168,8 +168,19 @@ internal static unsafe class Winsys3dData
     /// </summary>
     internal static ref int VSyncDelayed_011be67c => ref *(int*)At(0x011be67c);
 
-    /// <summary>DAT_011be6f0 — un octet : choisit le slot `+0x5c` (non nul) ou `+0x60` (nul).</summary>
+    /// <summary>
+    /// DAT_011be6f0 — un octet : choisit le slot `+0x5c` (non nul) ou `+0x60` (nul). **C'est le
+    /// champ `isbg` du `DRAWENV` que `PutDrawEnv` range** — l'octet +0x18 de
+    /// <see cref="DrawEnv_011be6d8"/>.
+    /// </summary>
     internal static ref byte ModeEffacement_011be6f0 => ref *At(0x011be6f0);
+
+    /// <summary>
+    /// &amp;DAT_011be6d8 — le `DRAWENV` courant, 23 mots, que l'ordinal 660 (`PutDrawEnv`) range et
+    /// que le 659 ressort. Son octet +0x18 est <see cref="ModeEffacement_011be6f0"/>, que
+    /// `DrawOTag` lit : une copie privee de ce bloc empecherait tout effacement de l'image.
+    /// </summary>
+    internal static uint* DrawEnv_011be6d8 => (uint*)At(0x011be6d8);
 
     /// <summary>
     /// DAT_011be754 — un rappel de fin d'image, appele sans argument s'il est non nul. Pose par
@@ -572,4 +583,50 @@ internal static unsafe class Winsys3dData
 
     /// <summary>Voir <see cref="MemoRouge_011be764"/>.</summary>
     internal static ref ushort MemoBleu_011be76c => ref *(ushort*)At(0x011be76c);
+
+    /// <summary>
+    /// _DAT_00a2a0b4 — **1/4096** (0x39800000 dans `.rdata`), l'echelle des normales des modeles
+    /// TMD. Meme valeur que <see cref="EchelleFixe_00a2a0b8"/>, a une autre adresse : les
+    /// producteurs lisent celle-ci.
+    /// </summary>
+    internal static float EchelleNormale_00a2a0b4 => *(float*)At(0x00a2a0b4);
+
+    // ----------------------------------------------------------------------------------------
+    // L'objet TMD en cours de conversion — `FUN_00a06a40` (ordinal 678) les pose depuis une
+    // entree de la table d'objets TMD (sept mots : sommets, nombre, normales, nombre, primitives,
+    // nombre, echelle), et `FUN_00a0c4f0` les lit.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>_DAT_011be7b0 — le numero de l'objet choisi dans le TMD (0 pour une entree seule).</summary>
+    internal static ref int TmdObjet_011be7b0 => ref *(int*)At(0x011be7b0);
+
+    /// <summary>_DAT_011be7b4 — le nombre d'objets du TMD (1 pour une entree seule).</summary>
+    internal static ref int TmdNbObjets_011be7b4 => ref *(int*)At(0x011be7b4);
+
+    /// <summary>DAT_011be7b8 — les sommets de l'objet : quatre `short` par sommet (x, y, z, bourrage).</summary>
+    internal static ref short* TmdSommets_011be7b8 => ref *(short**)At(0x011be7b8);
+
+    /// <summary>_DAT_011be7bc — leur nombre.</summary>
+    internal static ref int TmdNbSommets_011be7bc => ref *(int*)At(0x011be7bc);
+
+    /// <summary>DAT_011be7c0 — les normales de l'objet, meme forme que les sommets, en virgule fixe 4.12.</summary>
+    internal static ref short* TmdNormales_011be7c0 => ref *(short**)At(0x011be7c0);
+
+    /// <summary>_DAT_011be7c4 — leur nombre.</summary>
+    internal static ref int TmdNbNormales_011be7c4 => ref *(int*)At(0x011be7c4);
+
+    /// <summary>_DAT_011be7c8 — la premiere primitive de l'objet.</summary>
+    internal static ref byte* TmdPrimitives_011be7c8 => ref *(byte**)At(0x011be7c8);
+
+    /// <summary>DAT_011be7cc — le nombre de primitives.</summary>
+    internal static ref int TmdNbPrimitives_011be7cc => ref *(int*)At(0x011be7cc);
+
+    /// <summary>_DAT_011be7d0 — l'echelle de l'objet (mot 6 de l'entree).</summary>
+    internal static ref int TmdEchelle_011be7d0 => ref *(int*)At(0x011be7d0);
+
+    /// <summary>DAT_011be7d4 — le numero de la primitive courante.</summary>
+    internal static ref int TmdIndice_011be7d4 => ref *(int*)At(0x011be7d4);
+
+    /// <summary>DAT_011be7d8 — la primitive courante : `[olen][ilen][drapeaux][mode]` puis ses champs.</summary>
+    internal static ref byte* TmdPrimitive_011be7d8 => ref *(byte**)At(0x011be7d8);
 }

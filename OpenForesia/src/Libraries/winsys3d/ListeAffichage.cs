@@ -41,12 +41,17 @@
 // `src/Libraries/LISEZMOI.md` le demande des qu'un sujet est identifiable. La ligne reste dans ce
 // releve parce que c'est ce releve qui avait pose la question.
 //
-// **L'ordinal 660 passe malgre sa globale**, et c'est un cas de figure a retenir : le bloc
-// `DAT_011be6d8` (23 mots) n'a que DEUX references dans les 27 000 lignes de `winsys3d.c` — 660
-// qui l'ecrit, et 659 qui le relit. Rien d'autre dans la DLL ne le touche, et **aucune fonction
-// native ne les appelle** : c'est un casier que la DLL prete au jeu, pas de l'etat qu'elle
-// consulte. Le porter avec son casier est donc sans effet de bord. 659 n'est pas importe par la
-// reconstruction ; s'il le devient, il lira le notre.
+// **CORRECTION DU 2026-09-23 — le casier de 660 n'etait PAS prive.** La premiere version de ce
+// fichier portait 660 « malgre sa globale » : le bloc `DAT_011be6d8` (23 mots, un `DRAWENV`)
+// n'avait que deux references dans `winsys3d.c`, 660 qui l'ecrit et 659 qui le relit, et le
+// casier avait ete recopie dans un tableau C#. **C'etait faux** : `DrawOTag` lit l'octet +0x18 du
+// bloc — `isbg`, « effacer le fond » — sous un AUTRE nom, `DAT_011be6f0`, pour choisir entre
+// `Clear(TARGET)` et `Clear(ZBUFFER)`. Un symbole Ghidra au milieu d'un bloc echappe a un compte
+// de references par nom. Avec la copie privee, `isbg` restait a 0 dans la DLL : l'image n'etait
+// jamais effacee, et tout ce que la scene ne recouvrait pas gardait les images precedentes
+// (l'ecran de chargement dans le noir de la mine, la trainee des fenetres de texte). Le casier est
+// maintenant la memoire de la DLL elle-meme, `Winsys3dData.DrawEnv_011be6d8` — la regle 6 de
+// `src/Libraries/LISEZMOI.md`.
 // ============================================================================================
 
 using System;
@@ -108,11 +113,8 @@ internal static unsafe class Winsys3dListeAffichage
         ((byte*)e)[0x1b] = 0;
     }
 
-    /// <summary>
-    /// &amp;DAT_011be6d8 — les 23 mots que l'ordinal 660 range et que l'ordinal 659 ressort. Voir
-    /// le pave de tete : personne d'autre ne les touche, ni dans la DLL ni dans le jeu.
-    /// </summary>
-    private static readonly uint[] s_Casier = new uint[0x17];
+    /// <summary>Le `DRAWENV` courant : 23 mots, 0x5C octets.</summary>
+    private const int MotsDrawEnv = 0x17;
 
     /// <summary>
     /// Ghidra: winsys3d.c FUN_00a05b30 @ 0x00a05b30 (ordinal 660) — range 23 mots dans le casier.
@@ -121,7 +123,8 @@ internal static unsafe class Winsys3dListeAffichage
     internal static int PutDrawEnv(void* env)
     {
         uint* source = (uint*)env;
-        for (int i = 0; i < s_Casier.Length; i++) s_Casier[i] = source[i];
+        uint* casier = Winsys3dData.DrawEnv_011be6d8;
+        for (int i = 0; i < MotsDrawEnv; i++) casier[i] = source[i];
         return 0;
     }
 
@@ -133,7 +136,8 @@ internal static unsafe class Winsys3dListeAffichage
     internal static void GetDrawEnv(void* env)
     {
         uint* destination = (uint*)env;
-        for (int i = 0; i < s_Casier.Length; i++) destination[i] = s_Casier[i];
+        uint* casier = Winsys3dData.DrawEnv_011be6d8;
+        for (int i = 0; i < MotsDrawEnv; i++) destination[i] = casier[i];
     }
 
     /// <summary>

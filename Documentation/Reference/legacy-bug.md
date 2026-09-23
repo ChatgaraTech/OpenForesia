@@ -1923,3 +1923,61 @@ soustractif, sur un device de moins de 16 bits ou pour une page marquée 0x1000 
 
 **Reproduit tel quel** dans `src/Libraries/winsys3d/ChargementTextures.cs` (`Dib24`). Le correctif
 tiendrait en un `add esi,2` dans les deux branches et une écriture de trois octets.
+
+## LB-041 — Un quadrilatère TMD plat sans éclairage ne trace qu'un triangle
+
+**Où** : `winsys3d.c`, `FUN_00a08510` @ `0x00a08510` (le producteur du mode TMD `0x29`, F4 sans
+source de lumière). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Les trois autres producteurs de quadrilatères (`F4` éclairé, `G4`, `GT4`, `FT4`) rangent leurs
+quatre sommets dans l'ordre 0, 1, 3, 2 et émettent la commande **6** — `D3DPT_TRIANGLEFAN`. Celui-ci
+range ses sommets de la même façon, mais émet la commande **4**, `D3DPT_TRIANGLELIST` :
+
+```
+00a087aa  mov [0A2C578h],edi        ; edi = 4
+00a087b0  mov [edx+ecx*4],edi       ; l'opcode du DrawPrimitive
+...
+00a08828  add edx,edi               ; compte += 4 sommets
+```
+
+Une liste de triangles à quatre sommets n'en trace qu'un — les sommets 0, 1 et 3 — et le quatrième
+est ignoré : **la moitié du quadrilatère manque**. Et comme la commande est écrite sans consulter
+le mémo, deux F4 sans lumière de suite font deux enregistrements, là où les triangles s'allongent.
+
+**Conséquence** : non observée. Elle ne touche que les faces F4 non éclairées d'un modèle TMD, ou
+les paquets construits par les adaptateurs des genres 5 et 12/13 de l'ordinal 752.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/ConstructionPaquets.cs`
+(`F4SansLumiere_00a08510`). Le correctif tiendrait en une constante : 6 au lieu de 4.
+
+## LB-042 — Les producteurs TMD texturés mettent toujours u = v = 0
+
+**Où** : `winsys3d.c`, les huit producteurs texturés des modes TMD `0x24`, `0x25`, `0x2c`,
+`0x2d`, `0x34`, `0x35`, `0x3c`, `0x3d` (`FUN_00a08850`, `08c80`, `094d0`, `09070`, `0a1a0`,
+`0a670`, `0b390`, `0b930`). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Chaque coordonnée de texture part d'un octet de la primitive (0 à 255) et passe par une
+**division entière** que le compilateur a faite en multiplication :
+
+```
+00a08af5  mov  eax,3D2C183Dh
+00a08b09  mov  dl,[esi+4]          ; u0, un octet
+00a08b0c  imul edx                 ; edx = (u0 * 0x3D2C183D) >> 32
+00a08b0e  sar  edx,19h
+00a08b13  shr  eax,1Fh ; add edx,eax
+00a08b23  fild dword [esp+10h]
+00a08b27  fstp dword [ecx+18h]     ; tu du premier sommet
+```
+
+Le diviseur que donnent ces constantes est voisin de **140 422 000** — elles varient d'un
+producteur à l'autre (0x3D2C183D, 0x7A582FCB, 0x1E960961, 0x0F4AFC53...), mais toutes tombent
+là. Pour un octet, le quotient vaut toujours **0**. Ghidra ne s'y trompe pas : il replie le
+calcul et écrit `0.0`.
+
+**Conséquence** : non observée. Un modèle TMD texturé converti par ce chemin tirerait toutes ses
+faces du texel (0, 0) de sa page — une couleur unie. Que les modèles du jeu s'affichent texturés
+laisse penser qu'ils passent ailleurs (les primitives GPU du répartiteur, qui portent leurs `u v`
+en clair) ; c'est à confirmer.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/ConstructionPaquets.cs`
+(`QuotientMagique`), constante par constante. L'intention probable était `octet / 256.0f`.

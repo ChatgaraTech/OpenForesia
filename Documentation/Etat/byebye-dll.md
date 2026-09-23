@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-23** — la masse est entamée par aliasing : `DrawOTag`, ses appelées directes et tout le sous-système des textures et le constructeur de paquets sont en C# ; il reste 1 étape au chemin d'affichage.
+chiffres à jour. Dernière mise à jour : **2026-09-23** — **le chemin d'affichage est entièrement en C#** : `DrawOTag` et tout ce qu'il atteint (134 corps sur 157, les 23 autres ne sont atteints par rien). Reste `winsys3d` hors chemin d'affichage.
 
 ## Le but
 
@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 44 | 152 / 246 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing — voir la fin |
+| `winsys3d` | 44 | 174 / 246 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -355,7 +355,7 @@ portés sont appelés par adresse depuis `winsys3d/Natif.cs`.
 
 ### Le chemin d'affichage par aliasing — où on en est
 
-Portage **de haut en bas**, un corps à la fois ; le tableau de bord est l'en-tête de `Natif.cs`.
+Portage **de haut en bas**, un corps à la fois ; le tableau de bord était l'en-tête de `Natif.cs`, supprimé à l'étape 10.
 
 | étape | corps | état |
 |---|---|---|
@@ -368,7 +368,7 @@ Portage **de haut en bas**, un corps à la fois ; le tableau de bord est l'en-t�
 | 7 | l'intérieur du cache de textures et la liaison de texture | **fait le 2026-09-23** |
 | 8 | le chargement des textures, et le `qsort` de la CRT | **fait le 2026-09-23** |
 | 9 | le constructeur `dde0` (752) et ses 15 adaptateurs | **fait le 2026-09-23** |
-| 10 | les ~20 producteurs, et la reconstruction `c4f0` | **la suite** |
+| 10 | les 18 producteurs TMD et la reconstruction `c4f0` | **fait le 2026-09-23** |
 
 **Rien des étapes 3 et 4 n'a tourné.** L'étape 3 se voit dès qu'une scène passe par les opcodes
 0xe3/0xe4 (paquets de modèles 3D) : si le consommateur se trompait, ce sont les modèles qui
@@ -520,35 +520,64 @@ de côté) et écrit le C#, vérifié ensuite au désassembleur sur trois adapta
 Un écart assumé : les champs du paquet de pile que l'adaptateur n'écrit jamais valent 0 ici,
 n'importe quoi dans l'original — à contrôler producteur par producteur à l'étape 10.
 
+Le contrôle est fait à l'étape 10 : **aucun producteur ne lit un champ que son adaptateur
+n'écrit pas** — l'écart est sans effet.
+
+### Étape 10 — les producteurs TMD et la reconstruction
+
+Faite le 2026-09-23. **22 corps**, dans `ConstructionPaquets.cs` (pas de fichier neuf : c'est la
+suite directe de l'étape 9) : la reconstruction `c4f0` (ordinal 755), le choix d'objet `06a40`
+(678), la résolution des pointeurs `1cff0` (563), la fonction d'émission `07ca0`, et **dix-huit
+producteurs**, un par mode de primitive TMD — F3, FT3, G3, GT3, F4, FT4, G4, GT4, chacun éclairé
+ou non, plus les segments LF2 et LG2.
+
+**Les « modèles » de ce chemin sont des TMD PlayStation** : `06a40` vérifie l'identifiant `0x41`
+de l'en-tête, et les codes du `switch` de `c4f0` sont les modes TMD. Une entrée de la table
+d'objets (sept mots) est convertie en paquet la première fois qu'un nœud 0xe3/0xe4 la rejoue.
+
+Appris à l'étape 10 :
+
+- **Ghidra a deux écarts systématiques sur les producteurs**, tous deux relevés au
+  désassembleur : la couleur est rangée **en entier** dans le DWORD du `D3DLVERTEX`, pas
+  convertie (`(float)` n'est chez lui qu'une réinterprétation) ; et les coordonnées de texture,
+  qu'il écrit `0.0`, sont une **division entière par ~140 millions** — donc bien nulles, mais
+  transcrites telles quelles, constante par constante (**LB-042**) ;
+- **LB-041** : le quadrilatère plat non éclairé émet une liste de triangles à quatre sommets,
+  soit un seul triangle ;
+- **le flux de `c4f0` est reconstruit sur le désassemblage** (Ghidra saute dans la boucle), et
+  ses deux tables de sauts relues dans le binaire. Une bizarrerie gardée : après conversion, le
+  premier non fait n'avance que si `debut == indice - 1` ;
+- les quadrilatères écrivent leur commande **toujours** (un éventail ne s'allonge pas), les
+  triangles et segments seulement si elle change.
+
+Relevés : `Legacy/Raw/Winsys3d/FUN_00a0*.disasm.txt`, un par corps.
+
 ### Ce qui reste — le compte exact (2026-09-23)
 
 Mesuré en croisant le périmètre de `CheminAffichage.md` (157 corps) avec la clôture ATTEINTE de
 `DLLAtteignables.md` :
 
-| | corps | lignes |
-|---|---:|---:|
-| chemin d'affichage, porté | 112 (89 à l'étape 7) | |
-| chemin d'affichage, **atteint et à porter** | **45** | ~3 900 |
-| chemin d'affichage, **jamais atteint** | 23 | ~3 300 |
-| `winsys3d` hors chemin d'affichage, atteint et à porter | 72 | |
+| | corps |
+|---|---:|
+| chemin d'affichage, porté | **134** — tout ce qui est atteint |
+| chemin d'affichage, **jamais atteint** | 23 (~3 300 lignes) |
+| `winsys3d` hors chemin d'affichage, atteint et à porter | **72** |
+
+**`DrawOTag` et tout ce qu'il atteint sont en C#**, et `Natif.cs`, sa dette à zéro, est **supprimé** (garde-fou 2 de `LISEZMOI.md`). **Rien
+de l'étape 3 à l'étape 10 n'a encore tourné** : c'est la vérification à faire avant d'avancer.
+`OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche tout l'original pour comparer une même scène.
 
 **Les 23 jamais atteints n'ont pas à être portés.** Ce sont surtout les exports 548 à 555
 (`FUN_00a149f0`..`FUN_00a1c800`, une vingtaine de corps de ~190 lignes), plus 704, 753 et 754 :
 ils écrivent le tampon de commandes, d'où leur place dans le périmètre, mais ni le jeu ni aucun
-corps atteint ne les appelle. Environ 3 300 lignes de moins que le devis ne le laissait croire.
+corps atteint ne les appelle.
 
-Les 45 restants du chemin d'affichage, en trois étapes :
-
-| étape | contenu | corps |
-|---|---|---:|
-| 8 | le chargement des textures (`271e0`, `03460` — 316 l. —, `03980`) et le `qsort` de la CRT | 6 |
-| 9 | le constructeur `dde0` (ordinal 752) et ses 15 producteurs `d260`..`dce0` — une seule forme presque partout (`CIDCWR`) | 16 |
-| 10 | la reconstruction `c4f0` et ses ~20 producteurs `06a40`..`0c110`, plus `1cff0` (`c480` est parti à l'étape 9) | 22 |
-
-Après l'étape 10, `DrawOTag` et tout ce qu'il atteint sont en C#. Resteront les **72 corps
-atteints hors du chemin d'affichage** — la géométrie GTE, l'initialisation du device
-(`Setup3DDevice`), `InitTrigTables`, les 43 autres points d'entrée —, puis les deux passerelles de
-tas de `wsyskern`, qui ne tomberont qu'avec le dernier corps de `winsys3d`.
+Restent les **72 corps atteints hors du chemin d'affichage** — 44 points d'entrée : la géométrie
+GTE, l'initialisation du device (`Setup3DDevice`), `InitTrigTables`, les décalages d'écran
+(`SetShift`, `SetAbsShift`, `ShiftVertices`), `ChangeResolution`, `SetTimingMode`... —, puis les
+deux passerelles de tas de `wsyskern`, qui ne tomberont qu'avec le dernier corps de `winsys3d`.
+L'aliasing lève la règle 6 : une globale relue par du natif ne bloque plus rien, puisque C# et
+natif lisent la même mémoire.
 
 Lire `Documentation/DLL/winsys3d.md` avant de commencer — 52 Ko déjà accumulés.
 

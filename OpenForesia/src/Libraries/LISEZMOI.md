@@ -106,6 +106,9 @@ nombre d'arguments et la convention `stdcall`.
    natif, une copie serait morte à la seconde où le natif écrirait la vraie.
 2. **`Natif.cs` est un échafaudage, pas une transcription.** Chaque entrée y est une dette, et le
    fichier doit avoir disparu quand le périmètre est porté. Il sert de tableau de bord.
+   **C'est fait pour le chemin d'affichage : supprimé le 2026-09-23**, à l'étape 10, sa dette à zéro.
+   Un lot suivant qui porterait un point d'entrée avant ses appelées le recrée depuis l'historique
+   git — ses deux règles (arité prouvée, jamais la vignette canonique) valent telles quelles.
 3. **La base se résout paresseusement**, jamais dans un initialiseur statique : la DLL n'est pas
    forcément chargée quand la classe l'est. Le dépôt a déjà payé ce prix une fois.
 4. **Le jour où la DLL part entièrement**, `Data.cs` se remplace par de vraies variables d'un seul

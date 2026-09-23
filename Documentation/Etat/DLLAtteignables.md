@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 87 | 3 953 | 1 926 | 6 % | 53 |
-| `winsys3d` | 604 | 27 092 | 44 | 246 | 13 402 | 1 181 | 49 % | 152 |
+| `winsys3d` | 604 | 27 092 | 44 | 246 | 13 402 | 1 181 | 49 % | 174 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -307,7 +307,7 @@ soit **14 583 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement
 49 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**150 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**172 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
@@ -372,7 +372,7 @@ directement par la reconstruction, et son nom est en gras.
 |---|---|---:|---:|---|
 | `0x00a13400` | **`FUN_00a13400`** | 540 | 1 | oui |
 | `0x00a03460` | **`FUN_00a03460`** | 316 | 1 | oui |
-| `0x00a0c4f0` | `FUN_00a0c4f0` | 259 | 1 | **non** |
+| `0x00a0c4f0` | **`FUN_00a0c4f0`** | 259 | 1 | oui |
 | `0x00a142a0` | **`FUN_00a142a0`** | 235 | 1 | oui |
 | `0x00a26b20` | **`FUN_00a26b20`** | 217 | 1 | oui |
 | `0x00a049c0` | `FUN_00a049c0` | 197 | 2 | **non** |
@@ -382,37 +382,37 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a010d0` | `FUN_00a010d0` | 164 | 1 | **non** |
 | `0x00a03980` | **`FUN_00a03980`** | 150 | 1 | oui |
 | `0x00a053e0` | **`FUN_00a053e0`** | 143 | 0 | **non** |
-| `0x00a0aa90` | `FUN_00a0aa90` | 132 | 1 | **non** |
+| `0x00a0aa90` | **`FUN_00a0aa90`** | 132 | 1 | oui |
 | `0x00a271e0` | **`FUN_00a271e0`** | 129 | 1 | oui |
-| `0x00a09980` | `FUN_00a09980` | 128 | 1 | **non** |
+| `0x00a09980` | **`FUN_00a09980`** | 128 | 1 | oui |
 | `0x00a0e0c0` | **`FUN_00a0e0c0`** | 127 | 1 | oui |
-| `0x00a08080` | `FUN_00a08080` | 126 | 1 | **non** |
+| `0x00a08080` | **`FUN_00a08080`** | 126 | 1 | oui |
 | `0x00a03110` | `FUN_00a03110` | 123 | 1 | **non** |
 | `0x00a24000` | `FUN_00a24000` | 122 | 1 | **non** |
 | `0x00a01910` | **`Setup3DDevice`** | 118 | 0 | **non** |
 | `0x00a20630` | **`FUN_00a20630`** | 116 | 0 | **non** |
 | `0x00a12350` | **`FUN_00a12350`** | 115 | 1 | oui |
-| `0x00a078c0` | `FUN_00a078c0` | 112 | 1 | **non** |
-| `0x00a0b390` | `FUN_00a0b390` | 111 | 1 | **non** |
+| `0x00a078c0` | **`FUN_00a078c0`** | 112 | 1 | oui |
+| `0x00a0b390` | **`FUN_00a0b390`** | 111 | 1 | oui |
 | `0x00a26f20` | **`FUN_00a26f20`** | 111 | 1 | oui |
-| `0x00a094d0` | `FUN_00a094d0` | 104 | 1 | **non** |
-| `0x00a0a1a0` | `FUN_00a0a1a0` | 104 | 1 | **non** |
-| `0x00a08850` | `FUN_00a08850` | 100 | 1 | **non** |
+| `0x00a094d0` | **`FUN_00a094d0`** | 104 | 1 | oui |
+| `0x00a0a1a0` | **`FUN_00a0a1a0`** | 104 | 1 | oui |
+| `0x00a08850` | **`FUN_00a08850`** | 100 | 1 | oui |
 | `0x00a101c0` | **`FUN_00a101c0`** | 100 | 1 | oui |
-| `0x00a0bdf0` | `FUN_00a0bdf0` | 96 | 1 | **non** |
-| `0x00a0c110` | `FUN_00a0c110` | 96 | 1 | **non** |
+| `0x00a0bdf0` | **`FUN_00a0bdf0`** | 96 | 1 | oui |
+| `0x00a0c110` | **`FUN_00a0c110`** | 96 | 1 | oui |
 | `0x00a11ec0` | **`FUN_00a11ec0`** | 96 | 1 | oui |
-| `0x00a0b930` | `FUN_00a0b930` | 93 | 3 | **non** |
-| `0x00a09070` | `FUN_00a09070` | 92 | 3 | **non** |
-| `0x00a0b000` | `FUN_00a0b000` | 91 | 3 | **non** |
-| `0x00a08c80` | `FUN_00a08c80` | 90 | 3 | **non** |
-| `0x00a0a670` | `FUN_00a0a670` | 90 | 3 | **non** |
+| `0x00a0b930` | **`FUN_00a0b930`** | 93 | 3 | oui |
+| `0x00a09070` | **`FUN_00a09070`** | 92 | 3 | oui |
+| `0x00a0b000` | **`FUN_00a0b000`** | 91 | 3 | oui |
+| `0x00a08c80` | **`FUN_00a08c80`** | 90 | 3 | oui |
+| `0x00a0a670` | **`FUN_00a0a670`** | 90 | 3 | oui |
 | `0x00a0ff50` | **`FUN_00a0ff50`** | 89 | 1 | oui |
-| `0x00a08510` | `FUN_00a08510` | 88 | 3 | **non** |
-| `0x00a09e60` | `FUN_00a09e60` | 88 | 3 | **non** |
+| `0x00a08510` | **`FUN_00a08510`** | 88 | 3 | oui |
+| `0x00a09e60` | **`FUN_00a09e60`** | 88 | 3 | oui |
 | `0x00a27e00` | **`FUN_00a27e00`** | 88 | 1 | oui |
 | `0x00a0ecf0` | **`FUN_00a0ecf0`** | 87 | 1 | oui |
-| `0x00a07d80` | `FUN_00a07d80` | 86 | 2 | **non** |
+| `0x00a07d80` | **`FUN_00a07d80`** | 86 | 2 | oui |
 | `0x00a0fb40` | **`FUN_00a0fb40`** | 83 | 1 | oui |
 | `0x00a024e0` | **`FUN_00a024e0`** | 82 | 1 | oui |
 | `0x00a02380` | **`FUN_00a02380`** | 81 | 1 | oui |
@@ -500,7 +500,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a25910` | **`FUN_00a25910`** | 40 | 0 | **non** |
 | `0x00a03e70` | **`FUN_00a03e70`** | 39 | 0 | **non** |
 | `0x00a05e90` | **`FUN_00a05e90`** | 39 | 0 | **non** |
-| `0x00a06a40` | `FUN_00a06a40` | 39 | 1 | **non** |
+| `0x00a06a40` | **`FUN_00a06a40`** | 39 | 1 | oui |
 | `0x00a0d630` | **`FUN_00a0d630`** | 38 | 1 | oui |
 | `0x00a0dba0` | **`FUN_00a0dba0`** | 38 | 1 | oui |
 | `0x00a26220` | **`FUN_00a26220`** | 38 | 0 | oui |
@@ -517,12 +517,12 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a040d0` | **`FUN_00a040d0`** | 30 | 0 | **non** |
 | `0x00a05810` | **`SetShift`** | 30 | 1 | **non** |
 | `0x00a05b50` | **`FUN_00a05b50`** | 30 | 0 | oui |
-| `0x00a07ca0` | `FUN_00a07ca0` | 30 | 3 | **non** |
+| `0x00a07ca0` | **`FUN_00a07ca0`** | 30 | 3 | oui |
 | `0x00a269b0` | **`FUN_00a269b0`** | 30 | 1 | oui |
 | `0x00a27730` | `FUN_00a27730` | 30 | 1 | **non** |
 | `0x00a278c0` | **`FUN_00a278c0`** | 30 | 2 | oui |
 | `0x00a05260` | **`SetTimingMode`** | 29 | 0 | **non** |
-| `0x00a1cff0` | `FUN_00a1cff0` | 29 | 1 | **non** |
+| `0x00a1cff0` | **`FUN_00a1cff0`** | 29 | 1 | oui |
 | `0x00a275e0` | **`FUN_00a275e0`** | 29 | 1 | oui |
 | `0x00a06070` | `FUN_00a06070` | 28 | 1 | **non** |
 | `0x00a069c0` | **`ChangeResolution`** | 28 | 0 | **non** |

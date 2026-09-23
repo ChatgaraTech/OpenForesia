@@ -1180,3 +1180,37 @@ remplisse, qu'on le rejoue ou qu'on le libère.
 le paquet en mémoire, format ci-dessus — au lieu d'une frontière inventée. Tant que le rejeu est
 natif, un paquet construit en C# devrait être identique au bit près ; l'inverse ne coûte rien, un
 paquet natif se relisant aussi bien depuis C#.
+
+## Les paquets de modèles sont des TMD PlayStation — ordinaux 755, 678, 563 **PORTÉS**, 2026-09-23
+
+**CONFIRMÉ.** Le second chemin qui remplit le tampon de commandes, `FUN_00a0c4f0` (755), convertit
+une **entrée de la table d'objets d'un TMD** — le format de modèle de la libgs. Les preuves :
+`FUN_00a06a40` (678) refuse un fichier dont le premier mot n'est pas `0x41`, l'identifiant TMD ;
+l'entrée qu'il lit fait sept mots (`vert_top`, `n_vert`, `normal_top`, `n_normal`,
+`primitive_top`, `n_primitive`, `scale`) ; `FUN_00a1cff0` (563) change les décalages en adresses
+une seule fois, selon le mot de drapeaux ; et les dix-huit codes du `switch` de `c4f0`
+(`mode & 0xfd`) sont les modes de primitive TMD, avec leurs tailles exactes.
+
+| mode | primitive | producteur | sommets |
+|---|---|---|---|
+| `0x20` / `0x21` | F3 éclairé / sans lumière | `078c0` / `07d80` | `D3DVERTEX` / `D3DLVERTEX` |
+| `0x24` / `0x25` | FT3 | `08850` / `08c80` | idem |
+| `0x28` / `0x29` | F4 | `08080` / `08510` | idem |
+| `0x2c` / `0x2d` | FT4 | `094d0` / `09070` | idem |
+| `0x30` / `0x31` | G3 | `09980` / `09e60` | idem |
+| `0x34` / `0x35` | GT3 | `0a1a0` / `0a670` | idem |
+| `0x38` / `0x39` | G4 | `0aa90` / `0b000` | idem |
+| `0x3c` / `0x3d` | GT4 | `0b390` / `0b930` | idem |
+| `0x40` / `0x50` | LF2 / LG2 | `0bdf0` / `0c110` | `D3DVERTEX`, sans normale |
+
+Le bit 1 du mode (la semi-transparence TMD) est **ignoré** : masqué avant l'aiguillage.
+
+L'**état de rendu** `DAT_00a2c480` se lit alors en bits : bit 0 Gouraud, bit 1 texturé, bit 2
+sans lumière, 8 = paquet neuf. C'est ce que `c4f0` compare pour regrouper.
+
+Les huit producteurs sans lumière sont aussi ceux que les adaptateurs de l'ordinal 752 appellent :
+un paquet construit par 752 et un TMD converti par 755 sortent donc des mêmes corps.
+
+**Deux pièges de Ghidra sur ces producteurs** (voir `ConstructionPaquets.cs`) : la couleur, qu'il
+écrit `(float)(rgb)`, est rangée en entier ; et les `u v`, qu'il écrit `0.0`, sont une division
+entière par ~140 millions — nulles en effet (**LB-042**). Et un défaut du binaire : **LB-041**.

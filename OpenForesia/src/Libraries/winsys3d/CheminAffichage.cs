@@ -548,14 +548,15 @@ internal static unsafe class Winsys3dCheminAffichage
     /// <c>noeud + 2</c>.
     ///
     /// Le mot 2 de <paramref name="p"/> pointe sur un descripteur de deux mots : <c>[0]</c> le
-    /// paquet, <c>[1]</c> -1 quand il est pret. Autre chose que -1 et le paquet est d'abord
-    /// (re)construit par <c>FUN_00a0c4f0</c>, encore natif — avec <paramref name="p"/> lui-meme,
-    /// pas le descripteur (`push eax` a 0x00a0cdde, `eax` etant l'argument).
+    /// paquet, <c>[1]</c> -1 quand il est pret. Autre chose que -1 : c'est encore une entree
+    /// d'objet TMD, et le paquet est d'abord construit par <c>FUN_00a0c4f0</c>
+    /// (<see cref="Winsys3dConstructionPaquets.ReconstruirePaquet"/>) — avec <paramref name="p"/>
+    /// lui-meme, pas le descripteur (`push eax` a 0x00a0cdde, `eax` etant l'argument).
     /// </summary>
     internal static void RejouerPaquet(uint* p)
     {
         uint* descripteur = (uint*)p[2];
-        if ((int)descripteur[1] != -1) Winsys3dNatif.Fun_00a0c4f0(p);
+        if ((int)descripteur[1] != -1) Winsys3dConstructionPaquets.ReconstruirePaquet(p);
 
         Winsys3dData.PaquetCourant_011be7ac = (uint*)descripteur[0];
         RejouerPaquetCourant();

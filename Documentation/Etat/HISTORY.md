@@ -6,6 +6,27 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- fix : **l'image n'était jamais effacée** — le `PutDrawEnv` porté (ordinal 660) rangeait le
+  `DRAWENV` du jeu dans un tableau C# privé, alors que `DrawOTag` lit son octet `isbg` dans la
+  mémoire de la DLL (`DAT_011be6f0`, +0x18 du bloc, sous un autre nom Ghidra). Tout ce que la scène
+  ne recouvrait pas gardait les images précédentes : l'écran de chargement dans le noir de la
+  mine, la traînée des fenêtres de texte. Le bloc est maintenant aliasé (`Data.DrawEnv_011be6d8`)
+
+- feat : **le chemin d'affichage de `winsys3d` est entièrement en C#** — étape 10, 22 corps dans
+  `ConstructionPaquets.cs` : la reconstruction `c4f0` (755), le choix d'objet `06a40` (678), la
+  résolution `1cff0` (563), `07ca0` et les 18 producteurs, un par mode de primitive TMD.
+  `DrawOTag` et tout ce qu'il atteint sont portés (134 corps sur 157, les 23 autres ne sont
+  atteints par rien) ; `Natif.cs` est supprimé, sa dette à zéro. `winsys3d` passe à 174 corps.
+  **Pas encore exercé**
+- doc : les paquets de modèles de `winsys3d` sont des **TMD PlayStation** (identifiant 0x41,
+  table d'objets de sept mots, modes F3..GT4 et segments) ; Ghidra range la couleur des
+  producteurs en flottant là où le binaire l'écrit en entier — transcrits sur le désassemblage
+- doc : **LB-041** — le quadrilatère TMD plat sans lumière est émis en liste de triangles, un
+  seul triangle tracé ; **LB-042** — les producteurs texturés divisent chaque `u v` par ~140
+  millions, donc toujours 0. Transcrits tels quels
+- doc : l'écart assumé de l'étape 9 est levé : aucun producteur ne lit un champ que son
+  adaptateur n'écrit pas
+
 - feat : **le constructeur de paquets est en C#** — étape 9, 17 corps :
   `winsys3d/ConstructionPaquets.cs` (fichier neuf), avec `ConstruirePaquet` (`dde0`, ordinal
   752), `AllouerPaquet` (`c480`) et 15 adaptateurs qui font des enregistrements de modèle des
