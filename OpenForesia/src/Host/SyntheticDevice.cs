@@ -195,6 +195,15 @@ internal static unsafe class SyntheticDevice
     /// </summary>
     internal static void InstallSyntheticDevice()
     {
+        // Les trois modes qui faisaient travailler le VRAI `3dhelp.dll` n'existent plus : la DLL
+        // n'est plus livree depuis le 2026-09-23 (decision de Vincent). Les poser est une erreur
+        // explicite plutot qu'un plantage natif sur une fabrique introuvable.
+        foreach (string mode in new[] { "OPENFORESIA_LEGACY_3DHELP", "OPENFORESIA_LEGACY_STARTUP", "OPENFORESIA_CAPTURE_CAPS" })
+            if (Environment.GetEnvironmentVariable(mode) == "1")
+                throw new InvalidOperationException(
+                    $"{mode}=1 : ce mode faisait travailler le vrai 3dhelp.dll, qui n'est plus livre depuis le " +
+                    "2026-09-23. Le device synthetique est le seul chemin. Voir Documentation/Etat/byebye-dll.md.");
+
         if ((!s_UseSyntheticDevice && !s_CaptureDeviceCaps) || s_RealGetProcAddress != null) return;
 
         void** entree = OpenForesia.Libraries.Winsys3dData.ImportGetProcAddress_0121532c;

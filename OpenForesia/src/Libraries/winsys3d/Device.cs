@@ -566,7 +566,11 @@ internal static unsafe class Winsys3dDevice
 
         Winsys3dData.ParametresDialogue_00a2e8e0 = parametres;
         *appel = parametres;
-        nint choix = Win32.DialogBoxParamA(Winsys3dData.InstanceDll_00a2e8e8, (byte*)0x66,
+        // L'original : `DialogBoxParamA(hInstanceDll, 0x66, ...)`, le modele pris dans les ressources
+        // de la DLL. Celle-ci n'etant plus livree, le modele vient du blob extrait
+        // (`Image.ModeleDialogue66`) et s'ouvre par la variante « indirecte » — meme modele, meme
+        // procedure, meme parametre, meme resultat.
+        nint choix = Win32.DialogBoxIndirectParamA(Winsys3dData.InstanceDll_00a2e8e8, Winsys3dImage.ModeleDialogue66,
             *(IntPtr*)parametres, AdresseProcedureDialogue, (nint)compte);
         if (choix == -1)
         {

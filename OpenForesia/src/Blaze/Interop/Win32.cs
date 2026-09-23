@@ -70,6 +70,8 @@ internal static unsafe class Win32
     [DllImport("gdi32.dll")] internal static extern int StretchBlt(IntPtr hdcDest, int xDest, int yDest, int wDest, int hDest, IntPtr hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, uint rop);
     [DllImport("gdi32.dll")] internal static extern int PatBlt(IntPtr hdc, int x, int y, int w, int h, uint rop);
     [DllImport("gdi32.dll")] internal static extern int DeleteDC(IntPtr hdc);
+    [DllImport("user32.dll")] internal static extern nint DialogBoxIndirectParamA(IntPtr hInstance, byte* hDialogTemplate, IntPtr hWndParent, IntPtr lpDialogFunc, nint dwInitParam);
+    [DllImport("user32.dll")] internal static extern IntPtr CreateIconFromResourceEx(byte* presbits, uint dwResSize, int fIcon, uint dwVer, int cxDesired, int cyDesired, uint Flags);
     [DllImport("user32.dll")] internal static extern nint CallWindowProcA(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, nuint wParam, nint lParam);
     [DllImport("user32.dll")] internal static extern nint DialogBoxParamA(IntPtr hInstance, byte* lpTemplateName, IntPtr hWndParent, IntPtr lpDialogFunc, nint dwInitParam);
 

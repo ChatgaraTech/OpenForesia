@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **plus aucune DLL de 1998 n'est livrée** — les données qu'on lisait encore dans
+  `winsys3d.dll` et `wsyskern.dll` sont extraites (`OpenForesia.Tools extraire-donnees`) dans
+  `src/Libraries/Donnees/` et embarquées dans l'assemblage. Seul `ir41_32.ax` (Indeo) reste
+- fix : le curseur de la fenêtre des films, chargé dans `wsyskern.dll`, sortait nul depuis que la
+  DLL n'est plus chargée ; il est reconstitué depuis son image extraite
+- feat : les modes `OPENFORESIA_LEGACY_3DHELP`, `LEGACY_STARTUP` et `CAPTURE_CAPS` sont retirés —
+  ils exigeaient le vrai `3dhelp.dll`
+
 - feat : **`winsys3d.dll` n'est plus chargée** — sa mémoire est une image construite en C# depuis
   le fichier (sections de données, relocations, exports), son point d'entrée est transcrit, `VS.Log`
   compris (`Libraries/winsys3d/Image.cs`). L'import de 701 et `OPENFORESIA_LEGACY_DRAWOTAG` sont

@@ -44,6 +44,15 @@ if (args[0] is "disasm")
     return;
 }
 
+// Les donnees que le jeu lisait encore dans les fichiers de winsys3d.dll et wsyskern.dll, pour ne
+// plus livrer ces fichiers. Voir ExtractionDonnees.cs.
+if (args[0] is "extraire-donnees")
+{
+    if (args.Length != 3) { PrintUsage(); return; }
+    ExtractionDonnees.Run(args[1], args[2]);
+    return;
+}
+
 // Le bestiaire ne lit pas Blaze.exe mais les donnees du CD : SYSTEM.INI (le repertoire racine) et
 // BLAZE.ALL (l'archive). Voir Bestiaire.cs pour la chaine a quatre niveaux qu'il reproduit.
 if (args[0] is "bestiaire")

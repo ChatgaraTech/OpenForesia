@@ -867,6 +867,34 @@ avant.
 chargement se verrait au démarrage (écran noir, plantage, police ou kanji absents, dialogue de
 pilote vide) ; une erreur de déchargement, à la fermeture (`VS.Log` absent ou différent).
 
+## Lot 19 — plus aucune DLL de 1998 livrée (2026-09-23)
+
+Demandé par Vincent : que les fichiers `.dll` disparaissent du dossier de sortie. Il restait deux
+lectures DE FICHIER : `Image.cs` lisait dans `winsys3d.dll` ses sections, relocations, exports et
+ressources ; et la fenêtre des films chargeait un curseur dans `wsyskern.dll` (qui, depuis le lot
+18, n'était plus chargée : **le curseur sortait nul, régression corrigée ici**).
+
+- **`OpenForesia.Tools extraire-donnees`** (`ExtractionDonnees.cs`) extrait ces données une fois
+  pour toutes dans `OpenForesia/src/Libraries/Donnees/` : `.rdata` et `.data` initialisée, les 16
+  relocations, les 830 exports, la police, les kanji, le modèle du dialogue 0x66, et l'image du
+  curseur 10 de `wsyskern` (celle que `LoadCursor` choisissait, par `LookupIconIdFromDirectoryEx`).
+  Rejouable depuis `Legacy/Binaries/`.
+- Ces blobs sont **embarqués dans l'assemblage** (`EmbeddedResource`) ; `Image.cs` les y lit.
+- Deux écarts assumés, tous deux d'appel et non de résultat : le dialogue s'ouvre par
+  `DialogBoxIndirectParamA` sur son modèle (au lieu de `DialogBoxParamA` sur la ressource de la
+  DLL), avec le `hInstance` de l'exécutable ; le curseur est reconstitué par
+  `CreateIconFromResourceEx` à la taille par défaut (au lieu de `LoadCursorA`).
+- **Les modes `OPENFORESIA_LEGACY_3DHELP`, `OPENFORESIA_LEGACY_STARTUP` et
+  `OPENFORESIA_CAPTURE_CAPS` sont retirés** (décision de Vincent) : ils faisaient travailler le vrai
+  `3dhelp.dll`. Les poser lève une erreur explicite. `DeviceShim` reste dans le code, sans chemin.
+- Les copies de `OpenForesia/src/DLL/` (identiques aux originaux, vérifié au MD5) sont supprimées ;
+  **`Legacy/Binaries/` garde les originaux**, source de vérité et entrée de l'extraction.
+
+**Reste un seul binaire de 1998 livré : `ir41_32.ax`**, le décodeur Indeo 4.1 des cinématiques —
+gardé par décision de Vincent ; le remplacer demanderait un décodeur Indeo en C#, un chantier à
+part. Les `.dll` restants du dossier de sortie sont ceux de .NET (`OpenForesia.dll`, `Silk.NET.*`,
+`Microsoft.*`).
+
 ### Ce qui reste, après le lot 18
 
 Aucune des cinq DLL de 1998 n'est plus chargée comme code. `winsys3d.dll` est lue comme un fichier

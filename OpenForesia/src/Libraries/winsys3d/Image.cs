@@ -4,16 +4,17 @@
 // SOURCE DE VERITE : `winsys3d.c`. Base 0x00a00000. Voir src/Libraries/LISEZMOI.md.
 //
 // ============================================================================================
-// L'IMAGE MEMOIRE DE `winsys3d.dll`, SANS SON CODE — et son point d'entree (2026-09-23)
+// L'IMAGE MEMOIRE DE `winsys3d.dll`, SANS SON CODE NI SON FICHIER — et son point d'entree
+// (2026-09-23)
 //
 // Tout ce que le jeu execute de la DLL est en C#. Il ne lui restait qu'un role : PORTER SA
 // MEMOIRE, celle que `Data.cs` designe (ses 150 globales, a leurs VA de 1998). Ce fichier la
-// construit sans charger la DLL, ce qu'aurait fait le chargeur de Windows, moins le code :
+// construit sans la DLL, comme l'aurait fait le chargeur de Windows, moins le code :
 //
 //   1. une zone de 0x816000 octets (jusqu'a la fin de `.idata`), a zero — la queue non
 //      initialisee de `.data` (8 Mo) l'est deja ;
-//   2. `.rdata` et `.data` copiees depuis le fichier `winsys3d.dll` (a cote de l'executable), a
-//      leur RVA : les constantes, les chaines, les tables initialisees ;
+//   2. `.rdata` et la partie initialisee de `.data`, a leur RVA : les constantes, les chaines, les
+//      tables initialisees ;
 //   3. les RELOCATIONS qui tombent dans ces deux sections, pour la base reelle : seize, dont
 //      les cinq noms de resolution. Deux visent du code (0x00a2a0ac/b0, la table de portee SEH
 //      de la detection MMX) et ne servent plus : elles pointent dans une zone sans code ;
@@ -23,15 +24,17 @@
 //   5. le POINT D'ENTREE, a la premiere lecture de l'image — la ou Windows l'appelait au
 //      chargement : `Attacher`, puis `Detacher` a la sortie du processus.
 //
+// **Aucun fichier `.dll` n'est lu.** Les sections, les relocations, la table d'exports et les
+// trois ressources (la police TIM 0x65, les kanji 0x70, le dialogue 0x66) ont ete extraits une fois
+// pour toutes du `winsys3d.dll` de 1998 par `OpenForesia.Tools extraire-donnees`, et sont embarques
+// dans l'assemblage depuis `src/Libraries/Donnees/`. Le programme ne livre plus la DLL.
+//
 // `Data.cs` ne change pas : ses proprietes designent toujours `base + (VA - 0x00a00000)`, et
 // seule la base change — c'etait le sens de son garde-fou 4.
-//
-// **Les ressources** (la police TIM 0x65, les kanji 0x70, le dialogue 0x66) sont lues dans le
-// meme fichier, charge COMME DONNEES (`LOAD_LIBRARY_AS_DATAFILE`) : rien n'y est execute, ni son
-// point d'entree, ni ses imports. Ce module de donnees tient lieu de `hInstance` de la DLL.
 // ============================================================================================
 
 using System;
+using System.Collections.Generic;
 using OpenForesia.Blaze;
 
 namespace OpenForesia.Libraries;
@@ -40,11 +43,12 @@ internal static unsafe class Winsys3dImage
 {
     private const nuint ImageBase = 0x00a00000;
     private const int TailleImage = 0x816000;
-    private const uint LOAD_LIBRARY_AS_DATAFILE = 2;
+    private const int RvaRdata = 0x2a000, RvaData = 0x2c000;
 
     private static byte* s_Base;
-    private static byte[] s_Fichier = null!;
     private static bool s_Detache;
+    private static Dictionary<string, int> s_ExportsParNom = null!;
+    private static Dictionary<int, int> s_ExportsParOrdinal = null!;
 
     /// <summary>
     /// La base de l'image, construite a la premiere lecture — paresseusement, jamais dans un
@@ -61,73 +65,59 @@ internal static unsafe class Winsys3dImage
         }
     }
 
-    private static string CheminFichier => System.IO.Path.Combine(AppContext.BaseDirectory, "winsys3d.dll");
+    /// <summary>Un blob de `src/Libraries/Donnees/`, embarque sous son nom de fichier.</summary>
+    internal static byte[] Donnee(string nom)
+    {
+        using var flux = typeof(Winsys3dImage).Assembly.GetManifestResourceStream(nom)
+            ?? throw new InvalidOperationException($"Donnee embarquee introuvable : {nom} (src/Libraries/Donnees/).");
+        var octets = new byte[flux.Length];
+        flux.ReadExactly(octets);
+        return octets;
+    }
+
+    /// <summary>Un blob embarque, copie dans un tableau EPINGLE : son adresse est rangee dans l'image et ne doit pas bouger.</summary>
+    private static byte* DonneeEpinglee(string nom, out int taille)
+    {
+        byte[] source = Donnee(nom);
+        byte[] epingle = GC.AllocateArray<byte>(source.Length, pinned: true);
+        source.CopyTo(epingle, 0);
+        taille = source.Length;
+        return (byte*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref epingle[0]);
+    }
+
+    private static IEnumerable<string[]> Lignes(string nom)
+    {
+        foreach (string ligne in System.Text.Encoding.ASCII.GetString(Donnee(nom)).Split('\n'))
+            if (ligne.Length > 0) yield return ligne.Split(' ');
+    }
 
     private static void Construire()
     {
-        s_Fichier = System.IO.File.ReadAllBytes(CheminFichier);
         byte* image = (byte*)Win32.VirtualAlloc(null, TailleImage, 0x3000 /* MEM_COMMIT|MEM_RESERVE */, 0x04 /* PAGE_READWRITE */);
         if (image == null)
             throw new InvalidOperationException("L'image memoire de winsys3d n'a pas pu etre allouee (0x816000 octets).");
 
-        fixed (byte* f = s_Fichier)
+        byte[] rdata = Donnee("winsys3d.rdata.bin"), data = Donnee("winsys3d.data.bin");
+        fixed (byte* r = rdata) Buffer.MemoryCopy(r, image + RvaRdata, rdata.Length, rdata.Length);
+        fixed (byte* d = data) Buffer.MemoryCopy(d, image + RvaData, data.Length, data.Length);
+
+        uint delta = (uint)(image - (byte*)ImageBase);
+        foreach (string[] l in Lignes("winsys3d.relocations.txt"))
+            *(uint*)(image + Convert.ToInt32(l[0], 16)) += delta;
+
+        s_ExportsParNom = new Dictionary<string, int>();
+        s_ExportsParOrdinal = new Dictionary<int, int>();
+        foreach (string[] l in Lignes("winsys3d.exports.txt"))
         {
-            int nt = *(int*)(f + 0x3c);
-            int sections = *(ushort*)(f + nt + 6);
-            int optionnel = *(ushort*)(f + nt + 0x14);
-            byte* table = f + nt + 0x18 + optionnel;
-
-            int debutRdata = 0, finRdata = 0, debutData = 0, finData = 0;
-            for (int i = 0; i < sections; i++)
-            {
-                byte* s = table + i * 40;
-                string nom = new string((sbyte*)s, 0, 8).TrimEnd('\0');
-                int rva = *(int*)(s + 12), brut = *(int*)(s + 16), position = *(int*)(s + 20);
-                if (nom != ".rdata" && nom != ".data") continue;
-                Buffer.MemoryCopy(f + position, image + rva, brut, brut);
-                if (nom == ".rdata") { debutRdata = rva; finRdata = rva + brut; }
-                else { debutData = rva; finData = rva + brut; }
-            }
-
-            // Les relocations `HIGHLOW` qui tombent dans les octets copies.
-            byte* repertoires = f + nt + 0x18 + 0x60;
-            int relocRva = *(int*)(repertoires + 5 * 8), relocTaille = *(int*)(repertoires + 5 * 8 + 4);
-            byte* reloc = f + RvaVersFichier(f, relocRva);
-            uint delta = (uint)(image - (byte*)ImageBase);
-            for (int p = 0; p < relocTaille;)
-            {
-                int page = *(int*)(reloc + p), taille = *(int*)(reloc + p + 4);
-                if (taille == 0) break;
-                for (int k = 8; k < taille; k += 2)
-                {
-                    ushort e = *(ushort*)(reloc + p + k);
-                    int rva = page + (e & 0xfff);
-                    if (e >> 12 != 3) continue;
-                    bool copie = (rva >= debutRdata && rva < finRdata) || (rva >= debutData && rva < finData);
-                    if (copie) *(uint*)(image + rva) += delta;
-                }
-                p += taille;
-            }
+            int rva = Convert.ToInt32(l[1], 16);
+            s_ExportsParOrdinal[int.Parse(l[0])] = rva;
+            if (l[2] != "-") s_ExportsParNom[l[2]] = rva;
         }
 
         s_Base = image;
         RemplirImports();
         Attacher();
         AppDomain.CurrentDomain.ProcessExit += (_, _) => Detacher();
-    }
-
-    private static int RvaVersFichier(byte* f, int rva)
-    {
-        int nt = *(int*)(f + 0x3c);
-        int sections = *(ushort*)(f + nt + 6);
-        byte* table = f + nt + 0x18 + *(ushort*)(f + nt + 0x14);
-        for (int i = 0; i < sections; i++)
-        {
-            byte* s = table + i * 40;
-            int debut = *(int*)(s + 12), taille = Math.Max(*(int*)(s + 8), *(int*)(s + 16));
-            if (rva >= debut && rva < debut + taille) return rva - debut + *(int*)(s + 20);
-        }
-        throw new InvalidOperationException($"winsys3d.dll : la RVA 0x{rva:x} ne tombe dans aucune section.");
     }
 
     /// <summary>
@@ -152,35 +142,15 @@ internal static unsafe class Winsys3dImage
     internal static void* Exporte(byte* nomOuOrdinal)
     {
         byte* image = Base;
-        fixed (byte* f = s_Fichier)
-        {
-            int nt = *(int*)(f + 0x3c);
-            int dirRva = *(int*)(f + nt + 0x18 + 0x60);
-            byte* dir = f + RvaVersFichier(f, dirRva);
-            int baseOrdinal = *(int*)(dir + 0x10);
-            int nbFonctions = *(int*)(dir + 0x14), nbNoms = *(int*)(dir + 0x18);
-            int* fonctions = (int*)(f + RvaVersFichier(f, *(int*)(dir + 0x1c)));
-            int* noms = (int*)(f + RvaVersFichier(f, *(int*)(dir + 0x20)));
-            ushort* ordinaux = (ushort*)(f + RvaVersFichier(f, *(int*)(dir + 0x24)));
-
-            int indice = -1;
-            if ((nuint)nomOuOrdinal <= 0xffff)
-                indice = (int)(nuint)nomOuOrdinal - baseOrdinal;
-            else
-                for (int i = 0; i < nbNoms; i++)
-                {
-                    byte* n = f + RvaVersFichier(f, noms[i]);
-                    int k = 0;
-                    while (n[k] == nomOuOrdinal[k] && n[k] != 0) k++;
-                    if (n[k] == nomOuOrdinal[k]) { indice = ordinaux[i]; break; }
-                }
-            if (indice < 0 || indice >= nbFonctions || fonctions[indice] == 0) return null;
-            return image + fonctions[indice];
-        }
+        int rva;
+        bool trouve = (nuint)nomOuOrdinal <= 0xffff
+            ? s_ExportsParOrdinal.TryGetValue((int)(nuint)nomOuOrdinal, out rva)
+            : s_ExportsParNom.TryGetValue(new string((sbyte*)nomOuOrdinal), out rva);
+        return trouve ? image + rva : null;
     }
 
-    /// <summary>Le module tenant lieu de `hInstance` : le fichier charge comme donnees.</summary>
-    private static IntPtr s_ModuleDonnees;
+    /// <summary>Le modele du dialogue 0x66 (`RT_DIALOG`), epingle, pour `DialogBoxIndirectParamA`.</summary>
+    internal static byte* ModeleDialogue66 { get; private set; }
 
     /// <summary>
     /// Ghidra: winsys3d.c entry @ 0x00a01bb0 — `DLL_PROCESS_ATTACH` (et le point d'entree tout
@@ -188,6 +158,10 @@ internal static unsafe class Winsys3dImage
     /// 789, sur les constantes de `0x00a2a000`), la retouche de leurs dernieres entrees, la section
     /// critique, la VRAM (`Malloc(0x100000)`), `MainMem`, les ressources police (« TIM » 0x65) et
     /// kanji (« KANJI » 0x70), et le `hInstance`. `ret 0Ch`.
+    ///
+    /// Ecart assume : les ressources ne sont plus trouvees par `FindResourceA`/`LockResource` dans le
+    /// module de la DLL, mais prises aux blobs embarques ; le `hInstance` de la DLL devient celui de
+    /// l'executable, et le dialogue s'ouvre sur son modele (`DialogBoxIndirectParamA`).
     /// </summary>
     private static void Attacher()
     {
@@ -199,12 +173,10 @@ internal static unsafe class Winsys3dImage
         Winsys3dData.Vram_00b6dbd0 = (byte*)Wsyskern.Malloc(0x100000);
         Winsys3dData.MainMem_00b6dbd4 = s_Base + (0x00b6dbd8 - ImageBase);
 
-        s_ModuleDonnees = Win32.LoadLibraryExA(Blaze.Blaze.ToAnsiZ(CheminFichier), IntPtr.Zero, LOAD_LIBRARY_AS_DATAFILE);
-        IntPtr police = Win32.FindResourceA(s_ModuleDonnees, (byte*)0x65, Winsys3dData.Chaine(0x00a2c170));   // « TIM »
-        Winsys3dData.PoliceTim_011be6d4 = (byte*)Win32.LockResource(Win32.LoadResource(s_ModuleDonnees, police));
-        IntPtr kanji = Win32.FindResourceA(s_ModuleDonnees, (byte*)0x70, Winsys3dData.Chaine(0x00a2c168));    // « KANJI »
-        Winsys3dData.PoliceKanji_00b6d5b0 = (byte*)Win32.LockResource(Win32.LoadResource(s_ModuleDonnees, kanji));
-        Winsys3dData.InstanceDll_00a2e8e8 = s_ModuleDonnees;
+        Winsys3dData.PoliceTim_011be6d4 = DonneeEpinglee("winsys3d.TIM-65.bin", out _);
+        Winsys3dData.PoliceKanji_00b6d5b0 = DonneeEpinglee("winsys3d.KANJI-70.bin", out _);
+        ModeleDialogue66 = DonneeEpinglee("winsys3d.DIALOG-66.bin", out _);
+        Winsys3dData.InstanceDll_00a2e8e8 = Win32.GetModuleHandleA(null);
     }
 
     /// <summary>
