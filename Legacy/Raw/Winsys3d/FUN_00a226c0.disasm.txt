@@ -1,0 +1,476 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a226c0  section .text  offset fichier 0x21ac0  1600 octets
+
+  00a226c0  55                    push      ebp
+  00a226c1  8bec                  mov       ebp,esp
+  00a226c3  83ec34                sub       esp,34h
+  00a226c6  a1e8dbde00            mov       eax,[0DEDBE8h]
+  00a226cb  53                    push      ebx
+  00a226cc  33c9                  xor       ecx,ecx
+  00a226ce  56                    push      esi
+  00a226cf  85c0                  test      eax,eax
+  00a226d1  57                    push      edi
+  00a226d2  894dfc                mov       [ebp-4],ecx
+  00a226d5  0f8519050000          jne       near 00A22BF4h
+  00a226db  8b4510                mov       eax,[ebp+10h]
+  00a226de  85c0                  test      eax,eax
+  00a226e0  0f8411060000          je        near 00A22CF7h
+  00a226e6  8b4d0c                mov       ecx,[ebp+0Ch]
+  00a226e9  8b5508                mov       edx,[ebp+8]
+  00a226ec  894d10                mov       [ebp+10h],ecx
+  00a226ef  89450c                mov       [ebp+0Ch],eax
+
+LAB_00a226f2:
+  00a226f2  a1e8dbde00            mov       eax,[0DEDBE8h]
+  00a226f7  895508                mov       [ebp+8],edx
+  00a226fa  85c0                  test      eax,eax
+  00a226fc  0f85a6000000          jne       near 00A227A8h
+  00a22702  0fbf3a                movsx     edi,word [edx]
+  00a22705  0fbf5a04              movsx     ebx,word [edx+4]
+  00a22709  0fbf0d70081d01        movsx     ecx,word [11D0870h]
+  00a22710  0fbf0574081d01        movsx     eax,word [11D0874h]
+  00a22717  0fafcf                imul      ecx,edi
+  00a2271a  0fafc3                imul      eax,ebx
+  00a2271d  0fbf7202              movsx     esi,word [edx+2]
+  00a22721  03c8                  add       ecx,eax
+  00a22723  0fbf0572081d01        movsx     eax,word [11D0872h]
+  00a2272a  0fafc6                imul      eax,esi
+  00a2272d  03c8                  add       ecx,eax
+  00a2272f  a184081d01            mov       eax,[11D0884h]
+  00a22734  c1f90c                sar       ecx,0Ch
+  00a22737  03c8                  add       ecx,eax
+  00a22739  0fbf0576081d01        movsx     eax,word [11D0876h]
+  00a22740  0fafc7                imul      eax,edi
+  00a22743  0fbf3d7a081d01        movsx     edi,word [11D087Ah]
+  00a2274a  0faffb                imul      edi,ebx
+  00a2274d  03c7                  add       eax,edi
+  00a2274f  894dec                mov       [ebp-14h],ecx
+  00a22752  0fbf3d78081d01        movsx     edi,word [11D0878h]
+  00a22759  0faffe                imul      edi,esi
+  00a2275c  8b3588081d01          mov       esi,[11D0888h]
+  00a22762  03c7                  add       eax,edi
+  00a22764  0fbf3a                movsx     edi,word [edx]
+  00a22767  c1f80c                sar       eax,0Ch
+  00a2276a  03c6                  add       eax,esi
+  00a2276c  0fbf357c081d01        movsx     esi,word [11D087Ch]
+  00a22773  0faff7                imul      esi,edi
+  00a22776  0fbf3d80081d01        movsx     edi,word [11D0880h]
+  00a2277d  0faffb                imul      edi,ebx
+  00a22780  0fbf1d7e081d01        movsx     ebx,word [11D087Eh]
+  00a22787  03f7                  add       esi,edi
+  00a22789  8945f0                mov       [ebp-10h],eax
+  00a2278c  0fbf7a02              movsx     edi,word [edx+2]
+  00a22790  0fafdf                imul      ebx,edi
+  00a22793  8b3d8c081d01          mov       edi,[11D088Ch]
+  00a22799  03f3                  add       esi,ebx
+  00a2279b  c1fe0c                sar       esi,0Ch
+  00a2279e  03f7                  add       esi,edi
+  00a227a0  8975f4                mov       [ebp-0Ch],esi
+  00a227a3  e9a4000000            jmp       00A2284Ch
+
+LAB_00a227a8:
+  00a227a8  be70081d01            mov       esi,11D0870h
+  00a227ad  0f76ed                pcmpeqd   mm5,mm5
+  00a227b0  0f6e5e14              movd      mm3,[esi+14h]
+  00a227b4  0f73d510              psrlq     mm5,10h
+  00a227b8  0f6f06                movq      mm0,[esi]
+  00a227bb  0fdbc5                pand      mm0,mm5
+  00a227be  0f73f330              psllq     mm3,30h
+  00a227c2  0f6f4e06              movq      mm1,[esi+6]
+  00a227c6  0febc3                por       mm0,mm3
+  00a227c9  0f6e5e18              movd      mm3,[esi+18h]
+  00a227cd  0fdbcd                pand      mm1,mm5
+  00a227d0  0f73f330              psllq     mm3,30h
+  00a227d4  0f6f560c              movq      mm2,[esi+0Ch]
+  00a227d8  0fdbd5                pand      mm2,mm5
+  00a227db  0f6f35d0a0a200        movq      mm6,[0A2A0D0h]
+  00a227e2  0f6e661c              movd      mm4,[esi+1Ch]
+  00a227e6  0febcb                por       mm1,mm3
+  00a227e9  0f73f430              psllq     mm4,30h
+  00a227ed  8b7508                mov       esi,[ebp+8]
+  00a227f0  0febd4                por       mm2,mm4
+  00a227f3  0f6f3e                movq      mm7,[esi]
+  00a227f6  0fdbfd                pand      mm7,mm5
+  00a227f9  0febfe                por       mm7,mm6
+  00a227fc  0f7ffc                movq      mm4,mm7
+  00a227ff  0ff5e0                pmaddwd   mm4,mm0
+  00a22802  0f7ffd                movq      mm5,mm7
+  00a22805  0f72e40c              psrad     mm4,0Ch
+  00a22809  0ff5e9                pmaddwd   mm5,mm1
+  00a2280c  0f7fe3                movq      mm3,mm4
+  00a2280f  0f72e50c              psrad     mm5,0Ch
+  00a22813  0f73d420              psrlq     mm4,20h
+  00a22817  0f7fee                movq      mm6,mm5
+  00a2281a  0ffedc                paddd     mm3,mm4
+  00a2281d  0ff5fa                pmaddwd   mm7,mm2
+  00a22820  0f73d520              psrlq     mm5,20h
+  00a22824  0f7e5dec              movd      [ebp-14h],mm3
+  00a22828  0ffef5                paddd     mm6,mm5
+  00a2282b  0f72e70c              psrad     mm7,0Ch
+  00a2282f  0f7e75f0              movd      [ebp-10h],mm6
+  00a22833  0f7ffb                movq      mm3,mm7
+  00a22836  0f73d720              psrlq     mm7,20h
+  00a2283a  0ffedf                paddd     mm3,mm7
+  00a2283d  0f7e5df4              movd      [ebp-0Ch],mm3
+  00a22841  0f77                  emms
+  00a22843  8b45f0                mov       eax,[ebp-10h]
+  00a22846  8b4dec                mov       ecx,[ebp-14h]
+  00a22849  8b75f4                mov       esi,[ebp-0Ch]
+
+LAB_00a2284c:
+  00a2284c  81e6ffff0000          and       esi,0FFFFh
+  00a22852  8b3d10b41c01          mov       edi,[11CB410h]
+  00a22858  c1e70c                shl       edi,0Ch
+  00a2285b  0fbf347598081d01      movsx     esi,word [esi*2+11D0898h]
+  00a22863  0fafc6                imul      eax,esi
+  00a22866  0fafce                imul      ecx,esi
+  00a22869  2500f0ffff            and       eax,0FFFFF000h
+  00a2286e  83c208                add       edx,8
+  00a22871  03c7                  add       eax,edi
+  00a22873  8b3d14b41c01          mov       edi,[11CB414h]
+  00a22879  c1f90c                sar       ecx,0Ch
+  00a2287c  03cf                  add       ecx,edi
+  00a2287e  895508                mov       [ebp+8],edx
+  00a22881  0fbfc9                movsx     ecx,cx
+  00a22884  c1e004                shl       eax,4
+  00a22887  03c1                  add       eax,ecx
+  00a22889  8b4d10                mov       ecx,[ebp+10h]
+  00a2288c  8901                  mov       [ecx],eax
+  00a2288e  a390081d01            mov       [11D0890h],eax
+  00a22893  a1e8dbde00            mov       eax,[0DEDBE8h]
+  00a22898  83c104                add       ecx,4
+  00a2289b  85c0                  test      eax,eax
+  00a2289d  894d10                mov       [ebp+10h],ecx
+  00a228a0  0f85a6000000          jne       near 00A2294Ch
+  00a228a6  0fbf3a                movsx     edi,word [edx]
+  00a228a9  0fbf5a04              movsx     ebx,word [edx+4]
+  00a228ad  0fbf0d70081d01        movsx     ecx,word [11D0870h]
+  00a228b4  0fbf0574081d01        movsx     eax,word [11D0874h]
+  00a228bb  0fafcf                imul      ecx,edi
+  00a228be  0fafc3                imul      eax,ebx
+  00a228c1  0fbf7202              movsx     esi,word [edx+2]
+  00a228c5  03c8                  add       ecx,eax
+  00a228c7  0fbf0572081d01        movsx     eax,word [11D0872h]
+  00a228ce  0fafc6                imul      eax,esi
+  00a228d1  03c8                  add       ecx,eax
+  00a228d3  a184081d01            mov       eax,[11D0884h]
+  00a228d8  c1f90c                sar       ecx,0Ch
+  00a228db  03c8                  add       ecx,eax
+  00a228dd  0fbf0576081d01        movsx     eax,word [11D0876h]
+  00a228e4  0fafc7                imul      eax,edi
+  00a228e7  0fbf3d7a081d01        movsx     edi,word [11D087Ah]
+  00a228ee  0faffb                imul      edi,ebx
+  00a228f1  03c7                  add       eax,edi
+  00a228f3  894ddc                mov       [ebp-24h],ecx
+  00a228f6  0fbf3d78081d01        movsx     edi,word [11D0878h]
+  00a228fd  0faffe                imul      edi,esi
+  00a22900  8b3588081d01          mov       esi,[11D0888h]
+  00a22906  03c7                  add       eax,edi
+  00a22908  0fbf3a                movsx     edi,word [edx]
+  00a2290b  c1f80c                sar       eax,0Ch
+  00a2290e  03c6                  add       eax,esi
+  00a22910  0fbf357c081d01        movsx     esi,word [11D087Ch]
+  00a22917  0faff7                imul      esi,edi
+  00a2291a  0fbf3d80081d01        movsx     edi,word [11D0880h]
+  00a22921  0faffb                imul      edi,ebx
+  00a22924  0fbf1d7e081d01        movsx     ebx,word [11D087Eh]
+  00a2292b  03f7                  add       esi,edi
+  00a2292d  8945e0                mov       [ebp-20h],eax
+  00a22930  0fbf7a02              movsx     edi,word [edx+2]
+  00a22934  0fafdf                imul      ebx,edi
+  00a22937  8b3d8c081d01          mov       edi,[11D088Ch]
+  00a2293d  03f3                  add       esi,ebx
+  00a2293f  c1fe0c                sar       esi,0Ch
+  00a22942  03f7                  add       esi,edi
+  00a22944  8975e4                mov       [ebp-1Ch],esi
+  00a22947  e9a4000000            jmp       00A229F0h
+
+LAB_00a2294c:
+  00a2294c  be70081d01            mov       esi,11D0870h
+  00a22951  0f76ed                pcmpeqd   mm5,mm5
+  00a22954  0f6e5e14              movd      mm3,[esi+14h]
+  00a22958  0f73d510              psrlq     mm5,10h
+  00a2295c  0f6f06                movq      mm0,[esi]
+  00a2295f  0fdbc5                pand      mm0,mm5
+  00a22962  0f73f330              psllq     mm3,30h
+  00a22966  0f6f4e06              movq      mm1,[esi+6]
+  00a2296a  0febc3                por       mm0,mm3
+  00a2296d  0f6e5e18              movd      mm3,[esi+18h]
+  00a22971  0fdbcd                pand      mm1,mm5
+  00a22974  0f73f330              psllq     mm3,30h
+  00a22978  0f6f560c              movq      mm2,[esi+0Ch]
+  00a2297c  0fdbd5                pand      mm2,mm5
+  00a2297f  0f6f35d0a0a200        movq      mm6,[0A2A0D0h]
+  00a22986  0f6e661c              movd      mm4,[esi+1Ch]
+  00a2298a  0febcb                por       mm1,mm3
+  00a2298d  0f73f430              psllq     mm4,30h
+  00a22991  8b7508                mov       esi,[ebp+8]
+  00a22994  0febd4                por       mm2,mm4
+  00a22997  0f6f3e                movq      mm7,[esi]
+  00a2299a  0fdbfd                pand      mm7,mm5
+  00a2299d  0febfe                por       mm7,mm6
+  00a229a0  0f7ffc                movq      mm4,mm7
+  00a229a3  0ff5e0                pmaddwd   mm4,mm0
+  00a229a6  0f7ffd                movq      mm5,mm7
+  00a229a9  0f72e40c              psrad     mm4,0Ch
+  00a229ad  0ff5e9                pmaddwd   mm5,mm1
+  00a229b0  0f7fe3                movq      mm3,mm4
+  00a229b3  0f72e50c              psrad     mm5,0Ch
+  00a229b7  0f73d420              psrlq     mm4,20h
+  00a229bb  0f7fee                movq      mm6,mm5
+  00a229be  0ffedc                paddd     mm3,mm4
+  00a229c1  0ff5fa                pmaddwd   mm7,mm2
+  00a229c4  0f73d520              psrlq     mm5,20h
+  00a229c8  0f7e5ddc              movd      [ebp-24h],mm3
+  00a229cc  0ffef5                paddd     mm6,mm5
+  00a229cf  0f72e70c              psrad     mm7,0Ch
+  00a229d3  0f7e75e0              movd      [ebp-20h],mm6
+  00a229d7  0f7ffb                movq      mm3,mm7
+  00a229da  0f73d720              psrlq     mm7,20h
+  00a229de  0ffedf                paddd     mm3,mm7
+  00a229e1  0f7e5de4              movd      [ebp-1Ch],mm3
+  00a229e5  0f77                  emms
+  00a229e7  8b45e0                mov       eax,[ebp-20h]
+  00a229ea  8b4ddc                mov       ecx,[ebp-24h]
+  00a229ed  8b75e4                mov       esi,[ebp-1Ch]
+
+LAB_00a229f0:
+  00a229f0  81e6ffff0000          and       esi,0FFFFh
+  00a229f6  8b3d10b41c01          mov       edi,[11CB410h]
+  00a229fc  c1e70c                shl       edi,0Ch
+  00a229ff  0fbf347598081d01      movsx     esi,word [esi*2+11D0898h]
+  00a22a07  0fafc6                imul      eax,esi
+  00a22a0a  0fafce                imul      ecx,esi
+  00a22a0d  2500f0ffff            and       eax,0FFFFF000h
+  00a22a12  83c208                add       edx,8
+  00a22a15  03c7                  add       eax,edi
+  00a22a17  8b3d14b41c01          mov       edi,[11CB414h]
+  00a22a1d  c1f90c                sar       ecx,0Ch
+  00a22a20  03cf                  add       ecx,edi
+  00a22a22  895508                mov       [ebp+8],edx
+  00a22a25  0fbfc9                movsx     ecx,cx
+  00a22a28  c1e004                shl       eax,4
+  00a22a2b  03c1                  add       eax,ecx
+  00a22a2d  8b4d10                mov       ecx,[ebp+10h]
+  00a22a30  8901                  mov       [ecx],eax
+  00a22a32  a390081d01            mov       [11D0890h],eax
+  00a22a37  a1e8dbde00            mov       eax,[0DEDBE8h]
+  00a22a3c  83c104                add       ecx,4
+  00a22a3f  85c0                  test      eax,eax
+  00a22a41  894d10                mov       [ebp+10h],ecx
+  00a22a44  0f85a6000000          jne       near 00A22AF0h
+  00a22a4a  0fbf5a04              movsx     ebx,word [edx+4]
+  00a22a4e  0fbf3a                movsx     edi,word [edx]
+  00a22a51  0fbf0d70081d01        movsx     ecx,word [11D0870h]
+  00a22a58  0fbf0574081d01        movsx     eax,word [11D0874h]
+  00a22a5f  0fafcf                imul      ecx,edi
+  00a22a62  0fafc3                imul      eax,ebx
+  00a22a65  0fbf7202              movsx     esi,word [edx+2]
+  00a22a69  03c8                  add       ecx,eax
+  00a22a6b  0fbf0572081d01        movsx     eax,word [11D0872h]
+  00a22a72  0fafc6                imul      eax,esi
+  00a22a75  03c8                  add       ecx,eax
+  00a22a77  a184081d01            mov       eax,[11D0884h]
+  00a22a7c  c1f90c                sar       ecx,0Ch
+  00a22a7f  03c8                  add       ecx,eax
+  00a22a81  0fbf0576081d01        movsx     eax,word [11D0876h]
+  00a22a88  0fafc7                imul      eax,edi
+  00a22a8b  0fbf3d7a081d01        movsx     edi,word [11D087Ah]
+  00a22a92  0faffb                imul      edi,ebx
+  00a22a95  03c7                  add       eax,edi
+  00a22a97  894dcc                mov       [ebp-34h],ecx
+  00a22a9a  0fbf3d78081d01        movsx     edi,word [11D0878h]
+  00a22aa1  0faffe                imul      edi,esi
+  00a22aa4  8b3588081d01          mov       esi,[11D0888h]
+  00a22aaa  03c7                  add       eax,edi
+  00a22aac  0fbf3a                movsx     edi,word [edx]
+  00a22aaf  c1f80c                sar       eax,0Ch
+  00a22ab2  03c6                  add       eax,esi
+  00a22ab4  0fbf357c081d01        movsx     esi,word [11D087Ch]
+  00a22abb  0faff7                imul      esi,edi
+  00a22abe  0fbf3d80081d01        movsx     edi,word [11D0880h]
+  00a22ac5  0faffb                imul      edi,ebx
+  00a22ac8  0fbf1d7e081d01        movsx     ebx,word [11D087Eh]
+  00a22acf  03f7                  add       esi,edi
+  00a22ad1  8945d0                mov       [ebp-30h],eax
+  00a22ad4  0fbf7a02              movsx     edi,word [edx+2]
+  00a22ad8  0fafdf                imul      ebx,edi
+  00a22adb  8b3d8c081d01          mov       edi,[11D088Ch]
+  00a22ae1  03f3                  add       esi,ebx
+  00a22ae3  c1fe0c                sar       esi,0Ch
+  00a22ae6  03f7                  add       esi,edi
+  00a22ae8  8975d4                mov       [ebp-2Ch],esi
+  00a22aeb  e9a4000000            jmp       00A22B94h
+
+LAB_00a22af0:
+  00a22af0  be70081d01            mov       esi,11D0870h
+  00a22af5  0f76ed                pcmpeqd   mm5,mm5
+  00a22af8  0f6e5e14              movd      mm3,[esi+14h]
+  00a22afc  0f73d510              psrlq     mm5,10h
+  00a22b00  0f6f06                movq      mm0,[esi]
+  00a22b03  0fdbc5                pand      mm0,mm5
+  00a22b06  0f73f330              psllq     mm3,30h
+  00a22b0a  0f6f4e06              movq      mm1,[esi+6]
+  00a22b0e  0febc3                por       mm0,mm3
+  00a22b11  0f6e5e18              movd      mm3,[esi+18h]
+  00a22b15  0fdbcd                pand      mm1,mm5
+  00a22b18  0f73f330              psllq     mm3,30h
+  00a22b1c  0f6f560c              movq      mm2,[esi+0Ch]
+  00a22b20  0fdbd5                pand      mm2,mm5
+  00a22b23  0f6f35d0a0a200        movq      mm6,[0A2A0D0h]
+  00a22b2a  0f6e661c              movd      mm4,[esi+1Ch]
+  00a22b2e  0febcb                por       mm1,mm3
+  00a22b31  0f73f430              psllq     mm4,30h
+  00a22b35  8b7508                mov       esi,[ebp+8]
+  00a22b38  0febd4                por       mm2,mm4
+  00a22b3b  0f6f3e                movq      mm7,[esi]
+  00a22b3e  0fdbfd                pand      mm7,mm5
+  00a22b41  0febfe                por       mm7,mm6
+  00a22b44  0f7ffc                movq      mm4,mm7
+  00a22b47  0ff5e0                pmaddwd   mm4,mm0
+  00a22b4a  0f7ffd                movq      mm5,mm7
+  00a22b4d  0f72e40c              psrad     mm4,0Ch
+  00a22b51  0ff5e9                pmaddwd   mm5,mm1
+  00a22b54  0f7fe3                movq      mm3,mm4
+  00a22b57  0f72e50c              psrad     mm5,0Ch
+  00a22b5b  0f73d420              psrlq     mm4,20h
+  00a22b5f  0f7fee                movq      mm6,mm5
+  00a22b62  0ffedc                paddd     mm3,mm4
+  00a22b65  0ff5fa                pmaddwd   mm7,mm2
+  00a22b68  0f73d520              psrlq     mm5,20h
+  00a22b6c  0f7e5dcc              movd      [ebp-34h],mm3
+  00a22b70  0ffef5                paddd     mm6,mm5
+  00a22b73  0f72e70c              psrad     mm7,0Ch
+  00a22b77  0f7e75d0              movd      [ebp-30h],mm6
+  00a22b7b  0f7ffb                movq      mm3,mm7
+  00a22b7e  0f73d720              psrlq     mm7,20h
+  00a22b82  0ffedf                paddd     mm3,mm7
+  00a22b85  0f7e5dd4              movd      [ebp-2Ch],mm3
+  00a22b89  0f77                  emms
+  00a22b8b  8b45d0                mov       eax,[ebp-30h]
+  00a22b8e  8b4dcc                mov       ecx,[ebp-34h]
+  00a22b91  8b75d4                mov       esi,[ebp-2Ch]
+
+LAB_00a22b94:
+  00a22b94  81e6ffff0000          and       esi,0FFFFh
+  00a22b9a  8b3d10b41c01          mov       edi,[11CB410h]
+  00a22ba0  c1e70c                shl       edi,0Ch
+  00a22ba3  0fbf347598081d01      movsx     esi,word [esi*2+11D0898h]
+  00a22bab  0fafc6                imul      eax,esi
+  00a22bae  0fafce                imul      ecx,esi
+  00a22bb1  2500f0ffff            and       eax,0FFFFF000h
+  00a22bb6  83c208                add       edx,8
+  00a22bb9  03c7                  add       eax,edi
+  00a22bbb  8b3d14b41c01          mov       edi,[11CB414h]
+  00a22bc1  c1f90c                sar       ecx,0Ch
+  00a22bc4  03cf                  add       ecx,edi
+  00a22bc6  0fbfc9                movsx     ecx,cx
+  00a22bc9  c1e004                shl       eax,4
+  00a22bcc  03c1                  add       eax,ecx
+  00a22bce  8b4d10                mov       ecx,[ebp+10h]
+  00a22bd1  8901                  mov       [ecx],eax
+  00a22bd3  a390081d01            mov       [11D0890h],eax
+  00a22bd8  8b450c                mov       eax,[ebp+0Ch]
+  00a22bdb  83c104                add       ecx,4
+  00a22bde  48                    dec       eax
+  00a22bdf  894d10                mov       [ebp+10h],ecx
+  00a22be2  89450c                mov       [ebp+0Ch],eax
+  00a22be5  0f8507fbffff          jne       near 00A226F2h
+  00a22beb  5f                    pop       edi
+  00a22bec  5e                    pop       esi
+  00a22bed  5b                    pop       ebx
+  00a22bee  8be5                  mov       esp,ebp
+  00a22bf0  5d                    pop       ebp
+  00a22bf1  c20c00                ret       0Ch
+
+LAB_00a22bf4:
+  00a22bf4  be70081d01            mov       esi,11D0870h
+  00a22bf9  0f76ed                pcmpeqd   mm5,mm5
+  00a22bfc  0f6e5e14              movd      mm3,[esi+14h]
+  00a22c00  0f73d510              psrlq     mm5,10h
+  00a22c04  0f6f06                movq      mm0,[esi]
+  00a22c07  0fdbc5                pand      mm0,mm5
+  00a22c0a  0f73f330              psllq     mm3,30h
+  00a22c0e  0f6f4e06              movq      mm1,[esi+6]
+  00a22c12  0febc3                por       mm0,mm3
+  00a22c15  0f6e5e18              movd      mm3,[esi+18h]
+  00a22c19  0fdbcd                pand      mm1,mm5
+  00a22c1c  0f73f330              psllq     mm3,30h
+  00a22c20  0f6f560c              movq      mm2,[esi+0Ch]
+  00a22c24  0fdbd5                pand      mm2,mm5
+  00a22c27  0f6e661c              movd      mm4,[esi+1Ch]
+  00a22c2b  0febcb                por       mm1,mm3
+  00a22c2e  0f73f430              psllq     mm4,30h
+  00a22c32  0febd4                por       mm2,mm4
+  00a22c35  8b4510                mov       eax,[ebp+10h]
+  00a22c38  8d1440                lea       edx,[eax+eax*2]
+  00a22c3b  85d2                  test      edx,edx
+  00a22c3d  0f84b2000000          je        near 00A22CF5h
+  00a22c43  8b7d0c                mov       edi,[ebp+0Ch]
+
+LAB_00a22c46:
+  00a22c46  8b7508                mov       esi,[ebp+8]
+  00a22c49  8b45fc                mov       eax,[ebp-4]
+  00a22c4c  0f76ed                pcmpeqd   mm5,mm5
+  00a22c4f  0f6f3cc6              movq      mm7,[esi+eax*8]
+  00a22c53  0f73d510              psrlq     mm5,10h
+  00a22c57  0fdbfd                pand      mm7,mm5
+  00a22c5a  0f6f35d0a0a200        movq      mm6,[0A2A0D0h]
+  00a22c61  0febfe                por       mm7,mm6
+  00a22c64  0f7ffc                movq      mm4,mm7
+  00a22c67  0ff5e0                pmaddwd   mm4,mm0
+  00a22c6a  0f7ffd                movq      mm5,mm7
+  00a22c6d  0f72e40c              psrad     mm4,0Ch
+  00a22c71  0ff5e9                pmaddwd   mm5,mm1
+  00a22c74  0f7fe3                movq      mm3,mm4
+  00a22c77  0f72e50c              psrad     mm5,0Ch
+  00a22c7b  0f73d420              psrlq     mm4,20h
+  00a22c7f  0f7fee                movq      mm6,mm5
+  00a22c82  0ffedc                paddd     mm3,mm4
+  00a22c85  0ff5fa                pmaddwd   mm7,mm2
+  00a22c88  0f73d520              psrlq     mm5,20h
+  00a22c8c  0f7e5dcc              movd      [ebp-34h],mm3
+  00a22c90  0ffef5                paddd     mm6,mm5
+  00a22c93  0f72e70c              psrad     mm7,0Ch
+  00a22c97  0f7e75d0              movd      [ebp-30h],mm6
+  00a22c9b  0f7ffb                movq      mm3,mm7
+  00a22c9e  0f73d720              psrlq     mm7,20h
+  00a22ca2  0ffedf                paddd     mm3,mm7
+  00a22ca5  0f7e5dd4              movd      [ebp-2Ch],mm3
+  00a22ca9  8b45d4                mov       eax,[ebp-2Ch]
+  00a22cac  8b1d10b41c01          mov       ebx,[11CB410h]
+  00a22cb2  25ffff0000            and       eax,0FFFFh
+  00a22cb7  c1e30c                shl       ebx,0Ch
+  00a22cba  0fbf044598081d01      movsx     eax,word [eax*2+11D0898h]
+  00a22cc2  8bf0                  mov       esi,eax
+  00a22cc4  0faf45cc              imul      eax,[ebp-34h]
+  00a22cc8  0faf75d0              imul      esi,[ebp-30h]
+  00a22ccc  81e600f0ffff          and       esi,0FFFFF000h
+  00a22cd2  03f3                  add       esi,ebx
+  00a22cd4  8b1d14b41c01          mov       ebx,[11CB414h]
+  00a22cda  c1f80c                sar       eax,0Ch
+  00a22cdd  03c3                  add       eax,ebx
+  00a22cdf  0fbfc0                movsx     eax,ax
+  00a22ce2  c1e604                shl       esi,4
+  00a22ce5  03f0                  add       esi,eax
+  00a22ce7  89348f                mov       [edi+ecx*4],esi
+  00a22cea  41                    inc       ecx
+  00a22ceb  4a                    dec       edx
+  00a22cec  894dfc                mov       [ebp-4],ecx
+  00a22cef  0f8551ffffff          jne       near 00A22C46h
+
+LAB_00a22cf5:
+  00a22cf5  0f77                  emms
+
+LAB_00a22cf7:
+  00a22cf7  5f                    pop       edi
+  00a22cf8  5e                    pop       esi
+  00a22cf9  5b                    pop       ebx
+  00a22cfa  8be5                  mov       esp,ebp
+  00a22cfc  5d                    pop       ebp
+  00a22cfd  c20c00                ret       0Ch
+
+11 cible(s) de saut interne : 0x00a226f2, 0x00a227a8, 0x00a2284c, 0x00a2294c, 0x00a229f0, 0x00a22af0, 0x00a22b94, 0x00a22bf4, 0x00a22c46, 0x00a22cf5, 0x00a22cf7

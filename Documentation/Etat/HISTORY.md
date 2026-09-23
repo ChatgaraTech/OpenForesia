@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **la fin du GTE émulé est en C#, sauf `SetGeomScreen`** — `CompMatrix` (360), la
+  projection de sommets par lots (418) et sa jumelle sans profondeur (795), avec leurs deux
+  branches MMX / scalaire, dans `Matrices.cs`. `winsys3d` passe à 210 corps, 16 points d'entrée.
+  **Pas encore exercé**
+- doc : **LB-046** — la branche MMX de 418/795, celle qui tourne, ne garde que 16 bits de la
+  translation et arrondit deux fois ; la branche scalaire ne fait ni l'un ni l'autre
+- fix : la façade déclarait `Ordinal_360(dest, a, b)` ; c'est `(a, b, dest)`. Les sites d'appel
+  passaient déjà le bon ordre
+
 - feat : **les événements `libapi` de `winsys3d` sont en C#** — `OpenEvent`, `TestEvent`,
   `DeliverEvent` et les livraisons de fin d'opération carte (ordinaux 6, 9, 12, 67–69), dans
   `Evenements.cs`. `winsys3d` passe à 205 corps, 19 points d'entrée. **Pas encore exercé**

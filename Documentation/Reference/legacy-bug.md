@@ -2066,3 +2066,40 @@ d'entrée-sortie de la carte mémoire (ordinaux 67, 68, 69), et `TestEvent` (9) 
 d'office, quel que soit l'état du nœud — la carte n'attend donc jamais une livraison perdue.
 
 **Reproduit tel quel** dans `src/Libraries/winsys3d/Evenements.cs`.
+
+## LB-046 — La projection MMX tronque la translation à 16 bits et arrondit deux fois
+
+**Où** : `winsys3d.c`, `FUN_00a22010` @ `0x00a22010` (ordinal 418) et sa jumelle `FUN_00a226c0`
+@ `0x00a226c0` (ordinal 795), la projection des sommets de modèle par lots. **Trouvé à la
+lecture** le 2026-09-23 — effet non observé.
+
+Les deux corps ont une branche scalaire et une branche MMX, choisies par `MMXInstalled`, que
+l'initialisation pose à 1 sur tout processeur postérieur au Pentium MMX. **Les deux branches ne
+calculent pas la même chose.** La scalaire fait, par composante :
+
+```
+x = (m0.vx + m1.vy + m2.vz) >> 12  +  tx          ; un arrondi, tx sur 32 bits
+```
+
+La MMX met la translation dans le quatrième mot du `pmaddwd`, en face d'un `0x1000` constant
+(`DAT_00a2a0d0`), puis décale chaque moitié avant de les additionner :
+
+```
+00a225ad  movd  mm3,[esi+14h]      ; tx
+00a225bb  psllq mm3,30h            ; ... ses 16 bits BAS seulement, dans le mot 3
+00a22615  pmaddwd mm4,mm0          ; (vx.m0 + vy.m1 , vz.m2 + 0x1000.(short)tx)
+00a2261b  psrad mm4,0Ch            ; chaque moitié décalée
+00a22630  paddd mm3,mm4            ; puis additionnée
+```
+
+soit `((vx.m0 + vy.m1) >> 12) + ((vz.m2) >> 12) + (short)tx`. Deux écarts :
+
+- **la translation perd ses bits hauts** : une composante hors de ±32 767 repart de l'autre côté ;
+- **deux arrondis au lieu d'un** : le résultat peut valoir un de moins que la branche scalaire.
+
+**Conséquence** : aucune constatée. Le second écart déplace un sommet d'au plus une unité avant la
+perspective. Le premier ne mordrait que sur un modèle placé à plus de 32 767 unités de la caméra
+sur un axe, ce qui le sortirait vraisemblablement de l'écran de toute façon — non vérifié.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Matrices.cs`, les deux branches, avec le
+drapeau aliasé : c'est la MMX qui tourne.

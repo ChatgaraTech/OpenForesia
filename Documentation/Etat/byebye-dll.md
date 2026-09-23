@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 19 | 205 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 16 | 210 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -608,7 +608,7 @@ feu) : neuf corps de la `libgte` dans `Matrices.cs`, qui les attendait — `SetR
 courts (792), `VectorNormal` (439) et `SquareRoot0` (442). **L'aliasing lève la « masse » GTE** :
 les registres sont la mémoire de la DLL. `winsys3d` passe à 200 corps, 24 points d'entrée.
 
-**Reste du GTE** : 360, 418, 795 (116 à 181 lignes chacun) et `SetGeomScreen` (379), qui entraîne
+**Reste du GTE** (360, 418 et 795 sont partis au lot 6) : `SetGeomScreen` (379), qui entraîne
 `FUN_00a1dbc0` (564) et, côté `wsyskern`, `ProjectionMatrix` (ordinal 21) et `ZeroMatrix` : les
 porter demande un fichier de matrices dans `Libraries/wsyskern/`. `ProjectionMatrix` calcule en
 x87 (`fsin`/`fcos` en précision étendue, `m[14]` avec le quotient non arrondi) ; relevé sous
@@ -619,6 +619,18 @@ livraisons de fin d'opération carte (67 = 69, 68), dans `Evenements.cs` — qui
 masse » parce qu'ils parcourent une liste tenue dans les globales ; aliasée, elle est la même des
 deux côtés. **LB-045** : `OpenEvent` n'enchaîne pas vers l'avant, seul le premier événement est
 jamais livré. `winsys3d` passe à 205 corps, 19 points d'entrée.
+
+**Lot 6, la fin du GTE sauf 379** : `CompMatrix` (360), la projection par lots (418) et sa jumelle
+sans profondeur (795), plus les deux appelées de 360 — `ApplyMatrixSV` (`1f8f0`, 345) et
+`TransMatrix` (`203e0`, 356) —, dans `Matrices.cs`. Tous les trois ont **une branche MMX et une
+branche scalaire**, choisies par `MMXInstalled` (`0x00dedbe8`, aliasé) : l'initialisation le pose
+par un `__try { pand ; emms }` qui rend 1, donc **c'est la MMX qui tourne**. Les deux sont
+transcrites. Sur 360 elles donnent le même résultat au bit près ; **sur 418/795 non** — la MMX
+décale chaque moitié de `pmaddwd` avant la somme et ne garde que 16 bits de la translation
+(**LB-046**). Relevés sous `Legacy/Raw/Winsys3d/`. La façade de 360 nommait ses arguments à
+l'envers (`destMatrix` en premier) : corrigé, les sites passaient déjà le bon ordre.
+`winsys3d` passe à 210 corps, 16 points d'entrée. **Pas encore exercé** — une erreur se verrait
+sur tous les modèles 3D (déformés, déplacés ou absents) ; `Model3d.cs` passe par les trois.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

@@ -235,9 +235,16 @@ internal static unsafe class Winsys3d
 
     internal static void Ordinal_369(void* matrix) => Libraries.Winsys3dMatrices.SetTransMatrix((byte*)matrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetTransMatrix
 
-    [DllImport("winsys3d.dll", EntryPoint = "#360")] internal static extern void Ordinal_360(void* destMatrix, void* a, void* b); // real: winsys3d.c FUN_00a20630 â€” composes two matrices (libgte CompMatrix family), with its own MMX/scalar split
+    // real: winsys3d.c FUN_00a20630 — libgte CompMatrix. Le PREMIER argument est l'operande gauche et
+    // le TROISIEME la destination : l'ancienne declaration les nommait a l'envers, les sites passaient
+    // deja (parent, os, destination).
+    internal static void Ordinal_360(void* a, void* b, void* destMatrix) => Libraries.Winsys3dMatrices.CompMatrix((short*)a, (short*)b, (short*)destMatrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, branches MMX et scalaire
 
-    [DllImport("winsys3d.dll", EntryPoint = "#418")] internal static extern void Ordinal_418(void* vertices, void* outScreenXy, void* outDepth, void* outFlags, uint count); // real: winsys3d.c FUN_00a22010 â€” batch RotTransPers: transforms `count` vertices through the MATRIX register (ordinal 814) into screen XY and depth arrays. MMX/scalar split inside.
+    // real: winsys3d.c FUN_00a22010 — batch RotTransPers: transforms `count` x 3 vertices through the
+    // MATRIX register (ordinal 814) into screen XY and depth arrays. MMX/scalar split inside, and the
+    // two branches do NOT compute the same thing — see Libraries/winsys3d/Matrices.cs.
+    internal static void Ordinal_418(void* vertices, void* outScreenXy, void* outDepth, void* outFlags, uint count)
+        => Libraries.Winsys3dMatrices.RotTransPersParTrois((short*)vertices, (int*)outScreenXy, (uint*)outDepth, (ushort*)outFlags, count); // PORTE 2026-09-23
 
     [DllImport("winsys3d.dll", EntryPoint = "#793")] internal static extern void Ordinal_793(void* normals, void* outColours, uint triangleCount); // real: winsys3d.c FUN_00a03e70 â€” batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
 
@@ -254,7 +261,8 @@ internal static unsafe class Winsys3d
     // the third is the count: the scalar loop ends on `while (param_2 != 0)` after the swap, and the
     // MMX path runs `for (iVar4 = (int)param_3 * 3; iVar4 != 0; iVar4--)` without swapping. Same
     // count as ordinal 418, and three vertices consumed per unit in both.
-    [DllImport("winsys3d.dll", EntryPoint = "#795")] internal static extern void Ordinal_795(void* vertices, void* outScreenXy, uint count);
+    internal static void Ordinal_795(void* vertices, void* outScreenXy, uint count)
+        => Libraries.Winsys3dMatrices.RotTransPersParTroisSansProfondeur((short*)vertices, (int*)outScreenXy, count); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs
 
     // winsys3d.c FUN_00a05ac0 â€” libgpu `SetDefDispEnv(DISPENV*, x, y, w, h)`. Writes disp={x,y,w,h},
     // screen={0,0,0x100,0xf0}, isinter=0, isrgb24=0 (18 of the struct's 20 bytes).

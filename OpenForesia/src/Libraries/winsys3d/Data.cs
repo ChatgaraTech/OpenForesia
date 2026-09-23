@@ -750,6 +750,26 @@ internal static unsafe class Winsys3dData
     internal static ref int DecalGeomY_011cb410 => ref *(int*)At(0x011cb410);
 
     /// <summary>
+    /// &amp;EXT_011d0898 — la table de projection, 0x10000 `short` indexes par la profondeur sur
+    /// 16 bits : `(h << 12) / z`, saturee a 0x7fff. Remplie par `SetGeomScreen` (379, encore
+    /// natif), relue par 418 et 795.
+    /// </summary>
+    internal static short* TableProjection_011d0898 => (short*)At(0x011d0898);
+
+    /// <summary>
+    /// _EXT_011d0890 — le dernier XY d'ecran projete (le `SXY2` du GTE, par la forme). Seule la
+    /// branche scalaire de 418 et 795 l'ecrit, a chaque sommet ; la branche MMX ne le touche pas.
+    /// </summary>
+    internal static ref int DernierXY_011d0890 => ref *(int*)At(0x011d0890);
+
+    /// <summary>
+    /// MMXInstalled (0x00dedbe8) — pose a l'initialisation (789) par `FUN_00a06930`, un
+    /// `__try { pand ; emms }` qui rend 1 : **toujours 1 sur une machine d'aujourd'hui**. Choisit
+    /// entre les deux branches de 360, 418 et 795, qui ne calculent pas toutes la meme chose.
+    /// </summary>
+    internal static ref int MmxInstalle_00dedbe8 => ref *(int*)At(0x00dedbe8);
+
+    /// <summary>
     /// Les quatre tables de la racine carree, remplies a l'initialisation de la DLL et relues par
     /// les ordinaux 439 et 442 : une par ordre de grandeur de l'argument.
     /// </summary>
