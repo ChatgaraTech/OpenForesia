@@ -1,0 +1,28 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a20ef0  section .text  offset fichier 0x202f0  48 octets
+
+  00a20ef0  8b442404              mov       eax,[esp+4]
+  00a20ef4  83c014                add       eax,14h
+  00a20ef7  8b08                  mov       ecx,[eax]
+  00a20ef9  890d84081d01          mov       [11D0884h],ecx
+  00a20eff  8b5004                mov       edx,[eax+4]
+  00a20f02  891588081d01          mov       [11D0888h],edx
+  00a20f08  8b4008                mov       eax,[eax+8]
+  00a20f0b  a38c081d01            mov       [11D088Ch],eax
+  00a20f10  c20400                ret       4
+  00a20f13  90                    nop
+  00a20f14  90                    nop
+  00a20f15  90                    nop
+  00a20f16  90                    nop
+  00a20f17  90                    nop
+  00a20f18  90                    nop
+  00a20f19  90                    nop
+  00a20f1a  90                    nop
+  00a20f1b  90                    nop
+  00a20f1c  90                    nop
+  00a20f1d  90                    nop
+  00a20f1e  90                    nop
+  00a20f1f  90                    nop

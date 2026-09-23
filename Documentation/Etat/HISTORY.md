@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **neuf corps du GTE émulé sont en C#** — les réglages `SetRotMatrix`, `SetLightMatrix`,
+  `SetColorMatrix`, `SetTransMatrix`, `SetBackColor`, `SetGeomOffset` et les calculs
+  `VectorNormal`, `SquareRoot0` et la rotation-translation de vecteurs courts (ordinaux 366–369,
+  376, 378, 439, 442, 792), dans `Matrices.cs`. `winsys3d` passe à 200 corps, 24 points
+  d'entrée. **Pas encore exercé**
+- doc : la VRAM (lot 3) testée en jeu par Vincent, jusqu'à la montagne du dragon de feu
+
 - feat : **la VRAM PlayStation émulée est en C#** — `ClearImage`, `LoadImage`, `MoveImage`,
   `StoreImage` (665, 674, 676, 684) et l'invalidation du cache qu'ils déclenchent
   (`winsys3d/Vram.cs`, fichier neuf), plus `ReInitializeAllTextures` (785) et `ReleaseTexture`

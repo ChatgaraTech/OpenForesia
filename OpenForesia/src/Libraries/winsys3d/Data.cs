@@ -725,4 +725,42 @@ internal static unsafe class Winsys3dData
 
     /// <summary>&amp;DAT_00a5c0b8 — sa jumelle en Y. Voir <see cref="TableGrandeSurfaceX_00a34fb8"/>.</summary>
     internal static float* TableGrandeSurfaceY_00a5c0b8 => (float*)At(0x00a5c0b8);
+
+    // ----------------------------------------------------------------------------------------
+    // Les registres du GTE emule — `Matrices.cs`. Une `MATRIX` de la libgte fait 0x20 octets :
+    // neuf `short` par lignes (0x12), deux de bourrage, puis trois `int` de translation (+0x14).
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>EXT_011d0870 — la matrice de rotation et translation courante (l'export de donnees 814).</summary>
+    internal static byte* RegistreRotation_011d0870 => At(0x011d0870);
+
+    /// <summary>EXT_011d0850 — la matrice d'eclairage (l'export de donnees 815), 0x20 octets.</summary>
+    internal static byte* RegistreLumiere_011d0850 => At(0x011d0850);
+
+    /// <summary>EXT_011d0828 — la matrice de couleur des lumieres, 0x20 octets.</summary>
+    internal static byte* RegistreCouleur_011d0828 => At(0x011d0828);
+
+    /// <summary>DAT_011f0898 — la couleur de fond (r, g, b), trois octets.</summary>
+    internal static byte* CouleurFond_011f0898 => At(0x011f0898);
+
+    /// <summary>EXT_011cb414 — le decalage de projection X (premier argument de l'ordinal 378).</summary>
+    internal static ref int DecalGeomX_011cb414 => ref *(int*)At(0x011cb414);
+
+    /// <summary>EXT_011cb410 — le decalage de projection Y (second argument de l'ordinal 378).</summary>
+    internal static ref int DecalGeomY_011cb410 => ref *(int*)At(0x011cb410);
+
+    /// <summary>
+    /// Les quatre tables de la racine carree, remplies a l'initialisation de la DLL et relues par
+    /// les ordinaux 439 et 442 : une par ordre de grandeur de l'argument.
+    /// </summary>
+    internal static ushort* RacinesPetites_011d0620 => (ushort*)At(0x011d0620);
+
+    /// <summary>Indexee par `n >> 8`, pour `n` &lt; 0x10000.</summary>
+    internal static ushort* Racines8_011d0420 => (ushort*)At(0x011d0420);
+
+    /// <summary>Indexee par `n >> 16`, pour `n` &lt; 0x1000000.</summary>
+    internal static ushort* Racines16_011f0c90 => (ushort*)At(0x011f0c90);
+
+    /// <summary>Indexee par `n >> 24`.</summary>
+    internal static ushort* Racines24_011cb210 => (ushort*)At(0x011cb210);
 }

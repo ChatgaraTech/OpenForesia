@@ -186,13 +186,13 @@ internal static unsafe class Winsys3d
 
     internal static void Ordinal_138() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#368")] internal static extern void Ordinal_368(void* eightDwordStruct); // real: winsys3d.c FUN_00a20ed0, copies 8 dwords into DLL-internal "shading defaults" state (EXT_011d0828); exact field semantics TODO(REVERSE)
+    internal static void Ordinal_368(void* eightDwordStruct) => Libraries.Winsys3dMatrices.SetColorMatrix((byte*)eightDwordStruct); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, vraisemblablement SetColorMatrix (0x011d0828)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#378")] internal static extern void Ordinal_378(int a, int b); // real: winsys3d.c FUN_00a21020, stores (a,b) into DLL-internal state (EXT_011cb414/EXT_011cb410); exact semantics TODO(REVERSE)
+    internal static void Ordinal_378(int a, int b) => Libraries.Winsys3dMatrices.SetGeomOffset(a, b); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, par la forme SetGeomOffset (0x011cb414/410)
 
     // Ordinals 376/379/457 are winsys3d.dll's port of the PlayStation SDK's **libgte** (the
     // geometry engine), the sibling of the libgpu ordinals below. Identified from their bodies:
-    [DllImport("winsys3d.dll", EntryPoint = "#376")] internal static extern void Ordinal_376(byte r, byte g, byte b); // real: winsys3d.c FUN_00a20fe0 â€” libgte SetBackColor: three bytes into DAT_011f0898
+    internal static void Ordinal_376(byte r, byte g, byte b) => Libraries.Winsys3dMatrices.SetBackColor(r, g, b); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetBackColor
 
     [DllImport("winsys3d.dll", EntryPoint = "#379")] internal static extern void Ordinal_379(int h); // real: winsys3d.c FUN_00a21040 â€” libgte SetGeomScreen: stores the projection distance, then rebuilds the 0x10000-entry reciprocal table at EXT_011d0898
 
@@ -216,24 +216,24 @@ internal static unsafe class Winsys3d
     // l'ordinal 440 (winsys3d.c FUN_00a259d0), a l'octet pres le meme corps. La distinction n'est
     // pas cosmetique : la sortie ecrase ici trois emplacements de pile de quatre octets, et
     // l'ordinal 440 n'en aurait rempli que six.
-    [DllImport("winsys3d.dll", EntryPoint = "#439")] internal static extern uint Ordinal_439(int* vector, int* normalized); // real: winsys3d.c FUN_00a25910
+    internal static uint Ordinal_439(int* vector, int* normalized) => Libraries.Winsys3dMatrices.VectorNormal(vector, normalized); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte VectorNormal
 
     // libgte RotTrans par lot : `count` sommets passes par le registre MATRIX (ordinal 814), avec
     // la rangee de translation, mais SANS division perspective — a la difference de l'ordinal 418.
     // Les deux tableaux sont a pas de QUATRE shorts (huit octets), dont trois seulement sont
     // ecrits : c'est ce qui donne la nappe {x, y, z, _} que FUN_00534330 relit ensuite.
-    [DllImport("winsys3d.dll", EntryPoint = "#792")] internal static extern void Ordinal_792(short* source, short* destination, uint count); // real: winsys3d.c FUN_00a22dd0
+    internal static void Ordinal_792(short* source, short* destination, uint count) => Libraries.Winsys3dMatrices.RotTransVecteursCourts(source, destination, count); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "#442")] internal static extern uint Ordinal_442(uint squared); // real: winsys3d.c FUN_00a25b50 â€” libgte SquareRoot0: a four-way table lookup on the magnitude of the argument, then a single Newton step (x/g + g >> 1), masked to 16 bits. Its callers all pass a sum of squares and read a distance back.
+    internal static uint Ordinal_442(uint squared) => Libraries.Winsys3dMatrices.SquareRoot0(squared); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SquareRoot0 : table selon la grandeur, un pas de Newton, 16 bits
 
     // The five entry points FUN_0051d1f0 (the animated-model draw) needs. Identified from their
     // bodies; see Documentation/DLL/winsys3d.md. Declared ahead of that reconstruction so the
     // identification is not lost.
-    [DllImport("winsys3d.dll", EntryPoint = "#366")] internal static extern void Ordinal_366(void* matrix); // real: winsys3d.c FUN_00a20e70 â€” libgte SetRotMatrix: copies the nine rotation shorts into the MATRIX register (ordinal 814, offset 0)
+    internal static void Ordinal_366(void* matrix) => Libraries.Winsys3dMatrices.SetRotMatrix((byte*)matrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetRotMatrix
 
-    [DllImport("winsys3d.dll", EntryPoint = "#367")] internal static extern void Ordinal_367(void* matrix); // real: winsys3d.c FUN_00a20eb0 â€” libgte SetLightMatrix: copies **huit dwords** (0x20 octets, pas neuf shorts) depuis `matrix` dans le registre de matrice d'eclairage, c'est-a-dire l'export de donnees 815. C'est la raison pour laquelle FUN_0051c420 recopie lui aussi 0x20 octets a la main.
+    internal static void Ordinal_367(void* matrix) => Libraries.Winsys3dMatrices.SetLightMatrix((byte*)matrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetLightMatrix (huit mots)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#369")] internal static extern void Ordinal_369(void* matrix); // real: winsys3d.c FUN_00a20ef0 â€” libgte SetTransMatrix: copies the three translations from the matrix's +0x14/+0x18/+0x1c into the same register's translation row
+    internal static void Ordinal_369(void* matrix) => Libraries.Winsys3dMatrices.SetTransMatrix((byte*)matrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetTransMatrix
 
     [DllImport("winsys3d.dll", EntryPoint = "#360")] internal static extern void Ordinal_360(void* destMatrix, void* a, void* b); // real: winsys3d.c FUN_00a20630 â€” composes two matrices (libgte CompMatrix family), with its own MMX/scalar split
 

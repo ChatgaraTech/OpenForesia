@@ -1,0 +1,96 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a25910  section .text  offset fichier 0x24d10  192 octets
+
+  00a25910  56                    push      esi
+  00a25911  8b742408              mov       esi,[esp+8]
+  00a25915  57                    push      edi
+  00a25916  8b4e08                mov       ecx,[esi+8]
+  00a25919  8b4604                mov       eax,[esi+4]
+  00a2591c  8b3e                  mov       edi,[esi]
+  00a2591e  8bd1                  mov       edx,ecx
+  00a25920  0fafd1                imul      edx,ecx
+  00a25923  0fafc0                imul      eax,eax
+  00a25926  8bcf                  mov       ecx,edi
+  00a25928  03c2                  add       eax,edx
+  00a2592a  0fafcf                imul      ecx,edi
+  00a2592d  03c1                  add       eax,ecx
+  00a2592f  3d00000100            cmp       eax,10000h
+  00a25934  7320                  jae       short 00A25956h
+  00a25936  3d00010000            cmp       eax,100h
+  00a2593b  730a                  jae       short 00A25947h
+  00a2593d  668b044520061d01      mov       ax,[eax*2+11D0620h]
+  00a25945  eb40                  jmp       short 00A25987h
+
+LAB_00a25947:
+  00a25947  8bd0                  mov       edx,eax
+  00a25949  c1ea08                shr       edx,8
+  00a2594c  668b0c5520041d01      mov       cx,[edx*2+11D0420h]
+  00a25954  eb23                  jmp       short 00A25979h
+
+LAB_00a25956:
+  00a25956  3d00000001            cmp       eax,1000000h
+  00a2595b  730f                  jae       short 00A2596Ch
+  00a2595d  8bc8                  mov       ecx,eax
+  00a2595f  c1e910                shr       ecx,10h
+  00a25962  668b0c4d900c1f01      mov       cx,[ecx*2+11F0C90h]
+  00a2596a  eb0d                  jmp       short 00A25979h
+
+LAB_00a2596c:
+  00a2596c  8bd0                  mov       edx,eax
+  00a2596e  c1ea18                shr       edx,18h
+  00a25971  668b0c5510b21c01      mov       cx,[edx*2+11CB210h]
+
+LAB_00a25979:
+  00a25979  81e1ffff0000          and       ecx,0FFFFh
+  00a2597f  33d2                  xor       edx,edx
+  00a25981  f7f1                  div       ecx
+  00a25983  03c1                  add       eax,ecx
+  00a25985  d1e8                  shr       eax,1
+
+LAB_00a25987:
+  00a25987  25ffff0000            and       eax,0FFFFh
+  00a2598c  8bc8                  mov       ecx,eax
+  00a2598e  7507                  jne       short 00A25997h
+  00a25990  33c0                  xor       eax,eax
+  00a25992  5f                    pop       edi
+  00a25993  5e                    pop       esi
+  00a25994  c20800                ret       8
+
+LAB_00a25997:
+  00a25997  8bc7                  mov       eax,edi
+  00a25999  8b7c2410              mov       edi,[esp+10h]
+  00a2599d  c1e00c                shl       eax,0Ch
+  00a259a0  99                    cdq
+  00a259a1  f7f9                  idiv      ecx
+  00a259a3  8907                  mov       [edi],eax
+  00a259a5  8b4604                mov       eax,[esi+4]
+  00a259a8  c1e00c                shl       eax,0Ch
+  00a259ab  99                    cdq
+  00a259ac  f7f9                  idiv      ecx
+  00a259ae  894704                mov       [edi+4],eax
+  00a259b1  8b4608                mov       eax,[esi+8]
+  00a259b4  c1e00c                shl       eax,0Ch
+  00a259b7  99                    cdq
+  00a259b8  f7f9                  idiv      ecx
+  00a259ba  894708                mov       [edi+8],eax
+  00a259bd  5f                    pop       edi
+  00a259be  8bc1                  mov       eax,ecx
+  00a259c0  5e                    pop       esi
+  00a259c1  c20800                ret       8
+  00a259c4  90                    nop
+  00a259c5  90                    nop
+  00a259c6  90                    nop
+  00a259c7  90                    nop
+  00a259c8  90                    nop
+  00a259c9  90                    nop
+  00a259ca  90                    nop
+  00a259cb  90                    nop
+  00a259cc  90                    nop
+  00a259cd  90                    nop
+  00a259ce  90                    nop
+  00a259cf  90                    nop
+
+6 cible(s) de saut interne : 0x00a25947, 0x00a25956, 0x00a2596c, 0x00a25979, 0x00a25987, 0x00a25997
