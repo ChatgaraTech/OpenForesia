@@ -53,31 +53,40 @@ internal static unsafe class Wsyskern
     internal static byte CaractereEchappement;
 
     // =====================================================================
-    // LE TAS — DEUX PASSERELLES PROVISOIRES, ET C'EST DELIBERE.
+    // LE TAS — PORTE LE 2026-09-23, APRES DEUX PASSERELLES DELIBEREES.
     //
     // `Malloc` (export 124) est `_malloc` suivi d'un remplissage a zero, `Free` (export 89) est
-    // `_free` sous un cadre SEH monte a la main. Les deux sont transcriptibles en trois lignes.
+    // `_free` sous un cadre SEH monte a la main.
     //
-    // On ne le fait pas, et la raison n'est pas la difficulte : tant qu'une seule fonction de
-    // `wsyskern.dll` reste native, elle alloue dans LE TAS DE LA DLL. `LoadBitmapFile` et
-    // `LoadArray` y sont encore, et le jeu rend leurs blocs par `WsysFree` — c'est-a-dire par
-    // `Free`. Porter `Free` sur le tas de .NET ferait rendre a un tas un bloc pris dans l'autre :
-    // une corruption qui ne se diagnostique pas, et qui ne se manifeste pas au premier appel.
+    // Ils sont restes des passerelles vers l'export natif tant qu'un code natif allouait ou
+    // liberait dans le tas de la DLL un bloc qui traversait vers le C# : un seul tas, sinon l'un
+    // rend a l'autre ce qu'il n'a pas pris. Le dernier cas est tombe le 2026-09-23 avec le portage
+    // des rappels de `winsys3d` (la procedure de fenetre liberait des emplacements du cache, le
+    // rappel des pilotes allouait des noms que le C# libere). Releve au desassembleur, ce qui reste
+    // natif et touche au tas se referme sur lui-meme : le point d'entree de `winsys3d` alloue la
+    // VRAM et la libere lui-meme, et le C# ne la libere jamais. Voir `byebye-dll.md`.
     //
-    // Un seul tas, donc, jusqu'a ce que la DLL soit portee en entier. Ces deux renvois
-    // disparaissent avec le dernier `[DllImport]` de wsyskern, pas avant. Voir LISEZMOI.md,
-    // « ne pas couper une representation en deux ».
+    // `_malloc` et `_free` sont la CRT liee dans la DLL : ils se REBRANCHENT (regle 4 du chantier)
+    // sur l'allocateur de la CRT du processus, `NativeMemory`, au lieu de se transcrire. Le reste
+    // des deux corps — la mise a zero, `outofmemory` — est transcrit.
     // =====================================================================
 
-    // Ghidra: wsyskern.c Malloc @ 0x1000bbc0 (export 124) — `_malloc` puis remplissage a zero,
-    // avec `outofmemory` si le tas rend nul. Passerelle : voir le pave ci-dessus.
+    /// <summary>
+    /// Ghidra: wsyskern.c Malloc @ 0x1000bbc0 (export 124) — `_malloc(n)`, `outofmemory(n)` s'il rend
+    /// nul, puis la mise a zero des `n` octets (mots puis octets). Un bloc de 0 octet est un
+    /// pointeur valide, comme chez la CRT.
+    /// </summary>
     internal static void* Malloc(uint size)
     {
-        void* block = Blaze.Wsyskern.Malloc((int)size);
+        void* block = System.Runtime.InteropServices.NativeMemory.Alloc(size);
         if (block == null) Messages.OutOfMemory(size);
+        new Span<byte>(block, (int)size).Clear();
         return block;
     }
 
-    // Ghidra: wsyskern.c Free @ 0x1000bc30 (export 89) — `_free`. Passerelle : voir ci-dessus.
-    internal static void Free(void* block) => Blaze.Wsyskern.WsysFree((byte*)block);
+    /// <summary>
+    /// Ghidra: wsyskern.c Free @ 0x1000bc30 (export 89) — `_free`, sous un cadre SEH qui n'attrape
+    /// rien d'autre que ce que `_free` leverait. Nul est accepte, comme par la CRT.
+    /// </summary>
+    internal static void Free(void* block) => System.Runtime.InteropServices.NativeMemory.Free(block);
 }

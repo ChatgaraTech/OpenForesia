@@ -62,14 +62,12 @@ internal static unsafe class Wsyskern
     // pair Ghidra resolved from the import table, a different heap from the lowercase CRT
     // malloc/free chain (FUN_00547220/FUN_00547210) this file maps onto NativeMemory.
     // Passing null is safe: it forwards to a CRT free, and Blaze.c itself calls it unconditionally.
-    [DllImport("wsyskern.dll", EntryPoint = "Free")]
-    internal static extern void WsysFree(byte* block);
+    // PORTE le 2026-09-23 — `Libraries/wsyskern/Wsyskern.cs`. Le dernier import de wsyskern.
+    internal static void WsysFree(byte* block) => Libraries.Wsyskern.Free(block);
 
-    // wsyskern ordinal 124, `Malloc` : le tas de la DLL. **Pas appele par le jeu** — il est ici
-    // parce que `src/Libraries/wsyskern/` en a besoin tant que la DLL n'est pas portee en entier.
-    // Un seul tas jusque-la ; voir src/Libraries/LISEZMOI.md.
-    [DllImport("wsyskern.dll", ExactSpelling = true)]
-    internal static extern void* Malloc(int size);
+    // wsyskern ordinal 124, `Malloc`. **Pas appele par le jeu** — il est ici pour les corps portes
+    // de `src/Libraries/`. PORTE le 2026-09-23 — `Libraries/wsyskern/Wsyskern.cs`.
+    internal static void* Malloc(int size) => Libraries.Wsyskern.Malloc((uint)size);
 
     // =========================================================================================
     // CE QUI SUIT EST PORTE EN C# — `src/Libraries/wsyskern/`.

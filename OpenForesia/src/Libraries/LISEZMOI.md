@@ -63,7 +63,9 @@ restée native. Trois cas rencontrés dès le premier lot de `wsyskern` :
 - **le tas.** `Malloc` sert du natif, `Free` rend au natif. Porter l'un des deux sans l'autre, ou
   porter la paire alors que `LoadBitmapFile` alloue encore côté DLL, fait rendre à un tas un bloc
   pris dans l'autre. Tant que la DLL n'est pas portée en entier, `Malloc` et `Free` sont des
-  **passerelles** vers le natif — un seul tas, documenté comme provisoire ;
+  **passerelles** vers le natif — un seul tas, documenté comme provisoire. (Tombées le
+  2026-09-23, une fois établi au désassembleur qu'aucun code resté natif ne partageait plus un
+  bloc avec le C# : voir `Documentation/Etat/byebye-dll.md`.) ;
 - **les vtables.** `CreateArray` fabrique un objet C++ dont `ArrayToString` et `DeleteArray`
   appellent les emplacements. Porter la fabrique sans les méthodes — ou l'inverse — donne un objet
   dont personne ne sait plus qui l'a construit ;

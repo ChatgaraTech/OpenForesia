@@ -56,6 +56,19 @@ internal static unsafe class Win32
     // Le dialogue de choix du pilote de winsys3d, Setup3DDevice / FUN_00a010d0 (Libraries/winsys3d/Device.cs).
     [DllImport("kernel32.dll")] internal static extern byte* lstrcatA(byte* lpString1, byte* lpString2);
     [DllImport("kernel32.dll")] internal static extern uint GetPrivateProfileStringA(byte* lpAppName, byte* lpKeyName, byte* lpDefault, byte* lpReturnedString, uint nSize, byte* lpFileName);
+    // La procedure du dialogue de choix du pilote, FUN_00a012f0 (Libraries/winsys3d/Device.cs).
+    [DllImport("user32.dll")] internal static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
+    [DllImport("user32.dll")] internal static extern nint SendMessageA(IntPtr hWnd, uint Msg, nuint wParam, nint lParam);
+    [DllImport("user32.dll")] internal static extern nint SendDlgItemMessageA(IntPtr hDlg, int nIDDlgItem, uint Msg, nuint wParam, nint lParam);
+    [DllImport("user32.dll")] internal static extern int SetDlgItemTextA(IntPtr hDlg, int nIDDlgItem, byte* lpString);
+    [DllImport("user32.dll")] internal static extern int EndDialog(IntPtr hDlg, nint nResult);
+    [DllImport("gdi32.dll")] internal static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+    [DllImport("gdi32.dll")] internal static extern IntPtr SelectObject(IntPtr hdc, IntPtr h);
+    [DllImport("gdi32.dll")] internal static extern int SetStretchBltMode(IntPtr hdc, int mode);
+    [DllImport("gdi32.dll")] internal static extern int StretchBlt(IntPtr hdcDest, int xDest, int yDest, int wDest, int hDest, IntPtr hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, uint rop);
+    [DllImport("gdi32.dll")] internal static extern int PatBlt(IntPtr hdc, int x, int y, int w, int h, uint rop);
+    [DllImport("gdi32.dll")] internal static extern int DeleteDC(IntPtr hdc);
+    [DllImport("user32.dll")] internal static extern nint CallWindowProcA(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, nuint wParam, nint lParam);
     [DllImport("user32.dll")] internal static extern nint DialogBoxParamA(IntPtr hInstance, byte* lpTemplateName, IntPtr hWndParent, IntPtr lpDialogFunc, nint dwInitParam);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetModuleFileNameA(IntPtr hModule, byte* lpFilename, uint nSize);

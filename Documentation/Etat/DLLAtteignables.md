@@ -41,12 +41,12 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `wsyskern` | 1 386 | 62 159 | 2 | 92 | 4 088 | 1 926 | 7 % | 58 |
-| `winsys3d` | 604 | 27 092 | 1 | 247 | 13 423 | 1 181 | 50 % | 247 |
+| `wsyskern` | 1 386 | 62 159 | — | — | — | — | — | — |
+| `winsys3d` | 604 | 27 092 | 1 | 249 | 13 601 | 1 181 | 50 % | 249 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
-| **total** | | **135 623** | | | **17 511** | | **12 %** | |
+| **total** | | **135 623** | | | **13 601** | | **10 %** | |
 
 La colonne **cloture** compte les fonctions a transcrire, **portees** celles qui le sont deja, **lignes** leur taille cumulee en lignes de
 Ghidra, et **dont CRT** ce que la cloture traverse de bibliotheque standard liee statiquement — qui
@@ -61,243 +61,8 @@ rapporte le devis a la taille de la DLL entiere.
 La feuille du graphe : tout le monde en depend, elle ne depend d'aucune des notres. Services
 generaux — bitmaps et DIB, gamma, tableaux de chaines, memoire.
 
-**2 points d'entree employes**, dont la cloture d'appels couvre **137 fonctions**,
-soit **6 014 lignes de Ghidra sur 62 159**. Retranchee la CRT liee statiquement — 45 fonctions,
-1 926 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **4 088 lignes,
-7 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
-aujourd'hui.
-
-**56 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
-ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
-empeche le devis de retrecir a mesure qu'on avance.
-
-### Les points d'entree employes (2)
-
-| ordinal | nom d'export | adresse | fonction | lignes | implemente |
-|---:|---|---|---|---:|---|
-| 89 | `Free` | `0x1000bc30` | `Free` | 24 | oui |
-| 124 | `Malloc` | `0x1000bbc0` | `Malloc` | 29 | oui |
-
-### La cloture — ce qu'il faut transcrire (92 fonctions, 4 088 lignes)
-
-Triee par taille decroissante : c'est le devis, du plus cher au moins cher. **Les lignes
-sont des lignes de Ghidra**, declarations de variables comprises — une mesure de cout,
-pas un compte de lignes C# a ecrire. La colonne **appelants** compte les corps de la
-cloture qui menent a celui-la ; une fonction a zero appelant est une racine, appelee
-directement par la reconstruction, et son nom est en gras.
-
-| adresse | fonction | lignes | appelants | implemente |
-|---|---|---:|---:|---|
-| `0x1001ef00` | `FUN_1001ef00` | 413 | 1 | **non** |
-| `0x10003bb0` | **`FUN_10003bb0`** | 157 | 2 | oui |
-| `0x10020d20` | `FUN_10020d20` | 153 | 1 | **non** |
-| `0x10013930` | `FUN_10013930` | 124 | 1 | **non** |
-| `0x10013160` | **`FUN_10013160`** | 105 | 0 | oui |
-| `0x10003870` | **`FUN_10003870`** | 99 | 1 | oui |
-| `0x10004060` | **`FUN_10004060`** | 99 | 1 | oui |
-| `0x10003480` | **`FUN_10003480`** | 97 | 2 | oui |
-| `0x100039a0` | **`FUN_100039a0`** | 94 | 1 | oui |
-| `0x10017670` | `FUN_10017670` | 86 | 1 | **non** |
-| `0x1001c990` | `FUN_1001c990` | 82 | 1 | **non** |
-| `0x10006580` | **`DIBCopyBlock`** | 77 | 0 | oui |
-| `0x10010230` | **`LoadFile`** | 77 | 1 | oui |
-| `0x100077c0` | **`decrypt`** | 76 | 1 | oui |
-| `0x10014730` | `FUN_10014730` | 75 | 1 | **non** |
-| `0x10017e80` | **`FUN_10017e80`** | 73 | 1 | oui |
-| `0x1000fe80` | **`FUN_1000fe80`** | 65 | 1 | oui |
-| `0x10012ef0` | **`FUN_10012ef0`** | 64 | 0 | oui |
-| `0x10022570` | **`FUN_10022570`** | 60 | 1 | oui |
-| `0x1001e770` | `FUN_1001e770` | 59 | 1 | **non** |
-| `0x10020040` | `FUN_10020040` | 56 | 1 | **non** |
-| `0x1000bac0` | **`LoadBitmapEx`** | 55 | 0 | oui |
-| `0x10013060` | `FUN_10013060` | 55 | 1 | **non** |
-| `0x10010500` | **`LoadBitmapFile`** | 54 | 0 | oui |
-| `0x10009f00` | **`CreateArray`** | 52 | 0 | oui |
-| `0x100036d0` | **`FUN_100036d0`** | 47 | 1 | oui |
-| `0x10020fe0` | `FUN_10020fe0` | 47 | 1 | **non** |
-| `0x10006ab0` | **`ProjectionMatrix`** | 46 | 0 | oui |
-| `0x10003620` | **`FUN_10003620`** | 45 | 6 | oui |
-| `0x10011f50` | **`strtolong`** | 45 | 1 | oui |
-| `0x1001c8d0` | `FUN_1001c8d0` | 44 | 1 | **non** |
-| `0x100033d0` | **`FUN_100033d0`** | 40 | 2 | oui |
-| `0x1001b7f0` | `FUN_1001b7f0` | 40 | 1 | **non** |
-| `0x100061c0` | **`Gamma`** | 39 | 0 | oui |
-| `0x10003260` | **`FUN_10003260`** | 37 | 1 | oui |
-| `0x10003b10` | **`FUN_10003b10`** | 37 | 1 | oui |
-| `0x10003e70` | **`Unpack`** | 37 | 1 | oui |
-| `0x1000bc90` | **`Strdup`** | 37 | 0 | oui |
-| `0x1000c130` | **`PaletteFromDIB`** | 37 | 1 | oui |
-| `0x100037b0` | **`FUN_100037b0`** | 35 | 1 | oui |
-| `0x10007050` | **`ScaleMatrix`** | 35 | 0 | oui |
-| `0x1001c7e0` | `FUN_1001c7e0` | 34 | 1 | **non** |
-| `0x100178d0` | `FUN_100178d0` | 33 | 4 | **non** |
-| `0x1001c700` | `FUN_1001c700` | 33 | 1 | **non** |
-| `0x1001c770` | `FUN_1001c770` | 33 | 1 | **non** |
-| `0x10008950` | **`WarningMessage`** | 32 | 2 | oui |
-| `0x10012fd0` | `FUN_10012fd0` | 32 | 1 | **non** |
-| `0x10006a40` | **`FUN_10006a40`** | 30 | 0 | oui |
-| `0x10004400` | `FUN_10004400` | 29 | 1 | **non** |
-| `0x10004a50` | `FUN_10004a50` | 29 | 1 | **non** |
-| `0x1000bbc0` | **`Malloc`** | 29 | 13 | oui |
-| `0x100173b0` | **`FUN_100173b0`** | 29 | 1 | oui |
-| `0x100046c0` | `FUN_100046c0` | 28 | 1 | **non** |
-| `0x10003450` | **`FUN_10003450`** | 26 | 1 | oui |
-| `0x1001ff70` | `FUN_1001ff70` | 25 | 1 | **non** |
-| `0x100088d0` | **`ErrorMessage`** | 24 | 3 | oui |
-| `0x1000bc30` | **`Free`** | 24 | 9 | oui |
-| `0x10012020` | **`FUN_10012020`** | 24 | 0 | oui |
-| `0x100224d0` | **`FUN_100224d0`** | 23 | 1 | oui |
-| `0x10022520` | **`FUN_10022520`** | 22 | 1 | oui |
-| `0x100178a0` | `FUN_100178a0` | 21 | 1 | **non** |
-| `0x1001c8b0` | `FUN_1001c8b0` | 21 | 1 | **non** |
-| `0x1000a190` | **`LoadArray`** | 20 | 0 | oui |
-| `0x1001c880` | `FUN_1001c880` | 20 | 1 | **non** |
-| `0x1001ff40` | `FUN_1001ff40` | 20 | 3 | **non** |
-| `0x10003340` | **`FUN_10003340`** | 19 | 2 | oui |
-| `0x1000a050` | **`ArrayToString`** | 19 | 0 | oui |
-| `0x1001ffe0` | `FUN_1001ffe0` | 19 | 2 | **non** |
-| `0x10009fe0` | **`DeleteArray`** | 18 | 0 | oui |
-| `0x10020010` | `FUN_10020010` | 17 | 1 | **non** |
-| `0x1000bbac` | **`FUN_1000bbac`** | 16 | 1 | oui |
-| `0x100033a0` | **`FUN_100033a0`** | 15 | 2 | oui |
-| `0x100035e0` | **`FUN_100035e0`** | 15 | 1 | oui |
-| `0x10003600` | **`FUN_10003600`** | 15 | 1 | oui |
-| `0x10022550` | **`FUN_10022550`** | 15 | 2 | oui |
-| `0x10003e40` | **`FUN_10003e40`** | 15 | 4 | oui |
-| `0x10003316` | `FUN_10003316` | 14 | 1 | **non** |
-| `0x10003f10` | **`FUN_10003f10`** | 14 | 3 | oui |
-| `0x10004262` | `FUN_10004262` | 14 | 1 | **non** |
-| `0x10010359` | `FUN_10010359` | 14 | 1 | **non** |
-| `0x1001c8a0` | `FUN_1001c8a0` | 14 | 1 | **non** |
-| `0x100035f0` | **`FUN_100035f0`** | 13 | 1 | oui |
-| `0x10003efd` | `FUN_10003efd` | 13 | 1 | **non** |
-| `0x10008a30` | **`outofmemory`** | 13 | 1 | oui |
-| `0x10008a50` | **`filenotfound`** | 13 | 2 | oui |
-| `0x10008a70` | **`warnfilenotfound`** | 13 | 2 | oui |
-| `0x10008a90` | **`fileerror`** | 13 | 1 | oui |
-| `0x10008ab0` | **`warnfileerror`** | 13 | 1 | oui |
-| `0x10006a90` | **`ZeroMatrix`** | 12 | 1 | oui |
-| `0x10006aa0` | **`IdentityMatrix`** | 12 | 1 | oui |
-| `0x10013bc0` | `FUN_10013bc0` | 12 | 1 | **non** |
-| `0x1001cb60` | `FUN_1001cb60` | 12 | 1 | **non** |
-
-### La CRT liee statiquement (45 fonctions, 1 926 lignes) — hors devis
-
-La DLL embarque sa bibliotheque standard, et la cloture la traverse. Ghidra la nomme
-depuis sa base de signatures — d'ou le souligne en tete. **Rien de tout cela ne se
-transcrit** : `__alldiv`, `__allmul` et `__allshr` sont l'arithmetique 64 bits que le
-compilateur de 1998 appelait et qu'un `long` C# fait nativement ; `__ftol` est une
-conversion ; `__local_unwind2` et `__amsg_exit` sont le deroulage SEH ; le reste est
-`string.h`, deja porte dans `Platform/Crt.cs`.
-
-| adresse | fonction | lignes |
-|---|---|---:|
-| `0x1001c390` | `FUN_1001c390` | 196 |
-| `0x10018060` | `FUN_10018060` | 153 |
-| `0x100183a0` | `FUN_100183a0` | 147 |
-| `0x1001b360` | `FUN_1001b360` | 118 |
-| `0x10012ac0` | `_strncpy` | 115 |
-| `0x1001b5a0` | `FUN_1001b5a0` | 112 |
-| `0x1001b000` | `FUN_1001b000` | 79 |
-| `0x10012690` | `_strchr` | 77 |
-| `0x1001cf40` | `FUN_1001cf40` | 61 |
-| `0x1001b1d0` | `FUN_1001b1d0` | 59 |
-| `0x100188c0` | `FUN_100188c0` | 57 |
-| `0x100132e0` | `FUN_100132e0` | 44 |
-| `0x100186d0` | `FUN_100186d0` | 41 |
-| `0x1001233e` | `__local_unwind2` | 40 |
-| `0x1001fc60` | `FUN_1001fc60` | 35 |
-| `0x10015a10` | `FUN_10015a10` | 34 |
-| `0x10014290` | `FUN_10014290` | 33 |
-| `0x1001b2a0` | `FUN_1001b2a0` | 30 |
-| `0x100174f0` | `FUN_100174f0` | 29 |
-| `0x10017fa0` | `FUN_10017fa0` | 29 |
-| `0x100144f0` | `FUN_100144f0` | 27 |
-| `0x100142e0` | `FUN_100142e0` | 24 |
-| `0x100187b0` | `FUN_100187b0` | 23 |
-| `0x100187e0` | `FUN_100187e0` | 23 |
-| `0x10018860` | `FUN_10018860` | 23 |
-| `0x10018780` | `FUN_10018780` | 22 |
-| `0x1001b170` | `FUN_1001b170` | 22 |
-| `0x1001b300` | `FUN_1001b300` | 22 |
-| `0x10014f60` | `__amsg_exit` | 21 |
-| `0x10017f50` | `FUN_10017f50` | 21 |
-| `0x1001af60` | `FUN_1001af60` | 19 |
-| `0x10012200` | `__ftol` | 18 |
-| `0x1001c350` | `FUN_1001c350` | 18 |
-| `0x100123d2` | `FUN_100123d2` | 17 |
-| `0x10014710` | `FUN_10014710` | 14 |
-| `0x100159f0` | `FUN_100159f0` | 13 |
-| `0x100189d0` | `FUN_100189d0` | 13 |
-| `0x100189e0` | `FUN_100189e0` | 13 |
-| `0x10018a00` | `FUN_10018a00` | 13 |
-| `0x10018a30` | `FUN_10018a30` | 13 |
-| `0x10014270` | `FUN_10014270` | 12 |
-| `0x10017570` | `FUN_10017570` | 12 |
-| `0x10018820` | `FUN_10018820` | 12 |
-| `0x10017f30` | `FUN_10017f30` | 11 |
-| `0x1001e590` | `FUN_1001e590` | 11 |
-
-### Ce qui sort de la DLL (49 appels distincts)
-
-Les appels que la cloture adresse en dehors de la DLL. Ils ne se transcrivent pas — ils
-se rebranchent : sur `Platform/Win32.cs` pour Win32, sur `Platform/Crt.cs` pour la CRT,
-et sur la reconstruction de la DLL soeur quand la colonne **chez** en nomme une. Cette
-derniere colonne est l'argument de l'ordre de travail : une DLL dont les appels
-sortants retombent chez une soeur se transcrit APRES elle, sinon le portage s'appuie
-sur du natif qu'il faudra rebrancher deux fois.
-
-| appel | sites | chez |
-|---|---:|---|
-| `CloseHandle` | 3 | — |
-| `EnterCriticalSection` | 3 | — |
-| `GetFileSize` | 3 | — |
-| `HeapAlloc` | 3 | — |
-| `HeapFree` | 3 | — |
-| `LeaveCriticalSection` | 3 | — |
-| `ROUND` | 3 | — |
-| `ReadFile` | 3 | — |
-| `VirtualFree` | 3 | — |
-| `CreateFileA` | 2 | — |
-| `MessageBoxA` | 2 | — |
-| `MultiByteToWideChar` | 2 | — |
-| `VirtualAlloc` | 2 | — |
-| `wvsprintfA` | 2 | — |
-| `CreateDIBitmap` | 1 | — |
-| `CreatePalette` | 1 | — |
-| `FindResourceA` | 1 | — |
-| `FreeResource` | 1 | — |
-| `GetCurrentThreadId` | 1 | — |
-| `GetDC` | 1 | — |
-| `GetLastError` | 1 | — |
-| `GetModuleFileNameA` | 1 | — |
-| `GetProcAddress` | 1 | — |
-| `GetStdHandle` | 1 | — |
-| `GetStringTypeA` | 1 | — |
-| `GetStringTypeW` | 1 | — |
-| `InitializeCriticalSection` | 1 | — |
-| `InterlockedDecrement` | 1 | — |
-| `InterlockedIncrement` | 1 | — |
-| `LCMapStringA` | 1 | — |
-| `LCMapStringW` | 1 | — |
-| `LoadLibraryA` | 1 | — |
-| `LoadResource` | 1 | — |
-| `LockResource` | 1 | — |
-| `RaiseException` | 1 | — |
-| `RealizePalette` | 1 | — |
-| `ReleaseDC` | 1 | — |
-| `SelectPalette` | 1 | — |
-| `SetFilePointer` | 1 | — |
-| `SetLastError` | 1 | — |
-| `TlsGetValue` | 1 | — |
-| `TlsSetValue` | 1 | — |
-| `WideCharToMultiByte` | 1 | — |
-| `WriteFile` | 1 | — |
-| `f2xm1` | 1 | — |
-| `fcos` | 1 | — |
-| `fscale` | 1 | — |
-| `fsin` | 1 | — |
-| `log2` | 1 | — |
+**Aucun point d'entree employe.** Ni `Blaze.exe` ni la reconstruction n'importe quoi que ce soit
+de cette DLL. Rien a transcrire tant que cela reste vrai.
 
 
 ---
@@ -308,13 +73,13 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**1 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
-soit **14 604 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
-1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 423 lignes,
+**1 points d'entree employes**, dont la cloture d'appels couvre **274 fonctions**,
+soit **14 782 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
+1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 601 lignes,
 50 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**246 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**248 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
@@ -324,7 +89,7 @@ empeche le devis de retrecir a mesure qu'on avance.
 |---:|---|---|---|---:|---|
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | oui |
 
-### La cloture — ce qu'il faut transcrire (247 fonctions, 13 423 lignes)
+### La cloture — ce qu'il faut transcrire (249 fonctions, 13 601 lignes)
 
 Triee par taille decroissante : c'est le devis, du plus cher au moins cher. **Les lignes
 sont des lignes de Ghidra**, declarations de variables comprises — une mesure de cout,
@@ -350,6 +115,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a271e0` | **`FUN_00a271e0`** | 129 | 1 | oui |
 | `0x00a09980` | **`FUN_00a09980`** | 128 | 1 | oui |
 | `0x00a0e0c0` | **`FUN_00a0e0c0`** | 127 | 1 | oui |
+| `0x00a012f0` | **`FUN_00a012f0`** | 126 | 0 | oui |
 | `0x00a08080` | **`FUN_00a08080`** | 126 | 1 | oui |
 | `0x00a03110` | **`FUN_00a03110`** | 123 | 1 | oui |
 | `0x00a24000` | **`FUN_00a24000`** | 122 | 1 | oui |
@@ -468,6 +234,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a0d630` | **`FUN_00a0d630`** | 38 | 1 | oui |
 | `0x00a0dba0` | **`FUN_00a0dba0`** | 38 | 1 | oui |
 | `0x00a26220` | **`FUN_00a26220`** | 38 | 0 | oui |
+| `0x00a01640` | **`FUN_00a01640`** | 36 | 1 | oui |
 | `0x00a0d5c0` | **`FUN_00a0d5c0`** | 36 | 1 | oui |
 | `0x00a1f8f0` | **`FUN_00a1f8f0`** | 36 | 3 | oui |
 | `0x00a21040` | **`FUN_00a21040`** | 35 | 0 | oui |
@@ -488,6 +255,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a05260` | **`SetTimingMode`** | 29 | 0 | oui |
 | `0x00a1cff0` | **`FUN_00a1cff0`** | 29 | 1 | oui |
 | `0x00a275e0` | **`FUN_00a275e0`** | 29 | 1 | oui |
+| `0x00a01740` | **`FUN_00a01740`** | 28 | 1 | oui |
 | `0x00a06070` | **`FUN_00a06070`** | 28 | 1 | oui |
 | `0x00a069c0` | **`ChangeResolution`** | 28 | 0 | oui |
 | `0x00a03db0` | **`FUN_00a03db0`** | 27 | 33 | oui |
@@ -578,7 +346,6 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a27980` | **`ReInitializeAllTextures`** | 13 | 1 | oui |
 | `0x00a27990` | **`ReleaseTexture`** | 13 | 0 | oui |
 | `0x00a01e30` | **`FUN_00a01e30`** | 12 | 0 | oui |
-| `0x00a04ff0` | **`FUN_00a04ff0`** | 12 | 0 | oui |
 | `0x00a05160` | **`FUN_00a05160`** | 12 | 0 | oui |
 | `0x00a05760` | **`FUN_00a05760`** | 12 | 0 | oui |
 
@@ -619,7 +386,7 @@ conversion ; `__local_unwind2` et `__amsg_exit` sont le deroulage SEH ; le reste
 | `0x00a27d5c` | `__ftol` | 18 |
 | `0x00a28620` | `FUN_00a28620` | 12 |
 
-### Ce qui sort de la DLL (76 appels distincts)
+### Ce qui sort de la DLL (89 appels distincts)
 
 Les appels que la cloture adresse en dehors de la DLL. Ils ne se transcrivent pas — ils
 se rebranchent : sur `Platform/Win32.cs` pour Win32, sur `Platform/Crt.cs` pour la CRT,
@@ -644,15 +411,20 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `LoadLibraryA` | 2 | — |
 | `MultiByteToWideChar` | 2 | — |
 | `QueryPerformanceCounter` | 2 | — |
+| `SelectObject` | 2 | — |
+| `SendMessageA` | 2 | — |
 | `SetWindowLongA` | 2 | — |
 | `VirtualAlloc` | 2 | — |
 | `fpatan` | 2 | — |
 | `CloseHandle` | 1 | — |
+| `CreateCompatibleDC` | 1 | — |
 | `CreateEventA` | 1 | — |
+| `DeleteDC` | 1 | — |
 | `DeleteFileA` | 1 | — |
 | `DestroyWindow` | 1 | — |
 | `DialogBoxParamA` | 1 | — |
 | `DispatchMessageA` | 1 | — |
+| `EndDialog` | 1 | — |
 | `EnterCriticalSection` | 1 | — |
 | `FindClose` | 1 | — |
 | `FindFirstFileA` | 1 | — |
@@ -660,11 +432,11 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `Gamma` | 1 | `wsyskern` |
 | `GetAsyncKeyState` | 1 | — |
 | `GetCommandLineA` | 1 | — |
+| `GetDlgItem` | 1 | — |
 | `GetModuleFileNameA` | 1 | — |
 | `GetPrivateProfileIntA` | 1 | — |
 | `GetStringTypeA` | 1 | — |
 | `GetStringTypeW` | 1 | — |
-| `InitializeCriticalSection` | 1 | — |
 | `LCMapStringA` | 1 | — |
 | `LCMapStringW` | 1 | — |
 | `LeaveCriticalSection` | 1 | — |
@@ -673,23 +445,31 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `Ordinal_3` | 1 | — |
 | `Ordinal_4` | 1 | — |
 | `Ordinal_5` | 1 | — |
+| `PatBlt` | 1 | — |
 | `PeekMessageA` | 1 | — |
 | `ProjectionMatrix` | 1 | `wsyskern` |
 | `QueryPerformanceFrequency` | 1 | — |
 | `ROUND` | 1 | — |
 | `RaiseException` | 1 | — |
 | `ReadFile` | 1 | — |
+| `RealizePalette` | 1 | — |
 | `ResetEvent` | 1 | — |
 | `ScaleMatrix` | 1 | `wsyskern, playst` |
-| `SelectObject` | 1 | — |
+| `SelectPalette` | 1 | — |
+| `SendDlgItemMessageA` | 1 | — |
 | `SetBkMode` | 1 | — |
 | `SetCurrentDirectoryA` | 1 | — |
+| `SetDlgItemTextA` | 1 | — |
 | `SetEvent` | 1 | — |
 | `SetFilePointer` | 1 | — |
+| `SetFocus` | 1 | — |
+| `SetStretchBltMode` | 1 | — |
 | `SetTextColor` | 1 | — |
 | `SetUnhandledExceptionFilter` | 1 | — |
+| `SetWindowTextA` | 1 | — |
 | `Sleep` | 1 | — |
 | `Strdup` | 1 | `wsyskern` |
+| `StretchBlt` | 1 | — |
 | `SubtractRect` | 1 | — |
 | `TextOutA` | 1 | — |
 | `TranslateMessage` | 1 | — |

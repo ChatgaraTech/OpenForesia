@@ -13,8 +13,8 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
-| `wsyskern` | **2** (`Malloc`, `Free`) | 58 / 92 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 1 (701, gardé pour la comparaison) | **247 / 247** | **toute la clôture est en C#** ; 701 est un choix, voir la fin |
+| `wsyskern` | **0** | tout | **fini le 2026-09-23** : `Malloc` et `Free` portés, le C# n'importe plus rien de la DLL |
+| `winsys3d` | 1 (701, gardé pour la comparaison) | **249 / 249** | **toute la clôture est en C#** ; 701 est un choix, voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -70,22 +70,24 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
 - **Rien de `wsyskern` n'a été exercé.** Le codec et la famille tableau se valident ensemble :
   `LoadArray` → `LoadFile` → `Unpack` est le chemin qui fait passer du vrai flux compressé. Une
   session de jeu suffit à le dire.
-- **Les deux passerelles de tas — établi le 2026-09-23 : elles NE PEUVENT PAS encore tomber.**
-  Toute la clôture de `winsys3d` est portée, mais du code natif de la DLL tourne toujours : son
-  point d'entrée et les cinq codes passés par adresse. Relevé au désassembleur, appel par appel :
+- **Les deux passerelles de tas — TOMBÉES le 2026-09-23.** Une fois toute la clôture de `winsys3d`
+  portée, du code natif de la DLL tournait encore : son point d'entrée et cinq codes passés par
+  adresse. Relevé au désassembleur, appel par appel :
 
-  | code natif | touche le tas ? | conséquence |
+  | code natif | touchait le tas ? | devenu |
   |---|---|---|
-  | `entry` (chargement / déchargement) | alloue puis libère la VRAM (`0x100000`) | cohérent tant que le C# ne libère pas la VRAM |
-  | `LAB_00a02ee0`, procédure de fenêtre | **oui** : sur `WM_ACTIVATEAPP`, `ReInitializeAllTextures` natif **libère des emplacements du cache que le C# a alloués** | bloquant |
-  | `LAB_00a01810`, énumération des pilotes | **oui** : ses noms viennent du `Strdup` natif, et `ListerPilotes` (C#) les libère | bloquant |
-  | `LAB_00a06360`, minuteur | non | — |
-  | `FUN_00a012f0` (dialogue), `LAB_00a01000` (modes) | non | — |
+  | `entry` (chargement / déchargement) | alloue puis libère la VRAM (`0x100000`) | natif ; se referme sur lui-même, le C# ne libère jamais la VRAM |
+  | `LAB_00a02ee0`, procédure de fenêtre | **oui** : sur `WM_ACTIVATEAPP`, libérait des emplacements du cache alloués par le C# | **porté** (`Device.cs`) |
+  | `LAB_00a01810`, énumération des pilotes | **oui** : allouait (`Strdup`) des noms que le C# libère | **porté** (`Device.cs`) |
+  | `LAB_00a06360`, minuteur | non | **porté** (`Cadence.cs`) |
+  | `LAB_00a01000`, énumération des modes | non | **porté** (`Device.cs`) |
+  | `FUN_00a012f0`, procédure du dialogue | non (imports GDI/USER seulement) | **porté** (`Device.cs`, lot 17) |
 
-  Basculer sur `NativeMemory` ferait libérer par un tas ce que l'autre a alloué. **Pour les faire
-  tomber, il faut d'abord porter la procédure de fenêtre et le rappel d'énumération** (et, par
-  cohérence, les trois autres), en `[UnmanagedCallersOnly]` passés par adresse à la place des
-  codes natifs.
+  Plus aucun bloc ne traverse d'un tas à l'autre : `Malloc` et `Free` sont transcrits dans
+  `Libraries/wsyskern/Wsyskern.cs`, `_malloc`/`_free` rebranchés sur `NativeMemory`. **Le C#
+  n'importe plus rien de `wsyskern.dll`**, qui reste chargée parce que `winsys3d.dll` l'importe.
+  **Pas encore exercé** : un bloc rendu au mauvais tas se manifesterait par une corruption
+  différée, pas au premier appel — une vraie session de jeu est le test.
 - **La table de sinus, au dernier bit.** Le 387 calcule `fsin` sur 80 bits, `Math.Sin` sur 64. Un
   écart d'un ulp ne changerait l'entier tronqué que si `sin * 4096` tombait à moins de ~1e-13 d'un
   entier ; ce n'est le cas qu'aux indices 0, 1024, 2048 et 3072, où les deux donnent exactement 0,
@@ -809,7 +811,25 @@ fonction pure). 789 l'appelle désormais directement.
 
 `winsys3d` : **un seul import restant, 701**, et c'est un choix — voir plus haut. **Pas encore
 exercé** : une table de racines fausse fausserait `VectorNormal` et donc l'éclairage, et une
-matrice initiale fausse le premier modèle dessiné.
+matrice initiale fausse le premier modèle dessiné. Testé en jeu par Vincent le même jour.
+
+**Lot 16, les rappels natifs et le tas de `wsyskern`** : la procédure de fenêtre, le minuteur de
+17 ms et les deux rappels d'énumération DirectDraw, portés en `[UnmanagedCallersOnly]` et passés
+par adresse à la place des codes natifs (Ghidra ne les avait pas décompilés : ils ne sont atteints
+que par adresse) ; puis `Malloc` et `Free` de `wsyskern`, que plus rien n'empêchait de porter —
+voir « À vérifier ». En chemin, **un défaut du portage corrigé** : la section critique des ordinaux
+40/41 est partagée avec le minuteur (en-tête de `SectionCritique.cs`). Reste natif dans
+`winsys3d` : son point d'entrée et la procédure du dialogue de choix du pilote. Testé en jeu par
+Vincent le même jour.
+
+**Lot 17, la procédure du dialogue de choix du pilote** (`FUN_00a012f0`, avec `FUN_00a01740` — la
+liste des résolutions — et `FUN_00a01640` — la bitmap d'accueil en `WM_DRAWITEM`) : dans
+`Device.cs`, en `[UnmanagedCallersOnly]` passé à `DialogBoxParamA`. Vérifiée au désassembleur.
+Deux détails gardés : OK rend l'élément qui a **le focus** dans la liste (`LB_GETCARETINDEX`,
+`0x19F`), pas la sélection ; et le choix d'une résolution compare son texte aux cinq noms **sans
+s'arrêter** au premier égal. **Il ne reste de code natif de `winsys3d` exécuté que son point
+d'entrée** (chargement, déchargement), plus l'import de 701 gardé pour la comparaison. **Pas encore
+exercé** — c'est la fenêtre de choix du pilote au lancement : listes, bitmap, textes, OK, Annuler.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

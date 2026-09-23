@@ -251,6 +251,39 @@ internal static unsafe class Winsys3dCadence
     }
 
     // ============================================================================================
+    // LE MINUTEUR DE 17 MS — `LAB_00a06360` (2026-09-23), transcrit sur le desassemblage
+    // (`Legacy/Raw/Winsys3d/LAB_00a06360.disasm.txt`). Ghidra ne l'a pas decompile : il n'est
+    // atteint que par adresse (`push 0A06360h`, trois `timeSetEvent`). Il tourne sur le fil du
+    // minuteur multimedia de Windows, d'ou `[UnmanagedCallersOnly]` : Windows l'appelle en `stdcall`
+    // a cinq arguments (`ret 14h`), qu'il n'utilise pas.
+    // ============================================================================================
+
+    /// <summary>
+    /// Ghidra: winsys3d.c LAB_00a06360 @ 0x00a06360 — le tick de 17 ms, **sous la section critique**
+    /// des ordinaux 40/41 : avance `VSyncCounter` ; si le compteur racine 3 est demarre en mode
+    /// interruption (`0x1000`), livre l'evenement `(0xF2000003, 2)` ; appelle le rappel de
+    /// l'ordinal 133 s'il y en a un. Puis, hors section, **se reprogramme** : le minuteur est a
+    /// coup unique (`fuEvent = 0`), chaque tick arme le suivant.
+    /// </summary>
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
+    internal static void TickMinuteur(uint id, uint message, nuint utilisateur, nuint reserve1, nuint reserve2)
+    {
+        Winsys3dSectionCritique.Entrer();
+        Winsys3dData.VSyncCounter_00dedbf4 = Winsys3dData.VSyncCounter_00dedbf4 + 1;
+        if (Winsys3dData.CompteurRacineActif_00dedc14 != 0
+            && (Winsys3dData.ModeCompteurRacine_00dedc08 & 0xff00) == 0x1000)
+            Winsys3dEvenements.DeliverEvent(0xf2000003, 2);
+        void* rappel = Winsys3dData.RappelTick_011be6a0;
+        if (rappel != null) ((delegate* unmanaged[Stdcall]<void>)rappel)();
+        Winsys3dSectionCritique.Sortir();
+        Winsys3dData.Minuteur_011be6d0 = Win32.timeSetEvent(0x11, 0, AdresseTickMinuteur, 0, 0);
+    }
+
+    /// <summary>L'adresse de <see cref="TickMinuteur"/>, a la place de `0x00a06360` dans les trois `timeSetEvent`.</summary>
+    internal static System.IntPtr AdresseTickMinuteur
+        => (System.IntPtr)(delegate* unmanaged[Stdcall]<uint, uint, nuint, nuint, nuint, void>)&TickMinuteur;
+
+    // ============================================================================================
     // LA POMPE DE MESSAGES — `PollMessages` (784) et `FUN_00a01d70`, verifies au desassembleur
     // (`Legacy/Raw/Winsys3d/FUN_00a01d60.disasm.txt`). Ici parce que l'attente d'image la fait
     // tourner a chaque tour de boucle ; elle lit aussi les manettes (`Manettes.cs`).

@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **la procédure du dialogue de choix du pilote est en C#** — le dernier code natif de
+  `winsys3d` que le jeu exécute, hors son point d'entrée. **Pas encore exercé**
+- doc : les rappels natifs et le tas de `wsyskern` (lot 16) testés en jeu par Vincent
+
+- feat : **le C# n'importe plus rien de `wsyskern.dll`** — `Malloc` et `Free` sont portés, après
+  les rappels natifs de `winsys3d` qui partageaient son tas : la procédure de fenêtre, le minuteur de
+  17 ms et les deux énumérations DirectDraw, en `[UnmanagedCallersOnly]`. **Pas encore exercé**
+- doc : la section critique (correctif) testée en jeu par Vincent
+
 - fix : **la section critique des ordinaux 40/41 n'excluait plus le minuteur natif** — le port du
   2026-09-21 créait sa propre section, en croyant que rien dans la DLL ne prenait la sienne ; le
   rappel du minuteur (`LAB_00a06360`, jamais décompilé) la prend autour de `DeliverEvent`. Le port

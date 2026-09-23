@@ -916,11 +916,14 @@ internal static unsafe class Winsys3dData
     internal static byte* ChaineCreate3DDevice_00a2c530 => At(0x00a2c530);
     internal static byte* ChaineErreurInit_00a2c50c => At(0x00a2c50c);
 
-    /// <summary>LAB_00a06360 — un CODE : le rappel du minuteur de 17 ms, reste natif, passe par adresse.</summary>
-    internal static IntPtr RappelMinuteur_00a06360 => (IntPtr)At(0x00a06360);
+    /// <summary>DAT_011be6a0 — le rappel que le minuteur appelle a chaque tick, sous la section (pose par l'ordinal 133).</summary>
+    internal static void* RappelTick_011be6a0 => *(void**)At(0x011be6a0);
 
-    /// <summary>LAB_00a02ee0 — un CODE : la procedure de fenetre que `FUN_00a03110` installe, restee native.</summary>
-    internal static IntPtr ProcedureFenetre_00a02ee0 => (IntPtr)At(0x00a02ee0);
+    /// <summary>DAT_00dedc14 — le compteur racine 3 (le balayage) est-il demarre ? Pose a 1 par l'ordinal 4 (`StartRCnt`).</summary>
+    internal static int CompteurRacineActif_00dedc14 => *(int*)At(0x00dedc14);
+
+    /// <summary>DAT_00dedc08 — le mode du compteur racine 3, pose par l'ordinal 1 (`SetRCnt`) ; 0x1000 dans l'octet 1 : interruption.</summary>
+    internal static int ModeCompteurRacine_00dedc08 => *(int*)At(0x00dedc08);
 
     /// <summary>
     /// 0x00a2a070 .. 0x00a2a0a0 — les treize constantes `float` des tables UV (`.rdata`) : [0] le pas
@@ -950,14 +953,14 @@ internal static unsafe class Winsys3dData
     internal static void** ImportDirectDrawEnumerateA_01215244 => (void**)At(0x01215244);
     internal static void** ImportDirectDrawCreate_01215248 => (void**)At(0x01215248);
 
-    /// <summary>FUN_00a012f0 — un CODE : la procedure du dialogue de choix du pilote, restee native, passee a `DialogBoxParamA`.</summary>
-    internal static IntPtr ProcedureDialogue_00a012f0 => (IntPtr)At(0x00a012f0);
+    /// <summary>DAT_00a2e8e4 — le bloc des pilotes que le dialogue a recu a son ouverture (`lParam` de `WM_INITDIALOG`).</summary>
+    internal static ref byte* BlocPilotes_00a2e8e4 => ref *(byte**)At(0x00a2e8e4);
 
-    /// <summary>LAB_00a01810 — un CODE : le rappel de `DirectDrawEnumerateA`, reste natif ; il remplit le bloc des pilotes.</summary>
-    internal static IntPtr RappelPilotes_00a01810 => (IntPtr)At(0x00a01810);
-
-    /// <summary>LAB_00a01000 — un CODE : le rappel de `EnumDisplayModes`, reste natif.</summary>
-    internal static IntPtr RappelModes_00a01000 => (IntPtr)At(0x00a01000);
+    /// <summary>
+    /// &amp;PTR_DAT_00a2c000 — les cinq noms de resolution que le dialogue affiche et compare, un
+    /// pointeur par mode (des pointeurs de `.data`, reloges avec la DLL).
+    /// </summary>
+    internal static byte** NomsResolutions_00a2c000 => (byte**)At(0x00a2c000);
 
     /// <summary>&amp;DAT_00a2c018 — la taille (clé « Size ») ecrite pour chaque resolution : 1, 7, 11, 16, 23.</summary>
     internal static int* TaillesParResolution_00a2c018 => (int*)At(0x00a2c018);

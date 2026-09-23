@@ -196,7 +196,7 @@ internal static unsafe class Winsys3dDevice
         if (Winsys3dData.Glide_011be738 != 0 && Winsys3dData.Device_011be760 != null
             && Winsys3dData.Fenetre_011be79c != IntPtr.Zero)
         {
-            Winsys3dData.Minuteur_011be6d0 = Win32.timeSetEvent(0x11, 0, Winsys3dData.RappelMinuteur_00a06360, 0, 0);
+            Winsys3dData.Minuteur_011be6d0 = Win32.timeSetEvent(0x11, 0, Winsys3dCadence.AdresseTickMinuteur, 0, 0);
             AppelerRappel();
             PreparerDevice(Winsys3dData.Fenetre_011be79c);
             Appeler(Device_Reprendre, 0);
@@ -208,7 +208,7 @@ internal static unsafe class Winsys3dDevice
         Winsys3dData.AreneFin_00dedbe0 = arene;
         Winsys3dData.AreneDebut_00dedbdc = arene;
         Winsys3dData.Arene_00dedbd8 = arene;
-        Winsys3dData.Minuteur_011be6d0 = Win32.timeSetEvent(0x11, 0, Winsys3dData.RappelMinuteur_00a06360, 0, 0);
+        Winsys3dData.Minuteur_011be6d0 = Win32.timeSetEvent(0x11, 0, Winsys3dCadence.AdresseTickMinuteur, 0, 0);
 
         if (Winsys3dData.Device_011be760 == null)
         {
@@ -382,7 +382,7 @@ internal static unsafe class Winsys3dDevice
         Winsys3dData.Objet_012141d4 = bloc == null ? null : Winsys3dCacheTextures.ConstruireCache(bloc);
 
         Winsys3dData.FenetreSousClassee_00a2f470 = fenetre;
-        Winsys3dData.ProcedureOrigine_00b6d194 = Win32.SetWindowLongA(fenetre, -4, Winsys3dData.ProcedureFenetre_00a02ee0);
+        Winsys3dData.ProcedureOrigine_00b6d194 = Win32.SetWindowLongA(fenetre, -4, AdresseProcedureFenetre);
 
         // `fcomp` puis le bit C3 : un NaN compte pour « egal ».
         float gamma = Winsys3dData.GammaCourant_00a2c228, initial = Winsys3dData.GammaInitial_00a2a028;
@@ -501,7 +501,7 @@ internal static unsafe class Winsys3dDevice
         void** vtable = *(void***)dd;
         *compte = 0;
         ((delegate* unmanaged[Stdcall]<void*, uint, void*, int*, IntPtr, int>)vtable[0x20 / 4])(
-            dd, 0, null, compte, Winsys3dData.RappelModes_00a01000);
+            dd, 0, null, compte, AdresseRappelModes);
         ((delegate* unmanaged[Stdcall]<void*, uint>)(*(void***)dd)[8 / 4])(dd);
     }
 
@@ -544,7 +544,7 @@ internal static unsafe class Winsys3dDevice
         drapeaux[0] = 0;
         EnumererModes(0, drapeaux);
         *compte = 1;
-        DirectDrawEnumerateA(Winsys3dData.RappelPilotes_00a01810, compte);
+        DirectDrawEnumerateA(AdresseRappelPilotes, compte);
 
         IntPtr glide = Win32.LoadLibraryA(Winsys3dData.Chaine(0x00a2c090));    // « GLIDE2X.DLL »
         if (glide != IntPtr.Zero)
@@ -566,7 +566,7 @@ internal static unsafe class Winsys3dDevice
         Winsys3dData.ParametresDialogue_00a2e8e0 = parametres;
         *appel = parametres;
         nint choix = Win32.DialogBoxParamA(Winsys3dData.InstanceDll_00a2e8e8, (byte*)0x66,
-            *(IntPtr*)parametres, Winsys3dData.ProcedureDialogue_00a012f0, (nint)compte);
+            *(IntPtr*)parametres, AdresseProcedureDialogue, (nint)compte);
         if (choix == -1)
         {
             Win32.DeleteObject(*(IntPtr*)(parametres + 0x11c));
@@ -673,6 +673,302 @@ internal static unsafe class Winsys3dDevice
         string texte = n.ToString(System.Globalization.CultureInfo.InvariantCulture);
         for (int i = 0; i < texte.Length; i++) tampon[i] = (byte)texte[i];
         tampon[texte.Length] = 0;
+    }
+
+    // ============================================================================================
+    // LES RAPPELS PASSES PAR ADRESSE — la procedure de fenetre et les deux enumerations DirectDraw
+    // (2026-09-23), transcrits sur le desassemblage (`Legacy/Raw/Winsys3d/LAB_00a02ee0`,
+    // `LAB_00a01810`, `LAB_00a01000`). Ghidra ne les a pas decompiles : ils ne sont atteints que
+    // par adresse. C'est Windows (ou DirectDraw) qui les appelle, en `stdcall` : d'ou
+    // `[UnmanagedCallersOnly]`, et leur adresse C# passee a la place de l'adresse native.
+    //
+    // **C'est ce portage qui debloque les passerelles de tas de `wsyskern`** : la procedure de
+    // fenetre liberait en natif des emplacements du cache alloues par le C#, et le rappel des
+    // pilotes allouait en natif des noms que le C# libere. Voir `byebye-dll.md`.
+    // ============================================================================================
+
+    internal static IntPtr AdresseProcedureFenetre
+        => (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, nuint, nint, nint>)&ProcedureFenetre;
+
+    internal static IntPtr AdresseRappelPilotes
+        => (IntPtr)(delegate* unmanaged[Stdcall]<void*, byte*, byte*, byte*, int>)&RappelPilotes;
+
+    internal static IntPtr AdresseRappelModes
+        => (IntPtr)(delegate* unmanaged[Stdcall]<byte*, int*, int>)&RappelModes;
+
+    /// <summary>
+    /// Ghidra: winsys3d.c LAB_00a02ee0 @ 0x00a02ee0 — la procedure de fenetre que `FUN_00a03110`
+    /// installe : passe d'abord le message a la procedure d'origine (`CallWindowProcA`) et en rend le
+    /// resultat. Au retour au premier plan (`WM_ACTIVATEAPP`, `wParam` = 1) : delie la texture
+    /// (`device[0x64](0)`), vide tout le cache (`ReInitializeAllTextures`) et remet a -1 les memos
+    /// de page et d'etat. Sur `WM_CHAR` : range le caractere dans la file du clavier. `ret 10h`.
+    ///
+    /// La file du clavier (`FUN_00a03f50`) est transcrite cote jeu, `Blaze.PushTypedCharacter` : la
+    /// procedure la nourrit la ou l'original nourrissait la sienne. Avec le device synthetique, la
+    /// fenetre de la DLL reste nulle et cette procedure n'est jamais installee ; elle tourne avec le
+    /// vrai `3dhelp` (`OPENFORESIA_LEGACY_3DHELP=1`).
+    /// </summary>
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
+    private static nint ProcedureFenetre(IntPtr fenetre, uint message, nuint wParam, nint lParam)
+    {
+        nint resultat = Win32.CallWindowProcA(Winsys3dData.ProcedureOrigine_00b6d194, fenetre, message, wParam, lParam);
+        if (message == 0x1c && wParam == 1)                       // WM_ACTIVATEAPP, activee
+        {
+            ((delegate* unmanaged[Thiscall]<void*, void*, void>)Winsys3dData.DeviceVtable[0x64 / 4])(
+                Winsys3dData.Device_011be760, null);
+            Winsys3dCacheTextures.ReInitializeAllTextures();      // FUN_00a27980 (ordinal 785)
+            Winsys3dData.PageTexture_00a2c488 = -1;
+            Winsys3dData.Memo_00a2c484 = -1;
+            return resultat;
+        }
+        if (message == 0x102)                                     // WM_CHAR
+            OpenForesia.Blaze.Blaze.PushTypedCharacter((byte)wParam);   // FUN_00a03f50
+        return resultat;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c LAB_00a01810 @ 0x00a01810 — le rappel de `DirectDrawEnumerateA`, un appel
+    /// par pilote : cree son objet DirectDraw ; s'il existe et declare `DDCAPS_3D` (bit 0 de
+    /// `dwCaps`), range dans le bloc des pilotes (<paramref name="bloc"/>, voir `ListerPilotes`) a
+    /// l'indice du compte : le nom (`Strdup`), « description (Direct3D) » (`wsprintfA`, `%s (Direct3D)`),
+    /// le GUID, et ses modes 16 bits (`EnumDisplayModes`, drapeaux remis a 0 d'abord) ; puis compte
+    /// + 1. Libere l'objet dans tous les cas ou il existe. Rend 1 (continuer). `ret 10h`.
+    ///
+    /// **Le compte n'est pas borne** : un 20e pilote 3D deborderait des tableaux de 20. Transcrit tel
+    /// quel. Ecart assume : le `DDCAPS` sur la pile est remis a zero par l'original avant l'appel
+    /// (`rep stosd`, 0x5f mots) — le `stackalloc` aussi.
+    /// </summary>
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
+    private static int RappelPilotes(void* guid, byte* description, byte* nom, byte* bloc)
+    {
+        void* dd;
+        DirectDrawCreate(guid, &dd, null);
+        if (dd == null) return 1;
+
+        byte* caps = stackalloc byte[0x17c];
+        *(int*)caps = 0x17c;
+        ((delegate* unmanaged[Stdcall]<void*, byte*, void*, int>)(*(void***)dd)[0x2c / 4])(dd, caps, null);
+        if ((caps[4] & 1) != 0)
+        {
+            int* compte = (int*)bloc;
+            ((void**)(bloc + 4))[*compte] = Tableaux.Strdup(nom);
+            byte* tampon = stackalloc byte[0x100];
+            EcrireDescription(tampon, description);
+            ((void**)(bloc + 0x54))[*compte] = Tableaux.Strdup(tampon);
+            ((void**)(bloc + 0xa4))[*compte] = guid;
+            int* modes = (int*)(bloc + 0xf4) + *compte;
+            *modes = 0;
+            ((delegate* unmanaged[Stdcall]<void*, uint, void*, int*, IntPtr, int>)(*(void***)dd)[0x20 / 4])(
+                dd, 0, null, modes, AdresseRappelModes);
+            *compte = *compte + 1;
+        }
+        ((delegate* unmanaged[Stdcall]<void*, uint>)(*(void***)dd)[8 / 4])(dd);
+        return 1;
+    }
+
+    /// <summary>`wsprintfA(tampon, "%s (Direct3D)", description)` — le format de `0x00a2c0c4`.</summary>
+    private static void EcrireDescription(byte* tampon, byte* description)
+    {
+        int i = 0;
+        for (; description[i] != 0; i++) tampon[i] = description[i];
+        byte* suffixe = Winsys3dData.Chaine(0x00a2c0c6);                  // « (Direct3D) », apres « %s»
+        for (int k = 0; ; k++)
+        {
+            tampon[i + k] = suffixe[k];
+            if (suffixe[k] == 0) break;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c LAB_00a01000 @ 0x00a01000 — le rappel de `EnumDisplayModes` : pour un mode
+    /// 16 bits (`ddpfPixelFormat.dwRGBBitCount`, `+0x54`), pose le bit de sa resolution dans
+    /// <paramref name="modes"/> — 320 x 240 : 1, 512 x 384 : 2, 640 x 480 : 4, 800 x 600 : 8,
+    /// 1024 x 768 : 0x10 (largeur `+0xc`, hauteur `+8`). Rend toujours 1. `ret 8`.
+    /// </summary>
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
+    private static int RappelModes(byte* description, int* modes)
+    {
+        if (*(int*)(description + 0x54) != 0x10) return 1;
+        int largeur = *(int*)(description + 0xc);
+        int hauteur = *(int*)(description + 8);
+        if (largeur == 0x140 && hauteur == 0xf0) *modes |= 1;
+        else if (largeur == 0x200 && hauteur == 0x180) *modes |= 2;
+        else if (largeur == 0x280 && hauteur == 0x1e0) *modes |= 4;
+        else if (largeur == 0x320 && hauteur == 0x258) *modes |= 8;
+        else if (largeur == 0x400 && hauteur == 0x300) *modes |= 0x10;
+        return 1;
+    }
+
+    // ============================================================================================
+    // LA PROCEDURE DU DIALOGUE DE CHOIX DU PILOTE — `FUN_00a012f0` et ses deux appelees (2026-09-23),
+    // verifiee au desassembleur (`Legacy/Raw/Winsys3d/LAB_00a012f0.disasm.txt`). Le dernier code
+    // natif de `winsys3d` atteint par le jeu, a part son point d'entree.
+    //
+    // Deux listes : les pilotes (controle 1000) et leurs resolutions (0x3eb). Le bloc des pilotes
+    // est celui de `ListerPilotes` : compte, noms (+4), descriptions (+0x54), GUID (+0xa4), modes
+    // (+0xf4), et a +0x144 le bloc de `Setup3DDevice` — description (+0x18), resolution (+0x118),
+    // bitmap et palette (+0x11c, +0x120), chaines (+0x124).
+    // ============================================================================================
+
+    internal static IntPtr AdresseProcedureDialogue
+        => (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, nuint, nint, nint>)&ProcedureDialogue;
+
+    private const int ListePilotes = 1000;
+    private const int ListeResolutions = 0x3eb;
+    private const uint LB_ADDSTRING = 0x180, LB_RESETCONTENT = 0x184, LB_SETCURSEL = 0x186,
+                       LB_GETCURSEL = 0x188, LB_GETTEXT = 0x189, LB_SELECTSTRING = 0x18c, LB_GETCARETINDEX = 0x19f;
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a012f0 @ 0x00a012f0 — la procedure du dialogue 0x66. `ret 10h`.
+    ///
+    /// <list type="bullet">
+    /// <item>`WM_INITDIALOG` : retient le bloc des pilotes, remplit la liste des descriptions,
+    /// selectionne celle de `Blaze.cfg` — ou, faute de la trouver, la derniere —, remplit les
+    /// resolutions du pilote selectionne, pose les cinq textes du jeu s'il en a donne, donne le
+    /// focus a la liste. Rend 0.</item>
+    /// <item>`WM_DRAWITEM` : dessine la bitmap d'accueil (<see cref="DessinerAccueil"/>). Rend 1.</item>
+    /// <item>`WM_COMMAND` : changer de pilote remplit les resolutions ; un double clic sur un
+    /// pilote vaut OK ; OK ferme en rendant l'element qui a le focus dans la liste
+    /// (`LB_GETCARETINDEX`, pas la selection) ; Annuler ferme en rendant -1 ; choisir une
+    /// resolution range son indice dans le bloc. Rend 1.</item>
+    /// <item>tout autre message : 0.</item>
+    /// </list>
+    /// </summary>
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
+    private static nint ProcedureDialogue(IntPtr dialogue, uint message, nuint wParam, nint lParam)
+    {
+        if (message == 0x2b)                                                   // WM_DRAWITEM
+        {
+            DessinerAccueil((byte*)lParam);
+            return 1;
+        }
+
+        if (message == 0x110)                                                  // WM_INITDIALOG
+        {
+            IntPtr pilotes = Win32.GetDlgItem(dialogue, ListePilotes);
+            IntPtr resolutions = Win32.GetDlgItem(dialogue, ListeResolutions);
+            byte* bloc = (byte*)lParam;
+            Winsys3dData.BlocPilotes_00a2e8e4 = bloc;
+            Win32.SendMessageA(pilotes, LB_RESETCONTENT, 0, 0);
+            for (int i = 0; i < *(int*)bloc; i++)
+                Win32.SendMessageA(pilotes, LB_ADDSTRING, 0, *(nint*)(bloc + 0x54 + i * 4));
+            byte* parametres = *(byte**)(bloc + 0x144);
+            if (Win32.SendMessageA(pilotes, LB_SELECTSTRING, 0, (nint)(parametres + 0x18)) == -1)
+                Win32.SendMessageA(pilotes, LB_SETCURSEL, (nuint)(*(int*)bloc - 1), 0);
+            int* resolution = (int*)(parametres + 0x118);
+            nint choisi = Win32.SendMessageA(pilotes, LB_GETCURSEL, 0, 0);
+            RemplirResolutions(resolutions, *(uint*)(bloc + 0xf4 + choisi * 4), resolution);
+            byte** chaines = *(byte***)(parametres + 0x124);
+            if (chaines != null)
+            {
+                Win32.SetWindowTextA(dialogue, chaines[0]);
+                Win32.SetDlgItemTextA(dialogue, 0x3e9, chaines[1]);
+                Win32.SetDlgItemTextA(dialogue, 0x3ea, chaines[2]);
+                Win32.SetDlgItemTextA(dialogue, 1, chaines[3]);
+                Win32.SetDlgItemTextA(dialogue, 2, chaines[4]);
+            }
+            Win32.SetFocus(pilotes);
+            return 0;
+        }
+
+        if (message != 0x111) return 0;                                        // WM_COMMAND
+
+        uint controle = (uint)wParam & 0xffff;
+        uint notification = (uint)wParam >> 16;
+        if (controle == ListePilotes && notification == 1)                     // LBN_SELCHANGE
+        {
+            IntPtr pilotes = Win32.GetDlgItem(dialogue, ListePilotes);
+            IntPtr resolutions = Win32.GetDlgItem(dialogue, ListeResolutions);
+            byte* bloc = Winsys3dData.BlocPilotes_00a2e8e4;
+            int* resolution = (int*)(*(byte**)(bloc + 0x144) + 0x118);
+            nint choisi = Win32.SendMessageA(pilotes, LB_GETCURSEL, 0, 0);
+            RemplirResolutions(resolutions, *(uint*)(bloc + 0xf4 + choisi * 4), resolution);
+            return 1;
+        }
+        if ((controle == ListePilotes && notification == 2) || controle == 1)  // LBN_DBLCLK, IDOK
+        {
+            nint element = Win32.SendDlgItemMessageA(dialogue, ListePilotes, LB_GETCARETINDEX, 0, 0);
+            Win32.EndDialog(dialogue, element);
+            return 1;
+        }
+        if (controle == 2)                                                     // IDCANCEL
+        {
+            Win32.EndDialog(dialogue, -1);
+            return 1;
+        }
+        if (controle == ListeResolutions)
+        {
+            IntPtr resolutions = Win32.GetDlgItem(dialogue, ListeResolutions);
+            nint choisi = Win32.SendMessageA(resolutions, LB_GETCURSEL, 0, 0);
+            byte* texte = stackalloc byte[80];
+            Win32.SendMessageA(resolutions, LB_GETTEXT, (nuint)choisi, (nint)texte);
+            // Les cinq noms sont tous compares, sans sortie anticipee : le dernier egal l'emporte.
+            for (int i = 0; i < 5; i++)
+                if (ComparerChaines(texte, Winsys3dData.NomsResolutions_00a2c000[i]) == 0)
+                    *(int*)(*(byte**)(Winsys3dData.BlocPilotes_00a2e8e4 + 0x144) + 0x118) = i;
+            return 1;
+        }
+        return 1;
+    }
+
+    /// <summary>Le `strcmp` que le compilateur a deroule par paires d'octets : signe de la premiere difference (non signee).</summary>
+    private static int ComparerChaines(byte* a, byte* b)
+    {
+        for (int i = 0; ; i++)
+        {
+            if (a[i] != b[i]) return a[i] < b[i] ? -1 : 1;
+            if (a[i] == 0) return 0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a01740 @ 0x00a01740 — remplit la liste des resolutions avec celles
+    /// que <paramref name="modes"/> autorise (un bit par mode), apres avoir ramene
+    /// <paramref name="resolution"/> a 2 (640 x 480) si le mode retenu n'y est pas ; puis y
+    /// selectionne le nom du mode retenu. `ret 0Ch`.
+    /// </summary>
+    private static void RemplirResolutions(IntPtr liste, uint modes, int* resolution)
+    {
+        if ((modes & 1u << (*resolution & 0x1f)) == 0) *resolution = 2;
+        Win32.SendMessageA(liste, LB_RESETCONTENT, 0, 0);
+        byte** noms = Winsys3dData.NomsResolutions_00a2c000;
+        for (int b = 0; b < 5; b++)
+            if ((modes & 1u << b) != 0)
+                Win32.SendMessageA(liste, LB_ADDSTRING, 0, (nint)noms[b]);
+        Win32.SendMessageA(liste, LB_SELECTSTRING, 0, (nint)noms[*resolution]);
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a01640 @ 0x00a01640 — `WM_DRAWITEM` : la bitmap d'accueil (320 x 240),
+    /// etiree sur le rectangle du controle avec sa palette (`HALFTONE`, `SRCCOPY`) ; sans bitmap, un
+    /// rectangle noir (`BLACKNESS`). Le DC et le rectangle viennent du `DRAWITEMSTRUCT` (`+0x18`,
+    /// `+0x1c`..`+0x28`), la bitmap et la palette du bloc de `Setup3DDevice` (`DAT_00a2e8e0`). `ret 4`.
+    /// </summary>
+    private static void DessinerAccueil(byte* dessin)
+    {
+        IntPtr dc = *(IntPtr*)(dessin + 0x18);
+        int gauche = *(int*)(dessin + 0x1c), haut = *(int*)(dessin + 0x20);
+        int droite = *(int*)(dessin + 0x24), bas = *(int*)(dessin + 0x28);
+        byte* parametres = Winsys3dData.ParametresDialogue_00a2e8e0;
+        IntPtr bitmap = *(IntPtr*)(parametres + 0x11c);
+        IntPtr palette = *(IntPtr*)(parametres + 0x120);
+
+        IntPtr memoire = Win32.CreateCompatibleDC(dc);
+        IntPtr ancienObjet = Win32.SelectObject(memoire, bitmap);
+        IntPtr anciennePalette = Win32.SelectPalette(memoire, palette, 0);
+        if (bitmap == IntPtr.Zero)
+            Win32.PatBlt(dc, gauche, haut, droite - gauche, bas - haut, 0x42);
+        else
+        {
+            IntPtr paletteDc = Win32.SelectPalette(dc, palette, 0);
+            Win32.RealizePalette(dc);
+            Win32.SetStretchBltMode(dc, 4);
+            Win32.StretchBlt(dc, gauche, haut, droite - gauche, bas - haut, memoire, 0, 0, 0x140, 0xf0, 0xcc0020);
+            Win32.SelectPalette(dc, paletteDc, 0);
+        }
+        Win32.SelectPalette(memoire, anciennePalette, 0);
+        Win32.SelectObject(memoire, ancienObjet);
+        Win32.DeleteDC(memoire);
     }
 
     /// <summary>`_strcmpi` de la CRT (locale « C ») : compare en ramenant les lettres ASCII en minuscules.</summary>
