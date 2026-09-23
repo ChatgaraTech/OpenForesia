@@ -665,13 +665,14 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
     }
 
     /// <summary>
-    /// Le curseur 10 de wsyskern.dll, reconstitue depuis son image extraite : ce que rendait
+    /// Le curseur 10 de wsyskern.dll — entierement transparent : la fenetre des films cache ainsi la
+    /// souris. Reassemble depuis son dessin (<c>Libraries/wsyskern/Curseur.cs</c>) : ce que rendait
     /// <c>LoadCursorA(wsyskern, 10)</c> (<c>CreateIconFromResourceEx</c>, curseur, format 3.0,
     /// taille par defaut — <c>LR_DEFAULTSIZE</c>).
     /// </summary>
     private static IntPtr CurseurWsyskern10()
     {
-        byte[] image = Libraries.Winsys3dImage.Donnee("wsyskern.CURSOR-10.bin");
+        byte[] image = Libraries.Wsyskern.ImageCurseur();
         fixed (byte* octets = image)
             return Win32.CreateIconFromResourceEx(octets, (uint)image.Length, 0, 0x00030000, 0, 0, 0x40);
     }
@@ -695,7 +696,7 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
             hIcon = IntPtr.Zero,
             // Ghidra: LoadCursorA(GetModuleHandleA("WSYSKERN.DLL"), 10). wsyskern.dll n'est plus livree
             // (2026-09-23) : l'image que LoadCursor choisissait dans son groupe 10 a ete extraite
-            // (src/Libraries/Donnees/wsyskern.CURSOR-10.bin) et devient un curseur ici, a la taille
+            // (Libraries/wsyskern/Curseur.cs, dessine) et devient un curseur ici, a la taille
             // par defaut, comme LoadCursor.
             hCursor = CurseurWsyskern10(),
             hbrBackground = Win32.GetStockObject(4 /* BLACK_BRUSH */),

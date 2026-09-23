@@ -890,6 +890,16 @@ ressources ; et la fenêtre des films chargeait un curseur dans `wsyskern.dll` (
 - Les copies de `OpenForesia/src/DLL/` (identiques aux originaux, vérifié au MD5) sont supprimées ;
   **`Legacy/Binaries/` garde les originaux**, source de vérité et entrée de l'extraction.
 
+**Puis, à la demande de Vincent, ces blobs deviennent du C# lisible** : `extraire-donnees` génère
+`winsys3d/ConstantesRdata.cs`, `ValeursInitiales.cs`, `Exports.cs`, `ModeleDialogue.cs` et
+`wsyskern/Curseur.cs` (318 lignes en tout) — chaque valeur typée, annotée du nom que lui donne
+`Data.cs`, les pointeurs relogés écrits « adresse de … » (plus de liste de relocations) — et les
+**réencode pour les comparer octet par octet aux DLL** avant d'écrire. Seules les deux polices
+restent binaires, dans `src/Libraries/Donnees/` (qui a son `LISEZMOI.md`) : la police kanji sert
+bien, y compris en version française (les deux phrases restées en japonais, et tout caractère
+Shift-JIS absent de la petite table du jeu). Le curseur, dessiné, s'avère **entièrement
+transparent** : il cache la souris pendant les films.
+
 **Reste un seul binaire de 1998 livré : `ir41_32.ax`**, le décodeur Indeo 4.1 des cinématiques —
 gardé par décision de Vincent ; le remplacer demanderait un décodeur Indeo en C#, un chantier à
 part. Les `.dll` restants du dossier de sortie sont ceux de .NET (`OpenForesia.dll`, `Silk.NET.*`,

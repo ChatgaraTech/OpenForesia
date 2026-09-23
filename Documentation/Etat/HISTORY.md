@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **les données de 1998 extraites des DLL sont du C# lisible** — `ConstantesRdata.cs`,
+  `ValeursInitiales.cs`, `Exports.cs`, `ModeleDialogue.cs`, `Curseur.cs` (318 lignes), générés par
+  `extraire-donnees` et vérifiés octet par octet contre les DLL ; plus de liste de relocations.
+  Seules les deux polices restent en binaire (`src/Libraries/Donnees/`, avec un `LISEZMOI.md`)
+- doc : le curseur de la fenêtre des films est entièrement transparent — il cache la souris
+  pendant les cinématiques
+
+- doc : plus aucune DLL livrée (lot 19) — testé en jeu par Vincent
+
 - feat : **plus aucune DLL de 1998 n'est livrée** — les données qu'on lisait encore dans
   `winsys3d.dll` et `wsyskern.dll` sont extraites (`OpenForesia.Tools extraire-donnees`) dans
   `src/Libraries/Donnees/` et embarquées dans l'assemblage. Seul `ir41_32.ax` (Indeo) reste

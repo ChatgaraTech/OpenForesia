@@ -89,4 +89,39 @@ internal static unsafe class Wsyskern
     /// rien d'autre que ce que `_free` leverait. Nul est accepte, comme par la CRT.
     /// </summary>
     internal static void Free(void* block) => System.Runtime.InteropServices.NativeMemory.Free(block);
+
+    /// <summary>
+    /// L'image `RT_CURSOR` du curseur 10 de la DLL, reassemblee depuis son dessin (`Curseur.cs`) :
+    /// le point chaud, un `BITMAPINFOHEADER` (hauteur doublee, 1 bit, `biSizeImage` = le masque XOR,
+    /// deux couleurs), la palette noir/blanc, puis le masque XOR et le masque AND, lignes de bas en
+    /// haut. C'est ce que `LoadCursorA(wsyskern, 10)` chargeait ; `CreateIconFromResourceEx` en fait
+    /// un curseur. L'extraction verifie que cet assemblage redonne la ressource octet pour octet.
+    /// </summary>
+    internal static byte[] ImageCurseur()
+    {
+        string[] dessin = WsyskernCurseur.Dessin;
+        int largeur = dessin[0].Length, hauteur = dessin.Length, pas = ((largeur + 31) / 32) * 4;
+        var o = new byte[4 + 40 + 8 + 2 * pas * hauteur];
+        BitConverter.TryWriteBytes(o.AsSpan(0), (ushort)WsyskernCurseur.PointChaudX);
+        BitConverter.TryWriteBytes(o.AsSpan(2), (ushort)WsyskernCurseur.PointChaudY);
+        BitConverter.TryWriteBytes(o.AsSpan(4), 40);
+        BitConverter.TryWriteBytes(o.AsSpan(8), largeur);
+        BitConverter.TryWriteBytes(o.AsSpan(12), hauteur * 2);
+        BitConverter.TryWriteBytes(o.AsSpan(16), (ushort)1);
+        BitConverter.TryWriteBytes(o.AsSpan(18), (ushort)1);
+        BitConverter.TryWriteBytes(o.AsSpan(24), pas * hauteur);
+        BitConverter.TryWriteBytes(o.AsSpan(36), 2);
+        BitConverter.TryWriteBytes(o.AsSpan(40), 2);
+        o[48] = 0xff; o[49] = 0xff; o[50] = 0xff;
+        int xor = 52, and = xor + pas * hauteur;
+        for (int y = 0; y < hauteur; y++)
+            for (int x = 0; x < largeur; x++)
+            {
+                char c = dessin[y][x];
+                int ligne = hauteur - 1 - y, masque = 0x80 >> (x % 8);
+                if (c is 'o' or '~') o[xor + ligne * pas + x / 8] |= (byte)masque;
+                if (c is '.' or '~') o[and + ligne * pas + x / 8] |= (byte)masque;
+            }
+        return o;
+    }
 }

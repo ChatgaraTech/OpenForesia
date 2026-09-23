@@ -13,21 +13,29 @@
 //
 //   1. une zone de 0x816000 octets (jusqu'a la fin de `.idata`), a zero — la queue non
 //      initialisee de `.data` (8 Mo) l'est deja ;
-//   2. `.rdata` et la partie initialisee de `.data`, a leur RVA : les constantes, les chaines, les
-//      tables initialisees ;
-//   3. les RELOCATIONS qui tombent dans ces deux sections, pour la base reelle : seize, dont
-//      les cinq noms de resolution. Deux visent du code (0x00a2a0ac/b0, la table de portee SEH
-//      de la detection MMX) et ne servent plus : elles pointent dans une zone sans code ;
+//   2. ce que `.rdata` et la partie initialisee de `.data` portent, a leurs VA : les constantes,
+//      les chaines, les tables et valeurs initiales (les fichiers generes ci-dessous) ;
+//   3. les seize pointeurs que Windows RELOGEAIT, ecrits pour la base reelle — dont les cinq noms
+//      de resolution. Deux visent du code (0x00a2a0ac/b0, la table de portee SEH de la detection
+//      MMX) et ne servent plus : ils pointent dans une zone sans code ;
 //   4. les trois entrees de la table d'imports que le C# appelle encore a travers elle, comme le
 //      binaire : `GetProcAddress` (que `Host/SyntheticDevice.cs` detourne), `DirectDrawEnumerateA`
 //      et `DirectDrawCreate` ;
 //   5. le POINT D'ENTREE, a la premiere lecture de l'image — la ou Windows l'appelait au
 //      chargement : `Attacher`, puis `Detacher` a la sortie du processus.
 //
-// **Aucun fichier `.dll` n'est lu.** Les sections, les relocations, la table d'exports et les
-// trois ressources (la police TIM 0x65, les kanji 0x70, le dialogue 0x66) ont ete extraits une fois
-// pour toutes du `winsys3d.dll` de 1998 par `OpenForesia.Tools extraire-donnees`, et sont embarques
-// dans l'assemblage depuis `src/Libraries/Donnees/`. Le programme ne livre plus la DLL.
+// **Aucun fichier `.dll` n'est lu, et presque tout est du C# lisible.** Les donnees de 1998 ont ete
+// transcrites une fois pour toutes du `winsys3d.dll` par `OpenForesia.Tools extraire-donnees`, qui
+// GENERE ces fichiers et les verifie octet par octet contre la DLL :
+//
+//     ConstantesRdata.cs    `.rdata` hors table d'exports — flottants, noms de commandes CD
+//     ValeursInitiales.cs   les valeurs initiales de `.data` — chaines, tables, memos, CRT
+//     Exports.cs            les 32 exports de donnees
+//     ModeleDialogue.cs     le dialogue 0x66, controle par controle
+//
+// Les pointeurs que Windows relogeait y sont ecrits « adresse de … » (`EcrivainImage.Adresses`) :
+// il n'y a plus de liste de relocations. Seules les deux polices (la TIM 0x65, les kanji 0x70)
+// restent des blobs binaires, embarques depuis `src/Libraries/Donnees/`.
 //
 // `Data.cs` ne change pas : ses proprietes designent toujours `base + (VA - 0x00a00000)`, et
 // seule la base change — c'etait le sens de son garde-fou 4.
@@ -39,16 +47,61 @@ using OpenForesia.Blaze;
 
 namespace OpenForesia.Libraries;
 
+/// <summary>
+/// Ce qu'emploient les fichiers generes pour ecrire dans l'image : chaque methode range ses valeurs
+/// a une VA de 1998 (`base + VA - 0x00a00000`), en petit-boutiste, comme dans le fichier.
+/// </summary>
+internal readonly unsafe struct EcrivainImage(byte* image)
+{
+    private byte* A(uint va) => image + (va - 0x00a00000u);
+
+    internal void Mots(uint va, params uint[] valeurs)
+    {
+        for (int i = 0; i < valeurs.Length; i++) ((uint*)A(va))[i] = valeurs[i];
+    }
+
+    /// <summary>Des pointeurs vers d'autres VA de l'image, reloges pour sa base reelle.</summary>
+    internal void Adresses(uint va, params uint[] cibles)
+    {
+        for (int i = 0; i < cibles.Length; i++) ((uint*)A(va))[i] = (uint)A(cibles[i]);
+    }
+
+    internal void DemiMots(uint va, params ushort[] valeurs)
+    {
+        for (int i = 0; i < valeurs.Length; i++) ((ushort*)A(va))[i] = valeurs[i];
+    }
+
+    internal void Octets(uint va, params byte[] valeurs)
+    {
+        for (int i = 0; i < valeurs.Length; i++) A(va)[i] = valeurs[i];
+    }
+
+    /// <summary>Un `float` donne par ses bits (le commentaire du fichier genere en dit la valeur).</summary>
+    internal void Flottant(uint va, uint bits) => *(uint*)A(va) = bits;
+
+    /// <summary>Un `double` donne par ses bits.</summary>
+    internal void Double(uint va, ulong bits) => *(ulong*)A(va) = bits;
+
+    internal void Qmot(uint va, ulong valeur) => *(ulong*)A(va) = valeur;
+
+    /// <summary>Une chaine C ASCII, NUL compris.</summary>
+    internal void Chaine(uint va, string texte)
+    {
+        byte* p = A(va);
+        for (int i = 0; i < texte.Length; i++) p[i] = (byte)texte[i];
+        p[texte.Length] = 0;
+    }
+}
+
 internal static unsafe class Winsys3dImage
 {
     private const nuint ImageBase = 0x00a00000;
     private const int TailleImage = 0x816000;
-    private const int RvaRdata = 0x2a000, RvaData = 0x2c000;
 
     private static byte* s_Base;
     private static bool s_Detache;
-    private static Dictionary<string, int> s_ExportsParNom = null!;
-    private static Dictionary<int, int> s_ExportsParOrdinal = null!;
+    private static Dictionary<string, uint> s_ExportsParNom = null!;
+    private static Dictionary<int, uint> s_ExportsParOrdinal = null!;
 
     /// <summary>
     /// La base de l'image, construite a la premiere lecture — paresseusement, jamais dans un
@@ -65,8 +118,8 @@ internal static unsafe class Winsys3dImage
         }
     }
 
-    /// <summary>Un blob de `src/Libraries/Donnees/`, embarque sous son nom de fichier.</summary>
-    internal static byte[] Donnee(string nom)
+    /// <summary>Une police de `src/Libraries/Donnees/`, embarquee sous son nom de fichier.</summary>
+    private static byte[] Donnee(string nom)
     {
         using var flux = typeof(Winsys3dImage).Assembly.GetManifestResourceStream(nom)
             ?? throw new InvalidOperationException($"Donnee embarquee introuvable : {nom} (src/Libraries/Donnees/).");
@@ -75,20 +128,12 @@ internal static unsafe class Winsys3dImage
         return octets;
     }
 
-    /// <summary>Un blob embarque, copie dans un tableau EPINGLE : son adresse est rangee dans l'image et ne doit pas bouger.</summary>
-    private static byte* DonneeEpinglee(string nom, out int taille)
+    /// <summary>Des octets copies dans un tableau EPINGLE : leur adresse est rangee dans l'image et ne doit pas bouger.</summary>
+    private static byte* Epingler(byte[] source)
     {
-        byte[] source = Donnee(nom);
         byte[] epingle = GC.AllocateArray<byte>(source.Length, pinned: true);
         source.CopyTo(epingle, 0);
-        taille = source.Length;
         return (byte*)System.Runtime.CompilerServices.Unsafe.AsPointer(ref epingle[0]);
-    }
-
-    private static IEnumerable<string[]> Lignes(string nom)
-    {
-        foreach (string ligne in System.Text.Encoding.ASCII.GetString(Donnee(nom)).Split('\n'))
-            if (ligne.Length > 0) yield return ligne.Split(' ');
     }
 
     private static void Construire()
@@ -97,21 +142,16 @@ internal static unsafe class Winsys3dImage
         if (image == null)
             throw new InvalidOperationException("L'image memoire de winsys3d n'a pas pu etre allouee (0x816000 octets).");
 
-        byte[] rdata = Donnee("winsys3d.rdata.bin"), data = Donnee("winsys3d.data.bin");
-        fixed (byte* r = rdata) Buffer.MemoryCopy(r, image + RvaRdata, rdata.Length, rdata.Length);
-        fixed (byte* d = data) Buffer.MemoryCopy(d, image + RvaData, data.Length, data.Length);
+        var ecrivain = new EcrivainImage(image);
+        Winsys3dConstantesRdata.Ecrire(ecrivain);
+        Winsys3dValeursInitiales.Ecrire(ecrivain);
 
-        uint delta = (uint)(image - (byte*)ImageBase);
-        foreach (string[] l in Lignes("winsys3d.relocations.txt"))
-            *(uint*)(image + Convert.ToInt32(l[0], 16)) += delta;
-
-        s_ExportsParNom = new Dictionary<string, int>();
-        s_ExportsParOrdinal = new Dictionary<int, int>();
-        foreach (string[] l in Lignes("winsys3d.exports.txt"))
+        s_ExportsParNom = new Dictionary<string, uint>();
+        s_ExportsParOrdinal = new Dictionary<int, uint>();
+        foreach (var (ordinal, adresse, nom) in Winsys3dExports.Donnees)
         {
-            int rva = Convert.ToInt32(l[1], 16);
-            s_ExportsParOrdinal[int.Parse(l[0])] = rva;
-            if (l[2] != "-") s_ExportsParNom[l[2]] = rva;
+            s_ExportsParOrdinal[ordinal] = adresse;
+            if (nom != null) s_ExportsParNom[nom] = adresse;
         }
 
         s_Base = image;
@@ -142,15 +182,54 @@ internal static unsafe class Winsys3dImage
     internal static void* Exporte(byte* nomOuOrdinal)
     {
         byte* image = Base;
-        int rva;
+        uint va;
         bool trouve = (nuint)nomOuOrdinal <= 0xffff
-            ? s_ExportsParOrdinal.TryGetValue((int)(nuint)nomOuOrdinal, out rva)
-            : s_ExportsParNom.TryGetValue(new string((sbyte*)nomOuOrdinal), out rva);
-        return trouve ? image + rva : null;
+            ? s_ExportsParOrdinal.TryGetValue((int)(nuint)nomOuOrdinal, out va)
+            : s_ExportsParNom.TryGetValue(new string((sbyte*)nomOuOrdinal), out va);
+        return trouve ? image + (va - ImageBase) : null;
     }
 
     /// <summary>Le modele du dialogue 0x66 (`RT_DIALOG`), epingle, pour `DialogBoxIndirectParamA`.</summary>
     internal static byte* ModeleDialogue66 { get; private set; }
+
+    // Les classes predefinies d'un `DLGITEMTEMPLATE`, par atome.
+    internal const ushort ClasseBouton = 0x80, ClasseSaisie = 0x81, ClasseLibelle = 0x82,
+                          ClasseListe = 0x83, ClasseDefilement = 0x84, ClasseCombo = 0x85;
+
+    internal readonly record struct ControleDialogue(ushort Classe, ushort Id, string Texte, short X, short Y,
+                                                     short Largeur, short Hauteur, uint Style, uint StyleEtendu);
+
+    internal static ControleDialogue Controle(ushort classe, ushort id, string texte, short x, short y,
+                                              short largeur, short hauteur, uint style, uint styleEtendu)
+        => new(classe, id, texte, x, y, largeur, hauteur, style, styleEtendu);
+
+    /// <summary>
+    /// Assemble un `DLGTEMPLATE` (pas EX) avec police : l'en-tete, le titre et la police en UTF-16
+    /// termines par un nul, puis chaque `DLGITEMTEMPLATE` aligne sur 4 octets, sa classe par atome
+    /// (`0xffff`, atome), son texte, et zero octet de donnees de creation. C'est le format de la
+    /// ressource 0x66 de `winsys3d.dll` — l'extraction verifie que cet assemblage la redonne.
+    /// </summary>
+    internal static byte[] ModeleDialogue(uint style, uint styleEtendu, short x, short y, short largeur, short hauteur,
+                                          string titre, ushort taillePolice, string police, params ControleDialogue[] controles)
+    {
+        var o = new List<byte>();
+        void W32(uint v) => o.AddRange(BitConverter.GetBytes(v));
+        void W16(ushort v) => o.AddRange(BitConverter.GetBytes(v));
+        void Texte(string s) { foreach (char c in s) W16(c); W16(0); }
+
+        W32(style); W32(styleEtendu); W16((ushort)controles.Length);
+        W16((ushort)x); W16((ushort)y); W16((ushort)largeur); W16((ushort)hauteur);
+        W16(0); W16(0);                                  // pas de menu, classe par defaut
+        Texte(titre); W16(taillePolice); Texte(police);
+        foreach (var c in controles)
+        {
+            while (o.Count % 4 != 0) o.Add(0);
+            W32(c.Style); W32(c.StyleEtendu);
+            W16((ushort)c.X); W16((ushort)c.Y); W16((ushort)c.Largeur); W16((ushort)c.Hauteur); W16(c.Id);
+            W16(0xffff); W16(c.Classe); Texte(c.Texte); W16(0);
+        }
+        return o.ToArray();
+    }
 
     /// <summary>
     /// Ghidra: winsys3d.c entry @ 0x00a01bb0 — `DLL_PROCESS_ATTACH` (et le point d'entree tout
@@ -173,9 +252,9 @@ internal static unsafe class Winsys3dImage
         Winsys3dData.Vram_00b6dbd0 = (byte*)Wsyskern.Malloc(0x100000);
         Winsys3dData.MainMem_00b6dbd4 = s_Base + (0x00b6dbd8 - ImageBase);
 
-        Winsys3dData.PoliceTim_011be6d4 = DonneeEpinglee("winsys3d.TIM-65.bin", out _);
-        Winsys3dData.PoliceKanji_00b6d5b0 = DonneeEpinglee("winsys3d.KANJI-70.bin", out _);
-        ModeleDialogue66 = DonneeEpinglee("winsys3d.DIALOG-66.bin", out _);
+        Winsys3dData.PoliceTim_011be6d4 = Epingler(Donnee("winsys3d.TIM-65.bin"));
+        Winsys3dData.PoliceKanji_00b6d5b0 = Epingler(Donnee("winsys3d.KANJI-70.bin"));
+        ModeleDialogue66 = Epingler(Winsys3dModeleDialogue.Construire());
         Winsys3dData.InstanceDll_00a2e8e8 = Win32.GetModuleHandleA(null);
     }
 

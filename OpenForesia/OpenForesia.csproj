@@ -16,12 +16,13 @@
         <!-- Le seul binaire de 1998 encore livre : le decodeur Indeo des cinematiques, a cote de
              l'executable (voir Platform/IndeoCodec.cs). Les cinq DLL d'aide ne le sont plus depuis
              le 2026-09-23 : leur code est en C# (src/Libraries/), et les donnees qu'on y lisait
-             encore sont extraites dans src/Libraries/Donnees/, embarquees ci-dessous. -->
+             encore sont transcrites en C# (fichiers generes) ou, pour les deux polices, embarquees
+             ci-dessous depuis src/Libraries/Donnees/. -->
         <None Update="src\DLL\*.ax">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>%(Filename)%(Extension)</TargetPath>
         </None>
-        <EmbeddedResource Include="src\Libraries\Donnees\*">
+        <EmbeddedResource Include="src\Libraries\Donnees\*.bin">
             <LogicalName>%(Filename)%(Extension)</LogicalName>
         </EmbeddedResource>
     </ItemGroup>

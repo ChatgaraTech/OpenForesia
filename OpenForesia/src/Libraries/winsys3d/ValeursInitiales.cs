@@ -1,0 +1,138 @@
+// GENERE par `OpenForesia.Tools extraire-donnees` depuis Legacy/Binaries — NE PAS EDITER A LA MAIN.
+// Voir OpenForesia.Tools/ExtractionDonnees.cs. Chaque valeur a ete reencodee et comparee octet par
+// octet a la DLL de 1998 lors de la generation.
+//
+// Les valeurs initiales de la section `.data` de `winsys3d.dll` — ses globales qui ont une valeur
+// dans le fichier ; tout le reste (8 Mo) vaut zero. Ce ne sont pas des constantes : le jeu les
+// modifie ensuite. Les dernieres plages sont les donnees de la CRT liee a la DLL (table `_ctype`…).
+
+namespace OpenForesia.Libraries;
+
+internal static class Winsys3dValeursInitiales
+{
+    internal static void Ecrire(EcrivainImage e)
+    {
+        e.Adresses(0x00a2c000, 0x00a2c050, 0x00a2c048, 0x00a2c040, 0x00a2c038, 0x00a2c02c);   // NomsResolutions_00a2c000 -> "320x240" -> "512x384" -> "640x480" -> "800x600" -> "1024x768"
+        e.Mots(0x00a2c018, 0x00000001, 0x00000007, 0x0000000b, 0x00000010, 0x00000017);   // TaillesParResolution_00a2c018
+        e.Chaine(0x00a2c02c, "1024x768");
+        e.Chaine(0x00a2c038, "800x600");
+        e.Chaine(0x00a2c040, "640x480");
+        e.Chaine(0x00a2c048, "512x384");
+        e.Chaine(0x00a2c050, "320x240");
+        e.Chaine(0x00a2c058, "unknown");
+        e.Chaine(0x00a2c060, "display");
+        e.Chaine(0x00a2c068, "3Dfx Glide");
+        e.Chaine(0x00a2c074, "Glide");
+        e.Chaine(0x00a2c07c, "_grSstQueryBoards@4");
+        e.Chaine(0x00a2c090, "GLIDE2X.DLL");
+        e.Chaine(0x00a2c09c, "Direct3D Software Emulation");
+        e.Chaine(0x00a2c0b8, "Software");
+        e.Chaine(0x00a2c0c4, "%s (Direct3D)");
+        e.Chaine(0x00a2c0d4, "SOFTWARE");
+        e.Chaine(0x00a2c0e0, "GLIDE");
+        e.Chaine(0x00a2c0e8, "Small");
+        e.Chaine(0x00a2c0f0, "0");
+        e.Chaine(0x00a2c0f4, "1");
+        e.Chaine(0x00a2c0f8, "Size");
+        e.Chaine(0x00a2c100, "%d");
+        e.Chaine(0x00a2c104, "Options");
+        e.Chaine(0x00a2c10c, "Resolution");
+        e.Chaine(0x00a2c118, "Description");
+        e.Chaine(0x00a2c124, "D3DDriver");
+        e.Chaine(0x00a2c130, "Driver");
+        e.Chaine(0x00a2c138, "!!");
+        e.Chaine(0x00a2c13c, ".cfg");
+        e.Mots(0x00a2c148, 0x00001000);
+        e.Mots(0x00a2c150, 0x00001000);
+        e.Mots(0x00a2c158, 0x00001000);
+        e.Chaine(0x00a2c168, "KANJI");
+        e.Chaine(0x00a2c170, "TIM");
+        e.Mots(0x00a2c178, 0x00001000);
+        e.Mots(0x00a2c180, 0x00001000);
+        e.Mots(0x00a2c188, 0x00001000);
+        e.Mots(0x00a2c198, 0xffffffff);   // PagePolice_00a2c198
+        e.Mots(0x00a2c1a0, 0x02ffffff);   // CouleursGdi_00a2c1a0
+        e.Mots(0x00a2c1c8, 0x00001000);
+        e.Mots(0x00a2c1d0, 0x00001000);
+        e.Mots(0x00a2c1d8, 0x00001000);
+        e.Mots(0x00a2c1e8, 0x00001000);
+        e.Mots(0x00a2c1f0, 0x00001000);
+        e.Mots(0x00a2c1f8, 0x00001000);
+        e.Mots(0x00a2c208, 0x00000001, 0x00000001, 0xffffffff);   // MemoMelange_00a2c210
+        e.Mots(0x00a2c220, 0x00000002);
+        e.Flottant(0x00a2c228, 0xbf800000);   // GammaCourant_00a2c228 — -1
+        e.Mots(0x00a2c230, 0x00001000);
+        e.Mots(0x00a2c238, 0x00001000);
+        e.Mots(0x00a2c240, 0x00001000);
+        e.Mots(0x00a2c250, 0xffffffff);
+        e.Mots(0x00a2c258, 0x00000001, 0x00000064, 0x00000034, 0x00000002, 0x00000062, 0x00000032, 0x00000004, 0x00000066);   // TouchesManette1_00a2c258
+        e.Mots(0x00a2c278, 0x00000036, 0x00000008, 0x00000068, 0x00000038, 0x00000010, 0x00000067, 0x00000037, 0x00000020);
+        e.Mots(0x00a2c298, 0x00000069, 0x00000039, 0x00000040, 0x00000061, 0x00000031, 0x00000080, 0x00000063, 0x00000033);
+        e.Mots(0x00a2c2b8, 0x00000100, 0x00000070, 0x00000070, 0x00000200, 0x00000071, 0x00000071, 0x00000025, 0x00000053);
+        e.Mots(0x00a2c2d8, 0x00000027, 0x00000044, 0x00000026, 0x00000045, 0x00000028, 0x00000058, 0x00000001, 0x00000064);   // TouchesManette2_00a2c2f0
+        e.Mots(0x00a2c2f8, 0x00000034, 0x00000002, 0x00000062, 0x00000032, 0x00000004, 0x00000066, 0x00000036, 0x00000008);
+        e.Mots(0x00a2c318, 0x00000068, 0x00000038, 0x00000010, 0x00000067, 0x00000037, 0x00000020, 0x00000069, 0x00000039);
+        e.Mots(0x00a2c338, 0x00000040, 0x00000061, 0x00000031, 0x00000080, 0x00000063, 0x00000033, 0x00000100, 0x00000070);
+        e.Mots(0x00a2c358, 0x00000070, 0x00000200, 0x00000071, 0x00000071, 0x00000025, 0x00000053, 0x00000027, 0x00000044);
+        e.Mots(0x00a2c378, 0x00000026, 0x00000045, 0x00000028, 0x00000058);
+        e.DemiMots(0x00a2c388, 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000, 0x8000);   // GlypheParDefaut_00a2c388
+        e.Chaine(0x00a2c3a8, "cdrom:");
+        e.Mots(0x00a2c3b0, 0x00000001);   // ModeCadence_00a2c3b0
+        e.Chaine(0x00a2c3b4, "LastDelayed=%d\r\nWait=%d\r\nDelayed=%d\r\nMode=%d\r\n");
+        e.Chaine(0x00a2c3e4, "VSyncCounter=%d\r\nVSyncShouldBe=%d\r\nPerfCounter=%I64d\r\nPerfShouldBe=%I64d\r\n");
+        e.Chaine(0x00a2c430, "------------------------\r\n");
+        e.Chaine(0x00a2c44c, "VS.Log");
+        e.Mots(0x00a2c458, 0x00001000);
+        e.Mots(0x00a2c460, 0x00001000);
+        e.Mots(0x00a2c468, 0x00001000);
+        e.Mots(0x00a2c478, 0x00000005, 0x00000001, 0x00000008, 0xffffffff, 0xffffffff, 0xffffffff, 0x00000001, 0x00000001);   // EtatRendu_00a2c480 Memo_00a2c484 PageTexture_00a2c488 Memo_00a2c48c
+        e.Mots(0x00a2c498, 0x0000000a, 0x00000002);   // Zoom_00a2c498 ModeAffichage_00a2c49c
+        e.Adresses(0x00a2c4a0, 0x00a5c0b8, 0x00a5c0b8);   // TableEcranX_00a2c4a0 TableEcranY_00a2c4a4 -> 0x00a5c0b8
+        e.Mots(0x00a2c4a8, 0x00000140, 0x00000200, 0x00000280, 0x00000320, 0x00000400);   // LargeursModes_00a2c4a8
+        e.Mots(0x00a2c4c0, 0x000000f0, 0x00000180, 0x000001e0, 0x00000258, 0x00000300);   // HauteursModes_00a2c4c0
+        e.Mots(0x00a2c4d8, 0xffffff60, 0xffffffc0);   // OrigineX_00a2c4d8
+        e.Mots(0x00a2c4e4, 0x00000050, 0x000000c0);
+        e.Mots(0x00a2c4f0, 0xffffff88, 0xffffffd0);   // OrigineY_00a2c4f0
+        e.Mots(0x00a2c4fc, 0x0000003c, 0x00000090, 0xffffffff, 0xffffffff);   // TexFilterPossible_00a2c504 FiltreTexture_00a2c508
+        e.Chaine(0x00a2c50c, "3D-Graphics initialisation error");   // ChaineErreurInit_00a2c50c
+        e.Chaine(0x00a2c530, "Create3DDevice");   // ChaineCreate3DDevice_00a2c530
+        e.Chaine(0x00a2c540, "gldhelp.dll");   // ChaineGldhelp_00a2c540
+        e.Chaine(0x00a2c54c, "3dhelp.dll");   // Chaine3dhelp_00a2c54c
+        e.Mots(0x00a2c558, 0x00001000);
+        e.Mots(0x00a2c560, 0x00001000);
+        e.Mots(0x00a2c568, 0x00001000);
+        e.Mots(0x00a2c578, 0xffffffff, 0xffffffff, 0x00001000);   // DerniereCommande_00a2c578 DerniereCommandeArg_00a2c57c
+        e.Mots(0x00a2c588, 0x00001000);
+        e.Mots(0x00a2c590, 0x00001000);
+        e.Mots(0x00a2c5a0, 0xffffffff, 0x00000002);   // PasDeMatrice_00a2c5a0 OmbrageGouraud_00a2c5a4
+        e.Octets(0x00a2c5a8, 0x7f, 0xff, 0xff, 0x3f);   // AlphaParMode_00a2c5a8
+        e.Mots(0x00a2c5b0, 0x00001000);
+        e.Mots(0x00a2c5b8, 0x00001000);
+        e.Mots(0x00a2c5c0, 0x00001000);
+        e.Mots(0x00a2c5d0, 0x00001000);
+        e.Mots(0x00a2c5d8, 0x00001000);
+        e.Mots(0x00a2c5e0, 0x00001000);
+        e.Mots(0x00a2c5f0, 0x00000001, 0x01388000, 0x000003e8);   // PlanProche_00a2c5f0 PlanLointain_00a2c5f4 DistanceDevice_00a2c5f8
+        e.Mots(0x00a2c600, 0x00001000);   // MatriceUnite_00a2c600
+        e.Mots(0x00a2c608, 0x00001000);
+        e.Mots(0x00a2c610, 0x00001000);
+        e.Chaine(0x00a2c620, "Tex0x%x.bin");
+        e.Mots(0x00a2c630, 0x00001000);
+        e.Mots(0x00a2c638, 0x00001000);
+        e.Mots(0x00a2c640, 0x00001000);
+        e.Mots(0x00a2c650, 0xffffffff);   // PageReleve_00a2c650
+        e.Octets(0x00a2c654, 0xfe, 0xfe, 0xfe, 0xfe);   // Quatre_00a2c654
+        e.Mots(0x00a2c658, 0x00001000);
+        e.Mots(0x00a2c660, 0x00001000);
+        e.Mots(0x00a2c668, 0x00001000);
+        e.Mots(0x00a2c680, 0x19930520);
+        e.Adresses(0x00a2c690, 0x00a2c69a, 0x00a2c69a);   // -> 0x00a2c69a
+        e.DemiMots(0x00a2c698, 0x0000, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0028, 0x0028, 0x0028, 0x0028, 0x0028, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0020, 0x0048, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0084, 0x0084, 0x0084, 0x0084, 0x0084, 0x0084, 0x0084, 0x0084, 0x0084, 0x0084, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0081, 0x0081, 0x0081, 0x0081, 0x0081, 0x0081, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0010, 0x0082, 0x0082, 0x0082, 0x0082, 0x0082, 0x0082, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0010, 0x0010, 0x0010, 0x0010, 0x0020, 0x0000);
+        e.Mots(0x00a2c89c, 0x00000001, 0x0000002e, 0x00000001);
+        e.Mots(0x00a2c8b0, 0x00001000);
+        e.Adresses(0x00a2c8b8, 0x00a2c8b8, 0x00a2c8b8, 0x00a2c8d0, 0x00a2c8d0);   // -> 0x00a2c8b8 -> 0x00a2c8d0
+        e.Mots(0x00a2c8c8, 0xffffffff, 0xffffffff, 0x000000f0, 0x000000f1);
+        e.Adresses(0x00a2e8d8, 0x00a2c8b8);   // -> 0x00a2c8b8
+        e.Mots(0x00a2e8dc, 0x000001e0);
+    }
+}
