@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **l'initialisation du device de `winsys3d` est en C#** — 789 et 750, avec la préparation
+  du device, la construction du cache de textures et, côté `wsyskern`, `IdentityMatrix` et
+  `ScaleMatrix`. `winsys3d` passe à 242 corps, 3 points d'entrée. **Pas encore exercé**
+- doc : `FUN_10006a40` initialise les matrices nulle et unité de `wsyskern` — la note « que rien
+  n'écrit » du lot 7 était fausse (sans effet : c'est des zéros)
+- doc : `CreateTranslationTables` (lot 12) testé en jeu par Vincent
+
 - feat : **`CreateTranslationTables` (756) est en C#** — les tables de couleurs des textures, dans
   `ChargementTextures.cs`. `winsys3d` passe à 233 corps, 5 points d'entrée. **Pas encore exercé**
 - doc : `0x00add078` est la moitié haute de la table du genre 2 — la semi-transparence PS émulée

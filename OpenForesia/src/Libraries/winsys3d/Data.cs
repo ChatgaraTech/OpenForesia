@@ -855,6 +855,87 @@ internal static unsafe class Winsys3dData
     /// </summary>
     internal static IntPtr FiltreExceptions_00a01d60 => (IntPtr)At(0x00a01d60);
 
+    // ----------------------------------------------------------------------------------------
+    // L'initialisation du device — `Device.cs` (789) et `FUN_00a03110`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>DAT_011be738 — non nul : le device est celui de `gldhelp.dll` (Glide) au lieu de `3dhelp.dll`.</summary>
+    internal static ref int Glide_011be738 => ref *(int*)At(0x011be738);
+
+    /// <summary>
+    /// DAT_011be73c — passe deux fois a `device[0x2c]`, et coupe le filtrage des textures
+    /// (`TexFilterPossible = 0`) quand il est non nul. Role non etabli.
+    /// </summary>
+    internal static ref int Unknown_011be73c => ref *(int*)At(0x011be73c);
+
+    /// <summary>DAT_011be79c — la fenetre du jeu, que `device[0x18]` recoit PAR ADRESSE et remplit.</summary>
+    internal static ref IntPtr Fenetre_011be79c => ref *(IntPtr*)At(0x011be79c);
+
+    /// <summary>L'ADRESSE de <see cref="Fenetre_011be79c"/>, telle que `push 11BE79Ch` la passe au device.</summary>
+    internal static IntPtr* AdresseFenetre_011be79c => (IntPtr*)At(0x011be79c);
+
+    /// <summary>DAT_011be6cc — le module `3dhelp.dll` (ou `gldhelp.dll`) charge par 789.</summary>
+    internal static ref IntPtr ModuleDevice_011be6cc => ref *(IntPtr*)At(0x011be6cc);
+
+    /// <summary>_DAT_011be7a0 — la fabrique `Create3DDevice` que `GetProcAddress` a rendue.</summary>
+    internal static ref void* FabriqueDevice_011be7a0 => ref *(void**)At(0x011be7a0);
+
+    /// <summary>DAT_011be6d0 — l'identifiant du minuteur multimedia de 17 ms (`timeSetEvent`).</summary>
+    internal static ref uint Minuteur_011be6d0 => ref *(uint*)At(0x011be6d0);
+
+    /// <summary>_DAT_00dedbe0 — le troisieme pointeur d'arene, pose avec les deux autres a `MainMem + 0x200000`.</summary>
+    internal static ref byte* AreneFin_00dedbe0 => ref *(byte**)At(0x00dedbe0);
+
+    /// <summary>DAT_011be6c8 — le `isinter` du `DISPENV` (+0x10), remis a 0 par 789.</summary>
+    internal static ref byte DispEntrelace_011be6c8 => ref *At(0x011be6c8);
+
+    /// <summary>DAT_00a2f470 — la fenetre dont `FUN_00a03110` a remplace la procedure.</summary>
+    internal static ref IntPtr FenetreSousClassee_00a2f470 => ref *(IntPtr*)At(0x00a2f470);
+
+    /// <summary>DAT_00b6d194 — la procedure de fenetre d'origine, rendue par `SetWindowLongA`, que `FUN_00a033c0` remet.</summary>
+    internal static ref IntPtr ProcedureOrigine_00b6d194 => ref *(IntPtr*)At(0x00b6d194);
+
+    /// <summary>
+    /// &amp;DAT_00a2f478 — 24 rangees de 4 000 `float`, remplies par `FUN_00a03110` :
+    /// `(depart + k * pas) * K`, le depart reculant de 0xe600 et le pas croissant de 0x20 par rangee.
+    /// </summary>
+    internal static float* TableProfondeurs_00a2f478 => (float*)At(0x00a2f478);
+
+    /// <summary>&amp;DAT_00a2f438 — la copie des 14 mots de capacites que rend `device[0x4c]` (a +0x64).</summary>
+    internal static uint* CopieCapacites_00a2f438 => (uint*)At(0x00a2f438);
+
+    /// <summary>_DAT_00b2d184 — pose a 1 quand les capacites n'ont aucun des bits 14 et 15 (`0x00a2f454 &amp; 0xc000`).</summary>
+    internal static ref int Unknown_00b2d184 => ref *(int*)At(0x00b2d184);
+
+    /// <summary>L'entree `GetProcAddress` de la table d'imports de `winsys3d` (`call [121532Ch]`) — celle que `SyntheticDevice` detourne.</summary>
+    internal static void** ImportGetProcAddress_0121532c => (void**)At(0x0121532c);
+
+    /// <summary>`s_3dhelp_dll_00a2c54c`, `s_gldhelp_dll_00a2c540`, `s_Create3DDevice_00a2c530`, `s_3D_Graphics_initialisation_error_00a2c50c` — les chaines de la DLL.</summary>
+    internal static byte* Chaine3dhelp_00a2c54c => At(0x00a2c54c);
+    internal static byte* ChaineGldhelp_00a2c540 => At(0x00a2c540);
+    internal static byte* ChaineCreate3DDevice_00a2c530 => At(0x00a2c530);
+    internal static byte* ChaineErreurInit_00a2c50c => At(0x00a2c50c);
+
+    /// <summary>LAB_00a06360 — un CODE : le rappel du minuteur de 17 ms, reste natif, passe par adresse.</summary>
+    internal static IntPtr RappelMinuteur_00a06360 => (IntPtr)At(0x00a06360);
+
+    /// <summary>LAB_00a02ee0 — un CODE : la procedure de fenetre que `FUN_00a03110` installe, restee native.</summary>
+    internal static IntPtr ProcedureFenetre_00a02ee0 => (IntPtr)At(0x00a02ee0);
+
+    /// <summary>
+    /// 0x00a2a070 .. 0x00a2a0a0 — les treize constantes `float` des tables UV (`.rdata`) : [0] le pas
+    /// de la table 0, [1] son origine (sprites), [2]/[4]/[6] les pas des trois familles, [3]/[5]/[7]
+    /// leurs origines (sprites) ; [9] l'origine de la table 0 et [10]/[11]/[12] celles des familles
+    /// (polygones).
+    /// </summary>
+    internal static float* ConstantesUv_00a2a070 => (float*)At(0x00a2a070);
+
+    /// <summary>_DAT_00a2a024 — le facteur de <see cref="TableProfondeurs_00a2f478"/>.</summary>
+    internal static float FacteurProfondeurs_00a2a024 => *(float*)At(0x00a2a024);
+
+    /// <summary>_DAT_00a2a028 — le gamma « jamais pose » : si le gamma courant l'egale, `FUN_00a03110` pose 1.0.</summary>
+    internal static float GammaInitial_00a2a028 => *(float*)At(0x00a2a028);
+
     /// <summary>DAT_011be6d4 — la TIM de la police 8 x 16, une ressource de la DLL (`LockResource` a l'initialisation). `FntLoad` la lit a +4.</summary>
     internal static ref byte* PoliceTim_011be6d4 => ref *(byte**)At(0x011be6d4);
 

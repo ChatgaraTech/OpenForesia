@@ -13,8 +13,8 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
-| `wsyskern` | **2** (`Malloc`, `Free`) | 55 / 89 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 5 | 233 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `wsyskern` | **2** (`Malloc`, `Free`) | 58 / 92 | les 2 sont des passerelles de tas, voir ci-dessous |
+| `winsys3d` | 3 | 242 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -724,6 +724,32 @@ de `wsyskern`, puis quatre tables de couleurs PS → device. Deux choses apprise
 
 `winsys3d` passe à 233 corps, 5 points d'entrée. **Pas encore exercé** — le réglage de gamma des
 options appelle 756 ; une erreur se verrait sur les couleurs de toutes les textures 16 bits.
+Testé en jeu par Vincent le même jour.
+
+**Lot 13, l'initialisation du device (789) et 750** : le répartiteur d'initialisation et
+d'extinction `FUN_00a06420`, `FUN_00a03110` (la préparation : table de profondeurs, cache de
+textures, procédure de fenêtre, capacités et modes de mélange), `FUN_00a033c0`, la détection MMX,
+et 750, qui partait avec son écrivain — dans `Device.cs` ; les constructeur et destructeur du
+cache (`27530`, `27560`, `27650`, `276d0`) dans `CacheTextures.cs` ; `IdentityMatrix`,
+`ScaleMatrix` et l'initialisation `FUN_10006a40` dans `wsyskern/Matrices.cs`. **Transcrit sur le
+désassemblage** :
+
+- Ghidra a perdu les arguments de **presque tous les appels au device** (`[0x18](&fenêtre)`,
+  `[0x30](0, largeur, hauteur)`, `[0x04](0|1)`, `[0x00](1)`, `[0xdc](&caps, 0)`…) et le `hwnd`
+  de `FUN_00a03110` (son `unaff_retaddr`) ;
+- **`GetProcAddress` passe par l'entrée `0x0121532c` de la table d'imports**, comme le binaire :
+  c'est elle que `SyntheticDevice` détourne, et le détournement continue de jouer ;
+- l'échec d'ouverture du mode (`MessageBoxA` + `ExitProcess(3)`) **retombe sur la fin commune** ;
+  Ghidra l'avait rangée dans la branche du succès ;
+- `IdentityMatrix` rend un bloc que seule `FUN_10006a40` écrit à l'initialisation de `wsyskern` —
+  trouvée en cherchant l'adresse dans les octets du binaire, Ghidra ne la relie à rien. La
+  correction vaut aussi pour `ZeroMatrix`, dont le lot 7 disait « que rien n'écrit » ;
+- restent natifs et passés par adresse : le rappel du minuteur (`LAB_00a06360`) et la procédure
+  de fenêtre (`LAB_00a02ee0`) ; 337 (`InitTrigTables`) est appelé par son export.
+
+`winsys3d` passe à 242 corps, 3 points d'entrée — 823 (`Setup3DDevice`), et 337 et 701 déjà
+portés. **Pas encore exercé** — c'est le démarrage du device : une erreur se verrait dès l'écran
+titre (pas d'image, image fausse, textures ou mélanges faux), ou à la fermeture du jeu.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

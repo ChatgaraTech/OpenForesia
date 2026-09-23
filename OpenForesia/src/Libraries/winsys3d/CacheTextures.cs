@@ -854,4 +854,74 @@ internal static unsafe class Winsys3dCacheTextures
 
     /// <summary>Ghidra: winsys3d.c ReleaseTexture @ 0x00a27990 (ordinal 788) — `ViderPage` sur l'objet cache.</summary>
     internal static void ReleaseTexture(int page) => ViderPage(Winsys3dData.Objet_012141d4, page);
+
+    // ============================================================================================
+    // CONSTRUIRE ET DETRUIRE LE CACHE — appeles par l'initialisation du device (`Device.cs`),
+    // 2026-09-23, verifies au desassembleur (`Legacy/Raw/Winsys3d/FUN_00a27530` .. `FUN_00a276d0`).
+    // Tous `__fastcall`/`__thiscall` sur `ecx`, que Ghidra montre sans leur objet. Le cache fait
+    // 0x21020 octets : 32 pointeurs de page, 0x8000 mots de CLUT a `+0x80`, 1 000 mots a `+0x20080`.
+    // Une page fait 0x1f44 octets : un mot, puis 2 000 emplacements.
+    // ============================================================================================
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a27650 @ 0x00a27650 — construit le cache sur <paramref name="cache"/> :
+    /// cree l'emplacement vide partage s'il n'existe pas (`Malloc(0x34)`, `FUN_00a27140`), met la table
+    /// des CLUT a zero et les 1 000 mots suivants a -1, puis alloue et construit les 32 pages (une
+    /// page dont le `Malloc` echoue reste nulle). Rend le cache.
+    /// </summary>
+    internal static void* ConstruireCache(void* cache)
+    {
+        if (Winsys3dData.EmplacementVide_012141d0 == null)
+        {
+            int* e = (int*)Blaze.Wsyskern.Malloc(0x34);
+            Winsys3dData.EmplacementVide_012141d0 = e == null ? null : ConstruireEmplacement(e);
+        }
+        new Span<uint>((byte*)cache + 0x80, 0x8000).Clear();
+        new Span<uint>((byte*)cache + 0x20080, 1000).Fill(0xffffffff);
+        void** pages = (void**)cache;
+        for (int i = 0; i < 0x20; i++)
+        {
+            int* page = (int*)Blaze.Wsyskern.Malloc(0x1f44);
+            pages[i] = page == null ? null : ConstruirePage(page);
+        }
+        return cache;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a27530 @ 0x00a27530 — `__fastcall` : remplit les 2 000 emplacements de la
+    /// page avec l'emplacement vide partage, et son premier mot de 0. Rend la page.
+    /// </summary>
+    internal static int* ConstruirePage(int* page)
+    {
+        for (int s = 1; s <= 2000; s++) page[s] = (int)Winsys3dData.EmplacementVide_012141d0;
+        page[0] = 0;
+        return page;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a27560 @ 0x00a27560 — `__fastcall` : libere les 2 000 emplacements de la
+    /// page, puis la remet dans l'etat de <see cref="ConstruirePage"/>.
+    /// </summary>
+    internal static void DetruirePage(int* page)
+    {
+        for (int s = 0; s < 2000; s++) LibererEmplacement(page, s);
+        for (int s = 1; s <= 2000; s++) page[s] = (int)Winsys3dData.EmplacementVide_012141d0;
+        page[0] = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a276d0 @ 0x00a276d0 — `__fastcall` : detruit et libere (`Free`) chacune
+    /// des 32 pages non nulles. Le cache lui-meme est libere par l'appelant.
+    /// </summary>
+    internal static void DetruireCache(void* cache)
+    {
+        int** pages = (int**)cache;
+        for (int i = 0; i < 0x20; i++)
+        {
+            int* page = pages[i];
+            if (page == null) continue;
+            DetruirePage(page);
+            Blaze.Wsyskern.WsysFree((byte*)page);
+        }
+    }
 }

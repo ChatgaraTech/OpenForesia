@@ -46,6 +46,13 @@ internal static unsafe class Win32
     [DllImport("user32.dll")] internal static extern int WaitMessage();
     [DllImport("kernel32.dll")] internal static extern IntPtr SetUnhandledExceptionFilter(IntPtr lpTopLevelExceptionFilter);
 
+    // L'initialisation du device de winsys3d, FUN_00a06420 / FUN_00a03110 (Libraries/winsys3d/Device.cs).
+    [DllImport("winmm.dll")] internal static extern uint timeSetEvent(uint uDelay, uint uResolution, IntPtr lpTimeProc, nuint dwUser, uint fuEvent);
+    [DllImport("winmm.dll")] internal static extern uint timeKillEvent(uint uTimerID);
+    [DllImport("kernel32.dll")] internal static extern int QueryPerformanceFrequency(long* lpFrequency);
+    [DllImport("kernel32.dll")] internal static extern int FreeLibrary(IntPtr hLibModule);
+    [DllImport("user32.dll")] internal static extern IntPtr SetWindowLongA(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetModuleFileNameA(IntPtr hModule, byte* lpFilename, uint nSize);
 
     [DllImport("kernel32.dll")] internal static extern IntPtr HeapCreate(uint flOptions, nuint dwInitialSize, nuint dwMaximumSize);

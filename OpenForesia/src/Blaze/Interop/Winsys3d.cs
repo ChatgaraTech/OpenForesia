@@ -394,7 +394,9 @@ internal static unsafe class Winsys3d
 
     internal static void Ordinal_771() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#789")] internal static extern int Ordinal_789(int a, int b); // real: winsys3d.c FUN_00a06420, device (re)init/teardown dispatcher; inert when a==0 besides storing b
+    // real: winsys3d.c FUN_00a06420, device (re)init/teardown dispatcher. a == 0 initialises (b is the
+    // display mode), a == -1/-2 shuts down, anything else only stores b.
+    internal static int Ordinal_789(int a, int b) => Libraries.Winsys3dDevice.InitialiserDevice(a, b); // PORTE 2026-09-23 — Libraries/winsys3d/Device.cs
 
     // winsys3d SetShift (ordinal 796) : decalage de vue et zoom. PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
     internal static void SetShift(int x, int y, int zoomLevel, int flag) => Libraries.Winsys3dDecalageEcran.SetShift(x, y, zoomLevel, flag);
@@ -418,7 +420,7 @@ internal static unsafe class Winsys3d
 
     internal static void Ordinal_66() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#750")] internal static extern void* Ordinal_750(); // real: winsys3d.c FUN_00a01e30, returns the DLL's main device-interface pointer (DAT_011be760)
+    internal static void* Ordinal_750() => Libraries.Winsys3dDevice.LireDevice(); // PORTE 2026-09-23 avec 789, son ecrivain — Libraries/winsys3d/Device.cs ; real: winsys3d.c FUN_00a01e30, returns DAT_011be760
 
     // winsys3d.dll: ReInitializeAllTextures is a named export (called by winsys3d.c itself at
     // winsys3d.c:4119). Zoom8BitTextures is an imported *data* symbol, same category as

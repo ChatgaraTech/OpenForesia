@@ -1,0 +1,45 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\wsyskern.dll
+Image base  : 0x10000000
+
+Legacy/Binaries/wsyskern.dll  base 0x10000000
+0x10007050  section .text  offset fichier 0x6450  96 octets
+
+  10007050  83ec40                sub       esp,40h
+  10007053  56                    push      esi
+  10007054  57                    push      edi
+  10007055  e846faffff            call      10006AA0h
+  1000705a  8b542458              mov       edx,[esp+58h]
+  1000705e  b910000000            mov       ecx,10h
+  10007063  8bf0                  mov       esi,eax
+  10007065  8b442450              mov       eax,[esp+50h]
+  10007069  8d7c2408              lea       edi,[esp+8]
+  1000706d  f3a5                  rep movsd
+  1000706f  8b4c2454              mov       ecx,[esp+54h]
+  10007073  89442408              mov       [esp+8],eax
+  10007077  8b44244c              mov       eax,[esp+4Ch]
+  1000707b  894c241c              mov       [esp+1Ch],ecx
+  1000707f  b910000000            mov       ecx,10h
+  10007084  8d742408              lea       esi,[esp+8]
+  10007088  8bf8                  mov       edi,eax
+  1000708a  89542430              mov       [esp+30h],edx
+  1000708e  f3a5                  rep movsd
+  10007090  5f                    pop       edi
+  10007091  5e                    pop       esi
+  10007092  83c440                add       esp,40h
+  10007095  c21000                ret       10h
+  10007098  90                    nop
+  10007099  90                    nop
+  1000709a  90                    nop
+  1000709b  90                    nop
+  1000709c  90                    nop
+  1000709d  90                    nop
+  1000709e  90                    nop
+  1000709f  90                    nop
+  100070a0  51                    push      ecx
+  100070a1  53                    push      ebx
+  100070a2  55                    push      ebp
+  100070a3  56                    push      esi
+  100070a4  57                    push      edi
+  100070a5  e8e6f9ffff            call      10006A90h
+  100070aa  8b6c241c              mov       ebp,[esp+1Ch]
+  100070ae  8bf0                  mov       esi,eax

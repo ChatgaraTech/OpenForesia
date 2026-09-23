@@ -1,0 +1,418 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a06420  section .text  offset fichier 0x5820  1296 octets
+
+  00a06420  83ec48                sub       esp,48h
+  00a06423  53                    push      ebx
+  00a06424  55                    push      ebp
+  00a06425  56                    push      esi
+  00a06426  8b74245c              mov       esi,[esp+5Ch]
+  00a0642a  57                    push      edi
+  00a0642b  8b7c245c              mov       edi,[esp+5Ch]
+  00a0642f  33db                  xor       ebx,ebx
+  00a06431  89359cc4a200          mov       [0A2C49Ch],esi
+  00a06437  3bfb                  cmp       edi,ebx
+  00a06439  0f8543040000          jne       near 00A06882h
+  00a0643f  a138e71b01            mov       eax,[11BE738h]
+  00a06444  895c2410              mov       [esp+10h],ebx
+  00a06448  3bc3                  cmp       eax,ebx
+  00a0644a  895c2414              mov       [esp+14h],ebx
+  00a0644e  745e                  je        short 00A064AEh
+  00a06450  391d60e71b01          cmp       [11BE760h],ebx
+  00a06456  7456                  je        short 00A064AEh
+  00a06458  391d9ce71b01          cmp       [11BE79Ch],ebx
+  00a0645e  744e                  je        short 00A064AEh
+  00a06460  53                    push      ebx
+  00a06461  53                    push      ebx
+  00a06462  686063a000            push      0A06360h
+  00a06467  53                    push      ebx
+  00a06468  6a11                  push      11h
+  00a0646a  ff15bc532101          call      dword [12153BCh]
+  00a06470  a3d0e61b01            mov       [11BE6D0h],eax
+  00a06475  a198e71b01            mov       eax,[11BE798h]
+  00a0647a  3bc3                  cmp       eax,ebx
+  00a0647c  7409                  je        short 00A06487h
+  00a0647e  8b0d9ce71b01          mov       ecx,[11BE79Ch]
+  00a06484  51                    push      ecx
+  00a06485  ffd0                  call      eax
+
+LAB_00a06487:
+  00a06487  8b159ce71b01          mov       edx,[11BE79Ch]
+  00a0648d  52                    push      edx
+  00a0648e  e87dccffff            call      00A03110h
+  00a06493  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a06499  53                    push      ebx
+  00a0649a  8b01                  mov       eax,[ecx]
+  00a0649c  ff5004                call      dword [eax+4]
+  00a0649f  b801000000            mov       eax,1
+  00a064a4  5f                    pop       edi
+  00a064a5  5e                    pop       esi
+  00a064a6  5d                    pop       ebp
+  00a064a7  5b                    pop       ebx
+  00a064a8  83c448                add       esp,48h
+  00a064ab  c20800                ret       8
+
+LAB_00a064ae:
+  00a064ae  e87d040000            call      00A06930h
+  00a064b3  8b0dd4dbb600          mov       ecx,[0B6DBD4h]
+  00a064b9  53                    push      ebx
+  00a064ba  53                    push      ebx
+  00a064bb  a3e8dbde00            mov       [0DEDBE8h],eax
+  00a064c0  686063a000            push      0A06360h
+  00a064c5  8d8100002000          lea       eax,[ecx+200000h]
+  00a064cb  53                    push      ebx
+  00a064cc  6a11                  push      11h
+  00a064ce  a3e0dbde00            mov       [0DEDBE0h],eax
+  00a064d3  a3dcdbde00            mov       [0DEDBDCh],eax
+  00a064d8  a3d8dbde00            mov       [0DEDBD8h],eax
+  00a064dd  ff15bc532101          call      dword [12153BCh]
+  00a064e3  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a064e9  a3d0e61b01            mov       [11BE6D0h],eax
+  00a064ee  3bcb                  cmp       ecx,ebx
+  00a064f0  7558                  jne       short 00A0654Ah
+  00a064f2  391d38e71b01          cmp       [11BE738h],ebx
+  00a064f8  7507                  jne       short 00A06501h
+  00a064fa  684cc5a200            push      0A2C54Ch
+  00a064ff  eb05                  jmp       short 00A06506h
+
+LAB_00a06501:
+  00a06501  6840c5a200            push      0A2C540h
+
+LAB_00a06506:
+  00a06506  ff1528532101          call      dword [1215328h]
+  00a0650c  6830c5a200            push      0A2C530h
+  00a06511  50                    push      eax
+  00a06512  a3cce61b01            mov       [11BE6CCh],eax
+  00a06517  ff152c532101          call      dword [121532Ch]
+  00a0651d  a3a0e71b01            mov       [11BE7A0h],eax
+  00a06522  ffd0                  call      eax
+  00a06524  8b10                  mov       edx,[eax]
+  00a06526  689ce71b01            push      11BE79Ch
+  00a0652b  8bc8                  mov       ecx,eax
+  00a0652d  a360e71b01            mov       [11BE760h],eax
+  00a06532  ff5218                call      dword [edx+18h]
+  00a06535  53                    push      ebx
+  00a06536  53                    push      ebx
+  00a06537  53                    push      ebx
+  00a06538  53                    push      ebx
+  00a06539  ff1500532101          call      dword [1215300h]
+  00a0653f  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a06545  a394e71b01            mov       [11BE794h],eax
+
+LAB_00a0654a:
+  00a0654a  8b159ce71b01          mov       edx,[11BE79Ch]
+  00a06550  8b01                  mov       eax,[ecx]
+  00a06552  52                    push      edx
+  00a06553  ff500c                call      dword [eax+0Ch]
+  00a06556  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a0655c  a13ce71b01            mov       eax,[11BE73Ch]
+  00a06561  50                    push      eax
+  00a06562  50                    push      eax
+  00a06563  8b11                  mov       edx,[ecx]
+  00a06565  ff522c                call      dword [edx+2Ch]
+  00a06568  8b14b5c0c4a200        mov       edx,[esi*4+0A2C4C0h]
+  00a0656f  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a06575  52                    push      edx
+  00a06576  8b14b5a8c4a200        mov       edx,[esi*4+0A2C4A8h]
+  00a0657d  8b01                  mov       eax,[ecx]
+  00a0657f  52                    push      edx
+  00a06580  53                    push      ebx
+  00a06581  ff5030                call      dword [eax+30h]
+  00a06584  85c0                  test      eax,eax
+  00a06586  bf0000803f            mov       edi,3F800000h
+  00a0658b  0f8416020000          je        near 00A067A7h
+  00a06591  a160e71b01            mov       eax,[11BE760h]
+  00a06596  8b35f0532101          mov       esi,[12153F0h]
+  00a0659c  57                    push      edi
+  00a0659d  68000080bf            push      0BF800000h
+  00a065a2  8b28                  mov       ebp,[eax]
+  00a065a4  8d4c2420              lea       ecx,[esp+20h]
+  00a065a8  57                    push      edi
+  00a065a9  51                    push      ecx
+  00a065aa  ffd6                  call      esi
+  00a065ac  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a065b2  50                    push      eax
+  00a065b3  ff5570                call      dword [ebp+70h]
+  00a065b6  8b1560e71b01          mov       edx,[11BE760h]
+  00a065bc  680000003f            push      3F000000h
+  00a065c1  680000003f            push      3F000000h
+  00a065c6  8d442420              lea       eax,[esp+20h]
+  00a065ca  8b2a                  mov       ebp,[edx]
+  00a065cc  680000003f            push      3F000000h
+  00a065d1  50                    push      eax
+  00a065d2  ffd6                  call      esi
+  00a065d4  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a065da  50                    push      eax
+  00a065db  ff5568                call      dword [ebp+68h]
+  00a065de  68e8030000            push      3E8h
+  00a065e3  e8d8750100            call      00A1DBC0h
+  00a065e8  a198e71b01            mov       eax,[11BE798h]
+  00a065ed  3bc3                  cmp       eax,ebx
+  00a065ef  7409                  je        short 00A065FAh
+  00a065f1  8b0d9ce71b01          mov       ecx,[11BE79Ch]
+  00a065f7  51                    push      ecx
+  00a065f8  ffd0                  call      eax
+
+LAB_00a065fa:
+  00a065fa  33f6                  xor       esi,esi
+  00a065fc  bad04c1c01            mov       edx,11C4CD0h
+  00a06601  89742460              mov       [esp+60h],esi
+
+LAB_00a06605:
+  00a06605  db442460              fild      dword [esp+60h]
+  00a06609  89742460              mov       [esp+60h],esi
+  00a0660d  8d8224240000          lea       eax,[edx+2424h]
+  00a06613  b908000000            mov       ecx,8
+  00a06618  d80d70a0a200          fmul      dword [0A2A070h]
+  00a0661e  d82d74a0a200          fsubr     dword [0A2A074h]
+  00a06624  d91a                  fstp      dword [edx]
+
+LAB_00a06626:
+  00a06626  db442460              fild      dword [esp+60h]
+  00a0662a  8b6c2460              mov       ebp,[esp+60h]
+  00a0662e  0504040000            add       eax,404h
+  00a06633  83ed20                sub       ebp,20h
+  00a06636  49                    dec       ecx
+  00a06637  d9c0                  fld       st0
+  00a06639  d9c1                  fld       st1
+  00a0663b  d9c9                  fxch
+  00a0663d  d80d78a0a200          fmul      dword [0A2A078h]
+  00a06643  d9c9                  fxch
+  00a06645  d80d80a0a200          fmul      dword [0A2A080h]
+  00a0664b  d9c9                  fxch
+  00a0664d  d82d7ca0a200          fsubr     dword [0A2A07Ch]
+  00a06653  d9ca                  fxch      st2
+  00a06655  d80d88a0a200          fmul      dword [0A2A088h]
+  00a0665b  d9c9                  fxch
+  00a0665d  d82d84a0a200          fsubr     dword [0A2A084h]
+  00a06663  d9ca                  fxch      st2
+  00a06665  d998dcdbffff          fstp      dword [eax-2424h]
+  00a0666b  896c2460              mov       [esp+60h],ebp
+  00a0666f  d82d8ca0a200          fsubr     dword [0A2A08Ch]
+  00a06675  d9c9                  fxch
+  00a06677  d998fcfbffff          fstp      dword [eax-404h]
+  00a0667d  d9981c1c0000          fstp      dword [eax+1C1Ch]
+  00a06683  75a1                  jne       short 00A06626h
+  00a06685  46                    inc       esi
+  00a06686  83c204                add       edx,4
+  00a06689  81fe00010000          cmp       esi,100h
+  00a0668f  89742460              mov       [esp+60h],esi
+  00a06693  0f8e6cffffff          jle       near 00A06605h
+  00a06699  c705d0501c0166e67f3f  mov       dword [11C50D0h],3F7FE666h
+  00a066a3  b9f4711c01            mov       ecx,11C71F4h
+  00a066a8  33c0                  xor       eax,eax
+  00a066aa  becdcc7f3f            mov       esi,3F7FCCCDh
+  00a066af  ba33337f3f            mov       edx,3F7F3333h
+
+LAB_00a066b4:
+  00a066b4  3d94160000            cmp       eax,1694h
+  00a066b9  7d06                  jge       short 00A066C1h
+  00a066bb  89b1e0e0ffff          mov       [ecx-1F20h],esi
+
+LAB_00a066c1:
+  00a066c1  3d9c1f0000            cmp       eax,1F9Ch
+  00a066c6  7d06                  jge       short 00A066CEh
+  00a066c8  c7019a997f3f          mov       dword [ecx],3F7F999Ah
+
+LAB_00a066ce:
+  00a066ce  8991a01f0000          mov       [ecx+1FA0h],edx
+  00a066d4  0584040000            add       eax,484h
+  00a066d9  81c184040000          add       ecx,484h
+  00a066df  3d20240000            cmp       eax,2420h
+  00a066e4  7cce                  jl        short 00A066B4h
+  00a066e6  33f6                  xor       esi,esi
+  00a066e8  ba68e81b01            mov       edx,11BE868h
+  00a066ed  89742460              mov       [esp+60h],esi
+
+LAB_00a066f1:
+  00a066f1  db442460              fild      dword [esp+60h]
+  00a066f5  89742460              mov       [esp+60h],esi
+  00a066f9  8d8224240000          lea       eax,[edx+2424h]
+  00a066ff  b908000000            mov       ecx,8
+  00a06704  d80d70a0a200          fmul      dword [0A2A070h]
+  00a0670a  d82d94a0a200          fsubr     dword [0A2A094h]
+  00a06710  d91a                  fstp      dword [edx]
+
+LAB_00a06712:
+  00a06712  db442460              fild      dword [esp+60h]
+  00a06716  8b6c2460              mov       ebp,[esp+60h]
+  00a0671a  0504040000            add       eax,404h
+  00a0671f  83ed20                sub       ebp,20h
+  00a06722  49                    dec       ecx
+  00a06723  d9c0                  fld       st0
+  00a06725  d9c1                  fld       st1
+  00a06727  d9c9                  fxch
+  00a06729  d80d78a0a200          fmul      dword [0A2A078h]
+  00a0672f  d9c9                  fxch
+  00a06731  d80d80a0a200          fmul      dword [0A2A080h]
+  00a06737  d9c9                  fxch
+  00a06739  d82d98a0a200          fsubr     dword [0A2A098h]
+  00a0673f  d9ca                  fxch      st2
+  00a06741  d80d88a0a200          fmul      dword [0A2A088h]
+  00a06747  d9c9                  fxch
+  00a06749  d82d9ca0a200          fsubr     dword [0A2A09Ch]
+  00a0674f  d9ca                  fxch      st2
+  00a06751  d998dcdbffff          fstp      dword [eax-2424h]
+  00a06757  896c2460              mov       [esp+60h],ebp
+  00a0675b  d82da0a0a200          fsubr     dword [0A2A0A0h]
+  00a06761  d9c9                  fxch
+  00a06763  d998fcfbffff          fstp      dword [eax-404h]
+  00a06769  d9981c1c0000          fstp      dword [eax+1C1Ch]
+  00a0676f  75a1                  jne       short 00A06712h
+  00a06771  46                    inc       esi
+  00a06772  83c204                add       edx,4
+  00a06775  81fe00010000          cmp       esi,100h
+  00a0677b  89742460              mov       [esp+60h],esi
+  00a0677f  0f8e6cffffff          jle       near 00A066F1h
+  00a06785  8b159ce71b01          mov       edx,[11BE79Ch]
+  00a0678b  52                    push      edx
+  00a0678c  e87fc9ffff            call      00A03110h
+  00a06791  391d3ce71b01          cmp       [11BE73Ch],ebx
+  00a06797  7429                  je        short 00A067C2h
+  00a06799  53                    push      ebx
+  00a0679a  891d04c5a200          mov       [0A2C504h],ebx
+  00a067a0  e82bfcffff            call      00A063D0h
+  00a067a5  eb1b                  jmp       short 00A067C2h
+
+LAB_00a067a7:
+  00a067a7  a19ce71b01            mov       eax,[11BE79Ch]
+  00a067ac  53                    push      ebx
+  00a067ad  53                    push      ebx
+  00a067ae  680cc5a200            push      0A2C50Ch
+  00a067b3  50                    push      eax
+  00a067b4  ff1598532101          call      dword [1215398h]
+  00a067ba  6a03                  push      3
+  00a067bc  ff1534532101          call      dword [1215334h]
+
+LAB_00a067c2:
+  00a067c2  e839770100            call      00A1DF00h
+  00a067c7  6a50                  push      50h
+  00a067c9  6a01                  push      1
+  00a067cb  68f0000000            push      0F0h
+  00a067d0  6840010000            push      140h
+  00a067d5  53                    push      ebx
+  00a067d6  53                    push      ebx
+  00a067d7  66c705bce61b014001    mov       word [11BE6BCh],140h
+  00a067e0  66c705bee61b01f000    mov       word [11BE6BEh],0F0h
+  00a067e9  881dc8e61b01          mov       [11BE6C8h],bl
+  00a067ef  e8acb8ffff            call      00A020A0h
+  00a067f4  8b3538e71b01          mov       esi,[11BE738h]
+  00a067fa  33c0                  xor       eax,eax
+  00a067fc  b917b7d138            mov       ecx,38D1B717h
+  00a06801  ba7f7f7f00            mov       edx,7F7F7Fh
+
+LAB_00a06806:
+  00a06806  3bf3                  cmp       esi,ebx
+  00a06808  751a                  jne       short 00A06824h
+  00a0680a  898844b11c01          mov       [eax+11CB144h],ecx
+  00a06810  8988f4e71b01          mov       [eax+11BE7F4h],ecx
+  00a06816  898840b11c01          mov       [eax+11CB140h],ecx
+  00a0681c  8988f0e71b01          mov       [eax+11BE7F0h],ecx
+  00a06822  eb18                  jmp       short 00A0683Ch
+
+LAB_00a06824:
+  00a06824  89b844b11c01          mov       [eax+11CB144h],edi
+  00a0682a  89b8f4e71b01          mov       [eax+11BE7F4h],edi
+  00a06830  89b840b11c01          mov       [eax+11CB140h],edi
+  00a06836  89b8f0e71b01          mov       [eax+11BE7F0h],edi
+
+LAB_00a0683c:
+  00a0683c  8990f8e71b01          mov       [eax+11BE7F8h],edx
+  00a06842  83c020                add       eax,20h
+  00a06845  3d80000000            cmp       eax,80h
+  00a0684a  7cba                  jl        short 00A06806h
+  00a0684c  8d4c2410              lea       ecx,[esp+10h]
+  00a06850  51                    push      ecx
+  00a06851  ff15fc522101          call      dword [12152FCh]
+  00a06857  53                    push      ebx
+  00a06858  6a3c                  push      3Ch
+  00a0685a  8b542418              mov       edx,[esp+18h]
+  00a0685e  8b44241c              mov       eax,[esp+1Ch]
+  00a06862  83c21e                add       edx,1Eh
+  00a06865  13c3                  adc       eax,ebx
+  00a06867  50                    push      eax
+  00a06868  52                    push      edx
+  00a06869  e872120200            call      00A27AE0h
+  00a0686e  a384e61b01            mov       [11BE684h],eax
+  00a06873  b801000000            mov       eax,1
+  00a06878  5f                    pop       edi
+  00a06879  5e                    pop       esi
+  00a0687a  5d                    pop       ebp
+  00a0687b  5b                    pop       ebx
+  00a0687c  83c448                add       esp,48h
+  00a0687f  c20800                ret       8
+
+LAB_00a06882:
+  00a06882  83ffff                cmp       edi,0FFFFFFFFh
+  00a06885  7409                  je        short 00A06890h
+  00a06887  83fffe                cmp       edi,0FFFFFFFEh
+  00a0688a  0f8586000000          jne       near 00A06916h
+
+LAB_00a06890:
+  00a06890  8b0dd0e61b01          mov       ecx,[11BE6D0h]
+  00a06896  51                    push      ecx
+  00a06897  ff15c4532101          call      dword [12153C4h]
+  00a0689d  e81ecbffff            call      00A033C0h
+  00a068a2  391d38e71b01          cmp       [11BE738h],ebx
+  00a068a8  7421                  je        short 00A068CBh
+  00a068aa  83fffe                cmp       edi,0FFFFFFFEh
+  00a068ad  741c                  je        short 00A068CBh
+  00a068af  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a068b5  6a01                  push      1
+  00a068b7  8b11                  mov       edx,[ecx]
+  00a068b9  ff5204                call      dword [edx+4]
+  00a068bc  b801000000            mov       eax,1
+  00a068c1  5f                    pop       edi
+  00a068c2  5e                    pop       esi
+  00a068c3  5d                    pop       ebp
+  00a068c4  5b                    pop       ebx
+  00a068c5  83c448                add       esp,48h
+  00a068c8  c20800                ret       8
+
+LAB_00a068cb:
+  00a068cb  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a068d1  8b01                  mov       eax,[ecx]
+  00a068d3  ff5034                call      dword [eax+34h]
+  00a068d6  83fffe                cmp       edi,0FFFFFFFEh
+  00a068d9  753b                  jne       short 00A06916h
+  00a068db  8b0d9ce71b01          mov       ecx,[11BE79Ch]
+  00a068e1  51                    push      ecx
+  00a068e2  ff15a8532101          call      dword [12153A8h]
+  00a068e8  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a068ee  891d9ce71b01          mov       [11BE79Ch],ebx
+  00a068f4  3bcb                  cmp       ecx,ebx
+  00a068f6  7406                  je        short 00A068FEh
+  00a068f8  8b11                  mov       edx,[ecx]
+  00a068fa  6a01                  push      1
+  00a068fc  ff12                  call      dword [edx]
+
+LAB_00a068fe:
+  00a068fe  a1cce61b01            mov       eax,[11BE6CCh]
+  00a06903  891d60e71b01          mov       [11BE760h],ebx
+  00a06909  50                    push      eax
+  00a0690a  ff1530532101          call      dword [1215330h]
+  00a06910  891dcce61b01          mov       [11BE6CCh],ebx
+
+LAB_00a06916:
+  00a06916  5f                    pop       edi
+  00a06917  5e                    pop       esi
+  00a06918  5d                    pop       ebp
+  00a06919  b801000000            mov       eax,1
+  00a0691e  5b                    pop       ebx
+  00a0691f  83c448                add       esp,48h
+  00a06922  c20800                ret       8
+  00a06925  90                    nop
+  00a06926  90                    nop
+  00a06927  90                    nop
+  00a06928  90                    nop
+  00a06929  90                    nop
+  00a0692a  90                    nop
+  00a0692b  90                    nop
+  00a0692c  90                    nop
+  00a0692d  90                    nop
+  00a0692e  90                    nop
+  00a0692f  90                    nop
+
+23 cible(s) de saut interne : 0x00a06487, 0x00a064ae, 0x00a06501, 0x00a06506, 0x00a0654a, 0x00a065fa, 0x00a06605, 0x00a06626, 0x00a066b4, 0x00a066c1, 0x00a066ce, 0x00a066f1, 0x00a06712, 0x00a067a7, 0x00a067c2, 0x00a06806, 0x00a06824, 0x00a0683c, 0x00a06882, 0x00a06890, 0x00a068cb, 0x00a068fe, 0x00a06916
