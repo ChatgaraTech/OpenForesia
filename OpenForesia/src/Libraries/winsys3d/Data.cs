@@ -816,6 +816,35 @@ internal static unsafe class Winsys3dData
     /// <summary>DAT_011be690 — l'echeance en tops de compteur, 64 bits (mot haut a 0x011be694).</summary>
     internal static long* EcheancePerf_011be690 => (long*)At(0x011be690);
 
+    /// <summary>
+    /// &amp;DAT_00dedd78 — le journal des attentes d'image : un enregistrement de 0x28 octets par
+    /// appel a l'ordinal 132, a l'indice <see cref="IndiceJournal_011be69c"/>. **100 000 places
+    /// exactement** (0x00dedd78 .. 0x011be678), et l'indice n'est pas borne : voir LB-047.
+    /// </summary>
+    internal static byte* JournalImages_00dedd78 => At(0x00dedd78);
+
+    /// <summary>DAT_011be69c — l'indice du dernier enregistrement du journal ; incremente AVANT l'ecriture.</summary>
+    internal static ref int IndiceJournal_011be69c => ref *(int*)At(0x011be69c);
+
+    /// <summary>DAT_011be688 — le compte de rattrapage : 3 quand une image est en retard, decremente a chaque image a l'heure. Tant qu'il est non nul, 132 n'attend pas.</summary>
+    internal static ref int Rattrapage_011be688 => ref *(int*)At(0x011be688);
+
+    /// <summary>DAT_011be698 — la bascule du mode 3 (une image sur deux).</summary>
+    internal static ref int BasculeMode3_011be698 => ref *(int*)At(0x011be698);
+
+    /// <summary>_DAT_011be678 — le `VSyncCounter` de la derniere attente du mode 1.</summary>
+    internal static ref int DerniereImage_011be678 => ref *(int*)At(0x011be678);
+
+    /// <summary>_DAT_00dedbf0 — pose a 1 par la pompe de messages quand elle voit `WM_QUIT`.</summary>
+    internal static ref int QuitteRecu_00dedbf0 => ref *(int*)At(0x00dedbf0);
+
+    /// <summary>
+    /// FUN_00a01d60 — un CODE, pas une donnee : le filtre d'exceptions `or eax,-1 ; ret 4`
+    /// (`EXCEPTION_CONTINUE_EXECUTION`) que la pompe installe avant `RaiseException`. On passe son
+    /// adresse native a `SetUnhandledExceptionFilter`, comme l'original.
+    /// </summary>
+    internal static IntPtr FiltreExceptions_00a01d60 => (IntPtr)At(0x00a01d60);
+
     /// <summary>DAT_011d0820 — la distance de projection `h` du GTE, posee par `SetGeomScreen` (379).</summary>
     internal static ref int DistanceEcran_011d0820 => ref *(int*)At(0x011d0820);
 

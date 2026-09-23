@@ -177,7 +177,8 @@ internal static unsafe class Winsys3d
 
     internal static void Ordinal_129() => _ = Libraries.Winsys3dSouches.RendZero(); // confirmed no-op (FUN_00a02490)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#132")] internal static extern int Ordinal_132(int a); // real: winsys3d.c FUN_00a053e0, VSync/frame-pacing wait â€” DLL-internal timing state
+    // real: winsys3d.c FUN_00a053e0, libgpu VSync(n) — the frame-pacing wait.
+    internal static int Ordinal_132(int a) => Libraries.Winsys3dCadence.VSync(a); // PORTE 2026-09-23 — Libraries/winsys3d/Cadence.cs
 
     // real: winsys3d.c FUN_00a05770, get/set DAT_011be6a4 ("frame time offset"?), returns previous
     // value. Porté avec l'ordinal 135, son lecteur, que personne n'importe — une composante se porte

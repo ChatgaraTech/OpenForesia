@@ -107,4 +107,210 @@ internal static unsafe class Winsys3dCadence
         *Winsys3dData.EcheancePerf_011be690 = compteur + (tops * 3);
         return precedent;
     }
+
+    // ============================================================================================
+    // L'ATTENTE D'IMAGE — ordinal 132, le `VSync(n)` de la libgpu (2026-09-23), transcrit sur le
+    // desassemblage (`Legacy/Raw/Winsys3d/FUN_00a053e0.disasm.txt`) : Ghidra en rendait les
+    // comparaisons 64 bits sous forme de boucles imbriquees, et l'ordre des lectures compte (voir
+    // LB-047). Table de sauts relue a 0x00a05730 : mode 0 -> 05646, 1 -> 054bf, 2 -> 05667,
+    // 3 -> 0562b ; un mode hors de 0..3 (non signe) rend 1.
+    //
+    // Les notations : `c` le compteur de performance lu, `e` l'echeance (64 bits, 0x011be690),
+    // `tops` les tops par image. Chaque attente tourne `PollMessages` puis relit le compteur tant
+    // que `e > c`.
+    // ============================================================================================
+
+    /// <summary>
+    /// Relit le compteur de performance et recale `VSyncCounter = c / tops` (`__alldiv`, signe) ;
+    /// rend `c` et `tops`, que le corps garde en registres (`edi:esi`, `ebp`).
+    /// </summary>
+    private static long RelireCompteur(out int tops)
+    {
+        Win32.QueryPerformanceCounter(Winsys3dData.CompteurPerf_00dedd70);
+        tops = Winsys3dData.TopsParImage_011be684;
+        long c = *Winsys3dData.CompteurPerf_00dedd70;
+        Winsys3dData.VSyncCounter_00dedbf4 = (int)(c / tops);
+        return c;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a053e0 @ 0x00a053e0 (ordinal 132) — `VSync(n)` : attend la fin de
+    /// l'image selon le mode de cadence (<see cref="SetTimingMode"/>). `n` negatif : rend le
+    /// compteur d'images sans rien attendre ni journaliser. `n` nul compte pour une image.
+    /// Rend 1, ou 0xEF quand `n` vaut 1 (et, en mode 0 ou 3-sans-attente, quand `n` est non nul).
+    /// `ret 4`.
+    /// </summary>
+    internal static int VSync(int n)
+    {
+        int nombre = n == 0 ? 1 : n;
+        long c = RelireCompteur(out int tops);
+        if (n < 0) return Winsys3dData.VSyncCounter_00dedbf4;
+
+        // Le journal : toutes les valeurs sont lues avant la premiere ecriture, puis ecrites dans
+        // l'ordre du binaire — a l'indice 100 000, l'enregistrement recouvre ces globales-la.
+        int indice = ++Winsys3dData.IndiceJournal_011be69c;
+        int image = Winsys3dData.VSyncCounter_00dedbf4;
+        int attendue = Winsys3dData.ImageAttendue_011be680;
+        long e = *Winsys3dData.EcheancePerf_011be690;
+        int rattrapage = Winsys3dData.Rattrapage_011be688;    // lu avant rec[2] (`0546d`)
+        int* rec = (int*)(Winsys3dData.JournalImages_00dedd78 + indice * 0x28);
+        rec[0] = image;
+        rec[1] = attendue;
+        rec[2] = (int)c;
+        rec[3] = (int)(c >> 32);
+        rec[4] = (int)e;
+        rec[5] = (int)(e >> 32);
+        rec[6] = rattrapage;
+        rec[8] = 0;
+        rec[7] = 0;
+        rec[9] = nombre;
+
+        switch ((uint)Winsys3dData.ModeCadence_00a2c3b0)
+        {
+            case 0:
+                return n != 0 ? 0xef : 1;
+
+            case 1:
+            {
+                if (Winsys3dData.Rattrapage_011be688 == 0 && e > c)
+                {
+                    rec[7] = (int)((uint)e - (uint)c);        // l'attente, mot bas seulement
+                    do
+                    {
+                        PollMessages();
+                        c = RelireCompteur(out tops);
+                        e = *Winsys3dData.EcheancePerf_011be690;
+                    } while (e > c);
+                }
+
+                Winsys3dData.ImageAttendue_011be680 += nombre;
+                int produit = nombre * tops;
+                *Winsys3dData.EcheancePerf_011be690 = e + produit;
+                if (Winsys3dData.ImageAttendue_011be680 + 0x1e < Winsys3dData.VSyncCounter_00dedbf4)
+                {
+                    // Plus de 30 images de retard : on recale sur maintenant.
+                    Winsys3dData.ImageAttendue_011be680 = nombre + Winsys3dData.VSyncCounter_00dedbf4;
+                    *Winsys3dData.EcheancePerf_011be690 = c + produit;
+                }
+                if (n == 1) return 0xef;
+
+                PollMessages();
+                if (Winsys3dData.ImageAttendue_011be680 >= Winsys3dData.VSyncCounter_00dedbf4)
+                {
+                    if (Winsys3dData.Rattrapage_011be688 != 0) Winsys3dData.Rattrapage_011be688--;
+                    Winsys3dData.VSyncDelayed_011be67c = 0;
+                    Winsys3dData.DerniereImage_011be678 = Winsys3dData.VSyncCounter_00dedbf4;
+                    return 1;
+                }
+                int retard = Winsys3dData.VSyncCounter_00dedbf4 - Winsys3dData.ImageAttendue_011be680;
+                int dernier = Winsys3dData.IndiceJournal_011be69c;
+                Winsys3dData.Rattrapage_011be688 = 3;
+                Winsys3dData.VSyncDelayed_011be67c = 1;
+                Winsys3dData.DerniereImage_011be678 = Winsys3dData.VSyncCounter_00dedbf4;
+                ((int*)(Winsys3dData.JournalImages_00dedd78 + dernier * 0x28))[8] = retard;
+                return 1;
+            }
+
+            case 3:
+            {
+                int bascule = Winsys3dData.BasculeMode3_011be698 == 0 ? 1 : 0;
+                Winsys3dData.BasculeMode3_011be698 = bascule;
+                Winsys3dData.VSyncDelayed_011be67c = bascule;
+                if (bascule != 0) return n != 0 ? 0xef : 1;   // le code du mode 0
+                nombre *= 2;
+                goto case 2;
+            }
+
+            case 2:
+            {
+                if (Winsys3dData.Rattrapage_011be688 == 0 && e > c)
+                {
+                    do
+                    {
+                        PollMessages();
+                        c = RelireCompteur(out tops);
+                        e = *Winsys3dData.EcheancePerf_011be690;
+                    } while (e > c);
+                }
+
+                Winsys3dData.ImageAttendue_011be680 += nombre;
+                int produit = nombre * tops;
+                e += produit;
+                *Winsys3dData.EcheancePerf_011be690 = e;
+                if (e > c)
+                {
+                    *Winsys3dData.EcheancePerf_011be690 = c + produit;
+                    Winsys3dData.ImageAttendue_011be680 = nombre + Winsys3dData.VSyncCounter_00dedbf4;
+                }
+                return n == 1 ? 0xef : 1;
+            }
+
+            default:
+                return 1;
+        }
+    }
+
+    // ============================================================================================
+    // LA POMPE DE MESSAGES — `PollMessages` (784) et `FUN_00a01d70`, verifies au desassembleur
+    // (`Legacy/Raw/Winsys3d/FUN_00a01d60.disasm.txt`). Ici parce que l'attente d'image la fait
+    // tourner a chaque tour de boucle ; elle lit aussi les manettes (`Manettes.cs`).
+    // ============================================================================================
+
+    /// <summary>La case `+0x3c` de la vtable du device : non nul s'il faut continuer sans attendre de message.</summary>
+    private const int Device_Actif = 0x3c / 4;
+
+    /// <summary>
+    /// Ghidra: winsys3d.c PollMessages @ 0x00a01e20 (ordinal 784) — vide la file de messages, puis
+    /// lit les manettes.
+    /// </summary>
+    internal static void PollMessages()
+    {
+        ViderMessages();
+        Winsys3dManettes.LireManettes(1);
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a01d70 @ 0x00a01d70 — `PeekMessageA(PM_REMOVE)` en boucle. File
+    /// vide : si le device (`+0x3c`) rend 0, `WaitMessage` et on reboucle ; sinon on sort.
+    ///
+    /// Sur `WM_QUIT` : `DAT_00dedbf0 = 1`, l'extinction `FUN_00a069b0(-2)`, puis le filtre
+    /// d'exceptions `FUN_00a01d60` et `RaiseException(0xE0000001)`. Comme partout dans le depot, cette
+    /// exception est representee par l'exception managee de <c>Blaze.RaiseQuitException</c>, que le
+    /// demarrage rattrape la ou l'original reprend la main ; les trois lignes qui la suivent — la
+    /// restauration du filtre et `ExitProcess(1)` — ne s'executent que si l'exception est reprise,
+    /// et sont gardees telles quelles.
+    /// </summary>
+    private static void ViderMessages()
+    {
+        Blaze.Blaze.MSG message;
+        int encore;
+        do
+        {
+            encore = Win32.PeekMessageA(&message, System.IntPtr.Zero, 0, 0, 1);
+            if (encore == 0)
+            {
+                int actif = ((delegate* unmanaged[Thiscall]<void*, int>)Winsys3dData.DeviceVtable[Device_Actif])(
+                    Winsys3dData.Device_011be760);
+                if (actif == 0)
+                {
+                    Win32.WaitMessage();
+                    encore = 1;
+                }
+            }
+            else
+            {
+                if (message.message == 0x12)   // WM_QUIT
+                {
+                    Winsys3dData.QuitteRecu_00dedbf0 = 1;
+                    Winsys3dDevice.Unknown_00a069b0(-2);
+                    System.IntPtr precedent = Win32.SetUnhandledExceptionFilter(Winsys3dData.FiltreExceptions_00a01d60);
+                    Blaze.Blaze.RaiseQuitException();
+                    Win32.SetUnhandledExceptionFilter(precedent);
+                    Win32.ExitProcess(1);
+                }
+                Win32.TranslateMessage(&message);
+                Win32.DispatchMessageA(&message);
+            }
+        } while (encore != 0);
+    }
 }

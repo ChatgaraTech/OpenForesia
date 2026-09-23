@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 55 / 89 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 10 | 222 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 9 | 226 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -676,7 +676,20 @@ surprenant : `ChangeResolution` relit l'octet `+0x8c` de ce que rend `device[0x4
 64 bits (`__alldiv`) et range l'échéance `compteur + 3·tops`, le produit fait sur 32 bits.
 `QueryPerformanceCounter` rejoint `Interop/Win32.cs`. `winsys3d` passe à 222 corps, 10 points
 d'entrée. **Pas encore exercé** — l'écran d'options (`Options.cs`) appelle les trois réglages ;
-le rappel est posé au démarrage.
+le rappel est posé au démarrage. Testé en jeu par Vincent le même jour.
+
+**Lot 10, l'attente d'image (132)** : le `VSync(n)` de la `libgpu` et la pompe de messages qu'il
+fait tourner — `PollMessages` (784) et `FUN_00a01d70` — dans `Cadence.cs` ; `FUN_00a069b0` (680),
+l'extinction que la pompe appelle sur `WM_QUIT`, dans `Device.cs`, qui passe par l'export 789
+encore natif. **Transcrit sur le désassemblage** : Ghidra rendait les comparaisons 64 bits
+`échéance > compteur` en boucles imbriquées ; table de sauts relue à `0x00a05730`. Le
+`RaiseException(0xE0000001)` de `WM_QUIT` devient `Blaze.RaiseQuitException()`, la convention du
+dépôt. **LB-047** : le journal par image a 100 000 places et un indice sans borne ; à la 100 000ᵉ
+image, il écrit sur `VSyncDelayed`, les tops par image et son propre indice — reproduit jusqu'à
+l'ordre des lectures. `TranslateMessage`, `WaitMessage`, `SetUnhandledExceptionFilter` rejoignent
+`Interop/Win32.cs`. `winsys3d` passe à 226 corps, 9 points d'entrée. **Pas encore exercé** —
+c'est le cœur de la boucle : chaque image passe par 132. Une erreur se verrait tout de suite
+(jeu figé, trop rapide, ou saccadé), surtout après un choix sur la page « Timing ».
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

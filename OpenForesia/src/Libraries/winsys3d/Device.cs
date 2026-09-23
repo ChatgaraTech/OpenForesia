@@ -82,4 +82,12 @@ internal static unsafe class Winsys3dDevice
     /// l'initialisation (789) appelle apres avoir retabli le device. `ret 4`.
     /// </summary>
     internal static void SetDeviceLostCallback(void* rappel) => Winsys3dData.RappelDevice_011be798 = rappel;
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a069b0 @ 0x00a069b0 (ordinal 680) — `FUN_00a06420(p, 2)` : le
+    /// repartiteur d'initialisation (789) avec le second argument a 2. Appele par la pompe de
+    /// messages sur `WM_QUIT`, avec -2. Le repartiteur est encore natif : on passe par son export,
+    /// l'ordinal 789 de la facade. Role du 2 non etabli, d'ou le nom d'adresse.
+    /// </summary>
+    internal static void Unknown_00a069b0(int p) => OpenForesia.Blaze.Winsys3d.Ordinal_789(p, 2);
 }

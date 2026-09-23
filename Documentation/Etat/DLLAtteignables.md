@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 89 | 4 011 | 1 926 | 6 % | 55 |
-| `winsys3d` | 604 | 27 092 | 10 | 247 | 13 423 | 1 181 | 50 % | 222 |
+| `winsys3d` | 604 | 27 092 | 9 | 247 | 13 423 | 1 181 | 50 % | 226 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -305,22 +305,21 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**10 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
+**9 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
 soit **14 604 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
 1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 423 lignes,
 50 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**220 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**224 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (10)
+### Les points d'entree employes (9)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
 | 57 | — | `0x00a05060` | `FUN_00a05060` | 20 | **non** |
-| 132 | — | `0x00a053e0` | `FUN_00a053e0` | 143 | **non** |
 | 337 | — | `0x00a1df00` | `FUN_00a1df00` | 62 | oui |
 | 668 | — | `0x00a020a0` | `FUN_00a020a0` | 34 | **non** |
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | oui |
@@ -351,7 +350,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a226c0` | **`FUN_00a226c0`** | 170 | 0 | oui |
 | `0x00a010d0` | `FUN_00a010d0` | 164 | 1 | **non** |
 | `0x00a03980` | **`FUN_00a03980`** | 150 | 1 | oui |
-| `0x00a053e0` | **`FUN_00a053e0`** | 143 | 0 | **non** |
+| `0x00a053e0` | **`FUN_00a053e0`** | 143 | 0 | oui |
 | `0x00a0aa90` | **`FUN_00a0aa90`** | 132 | 1 | oui |
 | `0x00a271e0` | **`FUN_00a271e0`** | 129 | 1 | oui |
 | `0x00a09980` | **`FUN_00a09980`** | 128 | 1 | oui |
@@ -462,7 +461,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a05f50` | **`FUN_00a05f50`** | 43 | 0 | oui |
 | `0x00a01f00` | **`FUN_00a01f00`** | 42 | 1 | oui |
 | `0x00a05a00` | **`FUN_00a05a00`** | 42 | 0 | oui |
-| `0x00a01d70` | `FUN_00a01d70` | 41 | 1 | **non** |
+| `0x00a01d70` | **`FUN_00a01d70`** | 41 | 1 | oui |
 | `0x00a1d8b0` | `FUN_00a1d8b0` | 41 | 1 | **non** |
 | `0x00a23cf0` | **`FUN_00a23cf0`** | 41 | 1 | oui |
 | `0x00a026e0` | **`FUN_00a026e0`** | 40 | 0 | **non** |
@@ -559,7 +558,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a20fe0` | **`FUN_00a20fe0`** | 15 | 0 | oui |
 | `0x00a27820` | **`FUN_00a27820`** | 15 | 1 | oui |
 | `0x00a27850` | **`FUN_00a27850`** | 15 | 1 | oui |
-| `0x00a01e20` | `PollMessages` | 14 | 1 | **non** |
+| `0x00a01e20` | **`PollMessages`** | 14 | 1 | oui |
 | `0x00a02340` | **`FUN_00a02340`** | 14 | 1 | oui |
 | `0x00a04660` | **`FUN_00a04660`** | 14 | 0 | oui |
 | `0x00a050f0` | **`FUN_00a050f0`** | 14 | 0 | oui |
@@ -577,7 +576,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a050d0` | **`FUN_00a050d0`** | 13 | 0 | oui |
 | `0x00a05bb0` | **`FUN_00a05bb0`** | 13 | 0 | oui |
 | `0x00a06410` | **`FUN_00a06410`** | 13 | 0 | oui |
-| `0x00a069b0` | `FUN_00a069b0` | 13 | 1 | **non** |
+| `0x00a069b0` | **`FUN_00a069b0`** | 13 | 1 | oui |
 | `0x00a133e0` | **`FUN_00a133e0`** | 13 | 1 | oui |
 | `0x00a25c20` | **`FUN_00a25c20`** | 13 | 1 | oui |
 | `0x00a25c40` | **`FUN_00a25c40`** | 13 | 1 | oui |
@@ -713,7 +712,7 @@ sur du natif qu'il faudra rebrancher deux fois.
 | `timeSetEvent` | 1 | — |
 | `wsprintfA` | 1 | — |
 
-### Appeles par `Blaze.c`, pas encore importes (4)
+### Appeles par `Blaze.c`, pas encore importes (3)
 
 Ces ordinaux apparaissent dans la decompilation du jeu mais aucun `[DllImport]` ne les
 declare : la fonction appelante n'est pas encore transcrite. Ils rejoindront la
@@ -725,7 +724,6 @@ un plafond.
 | 28 | `0x00a046f0` | `FUN_00a046f0` | 13 |
 | 334 | `0x00a262a0` | `FUN_00a262a0` | 15 |
 | 336 | `0x00a26300` | `FUN_00a26300` | 13 |
-| 680 | `0x00a069b0` | `FUN_00a069b0` | 13 |
 
 
 ---

@@ -41,6 +41,11 @@ internal static unsafe class Win32
     // Appele par `SetTimingMode` de winsys3d (Libraries/winsys3d/Cadence.cs).
     [DllImport("kernel32.dll")] internal static extern int QueryPerformanceCounter(long* lpPerformanceCount);
 
+    // La pompe de messages de winsys3d, FUN_00a01d70 (Libraries/winsys3d/Cadence.cs).
+    [DllImport("user32.dll")] internal static extern int TranslateMessage(Blaze.MSG* lpMsg);
+    [DllImport("user32.dll")] internal static extern int WaitMessage();
+    [DllImport("kernel32.dll")] internal static extern IntPtr SetUnhandledExceptionFilter(IntPtr lpTopLevelExceptionFilter);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetModuleFileNameA(IntPtr hModule, byte* lpFilename, uint nSize);
 
     [DllImport("kernel32.dll")] internal static extern IntPtr HeapCreate(uint flOptions, nuint dwInitialSize, nuint dwMaximumSize);

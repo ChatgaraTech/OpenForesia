@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **l'attente d'image est en C#** — le `VSync(n)` de la libgpu (132) et la pompe de messages
+  `PollMessages` (784) dans `Cadence.cs`. `winsys3d` passe à 226 corps, 9 points d'entrée.
+  **Pas encore exercé**
+- doc : **LB-047** — le journal des attentes d'image a 100 000 places et un indice sans borne : à
+  la 100 000ᵉ image (~28 min), il écrase `VSyncDelayed` et la cadence. Transcrit tel quel
+- doc : les réglages du device (lot 9) testés en jeu par Vincent
+
 - feat : **les réglages du device et la cadence sont en C#** — `SetTextureFilterMode` (798),
   `ChangeResolution` (749) et le rappel de perte du device (790) dans `winsys3d/Device.cs`
   (fichier neuf), `SetTimingMode` (822) dans `Cadence.cs`. `winsys3d` passe à 222 corps,

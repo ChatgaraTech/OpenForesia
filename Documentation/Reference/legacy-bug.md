@@ -2103,3 +2103,38 @@ sur un axe, ce qui le sortirait vraisemblablement de l'écran de toute façon �
 
 **Reproduit tel quel** dans `src/Libraries/winsys3d/Matrices.cs`, les deux branches, avec le
 drapeau aliasé : c'est la MMX qui tourne.
+
+## LB-047 — Le journal des attentes d'image déborde à la 100 000ᵉ image sur les globales de la cadence
+
+**Où** : `winsys3d.c`, `FUN_00a053e0` @ `0x00a053e0` (ordinal 132, le `VSync(n)` de la `libgpu`),
+que le jeu appelle **une fois par image** depuis `FrameEnd` (`Screens/State00/MainMenu.cs`).
+**Trouvé à la lecture** le 2026-09-23 — non observé.
+
+À chaque appel, 132 incrémente `DAT_011be69c` puis écrit un enregistrement de 0x28 octets (compteur
+d'images, image attendue, compteur de performance, échéance, rattrapage, attente, retard, `n`) à
+`0x00dedd78 + indice * 0x28`. La zone fait **exactement 100 000 enregistrements** —
+`0x011be678 − 0x00dedd78 = 4 000 000` — et **l'indice n'est jamais borné ni remis à zéro** : aucune
+autre écriture de `DAT_011be69c` dans toute la DLL.
+
+Le 100 000ᵉ appel (≈ 27 min 47 s à 60 images/s) écrit donc son enregistrement **sur les globales
+de la cadence elles-mêmes** :
+
+| champ écrit | globale recouverte | conséquence |
+|---|---|---|
+| image attendue | `0x011be67c`, **`VSyncDelayed`** | non nul → `DrawOTag` et `PutDispEnv` sautent tout |
+| compteur, mot bas | `0x011be680`, l'image attendue | valeur sans rapport |
+| compteur, mot haut | `0x011be684`, **les tops par image** | quelques unités au lieu de ~166 667 |
+| échéance / rattrapage | `0x011be688 .. 0x011be694` | mélangés |
+| `n` | `0x011be69c`, **l'indice lui-même** | le journal repart de `n + 1` |
+
+**Conséquence** : en **mode de cadence 0**, le mode par défaut, l'image attendue vaut 0 tant que
+`SetTimingMode` n'a jamais été appelé, donc `VSyncDelayed` reçoit 0 et rien ne se voit : le mode 0
+ne consulte ni les tops ni le rattrapage. **Si le joueur est passé par la page « Timing »** des
+options, l'image attendue est non nulle : `VSyncDelayed` reste alors non nul pour toujours en
+mode 0 — plus aucune image dessinée ni présentée, **l'écran se fige**. En modes 1 à 3, les tops
+par image deviennent minuscules et la cadence est perdue. Non vérifié en jeu : il faut jouer près
+de 28 minutes d'affilée.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Cadence.cs`, jusqu'à l'ordre des lectures :
+les valeurs sont prises avant la première écriture, comme dans le binaire, pour que le
+recouvrement produise les mêmes valeurs.
