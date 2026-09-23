@@ -121,4 +121,48 @@ internal static unsafe class Winsys3dTim
 
         s_TimOuvert_011be790 = null;
     }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a1d8b0 @ 0x00a1d8b0 (ordinal 600) — `GetTimInfo(tim, info)` : decrit
+    /// une TIM (<paramref name="tim"/> pointe sur ses drapeaux, apres l'identifiant) dans un
+    /// `TIM_IMAGE` de 0x1c octets — mode `+0`, rectangle d'image `+4`, pixels `+0xc`, rectangle de
+    /// CLUT `+0x10`, CLUT `+0x18`. Sans lecture de flux ni etat : c'est `ReadTim` sur un pointeur
+    /// donne. `ret 8`, verifie au desassembleur.
+    ///
+    /// **Sans CLUT (bit 3 nul), le MODE est mis a zero** avec le rectangle et l'adresse de CLUT :
+    /// l'appelant ne voit plus la profondeur de l'image. Transcrit tel quel.
+    /// </summary>
+    internal static void GetTimInfo(uint* tim, byte* info)
+    {
+        uint drapeaux = tim[0];
+        int saut;
+        uint* clut;
+        if ((drapeaux & 8) == 0)
+        {
+            clut = null;
+            saut = 1;
+            *(uint*)info = 0;
+            *(ushort*)(info + 0x10) = 0;
+            *(ushort*)(info + 0x12) = 0;
+            *(ushort*)(info + 0x14) = 0;
+            *(ushort*)(info + 0x16) = 0;
+        }
+        else
+        {
+            *(uint*)info = drapeaux;
+            *(ushort*)(info + 0x10) = *(ushort*)((byte*)tim + 8);
+            *(ushort*)(info + 0x12) = *(ushort*)((byte*)tim + 0xa);
+            *(ushort*)(info + 0x14) = *(ushort*)((byte*)tim + 0xc);
+            *(ushort*)(info + 0x16) = *(ushort*)((byte*)tim + 0xe);
+            saut = (int)(tim[1] >> 2) + 1;
+            clut = tim + 4;
+        }
+        *(uint**)(info + 0x18) = clut;
+        byte* bloc = (byte*)tim + saut * 4;
+        *(ushort*)(info + 4) = *(ushort*)(bloc + 4);
+        *(ushort*)(info + 6) = *(ushort*)(bloc + 6);
+        *(ushort*)(info + 8) = *(ushort*)(bloc + 8);
+        *(ushort*)(info + 0xa) = *(ushort*)(bloc + 0xa);
+        *(byte**)(info + 0xc) = bloc + 0xc;
+    }
 }

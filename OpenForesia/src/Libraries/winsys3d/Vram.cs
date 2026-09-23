@@ -186,4 +186,49 @@ internal static unsafe class Winsys3dVram
                 Winsys3dCacheTextures.ViderPage(Winsys3dData.Objet_012141d4, rang + pageDebut + k);
         }
     }
+
+    // ============================================================================================
+    // `LoadTPage` ET `LoadClut` — ordinaux 696 et 695 (2026-09-23), verifies au desassembleur
+    // (`Legacy/Raw/Winsys3d/FUN_00a06070`, `FUN_00a06020`). Appeles par `FntLoad` (710).
+    //
+    // Tous deux rendent le code calcule par `mov ax, si` : seul le MOT BAS est pose, le mot haut
+    // est celui que l'appel au cache vient de laisser dans `eax`. Le C# rend le mot bas ; l'unique
+    // appelant masque par 0xffff.
+    // ============================================================================================
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a06070 @ 0x00a06070 (ordinal 696) — `LoadTPage(pixels, tp, abr, x,
+    /// y, w, h)` : charge l'image dans la VRAM au rectangle `(x, y, w >> (2 - tp), h)` — la largeur
+    /// en mots de 16 bits selon la profondeur —, puis rend le mot de page de texture
+    /// `((tp &amp; 3) &lt;&lt; 2 | abr &amp; 3) &lt;&lt; 5 | (y &amp; 0x100 | x >> 2 &amp; 0xf0) >> 4`, et
+    /// vide cette page du cache. `ret 1Ch`.
+    /// </summary>
+    internal static ushort LoadTPage(byte* pixels, int tp, int abr, int x, int y, int w, short h)
+    {
+        short* rect = stackalloc short[4];
+        rect[0] = (short)x;
+        rect[1] = (short)y;
+        rect[2] = (short)(w >> (2 - tp));
+        rect[3] = h;
+        LoadImage(rect, pixels);
+        Winsys3dSouches.RendZeroUnArgument();   // FUN_00a02e20(0)
+        int page = ((tp & 3) << 2 | abr & 3) << 5 | (y & 0x100 | x >> 2 & 0xf0) >> 4;
+        Winsys3dCacheTextures.ViderPage(Winsys3dData.Objet_012141d4, page);
+        return (ushort)page;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a06020 @ 0x00a06020 (ordinal 695) — `LoadClut(clut, x, y)` : copie
+    /// les 16 couleurs (huit mots) directement dans la VRAM a `(x, y)` — sans passer par
+    /// `LoadImage`, donc sans invalider de rectangle —, puis libere du cache ce qui dependait de
+    /// cette CLUT et rend son identifiant `(x >> 4) &amp; 0x3f | y &lt;&lt; 6`. `ret 0Ch`.
+    /// </summary>
+    internal static ushort LoadClut(uint* clut, int x, int y)
+    {
+        uint* vram = (uint*)(Winsys3dData.Vram_00b6dbd0 + (y * 0x400 + x) * 2);
+        for (int i = 0; i < 8; i++) vram[i] = clut[i];
+        int id = x >> 4 & 0x3f | y << 6;
+        Winsys3dCacheTextures.LibererParClut(Winsys3dData.Objet_012141d4, id, 0x10);
+        return (ushort)id;
+    }
 }

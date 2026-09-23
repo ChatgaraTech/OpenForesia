@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **les polices de `winsys3d` sont en C#** — `FntLoad` (710), `FntOpen` (668) et
+  `Krom2RawAdd` (57) dans `TexteEcran.cs`, avec `GetTimInfo`, `LoadTPage` et `LoadClut`.
+  `winsys3d` passe à 232 corps, 6 points d'entrée. **Pas encore exercé**
+- fix : la façade décrivait 710 comme la création d'un bitmap de taille donnée et 668 comme un
+  canal de console inutilisé ; ce sont `FntLoad(tx, ty)` et `FntOpen`
+- doc : l'attente d'image (lot 10) testée en jeu par Vincent
+
 - feat : **l'attente d'image est en C#** — le `VSync(n)` de la libgpu (132) et la pompe de messages
   `PollMessages` (784) dans `Cadence.cs`. `winsys3d` passe à 226 corps, 9 points d'entrée.
   **Pas encore exercé**

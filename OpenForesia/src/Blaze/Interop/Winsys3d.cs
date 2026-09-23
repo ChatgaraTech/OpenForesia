@@ -21,8 +21,8 @@ namespace OpenForesia.Blaze;
 internal static unsafe class Winsys3d
 {
     // winsys3d ordinal 57 (winsys3d.c FUN_00a05060) â€” maps a Shift-JIS code to a 16x16 1bpp glyph
-    // inside the KANJI resource the DLL locks at startup, or to a blank when it is out of range.
-    [DllImport("winsys3d.dll", EntryPoint = "#57")] internal static extern ushort* Ordinal_57(uint sjis);
+    // inside the KANJI resource the DLL locks at startup, or to a diagonal-line glyph (0x00a2c388) when out of range.
+    internal static ushort* Ordinal_57(uint sjis) => Libraries.Winsys3dTexteEcran.Krom2RawAdd(sjis); // PORTE 2026-09-23 — Libraries/winsys3d/TexteEcran.cs, libgpu Krom2RawAdd
 
     // winsys3d.dll ordinal 823 (named export). Role now fully confirmed by reading its body and
     // its callee chain in winsys3d.c (FUN_00a010d0 -> dialog proc FUN_00a012f0): despite the name,
@@ -356,7 +356,7 @@ internal static unsafe class Winsys3d
 
     internal static void Ordinal_667(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#668")] internal static extern int Ordinal_668(int a, int b, int c, int d, int e, int f); // real: winsys3d.c FUN_00a020a0, registers a debug/console text channel slot (unused feature in the shipped build)
+    internal static int Ordinal_668(int a, int b, int c, int d, int e, int f) => Libraries.Winsys3dTexteEcran.FntOpen(a, b, c, d, e, f); // PORTE 2026-09-23 — Libraries/winsys3d/TexteEcran.cs, libgpu FntOpen(x, y, w, h, isbg, n) : ouvre une fenetre de texte
 
     // real: winsys3d.c FUN_00a05d50 â€” libgpu `LoadImage(RECT*, u_long* data)`: copies `data` row by
     // row into the VRAM rectangle. `rect` is a 4-short RECT {x,y,w,h}, and the body early-outs on
@@ -385,7 +385,7 @@ internal static unsafe class Winsys3d
 
     internal static void Ordinal_681(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#710")] internal static extern void Ordinal_710(int width, int height); // real: winsys3d.c FUN_00a026e0, (re)creates the DLL's text/console overlay bitmap at the given size
+    internal static void Ordinal_710(int width, int height) => Libraries.Winsys3dTexteEcran.FntLoad(width, height); // PORTE 2026-09-23 — Libraries/winsys3d/TexteEcran.cs, libgpu FntLoad(tx, ty) : les deux arguments sont la position VRAM de la police, pas une taille
 
     internal static void Ordinal_712(int a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 

@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 55 / 89 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 9 | 226 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 6 | 232 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -689,7 +689,27 @@ image, il écrit sur `VSyncDelayed`, les tops par image et son propre indice —
 l'ordre des lectures. `TranslateMessage`, `WaitMessage`, `SetUnhandledExceptionFilter` rejoignent
 `Interop/Win32.cs`. `winsys3d` passe à 226 corps, 9 points d'entrée. **Pas encore exercé** —
 c'est le cœur de la boucle : chaque image passe par 132. Une erreur se verrait tout de suite
-(jeu figé, trop rapide, ou saccadé), surtout après un choix sur la page « Timing ».
+(jeu figé, trop rapide, ou saccadé), surtout après un choix sur la page « Timing ». Testé en jeu
+par Vincent le même jour.
+
+**Lot 11, les polices** : les trois derniers points d'entrée isolés, identifiés par leurs corps
+comme la `libgpu` — `FntLoad` (710), `FntOpen` (668) et `Krom2RawAdd` (57) — dans
+`TexteEcran.cs`, qui dessinait déjà ce qu'ils alimentent ; et leurs appelées aux fichiers de leur
+sujet : `GetTimInfo` (600) dans `Tim.cs`, `LoadTPage` (696) et `LoadClut` (695) dans `Vram.cs`.
+Lus au désassembleur :
+
+- la façade nommait `FntLoad(width, height)` et « overlay bitmap » : ce sont la **position VRAM**
+  de la police, `(0x3c0, 0)` ; `FntOpen` était décrit comme « canal de console inutilisé » ;
+- `FntLoad` charge **deux copies de la CLUT**, première couleur forcée à 0x8000 puis à 0 ;
+- `FntOpen` rend le nombre de fenêtres **après** l'ouverture, pas l'indice (le `FntOpen` de Sony
+  rend l'indice) ;
+- `GetTimInfo` met le **mode à zéro** pour une TIM sans CLUT ;
+- `LoadTPage`/`LoadClut` ne posent que le mot bas de leur résultat (`mov ax, si`) ;
+- `Krom2RawAdd` rend, hors table, une diagonale 16 × 16 (`0x00a2c388`), pas un blanc.
+
+`winsys3d` passe à 232 corps, 6 points d'entrée. **Pas encore exercé** — `FntLoad`/`FntOpen`
+tournent une fois au démarrage, et `UiText.cs` passe par 57 pour chaque kanji affiché : une erreur
+se verrait sur le texte japonais, ou sur les fenêtres de texte de `DrawOTag`.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

@@ -845,6 +845,15 @@ internal static unsafe class Winsys3dData
     /// </summary>
     internal static IntPtr FiltreExceptions_00a01d60 => (IntPtr)At(0x00a01d60);
 
+    /// <summary>DAT_011be6d4 — la TIM de la police 8 x 16, une ressource de la DLL (`LockResource` a l'initialisation). `FntLoad` la lit a +4.</summary>
+    internal static ref byte* PoliceTim_011be6d4 => ref *(byte**)At(0x011be6d4);
+
+    /// <summary>DAT_00b6d5b0 — la police kanji 16 x 16, une ressource de la DLL : un index de `short` par code Shift-JIS depuis 0x8140, puis les dessins (32 octets) a +0x2e64.</summary>
+    internal static ref byte* PoliceKanji_00b6d5b0 => ref *(byte**)At(0x00b6d5b0);
+
+    /// <summary>&amp;DAT_00a2c388 — le dessin rendu pour un code hors table : une diagonale de 16 x 16 (`0x0001, 0x0002, 0x0004`…).</summary>
+    internal static byte* GlypheParDefaut_00a2c388 => At(0x00a2c388);
+
     /// <summary>DAT_011d0820 — la distance de projection `h` du GTE, posee par `SetGeomScreen` (379).</summary>
     internal static ref int DistanceEcran_011d0820 => ref *(int*)At(0x011d0820);
 

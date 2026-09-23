@@ -278,4 +278,82 @@ internal static unsafe class Winsys3dTexteEcran
     }
 
     private static byte* Fenetre(int i) => Winsys3dData.FenetresTexte_00a2e8f0 + i * TailleFenetre;
+
+    // ============================================================================================
+    // CE QUI ALIMENTE LES FENETRES — `FntLoad` (710), `FntOpen` (668), et la police kanji (57)
+    // (2026-09-23), verifies au desassembleur (`Legacy/Raw/Winsys3d/FUN_00a026e0`, `FUN_00a020a0`,
+    // `FUN_00a05060`). Le jeu appelle les deux premiers une fois, au demarrage
+    // (`Platform/Startup.cs`) : `FntLoad(0x3c0, 0)` puis `FntOpen(8, 0x20, 0xe0, 200, 0, 0x200)`.
+    // ============================================================================================
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a026e0 @ 0x00a026e0 (ordinal 710) — `FntLoad(tx, ty)` : charge la
+    /// police (la TIM ressource de la DLL) dans la VRAM a `(tx, ty)` en 256 x 128, et retient sa
+    /// page de texture. Si la TIM porte une CLUT, en charge **deux copies** a la suite de l'image
+    /// — l'une avec sa premiere couleur forcee a 0x8000 (noir opaque), a `(tx, ty)`, l'autre avec 0
+    /// (transparent), a `(tx + 0x20, ty)` — et retient leurs deux identifiants. `ret 8`.
+    /// </summary>
+    internal static void FntLoad(int tx, int ty)
+    {
+        byte* info = stackalloc byte[0x1c];
+        Winsys3dTim.GetTimInfo((uint*)(Winsys3dData.PoliceTim_011be6d4 + 4), info);
+        Winsys3dData.PagePolice_00a2c198 =
+            Winsys3dVram.LoadTPage(*(byte**)(info + 0xc), 0, 0, tx, ty, 0x100, 0x80) & 0xffff;
+        if ((info[0] & 8) == 0) return;
+
+        uint* clut = stackalloc uint[8];
+        uint* source = *(uint**)(info + 0x18);
+        for (int i = 0; i < 8; i++) clut[i] = source[i];
+        *(ushort*)clut = 0x8000;
+        Winsys3dData.ClutPoliceAutre_00a2ea34 = Winsys3dVram.LoadClut(clut, tx, ty) & 0xffff;
+        *(ushort*)clut = 0;
+        Winsys3dData.ClutPolice_00a2ea38 = Winsys3dVram.LoadClut(clut, tx + 0x20, ty) & 0xffff;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a020a0 @ 0x00a020a0 (ordinal 668) — `FntOpen(x, y, w, h, isbg, n)` :
+    /// ouvre une fenetre de texte si l'une des huit est libre — ses six parametres, deux compteurs a
+    /// zero, et un tampon de `n + 1` octets (`Malloc` de `wsyskern`). `ret 18h`.
+    ///
+    /// **Rend le nombre de fenetres APRES l'ouverture** — donc l'indice de la nouvelle plus un — et,
+    /// si les huit sont prises, le nombre courant sans rien ouvrir. Le `FntOpen` de Sony rend
+    /// l'indice ; le jeu, lui, garde ce qu'on lui rend.
+    /// </summary>
+    internal static int FntOpen(int x, int y, int w, int h, int isbg, int n)
+    {
+        int nombre = Winsys3dData.NombreFenetresTexte_00a2ea98;
+        if (nombre >= 8) return nombre;
+
+        int* f = (int*)Fenetre(nombre);
+        f[0] = x;
+        f[1] = y;
+        f[2] = w;
+        f[3] = h;
+        f[4] = isbg;
+        f[5] = n;
+        f[6] = 0;
+        f[7] = 0;
+        void* tampon = Blaze.Wsyskern.Malloc(n + 1);
+        int indice = Winsys3dData.NombreFenetresTexte_00a2ea98;   // relu apres l'appel
+        Winsys3dData.NombreFenetresTexte_00a2ea98 = indice + 1;
+        ((int*)Fenetre(indice))[8] = (int)tampon;
+        return indice + 1;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a05060 @ 0x00a05060 (ordinal 57) — `Krom2RawAdd(code)` : l'adresse
+    /// du dessin 16 x 16 d'un caractere Shift-JIS dans la police kanji. Entre 0x8140 et 0x9872
+    /// (non signe), l'index `short` de la table donne le dessin, 32 octets a `+0x2e64` ; hors plage,
+    /// ou pour un index -1, la diagonale de `0x00a2c388`. `ret 4`.
+    /// </summary>
+    internal static ushort* Krom2RawAdd(uint code)
+    {
+        if (code >= 0x8140 && code <= 0x9872)
+        {
+            byte* police = Winsys3dData.PoliceKanji_00b6d5b0;
+            int indice = *(short*)(police + code * 2 - 0x10280);
+            if (indice != -1) return (ushort*)(police + indice * 0x20 + 0x2e64);
+        }
+        return (ushort*)Winsys3dData.GlypheParDefaut_00a2c388;
+    }
 }
