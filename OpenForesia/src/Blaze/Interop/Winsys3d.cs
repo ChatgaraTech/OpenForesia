@@ -194,7 +194,10 @@ internal static unsafe class Winsys3d
     // geometry engine), the sibling of the libgpu ordinals below. Identified from their bodies:
     internal static void Ordinal_376(byte r, byte g, byte b) => Libraries.Winsys3dMatrices.SetBackColor(r, g, b); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetBackColor
 
-    [DllImport("winsys3d.dll", EntryPoint = "#379")] internal static extern void Ordinal_379(int h); // real: winsys3d.c FUN_00a21040 â€” libgte SetGeomScreen: stores the projection distance, then rebuilds the 0x10000-entry reciprocal table at EXT_011d0898
+    // real: winsys3d.c FUN_00a21040 — libgte SetGeomScreen: stores the projection distance, rebuilds the
+    // 0x10000-entry reciprocal table at EXT_011d0898, then updates the device projection (FUN_00a1dbc0,
+    // which calls wsyskern ProjectionMatrix — also ported, Libraries/wsyskern/Matrices.cs).
+    internal static void Ordinal_379(int h) => Libraries.Winsys3dMatrices.SetGeomScreen(h); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs
 
     /// <summary>
     /// Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25d10 @ 0x00a25d10 —

@@ -29,8 +29,8 @@
 // sont la memoire de la DLL, un corps porte et un corps natif les partagent. Neuf corps de plus
 // sont ici — les reglages 366, 367, 368, 369, 376, 378 et les calculs 792, 439, 442 (voir plus
 // bas). Puis 360, 418 et 795, les trois corps a deux branches MMX / scalaire (voir la fin du
-// fichier). Reste natif 379 (`SetGeomScreen`, qui entraine la matrice de projection de
-// `wsyskern`).
+// fichier). Enfin 379 (`SetGeomScreen`) et 564, avec la matrice de projection de `wsyskern`
+// (`wsyskern/Matrices.cs`) : tout le GTE importe est porte.
 //
 // ============================================================================================
 // CE QUE LE CORPS CALCULE
@@ -241,6 +241,76 @@ internal static unsafe class Winsys3dMatrices
     // ============================================================================================
 
     private static bool Mmx => Winsys3dData.MmxInstalle_00dedbe8 != 0;
+
+    // ============================================================================================
+    // `SetGeomScreen` ET LA PROJECTION DU DEVICE — 379 et 564 (2026-09-23), verifies au
+    // desassembleur (`Legacy/Raw/Winsys3d/FUN_00a21040`, `FUN_00a1dbc0`).
+    //
+    // La distance `h` sert deux fois : au GTE emule, sous la forme de la table `(h << 12) / z`
+    // que 418 et 795 relisent, et au device, sous la forme d'un angle de champ
+    // `2 . atan((largeur / 2) / h)` passe a `ProjectionMatrix` de `wsyskern`.
+    // ============================================================================================
+
+    /// <summary>La case `+0x78` de la vtable du device : reçoit la matrice de projection (`__thiscall`, un argument).</summary>
+    private const int Device_PoserProjection = 0x78 / 4;
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a21040 @ 0x00a21040 (ordinal 379) — `SetGeomScreen(h)` : range
+    /// `h`, reconstruit la table de projection pour les 65 536 profondeurs signees, puis met a
+    /// jour la projection du device. `ret 4`.
+    ///
+    /// Pour chaque `z` de -32768 a 32767 : `(h << 12) / z` en division SIGNEE (`idiv`), range
+    /// s'il tient dans 16 bits NON SIGNES (`test eax, 0FFFF0000h`), sinon 0x7fff. Un quotient
+    /// negatif a ses bits hauts poses : **toute profondeur negative sature a 0x7fff**, comme `z = 0`.
+    /// Et un quotient entre 0x8000 et 0xffff passe le test et se range tel quel — relu en `short`,
+    /// il devient negatif. Transcrit tel quel.
+    /// </summary>
+    internal static void SetGeomScreen(int h)
+    {
+        Winsys3dData.DistanceEcran_011d0820 = h;
+        short* table = Winsys3dData.TableProjection_011d0898;
+        int numerateur = h << 12;
+        for (int z = -0x8000; z < 0x8000; z++)
+        {
+            if (z == 0)
+                table[0] = 0x7fff;
+            else
+            {
+                int quotient = numerateur / z;
+                table[z & 0xffff] = (quotient & unchecked((int)0xffff0000)) == 0 ? (short)quotient : (short)0x7fff;
+            }
+        }
+        MettreAJourProjection(h);
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a1dbc0 @ 0x00a1dbc0 (ordinal 564) — range `h`, calcule l'angle de
+    /// champ, fait construire la matrice par `ProjectionMatrix` de `wsyskern` sur la pile, et la
+    /// passe au device. `ret 4`.
+    ///
+    /// La demi-largeur est `(short) disp.w / 2` arrondi vers zero (`cdq ; sub ; sar`). L'angle est
+    /// `fpatan(demi / h, 1)` double par `fadd st0, st0`, puis arrondi en `float` ; proche et
+    /// lointain sont des `int` convertis en `float`. Ecart assume : `double` au lieu de la
+    /// precision etendue du 387, avant l'arrondi en `float` — voir `wsyskern/Matrices.cs`.
+    ///
+    /// **La vtable est lue AVANT l'appel a `ProjectionMatrix`** (`mov esi,[ecx]`), le device relu
+    /// APRES (`mov ecx,[11BE760h]`) : l'ordre est garde.
+    /// </summary>
+    internal static void MettreAJourProjection(int h)
+    {
+        Winsys3dData.DistanceDevice_00a2c5f8 = h;
+        void** vtable = Winsys3dData.DeviceVtable;
+
+        int demiLargeur = Winsys3dData.DispLargeur_011be6bc / 2;
+        float champ = (float)(2.0 * System.Math.Atan((double)demiLargeur / h));
+
+        float* matrice = stackalloc float[16];
+        float* resultat = WsyskernMatrices.ProjectionMatrix(matrice,
+            Winsys3dData.PlanProche_00a2c5f0, Winsys3dData.PlanLointain_00a2c5f4, champ);
+
+        ((delegate* unmanaged[Thiscall]<void*, float*, void>)vtable[Device_PoserProjection])(
+            Winsys3dData.Device_011be760, resultat);
+    }
 
     /// <summary>
     /// Ghidra: winsys3d.c FUN_00a1f8f0 @ 0x00a1f8f0 (ordinal 345) — la rotation d'un vecteur court

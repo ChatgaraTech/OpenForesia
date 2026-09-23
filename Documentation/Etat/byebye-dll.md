@@ -13,8 +13,8 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
-| `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 16 | 210 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `wsyskern` | **2** (`Malloc`, `Free`) | 55 / 89 | les 2 sont des passerelles de tas, voir ci-dessous |
+| `winsys3d` | 15 | 212 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -608,11 +608,8 @@ feu) : neuf corps de la `libgte` dans `Matrices.cs`, qui les attendait — `SetR
 courts (792), `VectorNormal` (439) et `SquareRoot0` (442). **L'aliasing lève la « masse » GTE** :
 les registres sont la mémoire de la DLL. `winsys3d` passe à 200 corps, 24 points d'entrée.
 
-**Reste du GTE** (360, 418 et 795 sont partis au lot 6) : `SetGeomScreen` (379), qui entraîne
-`FUN_00a1dbc0` (564) et, côté `wsyskern`, `ProjectionMatrix` (ordinal 21) et `ZeroMatrix` : les
-porter demande un fichier de matrices dans `Libraries/wsyskern/`. `ProjectionMatrix` calcule en
-x87 (`fsin`/`fcos` en précision étendue, `m[14]` avec le quotient non arrondi) ; relevé sous
-`Legacy/Raw/Wsyskern/ProjectionMatrix.disasm.txt`.
+**Le GTE importé est entièrement porté** depuis le lot 7 (plus bas) ; 360, 418 et 795 étaient
+partis au lot 6.
 
 **Lot 5, les événements `libapi`** : `OpenEvent` (6), `TestEvent` (9), `DeliverEvent` (12) et les
 livraisons de fin d'opération carte (67 = 69, 68), dans `Evenements.cs` — qui les disait « dans la
@@ -631,6 +628,27 @@ décale chaque moitié de `pmaddwd` avant la somme et ne garde que 16 bits de la
 l'envers (`destMatrix` en premier) : corrigé, les sites passaient déjà le bon ordre.
 `winsys3d` passe à 210 corps, 16 points d'entrée. **Pas encore exercé** — une erreur se verrait
 sur tous les modèles 3D (déformés, déplacés ou absents) ; `Model3d.cs` passe par les trois.
+Testé en jeu par Vincent le même jour.
+
+**Lot 7, `SetGeomScreen` (379) — la fin du GTE** : `SetGeomScreen` et la mise à jour de la
+projection du device (`FUN_00a1dbc0`, 564) dans `winsys3d/Matrices.cs` ; côté `wsyskern`,
+`ZeroMatrix` (30) et `ProjectionMatrix` (21) dans **`wsyskern/Matrices.cs`** (fichier neuf,
+validé par Vincent). Trois choses lues au désassembleur :
+
+- `ZeroMatrix` n'est que `mov eax, 100581B8h ; ret` — l'adresse d'un bloc non initialisé que
+  rien n'écrit. Remplacé par un tableau de seize zéros **épinglé** (son adresse sort de la
+  fonction, elle ne doit pas bouger) ;
+- `ProjectionMatrix` est la matrice D3D du SDK DirectX 5 (`m[0] = m[5] = cos`, `m[10] = Q`,
+  `m[11] = sin`, `m[14] = −Q·near`, avec `Q = (float)sin / (1 − near/far)`) ; `m[14]` part du Q
+  **non arrondi**, resté sur la pile x87. Écart assumé : `double` au lieu de la précision étendue,
+  avant l'arrondi en `float` ;
+- la table `(h << 12) / z` de `SetGeomScreen` ne teste que les 16 bits hauts : toute profondeur
+  négative sature à 0x7fff, et un quotient de 0x8000 à 0xffff se range tel quel, relu négatif.
+
+Relevés : `FUN_00a21040`, `FUN_00a1dbc0` sous `Legacy/Raw/Winsys3d/`, `ProjectionMatrix` sous
+`Legacy/Raw/Wsyskern/`. `winsys3d` passe à 212 corps, 15 points d'entrée. **Pas encore exercé** —
+une erreur se verrait sur la perspective : un champ de vision faux étire ou écrase toute la scène
+3D, et une table fausse déforme les modèles avec la profondeur.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

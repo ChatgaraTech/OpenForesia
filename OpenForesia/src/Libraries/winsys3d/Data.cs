@@ -769,6 +769,24 @@ internal static unsafe class Winsys3dData
     /// </summary>
     internal static ref int MmxInstalle_00dedbe8 => ref *(int*)At(0x00dedbe8);
 
+    /// <summary>DAT_011d0820 — la distance de projection `h` du GTE, posee par `SetGeomScreen` (379).</summary>
+    internal static ref int DistanceEcran_011d0820 => ref *(int*)At(0x011d0820);
+
+    /// <summary>
+    /// _DAT_00a2c5f0 — le plan proche de la projection du device, un `int` (`fild`). Vaut 1 au
+    /// chargement ; ecrit par `FUN_00a1dae0` (631) — son jumeau `FUN_00a1db50` (632) ecrit le lointain —, que rien d'atteint n'appelle.
+    /// </summary>
+    internal static ref int PlanProche_00a2c5f0 => ref *(int*)At(0x00a2c5f0);
+
+    /// <summary>_DAT_00a2c5f4 — le plan lointain, 0x01388000 (20 480 000) au chargement.</summary>
+    internal static ref int PlanLointain_00a2c5f4 => ref *(int*)At(0x00a2c5f4);
+
+    /// <summary>
+    /// _DAT_00a2c5f8 — la distance de projection vue du device (1000 au chargement), la copie que
+    /// `FUN_00a1dbc0` (564) garde de <see cref="DistanceEcran_011d0820"/>.
+    /// </summary>
+    internal static ref int DistanceDevice_00a2c5f8 => ref *(int*)At(0x00a2c5f8);
+
     /// <summary>
     /// Les quatre tables de la racine carree, remplies a l'initialisation de la DLL et relues par
     /// les ordinaux 439 et 442 : une par ordre de grandeur de l'argument.
