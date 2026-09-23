@@ -6,6 +6,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **les réglages du device et la cadence sont en C#** — `SetTextureFilterMode` (798),
+  `ChangeResolution` (749) et le rappel de perte du device (790) dans `winsys3d/Device.cs`
+  (fichier neuf), `SetTimingMode` (822) dans `Cadence.cs`. `winsys3d` passe à 222 corps,
+  10 points d'entrée. **Pas encore exercé**
+- doc : l'éclairage (lot 8) testé en jeu par Vincent
+
 - feat : **l'éclairage du GTE émulé est en C#** — la passe par triangles (793), `NormalColorCol3`
   et ses appelées dans `winsys3d/Eclairage.cs` (fichier neuf), `ApplyMatrixLV` dans
   `Matrices.cs`. `winsys3d` passe à 218 corps, 14 points d'entrée. **Pas encore exercé**

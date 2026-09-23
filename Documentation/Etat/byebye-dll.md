@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 55 / 89 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 14 | 218 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 10 | 222 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -664,7 +664,19 @@ passe par triangles `FUN_00a03e70`, `NormalColorCol3` (`24000`, 407) et ses troi
   assumé, `Math.Pow` ; `__ftol` reproduit jusqu'à son 0x80000000 hors plage.
 
 `winsys3d` passe à 218 corps, 14 points d'entrée. **Pas encore exercé** — une erreur se verrait sur
-la couleur des modèles 3D éclairés (trop sombres, saturés, ou teintés).
+la couleur des modèles 3D éclairés (trop sombres, saturés, ou teintés). Testé en jeu par Vincent
+le même jour.
+
+**Lot 9, les réglages du device et la cadence** : `winsys3d/Device.cs` (fichier neuf, validé par
+Vincent) pour `SetTextureFilterMode` (798), `ChangeResolution` (749) et le rappel de perte du device
+(790) ; `SetTimingMode` (822) dans `Cadence.cs`, qui annonçait ce voisinage. `Device.cs` est aussi
+la place prévue pour 789, 823 et 750, qui partiront ensemble. Lus au désassembleur, rien de
+surprenant : `ChangeResolution` relit l'octet `+0x8c` de ce que rend `device[0x4c]` et pose
+`DAT_00b2d188` quand son bit 3 manque ; `SetTimingMode` divise le compteur de performance sur
+64 bits (`__alldiv`) et range l'échéance `compteur + 3·tops`, le produit fait sur 32 bits.
+`QueryPerformanceCounter` rejoint `Interop/Win32.cs`. `winsys3d` passe à 222 corps, 10 points
+d'entrée. **Pas encore exercé** — l'écran d'options (`Options.cs`) appelle les trois réglages ;
+le rappel est posé au démarrage.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

@@ -559,7 +559,10 @@ internal static unsafe class Winsys3dData
     /// <summary>&amp;DAT_00b2d080 — l'ADRESSE d'une table de 256 octets : composante 5 bits (x 8) -> composante 8 bits de la palette DIB.</summary>
     internal static byte* Composantes_00b2d080 => (byte*)At(0x00b2d080);
 
-    /// <summary>DAT_00b2d188 — nul, le genre 1 est ramene au genre 0 au chargement.</summary>
+    /// <summary>
+    /// DAT_00b2d188 — nul au chargement : le genre 1 est alors ramene au genre 0. `ChangeResolution`
+    /// (749) le pose a 1 quand le device n'a pas le bit 3 de l'octet `+0x8c` de ses capacites.
+    /// </summary>
     internal static ref int Genre1Permis_00b2d188 => ref *(int*)At(0x00b2d188);
 
     // ----------------------------------------------------------------------------------------
@@ -775,6 +778,43 @@ internal static unsafe class Winsys3dData
     /// passe a `NormalColorCol3`.
     /// </summary>
     internal static byte* CouleurEclairage_00b6d198 => (byte*)At(0x00b6d198);
+
+    // ----------------------------------------------------------------------------------------
+    // Les reglages du device — `Device.cs` — et la cadence — `Cadence.cs`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>DAT_00a2c508 — le dernier mode de filtrage demande a `SetTextureFilterMode` (798).</summary>
+    internal static ref int FiltreTexture_00a2c508 => ref *(int*)At(0x00a2c508);
+
+    /// <summary>&amp;DAT_00a2c4a8 — les largeurs des modes d'affichage : 320, 512, 640, 800, 1024, puis 0.</summary>
+    internal static int* LargeursModes_00a2c4a8 => (int*)At(0x00a2c4a8);
+
+    /// <summary>&amp;DAT_00a2c4c0 — les hauteurs : 240, 384, 480, 600, 768, puis 0.</summary>
+    internal static int* HauteursModes_00a2c4c0 => (int*)At(0x00a2c4c0);
+
+    /// <summary>
+    /// DAT_011be798 — le rappel que l'initialisation (789) appelle apres avoir retabli le device,
+    /// pose par l'ordinal 790. Le jeu y range `Audio.DeviceInitCallback`.
+    /// </summary>
+    internal static ref void* RappelDevice_011be798 => ref *(void**)At(0x011be798);
+
+    /// <summary>DAT_00a2c3b0 — le mode de cadence, que `SetTimingMode` (822) echange et que 132 aiguille.</summary>
+    internal static ref int ModeCadence_00a2c3b0 => ref *(int*)At(0x00a2c3b0);
+
+    /// <summary>DAT_00dedd70 — le dernier `QueryPerformanceCounter`, 64 bits.</summary>
+    internal static long* CompteurPerf_00dedd70 => (long*)At(0x00dedd70);
+
+    /// <summary>DAT_011be684 — les tops de `QueryPerformanceCounter` par image, un `int` (sign-etendu dans les calculs 64 bits).</summary>
+    internal static ref int TopsParImage_011be684 => ref *(int*)At(0x011be684);
+
+    /// <summary>`VSyncCounter` @ 0x00dedbf4 — le compteur d'images ecoulees, donnee exportee.</summary>
+    internal static ref int VSyncCounter_00dedbf4 => ref *(int*)At(0x00dedbf4);
+
+    /// <summary>DAT_011be680 — l'image a attendre, en unites de `VSyncCounter`.</summary>
+    internal static ref int ImageAttendue_011be680 => ref *(int*)At(0x011be680);
+
+    /// <summary>DAT_011be690 — l'echeance en tops de compteur, 64 bits (mot haut a 0x011be694).</summary>
+    internal static long* EcheancePerf_011be690 => (long*)At(0x011be690);
 
     /// <summary>DAT_011d0820 — la distance de projection `h` du GTE, posee par `SetGeomScreen` (379).</summary>
     internal static ref int DistanceEcran_011d0820 => ref *(int*)At(0x011d0820);

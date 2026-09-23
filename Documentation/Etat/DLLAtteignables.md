@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 89 | 4 011 | 1 926 | 6 % | 55 |
-| `winsys3d` | 604 | 27 092 | 14 | 247 | 13 423 | 1 181 | 50 % | 218 |
+| `winsys3d` | 604 | 27 092 | 10 | 247 | 13 423 | 1 181 | 50 % | 222 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -305,17 +305,17 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**14 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
+**10 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
 soit **14 604 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
 1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 423 lignes,
 50 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**216 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**220 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (14)
+### Les points d'entree employes (10)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
@@ -325,13 +325,9 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 668 | — | `0x00a020a0` | `FUN_00a020a0` | 34 | **non** |
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | oui |
 | 710 | — | `0x00a026e0` | `FUN_00a026e0` | 40 | **non** |
-| 749 | `ChangeResolution` | `0x00a069c0` | `ChangeResolution` | 28 | **non** |
 | 750 | — | `0x00a01e30` | `FUN_00a01e30` | 12 | **non** |
 | 756 | `CreateTranslationTables` | `0x00a02f50` | `CreateTranslationTables` | 64 | **non** |
 | 789 | — | `0x00a06420` | `FUN_00a06420` | 186 | **non** |
-| 790 | — | `0x00a06410` | `FUN_00a06410` | 13 | **non** |
-| 798 | `SetTextureFilterMode` | `0x00a063d0` | `SetTextureFilterMode` | 21 | **non** |
-| 822 | `SetTimingMode` | `0x00a05260` | `SetTimingMode` | 29 | **non** |
 | 823 | `Setup3DDevice` | `0x00a01910` | `Setup3DDevice` | 118 | **non** |
 
 ### La cloture — ce qu'il faut transcrire (247 fonctions, 13 423 lignes)
@@ -495,11 +491,11 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a269b0` | **`FUN_00a269b0`** | 30 | 1 | oui |
 | `0x00a27730` | **`FUN_00a27730`** | 30 | 1 | oui |
 | `0x00a278c0` | **`FUN_00a278c0`** | 30 | 2 | oui |
-| `0x00a05260` | **`SetTimingMode`** | 29 | 0 | **non** |
+| `0x00a05260` | **`SetTimingMode`** | 29 | 0 | oui |
 | `0x00a1cff0` | **`FUN_00a1cff0`** | 29 | 1 | oui |
 | `0x00a275e0` | **`FUN_00a275e0`** | 29 | 1 | oui |
 | `0x00a06070` | `FUN_00a06070` | 28 | 1 | **non** |
-| `0x00a069c0` | **`ChangeResolution`** | 28 | 0 | **non** |
+| `0x00a069c0` | **`ChangeResolution`** | 28 | 0 | oui |
 | `0x00a03db0` | **`FUN_00a03db0`** | 27 | 33 | oui |
 | `0x00a06160` | **`FUN_00a06160`** | 27 | 0 | oui |
 | `0x00a27180` | **`FUN_00a27180`** | 27 | 1 | oui |
@@ -529,7 +525,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a059e0` | **`FUN_00a059e0`** | 21 | 0 | oui |
 | `0x00a05b10` | **`FUN_00a05b10`** | 21 | 0 | oui |
 | `0x00a05b30` | **`FUN_00a05b30`** | 21 | 0 | oui |
-| `0x00a063d0` | **`SetTextureFilterMode`** | 21 | 2 | **non** |
+| `0x00a063d0` | **`SetTextureFilterMode`** | 21 | 2 | oui |
 | `0x00a20540` | **`FUN_00a20540`** | 21 | 0 | oui |
 | `0x00a20eb0` | **`FUN_00a20eb0`** | 21 | 0 | oui |
 | `0x00a20ed0` | **`FUN_00a20ed0`** | 21 | 0 | oui |
@@ -580,7 +576,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a04fe0` | **`FUN_00a04fe0`** | 13 | 0 | oui |
 | `0x00a050d0` | **`FUN_00a050d0`** | 13 | 0 | oui |
 | `0x00a05bb0` | **`FUN_00a05bb0`** | 13 | 0 | oui |
-| `0x00a06410` | **`FUN_00a06410`** | 13 | 0 | **non** |
+| `0x00a06410` | **`FUN_00a06410`** | 13 | 0 | oui |
 | `0x00a069b0` | `FUN_00a069b0` | 13 | 1 | **non** |
 | `0x00a133e0` | **`FUN_00a133e0`** | 13 | 1 | oui |
 | `0x00a25c20` | **`FUN_00a25c20`** | 13 | 1 | oui |

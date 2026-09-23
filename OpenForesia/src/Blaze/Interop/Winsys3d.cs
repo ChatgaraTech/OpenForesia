@@ -75,7 +75,7 @@ internal static unsafe class Winsys3d
     /// <summary>Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25c40 @ 0x00a25c40.</summary>
     internal static uint GetSinTableEntry(int index) => Libraries.Winsys3dTrigonometrie.Rsin((uint)index);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#790")] internal static extern void SetDeviceLostCallback(void* callback);
+    internal static void SetDeviceLostCallback(void* callback) => Libraries.Winsys3dDevice.SetDeviceLostCallback(callback); // PORTE 2026-09-23 — Libraries/winsys3d/Device.cs, ordinal 790
 
     // The following winsys3d.dll ordinals are used directly by RunMainLoop (Ghidra: FUN_00529c10)
     // and its immediate dependency graph. Signatures/behavior were confirmed against winsys3d.c â€”
@@ -440,15 +440,15 @@ internal static unsafe class Winsys3d
     // PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
     internal static void ShiftVertices(TlVertex* vertices, int count) => Libraries.Winsys3dDecalageEcran.ShiftVertices((float*)vertices, count);
 
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern void SetTextureFilterMode(int mode);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Device.cs`, ordinal 798.
+    internal static void SetTextureFilterMode(int mode) => Libraries.Winsys3dDevice.SetTextureFilterMode(mode);
 
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern int SetTimingMode(int mode);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Cadence.cs`, ordinal 822.
+    internal static int SetTimingMode(int mode) => Libraries.Winsys3dCadence.SetTimingMode(mode);
 
     // winsys3d ordinal 749 (winsys3d.c:6010) : demande au device le mode d'affichage d'index
     // `resolution` par son slot `+0xE8`, et ne retient le changement que si le device l'accepte.
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern int ChangeResolution(int resolution);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Device.cs`.
+    internal static int ChangeResolution(int resolution) => Libraries.Winsys3dDevice.ChangeResolution(resolution);
 
 }

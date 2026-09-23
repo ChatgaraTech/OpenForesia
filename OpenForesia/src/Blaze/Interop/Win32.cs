@@ -38,6 +38,9 @@ internal static unsafe class Win32
 
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr GetModuleHandleA(byte* lpModuleName);
 
+    // Appele par `SetTimingMode` de winsys3d (Libraries/winsys3d/Cadence.cs).
+    [DllImport("kernel32.dll")] internal static extern int QueryPerformanceCounter(long* lpPerformanceCount);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetModuleFileNameA(IntPtr hModule, byte* lpFilename, uint nSize);
 
     [DllImport("kernel32.dll")] internal static extern IntPtr HeapCreate(uint flOptions, nuint dwInitialSize, nuint dwMaximumSize);

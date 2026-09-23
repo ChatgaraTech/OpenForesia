@@ -45,6 +45,8 @@
 // l'ordinal 135 apres avoir pose une valeur, pour voir si quoi que ce soit change a l'ecran.
 // ============================================================================================
 
+using OpenForesia.Blaze;
+
 namespace OpenForesia.Libraries;
 
 internal static unsafe class Winsys3dCadence
@@ -75,5 +77,34 @@ internal static unsafe class Winsys3dCadence
         uint precedente = s_Unknown_011be6a4;
         s_Unknown_011be6a4 = valeur;
         return precedente;
+    }
+
+    // ============================================================================================
+    // LE MODE DE CADENCE — ordinal 822, `SetTimingMode` (2026-09-23), verifie au desassembleur
+    // (`Legacy/Raw/Winsys3d/FUN_00a05260.disasm.txt`). Ses globales, elles, sont ALIASEES (voir
+    // `Data.cs`) : l'attente d'image (132) les relit, encore native.
+    // ============================================================================================
+
+    /// <summary>
+    /// Ghidra: winsys3d.c SetTimingMode @ 0x00a05260 (ordinal 822) — echange le mode de cadence
+    /// et rend l'ancien ; puis recale l'horloge d'images sur le compteur de performance :
+    /// `VSyncCounter = compteur / tops` (division SIGNEE 64 bits, `__alldiv`, dont on garde le mot
+    /// bas), l'image attendue a `VSyncCounter + 3`, et l'echeance a `compteur + 3 . tops`, le
+    /// produit fait sur 32 bits (`lea eax,[esi+esi*2]`) puis sign-etendu (`cdq`). `ret 4`.
+    ///
+    /// Le retour de `QueryPerformanceCounter` n'est pas teste, comme dans l'original.
+    /// </summary>
+    internal static int SetTimingMode(int mode)
+    {
+        int precedent = Winsys3dData.ModeCadence_00a2c3b0;
+        Winsys3dData.ModeCadence_00a2c3b0 = mode;
+        Win32.QueryPerformanceCounter(Winsys3dData.CompteurPerf_00dedd70);
+
+        int tops = Winsys3dData.TopsParImage_011be684;
+        long compteur = *Winsys3dData.CompteurPerf_00dedd70;
+        Winsys3dData.VSyncCounter_00dedbf4 = (int)(compteur / tops);
+        Winsys3dData.ImageAttendue_011be680 = Winsys3dData.VSyncCounter_00dedbf4 + 3;
+        *Winsys3dData.EcheancePerf_011be690 = compteur + (tops * 3);
+        return precedent;
     }
 }
