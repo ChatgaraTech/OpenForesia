@@ -2038,3 +2038,31 @@ processeur). Le résultat est ensuite doublé dans les deux moitiés d'un mot de
 efface en `(0, 0, 0)`, et `0` décalé reste `0`. Toute autre couleur sortirait fausse.
 
 **Reproduit tel quel** dans `src/Libraries/winsys3d/Vram.cs` (`ClearImage`).
+
+## LB-045 — `OpenEvent` n'enchaîne pas le nouvel événement : seul le premier est jamais livré
+
+**Où** : `winsys3d.c`, `FUN_00a040d0` @ `0x00a040d0` (ordinal 6, `OpenEvent` de la `libapi`),
+et ce qu'en voit `FUN_00a04270` (ordinal 12, `DeliverEvent`). **Trouvé à la lecture** le
+2026-09-23 — sans effet visible.
+
+Un événement est un nœud de sept mots, dont `[5]` le précédent et `[6]` le suivant. `OpenEvent`
+remplit le nouveau nœud et l'ajoute en fin de liste :
+
+```
+00a04104  mov ecx,[0DEDC20h]        ; l'ancien dernier
+00a0410a  mov [eax+14h],ecx         ; nouveau[5] = ancien dernier
+00a0410d  mov dword [eax+18h],0     ; nouveau[6] = 0
+...
+00a04123  mov [0DEDC20h],eax        ; dernier = nouveau
+```
+
+mais n'écrit jamais `ancien[6] = nouveau`, et aucun autre corps de la famille ne le fait.
+`DeliverEvent` part de la tête et suit `[6]` : il ne voit que le **premier événement ouvert**.
+Si celui-ci est fermé (ordinal 7), la tête devient son suivant, nul, et la liste paraît vide alors
+que d'autres événements sont ouverts.
+
+**Conséquence** : aucune observée. Les seuls événements livrés en jeu sont les fins
+d'entrée-sortie de la carte mémoire (ordinaux 67, 68, 69), et `TestEvent` (9) les déclare arrivées
+d'office, quel que soit l'état du nœud — la carte n'attend donc jamais une livraison perdue.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Evenements.cs`.

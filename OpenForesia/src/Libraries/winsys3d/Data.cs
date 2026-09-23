@@ -763,4 +763,17 @@ internal static unsafe class Winsys3dData
 
     /// <summary>Indexee par `n >> 24`.</summary>
     internal static ushort* Racines24_011cb210 => (ushort*)At(0x011cb210);
+
+    // ----------------------------------------------------------------------------------------
+    // Les evenements de la libapi — `Evenements.cs`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>DAT_00dedc24 — le premier nœud d'evenement, d'ou `DeliverEvent` part.</summary>
+    internal static ref int* PremierEvenement_00dedc24 => ref *(int**)At(0x00dedc24);
+
+    /// <summary>DAT_00dedc20 — le dernier nœud ouvert.</summary>
+    internal static ref int* DernierEvenement_00dedc20 => ref *(int**)At(0x00dedc20);
+
+    /// <summary>DAT_011be794 — l'evenement Win32 que `DeliverEvent` signale et que `TestEvent` remet a zero.</summary>
+    internal static ref IntPtr EvenementWin32_011be794 => ref *(IntPtr*)At(0x011be794);
 }

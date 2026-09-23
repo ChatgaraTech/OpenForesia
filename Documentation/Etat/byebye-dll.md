@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 24 | 200 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 19 | 205 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -613,6 +613,12 @@ les registres sont la mémoire de la DLL. `winsys3d` passe à 200 corps, 24 poin
 porter demande un fichier de matrices dans `Libraries/wsyskern/`. `ProjectionMatrix` calcule en
 x87 (`fsin`/`fcos` en précision étendue, `m[14]` avec le quotient non arrondi) ; relevé sous
 `Legacy/Raw/Wsyskern/ProjectionMatrix.disasm.txt`.
+
+**Lot 5, les événements `libapi`** : `OpenEvent` (6), `TestEvent` (9), `DeliverEvent` (12) et les
+livraisons de fin d'opération carte (67 = 69, 68), dans `Evenements.cs` — qui les disait « dans la
+masse » parce qu'ils parcourent une liste tenue dans les globales ; aliasée, elle est la même des
+deux côtés. **LB-045** : `OpenEvent` n'enchaîne pas vers l'avant, seul le premier événement est
+jamais livré. `winsys3d` passe à 205 corps, 19 points d'entrée.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

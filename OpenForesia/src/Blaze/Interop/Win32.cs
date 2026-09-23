@@ -165,6 +165,8 @@ internal static unsafe class Win32
 
     [DllImport("kernel32.dll")] internal static extern int SetEvent(IntPtr hEvent);
 
+    [DllImport("kernel32.dll")] internal static extern int ResetEvent(IntPtr hEvent);
+
     [DllImport("kernel32.dll")] internal static extern uint WaitForMultipleObjects(uint nCount, IntPtr* lpHandles, int bWaitAll, uint dwMilliseconds);
 
     [DllImport("kernel32.dll")] internal static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);

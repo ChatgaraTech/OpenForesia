@@ -92,7 +92,7 @@ internal static unsafe class Winsys3d
     // (RET 4), alors que Ghidra les avait décompilés en (void) — la même classe de piège que
     // documente déjà test-protocol.md, attrapée ici avant d'écrire le P/Invoke plutôt qu'après un
     // plantage natif.
-    [DllImport("winsys3d.dll", EntryPoint = "#9")] internal static extern int Ordinal_9(int* transferState); // real: FUN_00a041d0, ResetEvent + un contrôle d'état sur *param_1
+    internal static int Ordinal_9(int* transferState) => Libraries.Winsys3dEvenements.TestEvent(transferState); // PORTE 2026-09-23 — libapi TestEvent, Libraries/winsys3d/Evenements.cs
 
     // ------------------------------------------------------------------------------------------
     // LA FAMILLE DE FICHIERS DE LA CARTE MEMOIRE — portée le 2026-09-22.
@@ -141,11 +141,11 @@ internal static unsafe class Winsys3d
     internal static uint Ordinal_25(IntPtr handle, void* buffer, uint size)
         => Libraries.Winsys3dCarteMemoire.Ecrire(handle, buffer, size);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#67")] internal static extern int Ordinal_67(int unused); // real: FUN_00a050f0, RET 4 confirmé — un paramètre ignoré ; rend toujours 1
+    internal static int Ordinal_67(int unused) => Libraries.Winsys3dEvenements.LivrerFinCarteLogicielle(); // PORTE 2026-09-23 — livre une fin d'E/S SwCARD, rend 1
 
-    [DllImport("winsys3d.dll", EntryPoint = "#68")] internal static extern int Ordinal_68(int unused); // real: FUN_00a050d0, même famille qu'Ordinal_67/69
+    internal static int Ordinal_68(int unused) => Libraries.Winsys3dEvenements.LivrerFinCarteMaterielle(); // PORTE 2026-09-23 — livre une fin d'E/S HwCARD, rend 1
 
-    [DllImport("winsys3d.dll", EntryPoint = "#69")] internal static extern int Ordinal_69(int unused); // real: FUN_00a050f0 — même corps qu'Ordinal_67, deux ordinaux pour la même adresse
+    internal static int Ordinal_69(int unused) => Libraries.Winsys3dEvenements.LivrerFinCarteLogicielle(); // PORTE 2026-09-23 — meme corps qu'Ordinal_67
 
     internal static uint Ordinal_72(int unused) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
 
@@ -385,7 +385,7 @@ internal static unsafe class Winsys3d
 
     // winsys3d.dll ordinals used by FUN_00504460 (joystick/interrupt-style event-handler
     // (de)registration bookkeeping â€” see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
-    [DllImport("winsys3d.dll", EntryPoint = "#6")] internal static extern void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback); // real: winsys3d.c FUN_00a040d0, registers a handler, returns an opaque handle
+    internal static void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback) => Libraries.Winsys3dEvenements.OpenEvent(messageId, (int)p2, (int)p3, callback); // PORTE 2026-09-23 — libapi OpenEvent, Libraries/winsys3d/Evenements.cs
 
     // real: winsys3d.c FUN_00a04220 — libapi `EnableEvent` : **arme** le gestionnaire (état
     // 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130).
