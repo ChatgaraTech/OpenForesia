@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 55 / 89 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 15 | 212 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 14 | 218 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -648,7 +648,23 @@ validé par Vincent). Trois choses lues au désassembleur :
 Relevés : `FUN_00a21040`, `FUN_00a1dbc0` sous `Legacy/Raw/Winsys3d/`, `ProjectionMatrix` sous
 `Legacy/Raw/Wsyskern/`. `winsys3d` passe à 212 corps, 15 points d'entrée. **Pas encore exercé** —
 une erreur se verrait sur la perspective : un champ de vision faux étire ou écrase toute la scène
-3D, et une table fausse déforme les modèles avec la profondeur.
+3D, et une table fausse déforme les modèles avec la profondeur. Testé en jeu par Vincent le même
+jour.
+
+**Lot 8, l'éclairage (793)** : `winsys3d/Eclairage.cs` (fichier neuf, validé par Vincent) — la
+passe par triangles `FUN_00a03e70`, `NormalColorCol3` (`24000`, 407) et ses trois appelées
+(`23cf0` lumière, `23810` teinte, `23dd0` couleur) ; plus `ApplyMatrixLV` (`1fba0`, 348) dans
+`Matrices.cs`, à côté de `ApplyMatrixSV`. Lus au désassembleur :
+
+- `ApplyMatrixLV` calcule **sur 64 bits** (`__allmul` × 3, `add`/`adc`, `__allshr 12`) ;
+- `NormalColorCol3` déroule deux normales dans son corps et appelle trois fonctions pour la
+  troisième — même calcul, transcrit sous les deux formes ;
+- `23cf0` a une branche « puissance » (`ftol(pow(l/4096, 2ⁿ)·4096)`) jamais prise ici (`n = 0`) ;
+  Ghidra en avait perdu le `·4096` et les arguments de l'appel à `ApplyMatrixSV`. `pow` : écart
+  assumé, `Math.Pow` ; `__ftol` reproduit jusqu'à son 0x80000000 hors plage.
+
+`winsys3d` passe à 218 corps, 14 points d'entrée. **Pas encore exercé** — une erreur se verrait sur
+la couleur des modèles 3D éclairés (trop sombres, saturés, ou teintés).
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

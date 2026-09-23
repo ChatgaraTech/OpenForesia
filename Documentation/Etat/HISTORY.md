@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **l'éclairage du GTE émulé est en C#** — la passe par triangles (793), `NormalColorCol3`
+  et ses appelées dans `winsys3d/Eclairage.cs` (fichier neuf), `ApplyMatrixLV` dans
+  `Matrices.cs`. `winsys3d` passe à 218 corps, 14 points d'entrée. **Pas encore exercé**
+- doc : `SetGeomScreen` (lot 7) testé en jeu par Vincent
+
 - feat : **tout le GTE importé est en C#** — `SetGeomScreen` (379) et la projection du device
   (564) dans `winsys3d/Matrices.cs`, `ZeroMatrix` et `ProjectionMatrix` de `wsyskern` dans
   `wsyskern/Matrices.cs` (fichier neuf). `winsys3d` passe à 212 corps, 15 points d'entrée.

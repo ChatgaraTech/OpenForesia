@@ -769,6 +769,13 @@ internal static unsafe class Winsys3dData
     /// </summary>
     internal static ref int MmxInstalle_00dedbe8 => ref *(int*)At(0x00dedbe8);
 
+    /// <summary>
+    /// &amp;EXT_00b6d198 — la couleur de base de l'eclairage, quatre octets `r, g, b, code`
+    /// (l'export de donnees 817, que `Platform/Winsys3d.cs` resout par ordinal). L'ordinal 793 la
+    /// passe a `NormalColorCol3`.
+    /// </summary>
+    internal static byte* CouleurEclairage_00b6d198 => (byte*)At(0x00b6d198);
+
     /// <summary>DAT_011d0820 — la distance de projection `h` du GTE, posee par `SetGeomScreen` (379).</summary>
     internal static ref int DistanceEcran_011d0820 => ref *(int*)At(0x011d0820);
 

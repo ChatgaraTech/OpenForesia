@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 89 | 4 011 | 1 926 | 6 % | 55 |
-| `winsys3d` | 604 | 27 092 | 15 | 247 | 13 423 | 1 181 | 50 % | 212 |
+| `winsys3d` | 604 | 27 092 | 14 | 247 | 13 423 | 1 181 | 50 % | 218 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -305,17 +305,17 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**15 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
+**14 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
 soit **14 604 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
 1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 423 lignes,
 50 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**210 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**216 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (15)
+### Les points d'entree employes (14)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
@@ -330,7 +330,6 @@ empeche le devis de retrecir a mesure qu'on avance.
 | 756 | `CreateTranslationTables` | `0x00a02f50` | `CreateTranslationTables` | 64 | **non** |
 | 789 | — | `0x00a06420` | `FUN_00a06420` | 186 | **non** |
 | 790 | — | `0x00a06410` | `FUN_00a06410` | 13 | **non** |
-| 793 | — | `0x00a03e70` | `FUN_00a03e70` | 39 | **non** |
 | 798 | `SetTextureFilterMode` | `0x00a063d0` | `SetTextureFilterMode` | 21 | **non** |
 | 822 | `SetTimingMode` | `0x00a05260` | `SetTimingMode` | 29 | **non** |
 | 823 | `Setup3DDevice` | `0x00a01910` | `Setup3DDevice` | 118 | **non** |
@@ -363,7 +362,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a0e0c0` | **`FUN_00a0e0c0`** | 127 | 1 | oui |
 | `0x00a08080` | **`FUN_00a08080`** | 126 | 1 | oui |
 | `0x00a03110` | `FUN_00a03110` | 123 | 1 | **non** |
-| `0x00a24000` | `FUN_00a24000` | 122 | 1 | **non** |
+| `0x00a24000` | **`FUN_00a24000`** | 122 | 1 | oui |
 | `0x00a01910` | **`Setup3DDevice`** | 118 | 0 | **non** |
 | `0x00a20630` | **`FUN_00a20630`** | 116 | 0 | oui |
 | `0x00a12350` | **`FUN_00a12350`** | 115 | 1 | oui |
@@ -460,7 +459,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a0cd20` | **`FUN_00a0cd20`** | 46 | 3 | oui |
 | `0x00a0f260` | **`FUN_00a0f260`** | 46 | 1 | oui |
 | `0x00a0fdc0` | **`FUN_00a0fdc0`** | 46 | 1 | oui |
-| `0x00a1fba0` | `FUN_00a1fba0` | 45 | 2 | **non** |
+| `0x00a1fba0` | **`FUN_00a1fba0`** | 45 | 2 | oui |
 | `0x00a26670` | **`FUN_00a26670`** | 45 | 1 | oui |
 | `0x00a26720` | **`FUN_00a26720`** | 45 | 1 | oui |
 | `0x00a26470` | **`FUN_00a26470`** | 44 | 0 | oui |
@@ -469,11 +468,11 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a05a00` | **`FUN_00a05a00`** | 42 | 0 | oui |
 | `0x00a01d70` | `FUN_00a01d70` | 41 | 1 | **non** |
 | `0x00a1d8b0` | `FUN_00a1d8b0` | 41 | 1 | **non** |
-| `0x00a23cf0` | `FUN_00a23cf0` | 41 | 1 | **non** |
+| `0x00a23cf0` | **`FUN_00a23cf0`** | 41 | 1 | oui |
 | `0x00a026e0` | **`FUN_00a026e0`** | 40 | 0 | **non** |
-| `0x00a23dd0` | `FUN_00a23dd0` | 40 | 1 | **non** |
+| `0x00a23dd0` | **`FUN_00a23dd0`** | 40 | 1 | oui |
 | `0x00a25910` | **`FUN_00a25910`** | 40 | 0 | oui |
-| `0x00a03e70` | **`FUN_00a03e70`** | 39 | 0 | **non** |
+| `0x00a03e70` | **`FUN_00a03e70`** | 39 | 0 | oui |
 | `0x00a05e90` | **`FUN_00a05e90`** | 39 | 0 | oui |
 | `0x00a06a40` | **`FUN_00a06a40`** | 39 | 1 | oui |
 | `0x00a0d630` | **`FUN_00a0d630`** | 38 | 1 | oui |
@@ -508,7 +507,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a027a0` | **`FUN_00a027a0`** | 26 | 1 | oui |
 | `0x00a027e0` | **`FUN_00a027e0`** | 26 | 1 | oui |
 | `0x00a0c480` | **`FUN_00a0c480`** | 26 | 2 | oui |
-| `0x00a23810` | `FUN_00a23810` | 26 | 1 | **non** |
+| `0x00a23810` | **`FUN_00a23810`** | 26 | 1 | oui |
 | `0x00a25b50` | **`FUN_00a25b50`** | 26 | 0 | oui |
 | `0x00a261e0` | **`FUN_00a261e0`** | 26 | 1 | oui |
 | `0x00a057b0` | **`ShiftVertices`** | 25 | 0 | oui |

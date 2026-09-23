@@ -249,7 +249,10 @@ internal static unsafe class Winsys3d
     internal static void Ordinal_418(void* vertices, void* outScreenXy, void* outDepth, void* outFlags, uint count)
         => Libraries.Winsys3dMatrices.RotTransPersParTrois((short*)vertices, (int*)outScreenXy, (uint*)outDepth, (ushort*)outFlags, count); // PORTE 2026-09-23
 
-    [DllImport("winsys3d.dll", EntryPoint = "#793")] internal static extern void Ordinal_793(void* normals, void* outColours, uint triangleCount); // real: winsys3d.c FUN_00a03e70 â€” batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
+    // real: winsys3d.c FUN_00a03e70 — batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set
+    // writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
+    internal static void Ordinal_793(void* normals, void* outColours, uint triangleCount)
+        => Libraries.Winsys3dEclairage.EclairerTriangles((byte*)normals, (uint*)outColours, (int)triangleCount); // PORTE 2026-09-23 — Libraries/winsys3d/Eclairage.cs
 
     // real: winsys3d.c FUN_00a20540 â€” libgte ScaleMatrix: scales each of the matrix's three columns
     // by one component of `scale`, in 4.12 fixed point. Le seul des neuf ordinaux libgte importés

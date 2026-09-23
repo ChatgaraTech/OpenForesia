@@ -330,6 +330,28 @@ internal static unsafe class Winsys3dMatrices
     }
 
     /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a1fba0 @ 0x00a1fba0 (ordinal 348) — la rotation d'un vecteur de
+    /// trois `int` : `r[i] = (ligne i . v) >> 12`, **sur 64 bits** — trois `__allmul`, deux
+    /// `add`/`adc`, un `__allshr` de 12, dont on garde le mot bas. Par la forme, le
+    /// `ApplyMatrixLV` de la libgte. Rend <paramref name="r"/>.
+    ///
+    /// Ecart assume, le meme que <see cref="ApplyMatrixSV"/> : `r[3]` recoit un mot de pile non
+    /// initialise (`mov eax,[esp+24h]`), le C# y met 0. Aucun appelant ne le relit.
+    /// </summary>
+    internal static int* ApplyMatrixLV(short* m, int* v, int* r)
+    {
+        long x = v[0], y = v[1], z = v[2];
+        int r0 = (int)(m[0] * x + m[2] * z + m[1] * y >> 12);
+        int r1 = (int)(m[5] * z + m[4] * y + m[3] * x >> 12);
+        int r2 = (int)(m[6] * x + m[7] * y + m[8] * z >> 12);
+        r[0] = r0;
+        r[1] = r1;
+        r[2] = r2;
+        r[3] = 0;
+        return r;
+    }
+
+    /// <summary>
     /// Ghidra: winsys3d.c FUN_00a203e0 @ 0x00a203e0 (ordinal 356) — `TransMatrix` : range les trois
     /// `int` de <paramref name="v"/> dans la translation de la matrice (`+0x14`). `ret 8`.
     /// </summary>

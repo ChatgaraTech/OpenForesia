@@ -1,0 +1,92 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a23cf0  section .text  offset fichier 0x230f0  224 octets
+
+  00a23cf0  8b442404              mov       eax,[esp+4]
+  00a23cf4  83ec08                sub       esp,8
+  00a23cf7  53                    push      ebx
+  00a23cf8  56                    push      esi
+  00a23cf9  8b742418              mov       esi,[esp+18h]
+  00a23cfd  57                    push      edi
+  00a23cfe  56                    push      esi
+  00a23cff  50                    push      eax
+  00a23d00  6850081d01            push      11D0850h
+  00a23d05  e8e6bbffff            call      00A1F8F0h
+  00a23d0a  8b0e                  mov       ecx,[esi]
+  00a23d0c  33c0                  xor       eax,eax
+  00a23d0e  3bc8                  cmp       ecx,eax
+  00a23d10  7d02                  jge       short 00A23D14h
+  00a23d12  8906                  mov       [esi],eax
+
+LAB_00a23d14:
+  00a23d14  394604                cmp       [esi+4],eax
+  00a23d17  7d03                  jge       short 00A23D1Ch
+  00a23d19  894604                mov       [esi+4],eax
+
+LAB_00a23d1c:
+  00a23d1c  394608                cmp       [esi+8],eax
+  00a23d1f  7d03                  jge       short 00A23D24h
+  00a23d21  894608                mov       [esi+8],eax
+
+LAB_00a23d24:
+  00a23d24  8b4c2420              mov       ecx,[esp+20h]
+  00a23d28  3bc8                  cmp       ecx,eax
+  00a23d2a  0f8e92000000          jle       near 00A23DC2h
+  00a23d30  83f91f                cmp       ecx,1Fh
+  00a23d33  7e05                  jle       short 00A23D3Ah
+  00a23d35  b91f000000            mov       ecx,1Fh
+
+LAB_00a23d3a:
+  00a23d3a  ba01000000            mov       edx,1
+  00a23d3f  d3e2                  shl       edx,cl
+  00a23d41  8954241c              mov       [esp+1Ch],edx
+  00a23d45  db44241c              fild      dword [esp+1Ch]
+  00a23d49  dd5c240c              fstp      qword [esp+0Ch]
+  00a23d4d  db06                  fild      dword [esi]
+  00a23d4f  8b7c2410              mov       edi,[esp+10h]
+  00a23d53  8b5c240c              mov       ebx,[esp+0Ch]
+  00a23d57  57                    push      edi
+  00a23d58  53                    push      ebx
+  00a23d59  dc0de8a0a200          fmul      qword [0A2A0E8h]
+  00a23d5f  83ec08                sub       esp,8
+  00a23d62  dd1c24                fstp      qword [esp]
+  00a23d65  ff15e8532101          call      dword [12153E8h]
+  00a23d6b  dc0de0a0a200          fmul      qword [0A2A0E0h]
+  00a23d71  e8e63f0000            call      00A27D5Ch
+  00a23d76  db4604                fild      dword [esi+4]
+  00a23d79  57                    push      edi
+  00a23d7a  53                    push      ebx
+  00a23d7b  83ec08                sub       esp,8
+  00a23d7e  8906                  mov       [esi],eax
+  00a23d80  dc0de8a0a200          fmul      qword [0A2A0E8h]
+  00a23d86  dd1c24                fstp      qword [esp]
+  00a23d89  ff15e8532101          call      dword [12153E8h]
+  00a23d8f  dc0de0a0a200          fmul      qword [0A2A0E0h]
+  00a23d95  e8c23f0000            call      00A27D5Ch
+  00a23d9a  db4608                fild      dword [esi+8]
+  00a23d9d  57                    push      edi
+  00a23d9e  53                    push      ebx
+  00a23d9f  83ec08                sub       esp,8
+  00a23da2  894604                mov       [esi+4],eax
+  00a23da5  dc0de8a0a200          fmul      qword [0A2A0E8h]
+  00a23dab  dd1c24                fstp      qword [esp]
+  00a23dae  ff15e8532101          call      dword [12153E8h]
+  00a23db4  dc0de0a0a200          fmul      qword [0A2A0E0h]
+  00a23dba  e89d3f0000            call      00A27D5Ch
+  00a23dbf  894608                mov       [esi+8],eax
+
+LAB_00a23dc2:
+  00a23dc2  5f                    pop       edi
+  00a23dc3  5e                    pop       esi
+  00a23dc4  5b                    pop       ebx
+  00a23dc5  83c408                add       esp,8
+  00a23dc8  c20c00                ret       0Ch
+  00a23dcb  90                    nop
+  00a23dcc  90                    nop
+  00a23dcd  90                    nop
+  00a23dce  90                    nop
+  00a23dcf  90                    nop
+
+5 cible(s) de saut interne : 0x00a23d14, 0x00a23d1c, 0x00a23d24, 0x00a23d3a, 0x00a23dc2
