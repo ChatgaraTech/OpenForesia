@@ -971,6 +971,13 @@ internal static unsafe class Winsys3dData
     /// </summary>
     internal static byte* Chaine(nuint va) => At(va);
 
+    /// <summary>
+    /// &amp;DAT_00b6d6d8 — la section critique des ordinaux 40/41, initialisee par le point d'entree de
+    /// la DLL (`FUN_00a04ff0`) et PRISE AUSSI PAR LE MINUTEUR NATIF (`LAB_00a06360`). Voir
+    /// `SectionCritique.cs`.
+    /// </summary>
+    internal static void* SectionCritique_00b6d6d8 => At(0x00b6d6d8);
+
     // ----------------------------------------------------------------------------------------
     // `InitTrigTables` (337) — `Trigonometrie.cs`.
     // ----------------------------------------------------------------------------------------

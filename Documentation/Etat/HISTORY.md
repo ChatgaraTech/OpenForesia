@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- fix : **la section critique des ordinaux 40/41 n'excluait plus le minuteur natif** — le port du
+  2026-09-21 créait sa propre section, en croyant que rien dans la DLL ne prenait la sienne ; le
+  rappel du minuteur (`LAB_00a06360`, jamais décompilé) la prend autour de `DeliverEvent`. Le port
+  désigne maintenant la section de la DLL
+- doc : les passerelles de tas de `wsyskern` ne peuvent pas encore tomber — la procédure de fenêtre
+  et le rappel d'énumération des pilotes, restés natifs, libèrent ou allouent dans ce tas ce que le
+  C# alloue ou libère
+- doc : `InitTrigTables` (lot 15) testé en jeu par Vincent
+
 - feat : **`InitTrigTables` (337) est en C#** — la table de sinus et, ce que Ghidra cachait, les
   quatre tables de racines carrées de `SquareRoot0`. `winsys3d` n'a plus qu'un import, 701, gardé
   pour `OPENFORESIA_LEGACY_DRAWOTAG`. **Pas encore exercé**

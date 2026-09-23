@@ -70,10 +70,22 @@ Le document donne, par DLL : les points d'entrée employés, la clôture d'appel
 - **Rien de `wsyskern` n'a été exercé.** Le codec et la famille tableau se valident ensemble :
   `LoadArray` → `LoadFile` → `Unpack` est le chemin qui fait passer du vrai flux compressé. Une
   session de jeu suffit à le dire.
-- **Les deux passerelles de tas.** Plus rien n'appelle `wsyskern.dll` à part elles. Avant de
-  basculer sur `NativeMemory`, établir qu'**aucun pointeur alloué par `winsys3d.dll` (encore
-  native, et qui alloue dans le tas de wsyskern) ne remonte jusqu'à nous**. Tombera de soi-même
-  quand `winsys3d` sera porté — c'est le bon moment.
+- **Les deux passerelles de tas — établi le 2026-09-23 : elles NE PEUVENT PAS encore tomber.**
+  Toute la clôture de `winsys3d` est portée, mais du code natif de la DLL tourne toujours : son
+  point d'entrée et les cinq codes passés par adresse. Relevé au désassembleur, appel par appel :
+
+  | code natif | touche le tas ? | conséquence |
+  |---|---|---|
+  | `entry` (chargement / déchargement) | alloue puis libère la VRAM (`0x100000`) | cohérent tant que le C# ne libère pas la VRAM |
+  | `LAB_00a02ee0`, procédure de fenêtre | **oui** : sur `WM_ACTIVATEAPP`, `ReInitializeAllTextures` natif **libère des emplacements du cache que le C# a alloués** | bloquant |
+  | `LAB_00a01810`, énumération des pilotes | **oui** : ses noms viennent du `Strdup` natif, et `ListerPilotes` (C#) les libère | bloquant |
+  | `LAB_00a06360`, minuteur | non | — |
+  | `FUN_00a012f0` (dialogue), `LAB_00a01000` (modes) | non | — |
+
+  Basculer sur `NativeMemory` ferait libérer par un tas ce que l'autre a alloué. **Pour les faire
+  tomber, il faut d'abord porter la procédure de fenêtre et le rappel d'énumération** (et, par
+  cohérence, les trois autres), en `[UnmanagedCallersOnly]` passés par adresse à la place des
+  codes natifs.
 - **La table de sinus, au dernier bit.** Le 387 calcule `fsin` sur 80 bits, `Math.Sin` sur 64. Un
   écart d'un ulp ne changerait l'entier tronqué que si `sin * 4096` tombait à moins de ~1e-13 d'un
   entier ; ce n'est le cas qu'aux indices 0, 1024, 2048 et 3072, où les deux donnent exactement 0,
@@ -106,7 +118,9 @@ L'ordre suivi (les ordinaux se groupent d'eux-mêmes) :
    symétrique de celle que `ListeAffichage.cs` documente pour 677/662 ;
 2. ~~la trigonométrie~~ — **fait le 2026-09-21** : `rcos`, `rsin`, `ratan2` (450/451/457),
    `Libraries/winsys3d/Trigonometrie.cs`. **337, 376, 378, 379 restent natifs** — voir la règle 6 ;
-3. ~~la section critique~~ — **fait le 2026-09-21** : 40 et 41, `SectionCritique.cs`. Le clavier
+3. ~~la section critique~~ — **fait le 2026-09-21** : 40 et 41, `SectionCritique.cs` —
+   **corrigé le 2026-09-23** : la section est partagée avec le minuteur natif, voir l'en-tête du
+   fichier. Le clavier
    était déjà fait. Reste `Setup3DDevice` (823) et la sous-couche carte mémoire ;
 4. ~~la liste d'affichage~~ — **partiellement fait le 2026-09-21** : 658, 660, 661, 688 portés
    (`ListeAffichage.cs`). **Les dix autres sont bloqués**, le tableau corps par corps est dans
