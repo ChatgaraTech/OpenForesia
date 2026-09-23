@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-23** — la masse est entamée par aliasing : `DrawOTag`, ses appelées directes et tout le sous-système des textures sont en C# ; il reste 2 étapes au chemin d'affichage.
+chiffres à jour. Dernière mise à jour : **2026-09-23** — la masse est entamée par aliasing : `DrawOTag`, ses appelées directes et tout le sous-système des textures et le constructeur de paquets sont en C# ; il reste 1 étape au chemin d'affichage.
 
 ## Le but
 
@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 44 | 135 / 246 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing — voir la fin |
+| `winsys3d` | 44 | 152 / 246 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -367,8 +367,8 @@ Portage **de haut en bas**, un corps à la fois ; le tableau de bord est l'en-t�
 | 6 | les six appelées de `DrawOTag` : cache de textures et texte à l'écran | **fait le 2026-09-23** |
 | 7 | l'intérieur du cache de textures et la liaison de texture | **fait le 2026-09-23** |
 | 8 | le chargement des textures, et le `qsort` de la CRT | **fait le 2026-09-23** |
-| 9 | le constructeur `dde0` (752) et ses 15 producteurs | **la suite** |
-| 10 | la reconstruction `c4f0` et ses producteurs | à faire |
+| 9 | le constructeur `dde0` (752) et ses 15 adaptateurs | **fait le 2026-09-23** |
+| 10 | les ~20 producteurs, et la reconstruction `c4f0` | **la suite** |
 
 **Rien des étapes 3 et 4 n'a tourné.** L'étape 3 se voit dès qu'une scène passe par les opcodes
 0xe3/0xe4 (paquets de modèles 3D) : si le consommateur se trompait, ce sont les modèles qui
@@ -504,6 +504,22 @@ Appris à l'étape 8 :
 - un écart assumé : `dwFourCC` du format de pixel n'est jamais écrit dans l'original (ce que la
   pile contenait) ; le C# y met 0, sans effet pour un format RGB.
 
+### Étape 9 — le constructeur de paquets
+
+Faite le 2026-09-23. **17 corps**, dans `winsys3d/ConstructionPaquets.cs` (fichier neuf, validé
+par Vincent) : `ConstruirePaquet` (`dde0`, ordinal 752), `AllouerPaquet` (`c480`) et les 15
+adaptateurs `d260`..`dce0`.
+
+**Ce ne sont pas des producteurs mais des adaptateurs** : chacun relit les enregistrements d'un
+modèle et en fait, un par un, un paquet de primitive sur sa pile, qu'il passe au vrai producteur
+avec les sommets. Huit producteurs seulement pour quinze genres (les genres 8 à 15 reprennent ceux
+de 0 à 7, avec des sommets externes et des numéros divisés par 8) — ce sont eux, l'étape 10.
+
+**Engendrés mécaniquement** : un script lit les affectations de Ghidra (six formes, aucune laissée
+de côté) et écrit le C#, vérifié ensuite au désassembleur sur trois adaptateurs des deux formes.
+Un écart assumé : les champs du paquet de pile que l'adaptateur n'écrit jamais valent 0 ici,
+n'importe quoi dans l'original — à contrôler producteur par producteur à l'étape 10.
+
 ### Ce qui reste — le compte exact (2026-09-23)
 
 Mesuré en croisant le périmètre de `CheminAffichage.md` (157 corps) avec la clôture ATTEINTE de
@@ -511,7 +527,7 @@ Mesuré en croisant le périmètre de `CheminAffichage.md` (157 corps) avec la c
 
 | | corps | lignes |
 |---|---:|---:|
-| chemin d'affichage, porté | 95 (89 à l'étape 7) | |
+| chemin d'affichage, porté | 112 (89 à l'étape 7) | |
 | chemin d'affichage, **atteint et à porter** | **45** | ~3 900 |
 | chemin d'affichage, **jamais atteint** | 23 | ~3 300 |
 | `winsys3d` hors chemin d'affichage, atteint et à porter | 72 | |
@@ -527,7 +543,7 @@ Les 45 restants du chemin d'affichage, en trois étapes :
 |---|---|---:|
 | 8 | le chargement des textures (`271e0`, `03460` — 316 l. —, `03980`) et le `qsort` de la CRT | 6 |
 | 9 | le constructeur `dde0` (ordinal 752) et ses 15 producteurs `d260`..`dce0` — une seule forme presque partout (`CIDCWR`) | 16 |
-| 10 | la reconstruction `c4f0`, `c480`, et ses ~20 producteurs `06a40`..`0c110`, plus `1cff0` | 23 |
+| 10 | la reconstruction `c4f0` et ses ~20 producteurs `06a40`..`0c110`, plus `1cff0` (`c480` est parti à l'étape 9) | 22 |
 
 Après l'étape 10, `DrawOTag` et tout ce qu'il atteint sont en C#. Resteront les **72 corps
 atteints hors du chemin d'affichage** — la géométrie GTE, l'initialisation du device

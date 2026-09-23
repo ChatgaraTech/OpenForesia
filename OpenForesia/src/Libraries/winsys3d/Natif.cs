@@ -19,8 +19,8 @@
 //     etape 6   les 6 appelees de `DrawOTag` : cache de textures, texte FAIT le 2026-09-23
 //     etape 7   l'interieur du cache de textures et la liaison        FAIT le 2026-09-23
 //     etape 8   le chargement des textures et le qsort de la CRT     FAIT le 2026-09-23
-//     etape 9   le constructeur `dde0` (752) et ses 15 producteurs  <- la suite
-//     etape 10  la reconstruction `c4f0` et ses producteurs
+//     etape 9   le constructeur `dde0` (752) et ses 15 adaptateurs  FAIT le 2026-09-23
+//     etape 10  les producteurs, et la reconstruction `c4f0`         <- la suite
 //     ...       jusqu'a ce que plus rien n'appelle ici, et ce fichier disparait
 //
 // **Ce fichier est un echafaudage, pas une transcription.** Chaque entree qu'on y ajoute est une
@@ -131,14 +131,6 @@ internal static unsafe class Winsys3dNatif
     // appele par les corps portes : la liaison de texture, le melange selon `abr`, et les deux
     // constructeurs de paquets, porte d'entree des producteurs.
 
-    /// <summary>
-    /// winsys3d.c FUN_00a0dde0 en 0x00a0dde0 — NON PORTE (81 lignes, ordinal 752). `ret 0Ch`, trois
-    /// arguments. Le CONSTRUCTEUR de paquets : aiguille sur l'un des producteurs du tampon de
-    /// commandes, puis pose le bit 31 du premier mot du descripteur (« construit »). Appele par
-    /// `CheminAffichage.ConstruireEtRejouer` quand ce bit est nul.
-    /// </summary>
-    internal static void Fun_00a0dde0(uint* descripteur, uint a, int b)
-        => ((delegate* unmanaged[Stdcall]<uint*, uint, int, void>)At(0x00a0dde0))(descripteur, a, b);
 
     // ------------------------------------------------------------------------------------------
     // LES APPELEES DU CACHE DE TEXTURES (`CacheTextures.cs`, 2026-09-23). Arites lues sur les `ret`
@@ -155,4 +147,41 @@ internal static unsafe class Winsys3dNatif
     internal static void Fun_00a0c4f0(uint* p)
         => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0c4f0))(p);
 
+
+    // ------------------------------------------------------------------------------------------
+    // LES HUIT PRODUCTEURS appeles par les adaptateurs de `ConstructionPaquets.cs` (etape 9). Tous
+    // `ret 0Ch` : (paquet de primitive sur la pile, sommets, 0). Etape 10.
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>winsys3d.c FUN_00a07d80 en 0x00a07d80 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a07d80(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a07d80))(primitive, sommets, c);
+
+    /// <summary>winsys3d.c FUN_00a08510 en 0x00a08510 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a08510(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a08510))(primitive, sommets, c);
+
+    /// <summary>winsys3d.c FUN_00a08c80 en 0x00a08c80 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a08c80(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a08c80))(primitive, sommets, c);
+
+    /// <summary>winsys3d.c FUN_00a09070 en 0x00a09070 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a09070(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a09070))(primitive, sommets, c);
+
+    /// <summary>winsys3d.c FUN_00a09e60 en 0x00a09e60 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a09e60(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a09e60))(primitive, sommets, c);
+
+    /// <summary>winsys3d.c FUN_00a0a670 en 0x00a0a670 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a0a670(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a0a670))(primitive, sommets, c);
+
+    /// <summary>winsys3d.c FUN_00a0b000 en 0x00a0b000 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a0b000(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a0b000))(primitive, sommets, c);
+
+    /// <summary>winsys3d.c FUN_00a0b930 en 0x00a0b930 — NON PORTE. Producteur, `ret 0Ch`.</summary>
+    internal static void Fun_00a0b930(byte* primitive, void* sommets, int c)
+        => ((delegate* unmanaged[Stdcall]<byte*, void*, int, void>)At(0x00a0b930))(primitive, sommets, c);
 }

@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 87 | 3 953 | 1 926 | 6 % | 53 |
-| `winsys3d` | 604 | 27 092 | 44 | 246 | 13 402 | 1 181 | 49 % | 135 |
+| `winsys3d` | 604 | 27 092 | 44 | 246 | 13 402 | 1 181 | 49 % | 152 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -307,7 +307,7 @@ soit **14 583 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement
 49 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**133 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**150 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
@@ -416,10 +416,10 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a0fb40` | **`FUN_00a0fb40`** | 83 | 1 | oui |
 | `0x00a024e0` | **`FUN_00a024e0`** | 82 | 1 | oui |
 | `0x00a02380` | **`FUN_00a02380`** | 81 | 1 | oui |
-| `0x00a0dde0` | `FUN_00a0dde0` | 81 | 1 | **non** |
+| `0x00a0dde0` | **`FUN_00a0dde0`** | 81 | 1 | oui |
 | `0x00a13010` | **`FUN_00a13010`** | 80 | 1 | oui |
-| `0x00a0d4b0` | `FUN_00a0d4b0` | 76 | 1 | **non** |
-| `0x00a0da80` | `FUN_00a0da80` | 76 | 1 | **non** |
+| `0x00a0d4b0` | **`FUN_00a0d4b0`** | 76 | 1 | oui |
+| `0x00a0da80` | **`FUN_00a0da80`** | 76 | 1 | oui |
 | `0x00a0eaf0` | **`FUN_00a0eaf0`** | 74 | 1 | oui |
 | `0x00a0f940` | **`FUN_00a0f940`** | 74 | 1 | oui |
 | `0x00a107e0` | **`FUN_00a107e0`** | 72 | 2 | oui |
@@ -431,8 +431,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a13220` | **`FUN_00a13220`** | 65 | 1 | oui |
 | `0x00a02e20` | **`FUN_00a02e20`** | 64 | 1 | oui |
 | `0x00a02f50` | **`CreateTranslationTables`** | 64 | 1 | **non** |
-| `0x00a0d3d0` | `FUN_00a0d3d0` | 64 | 1 | **non** |
-| `0x00a0d990` | `FUN_00a0d990` | 64 | 1 | **non** |
+| `0x00a0d3d0` | **`FUN_00a0d3d0`** | 64 | 1 | oui |
+| `0x00a0d990` | **`FUN_00a0d990`** | 64 | 1 | oui |
 | `0x00a0f570` | **`FUN_00a0f570`** | 64 | 2 | oui |
 | `0x00a10df0` | **`FUN_00a10df0`** | 64 | 1 | oui |
 | `0x00a11310` | **`FUN_00a11310`** | 64 | 1 | oui |
@@ -443,8 +443,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a061b0` | **`FUN_00a061b0`** | 59 | 0 | oui |
 | `0x00a0e970` | **`FUN_00a0e970`** | 59 | 1 | oui |
 | `0x00a0f090` | **`FUN_00a0f090`** | 59 | 1 | oui |
-| `0x00a0d310` | `FUN_00a0d310` | 58 | 1 | **non** |
-| `0x00a0d8b0` | `FUN_00a0d8b0` | 58 | 1 | **non** |
+| `0x00a0d310` | **`FUN_00a0d310`** | 58 | 1 | oui |
+| `0x00a0d8b0` | **`FUN_00a0d8b0`** | 58 | 1 | oui |
 | `0x00a109c0` | **`FUN_00a109c0`** | 58 | 1 | oui |
 | `0x00a10690` | **`FUN_00a10690`** | 57 | 1 | oui |
 | `0x00a11cd0` | **`FUN_00a11cd0`** | 57 | 1 | oui |
@@ -454,8 +454,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a267d0` | **`FUN_00a267d0`** | 57 | 1 | oui |
 | `0x00a268c0` | **`FUN_00a268c0`** | 57 | 1 | oui |
 | `0x00a04560` | **`FUN_00a04560`** | 56 | 0 | oui |
-| `0x00a0d730` | `FUN_00a0d730` | 56 | 1 | **non** |
-| `0x00a0dce0` | `FUN_00a0dce0` | 56 | 1 | **non** |
+| `0x00a0d730` | **`FUN_00a0d730`** | 56 | 1 | oui |
+| `0x00a0dce0` | **`FUN_00a0dce0`** | 56 | 1 | oui |
 | `0x00a05c60` | `FUN_00a05c60` | 55 | 3 | **non** |
 | `0x00a0e7f0` | **`FUN_00a0e7f0`** | 53 | 1 | oui |
 | `0x00a0f3f0` | **`FUN_00a0f3f0`** | 53 | 1 | oui |
@@ -466,8 +466,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a02870` | **`FUN_00a02870`** | 52 | 0 | oui |
 | `0x00a02e40` | **`FUN_00a02e40`** | 52 | 0 | oui |
 | `0x00a05df0` | **`FUN_00a05df0`** | 52 | 0 | **non** |
-| `0x00a0d260` | `FUN_00a0d260` | 52 | 1 | **non** |
-| `0x00a0d7f0` | `FUN_00a0d7f0` | 52 | 1 | **non** |
+| `0x00a0d260` | **`FUN_00a0d260`** | 52 | 1 | oui |
+| `0x00a0d7f0` | **`FUN_00a0d7f0`** | 52 | 1 | oui |
 | `0x00a10b60` | **`FUN_00a10b60`** | 51 | 1 | oui |
 | `0x00a264f0` | **`FUN_00a264f0`** | 51 | 10 | oui |
 | `0x00a27430` | **`FUN_00a27430`** | 51 | 1 | oui |
@@ -478,8 +478,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a11000` | **`FUN_00a11000`** | 50 | 1 | oui |
 | `0x00a11520` | **`FUN_00a11520`** | 50 | 1 | oui |
 | `0x00a27650` | `FUN_00a27650` | 49 | 1 | **non** |
-| `0x00a0d6a0` | `FUN_00a0d6a0` | 48 | 1 | **non** |
-| `0x00a0dc30` | `FUN_00a0dc30` | 48 | 1 | **non** |
+| `0x00a0d6a0` | **`FUN_00a0d6a0`** | 48 | 1 | oui |
+| `0x00a0dc30` | **`FUN_00a0dc30`** | 48 | 1 | oui |
 | `0x00a05d50` | **`FUN_00a05d50`** | 47 | 1 | **non** |
 | `0x00a0e580` | **`FUN_00a0e580`** | 47 | 1 | oui |
 | `0x00a0cd20` | **`FUN_00a0cd20`** | 46 | 3 | oui |
@@ -501,10 +501,10 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a03e70` | **`FUN_00a03e70`** | 39 | 0 | **non** |
 | `0x00a05e90` | **`FUN_00a05e90`** | 39 | 0 | **non** |
 | `0x00a06a40` | `FUN_00a06a40` | 39 | 1 | **non** |
-| `0x00a0d630` | `FUN_00a0d630` | 38 | 1 | **non** |
-| `0x00a0dba0` | `FUN_00a0dba0` | 38 | 1 | **non** |
+| `0x00a0d630` | **`FUN_00a0d630`** | 38 | 1 | oui |
+| `0x00a0dba0` | **`FUN_00a0dba0`** | 38 | 1 | oui |
 | `0x00a26220` | **`FUN_00a26220`** | 38 | 0 | oui |
-| `0x00a0d5c0` | `FUN_00a0d5c0` | 36 | 1 | **non** |
+| `0x00a0d5c0` | **`FUN_00a0d5c0`** | 36 | 1 | oui |
 | `0x00a1f8f0` | `FUN_00a1f8f0` | 36 | 3 | **non** |
 | `0x00a21040` | **`FUN_00a21040`** | 35 | 0 | **non** |
 | `0x00a26490` | **`FUN_00a26490`** | 35 | 1 | oui |
@@ -532,7 +532,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a27560` | `FUN_00a27560` | 27 | 1 | **non** |
 | `0x00a027a0` | **`FUN_00a027a0`** | 26 | 1 | oui |
 | `0x00a027e0` | **`FUN_00a027e0`** | 26 | 1 | oui |
-| `0x00a0c480` | `FUN_00a0c480` | 26 | 2 | **non** |
+| `0x00a0c480` | **`FUN_00a0c480`** | 26 | 2 | oui |
 | `0x00a23810` | `FUN_00a23810` | 26 | 1 | **non** |
 | `0x00a25b50` | **`FUN_00a25b50`** | 26 | 0 | **non** |
 | `0x00a261e0` | **`FUN_00a261e0`** | 26 | 1 | oui |

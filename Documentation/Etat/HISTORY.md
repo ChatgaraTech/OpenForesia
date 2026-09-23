@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **le constructeur de paquets est en C#** — étape 9, 17 corps :
+  `winsys3d/ConstructionPaquets.cs` (fichier neuf), avec `ConstruirePaquet` (`dde0`, ordinal
+  752), `AllouerPaquet` (`c480`) et 15 adaptateurs qui font des enregistrements de modèle des
+  paquets de primitive pour 8 producteurs, encore natifs (étape 10). `winsys3d` passe à 152
+  corps portés, le chemin d'affichage à 112 sur 157. **Pas encore exercé**
+- doc : les 15 adaptateurs sont **engendrés** depuis `winsys3d.c` par un script (six formes
+  d'affectation, aucune laissée de côté), puis vérifiés au désassembleur sur trois d'entre eux ;
+  les mémos de couleur `DAT_011be764/768/76c` sont des mots de 16 bits
+
 - feat : **le chargement des textures est en C# — plus rien du sous-système des textures n'est
   natif.** Étape 8, 6 corps : `winsys3d/ChargementTextures.cs` (fichier neuf) pour la conversion
   VRAM PS → objet texture (`271e0`, `03460` image DIB 4/8/24 bits, `03980` 16 bits par table), et

@@ -550,4 +550,26 @@ internal static unsafe class Winsys3dData
 
     /// <summary>DAT_00b2d188 — nul, le genre 1 est ramene au genre 0 au chargement.</summary>
     internal static ref int Genre1Permis_00b2d188 => ref *(int*)At(0x00b2d188);
+
+    // ----------------------------------------------------------------------------------------
+    // La construction des paquets — `ConstructionPaquets.cs`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// DAT_011be7a4 — le DEBUT de la zone de sommets du paquet courant, pose avec
+    /// <see cref="Sommets_011be7a8"/> par `FUN_00a0c480` ; celui-la avance, celui-ci reste.
+    /// </summary>
+    internal static ref float* SommetsDebut_011be7a4 => ref *(float**)At(0x011be7a4);
+
+    /// <summary>
+    /// DAT_011be764, DAT_011be768, DAT_011be76c — le memo de la derniere couleur r, g, b emise
+    /// dans le tampon, en mots de 16 bits (`mov [11BE764h],ax`). 0xffff = aucune.
+    /// </summary>
+    internal static ref ushort MemoRouge_011be764 => ref *(ushort*)At(0x011be764);
+
+    /// <summary>Voir <see cref="MemoRouge_011be764"/>.</summary>
+    internal static ref ushort MemoVert_011be768 => ref *(ushort*)At(0x011be768);
+
+    /// <summary>Voir <see cref="MemoRouge_011be764"/>.</summary>
+    internal static ref ushort MemoBleu_011be76c => ref *(ushort*)At(0x011be76c);
 }

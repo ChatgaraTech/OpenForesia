@@ -636,7 +636,7 @@ internal static unsafe class Winsys3dCheminAffichage
     /// </summary>
     internal static void ConstruireEtRejouer(uint* descripteur, uint a, int b)
     {
-        if ((int)*descripteur >= 0) Winsys3dNatif.Fun_00a0dde0(descripteur, a, b);
+        if ((int)*descripteur >= 0) Winsys3dConstructionPaquets.ConstruirePaquet(descripteur, (void*)a, b);
 
         Winsys3dData.PaquetCourant_011be7ac = (uint*)(*descripteur & 0x7fffffff);
         RejouerPaquetCourant();
