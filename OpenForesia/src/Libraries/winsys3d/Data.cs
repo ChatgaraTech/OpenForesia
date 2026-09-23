@@ -936,6 +936,41 @@ internal static unsafe class Winsys3dData
     /// <summary>_DAT_00a2a028 — le gamma « jamais pose » : si le gamma courant l'egale, `FUN_00a03110` pose 1.0.</summary>
     internal static float GammaInitial_00a2a028 => *(float*)At(0x00a2a028);
 
+    // ----------------------------------------------------------------------------------------
+    // Le dialogue de choix du pilote — `Device.cs`, `Setup3DDevice` (823).
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>DAT_00a2e8e8 — le `HINSTANCE` de la DLL, pose par son point d'entree : celui dont le dialogue 0x66 est une ressource.</summary>
+    internal static IntPtr InstanceDll_00a2e8e8 => *(IntPtr*)At(0x00a2e8e8);
+
+    /// <summary>DAT_00a2e8e0 — le bloc de parametres du dialogue en cours, que sa procedure (native) relit.</summary>
+    internal static ref byte* ParametresDialogue_00a2e8e0 => ref *(byte**)At(0x00a2e8e0);
+
+    /// <summary>Les entrees `DirectDrawEnumerateA` et `DirectDrawCreate` de la table d'imports, que les deux thunks `jmp [..]` suivent.</summary>
+    internal static void** ImportDirectDrawEnumerateA_01215244 => (void**)At(0x01215244);
+    internal static void** ImportDirectDrawCreate_01215248 => (void**)At(0x01215248);
+
+    /// <summary>FUN_00a012f0 — un CODE : la procedure du dialogue de choix du pilote, restee native, passee a `DialogBoxParamA`.</summary>
+    internal static IntPtr ProcedureDialogue_00a012f0 => (IntPtr)At(0x00a012f0);
+
+    /// <summary>LAB_00a01810 — un CODE : le rappel de `DirectDrawEnumerateA`, reste natif ; il remplit le bloc des pilotes.</summary>
+    internal static IntPtr RappelPilotes_00a01810 => (IntPtr)At(0x00a01810);
+
+    /// <summary>LAB_00a01000 — un CODE : le rappel de `EnumDisplayModes`, reste natif.</summary>
+    internal static IntPtr RappelModes_00a01000 => (IntPtr)At(0x00a01000);
+
+    /// <summary>&amp;DAT_00a2c018 — la taille (clé « Size ») ecrite pour chaque resolution : 1, 7, 11, 16, 23.</summary>
+    internal static int* TaillesParResolution_00a2c018 => (int*)At(0x00a2c018);
+
+    /// <summary>
+    /// Les chaines du dialogue et du fichier de configuration, 0x00a2c058 .. 0x00a2c13c : « unknown »,
+    /// « display », « 3Dfx Glide », « Glide », « _grSstQueryBoards@4 », « GLIDE2X.DLL »,
+    /// « Direct3D Software Emulation », « Software », « SOFTWARE », « GLIDE », « Small », « 0 », « 1 »,
+    /// « Size », « %d », « Options », « Resolution », « Description », « D3DDriver », « Driver », « !! »,
+    /// « .cfg ». Designees par leur VA : `Chaine(0x00a2c0b8)`.
+    /// </summary>
+    internal static byte* Chaine(nuint va) => At(va);
+
     /// <summary>DAT_011be6d4 — la TIM de la police 8 x 16, une ressource de la DLL (`LockResource` a l'initialisation). `FntLoad` la lit a +4.</summary>
     internal static ref byte* PoliceTim_011be6d4 => ref *(byte**)At(0x011be6d4);
 

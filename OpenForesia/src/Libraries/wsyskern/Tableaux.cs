@@ -372,7 +372,7 @@ internal static unsafe class Tableaux
     }
 
     /// <summary>Ghidra: wsyskern.c Strdup @ 0x1000bc90 (export 141) — sur le tas de la DLL.</summary>
-    private static void* Strdup(byte* texte)
+    internal static void* Strdup(byte* texte)
     {
         if (texte == null) return null;
         int longueur = 0;

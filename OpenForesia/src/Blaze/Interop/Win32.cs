@@ -53,6 +53,11 @@ internal static unsafe class Win32
     [DllImport("kernel32.dll")] internal static extern int FreeLibrary(IntPtr hLibModule);
     [DllImport("user32.dll")] internal static extern IntPtr SetWindowLongA(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
+    // Le dialogue de choix du pilote de winsys3d, Setup3DDevice / FUN_00a010d0 (Libraries/winsys3d/Device.cs).
+    [DllImport("kernel32.dll")] internal static extern byte* lstrcatA(byte* lpString1, byte* lpString2);
+    [DllImport("kernel32.dll")] internal static extern uint GetPrivateProfileStringA(byte* lpAppName, byte* lpKeyName, byte* lpDefault, byte* lpReturnedString, uint nSize, byte* lpFileName);
+    [DllImport("user32.dll")] internal static extern nint DialogBoxParamA(IntPtr hInstance, byte* lpTemplateName, IntPtr hWndParent, IntPtr lpDialogFunc, nint dwInitParam);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetModuleFileNameA(IntPtr hModule, byte* lpFilename, uint nSize);
 
     [DllImport("kernel32.dll")] internal static extern IntPtr HeapCreate(uint flOptions, nuint dwInitialSize, nuint dwMaximumSize);

@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **toute la clôture de `winsys3d` est en C# — 247 corps sur 247** : `Setup3DDevice` (823),
+  le lanceur et sa liste de pilotes, dans `Device.cs`. Restent deux imports, 337 et 701, aux corps
+  déjà portés. **Pas encore exercé**
+- doc : **LB-048** — le nom du pilote 3D tient sur 20 octets mais se copie sans borne ; un nom long
+  part corrompu dans `Blaze.cfg`
+- fix : la façade déclarait `Setup3DDevice` rendant un `int` ; il ne rend rien
+- doc : l'initialisation du device (lot 13) testée en jeu par Vincent
+
 - feat : **l'initialisation du device de `winsys3d` est en C#** — 789 et 750, avec la préparation
   du device, la construction du cache de textures et, côté `wsyskern`, `IdentityMatrix` et
   `ScaleMatrix`. `winsys3d` passe à 242 corps, 3 points d'entrée. **Pas encore exercé**

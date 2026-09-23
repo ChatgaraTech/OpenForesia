@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 58 / 92 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 3 | 242 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 2 (337, 701 — déjà portés) | **247 / 247** | **toute la clôture est en C#** ; restent les deux imports, voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -749,7 +749,39 @@ désassemblage** :
 
 `winsys3d` passe à 242 corps, 3 points d'entrée — 823 (`Setup3DDevice`), et 337 et 701 déjà
 portés. **Pas encore exercé** — c'est le démarrage du device : une erreur se verrait dès l'écran
-titre (pas d'image, image fausse, textures ou mélanges faux), ou à la fermeture du jeu.
+titre (pas d'image, image fausse, textures ou mélanges faux), ou à la fermeture du jeu. Testé en
+jeu par Vincent le même jour.
+
+**Lot 14, `Setup3DDevice` (823) — la clôture de `winsys3d` est entière** : le lanceur, la liste
+des pilotes `FUN_00a010d0`, l'énumération des modes `FUN_00a017d0` et les deux thunks DirectDraw,
+dans `Device.cs`. **247 corps sur 247.** Transcrit sur le désassemblage :
+
+- **les deux corps passent l'adresse d'un bloc de leur pile à du code natif** qui écrit dedans (la
+  procédure du dialogue, le rappel d'énumération des pilotes) : chacun prend son cadre d'un seul
+  `stackalloc`, aux mêmes décalages que le binaire, relevés sur les `[esp+N]` ;
+- **LB-048** : le nom du pilote a 20 octets et se copie sans borne ; un nom long s'écrase avec la
+  description et part corrompu dans `Blaze.cfg` ;
+- les deux « fonctions » DirectDraw sont des `jmp [IAT]` : appelées à travers la table d'imports ;
+- `Setup3DDevice` ne rend rien (`ret 0Ch` sans `eax` posé) : la façade déclarait un `int`.
+
+Restent natifs, passés par adresse : la procédure du dialogue et les deux rappels d'énumération.
+`Strdup` de `wsyskern` devient `internal` pour être partagé. **Pas encore exercé** — c'est la
+fenêtre de choix du pilote au lancement : une erreur se verrait sur la liste, sur le choix retenu,
+ou sur `Blaze.cfg`.
+
+### Ce qui reste de `winsys3d` après le lot 14
+
+Deux imports, dont les corps sont déjà en C# :
+
+- **701, `DrawOTag`** : son `[DllImport]` ne sert plus qu'à `OPENFORESIA_LEGACY_DRAWOTAG=1`, qui
+  rebranche l'original pour comparer. Le retirer est une décision — on perd la comparaison ;
+- **337, `InitTrigTables`** : `Trigonometrie.cs` n'en transcrit que **la première boucle** (la
+  table de sinus, dupliquée sans danger), et 789 porté l'appelle par son export. Les deux autres
+  boucles remplissent quatre tables — qui les relit maintenant reste à établir ; leurs `__ftol` ont perdu
+  leurs arguments chez Ghidra — le désassemblage s'impose. C'est le dernier vrai lot.
+
+Ensuite `winsys3d.dll` ne sert plus qu'à porter sa mémoire (`Data.cs`) et les codes natifs passés
+par adresse (rappels, procédures de fenêtre et de dialogue).
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

@@ -463,4 +463,227 @@ internal static unsafe class Winsys3dDevice
         }
         Winsys3dData.Objet_012141d4 = null;
     }
+
+    // ============================================================================================
+    // LE DIALOGUE DE CHOIX DU PILOTE — ordinal 823, `Setup3DDevice` (2026-09-23), transcrit sur le
+    // desassemblage (`Legacy/Raw/Winsys3d/FUN_00a01910`, `FUN_00a010d0`, `FUN_00a017d0`,
+    // `FUN_00a279d0`).
+    //
+    // **Les deux corps passent l'adresse d'un bloc de LEUR PILE a du code natif**, qui ecrit dedans :
+    // la procedure du dialogue (`FUN_00a012f0`) et le rappel d'enumeration des pilotes
+    // (`LAB_00a01810`). La disposition est donc reproduite a l'octet pres, relevee sur les
+    // `[esp+N]` : chaque corps prend un seul `stackalloc` de la taille de son cadre, et `pile[k]`
+    // y designe `[S + 0x10 + k]`, `S` etant `esp` apres les quatre `push` du prologue.
+    //
+    // Restent natifs, passes par adresse : la procedure du dialogue et les deux rappels
+    // d'enumeration (`LAB_00a01810`, `LAB_00a01000`). Les deux fonctions DirectDraw sont des thunks
+    // `jmp [IAT]` : elles appellent a travers la table d'imports de la DLL, comme le binaire.
+    // ============================================================================================
+
+    /// <summary>Ghidra: winsys3d.c DirectDrawEnumerateA @ 0x00a279d0 — `jmp [1215244h]` : le thunk d'import.</summary>
+    internal static int DirectDrawEnumerateA(IntPtr rappel, void* contexte)
+        => ((delegate* unmanaged[Stdcall]<IntPtr, void*, int>)*Winsys3dData.ImportDirectDrawEnumerateA_01215244)(rappel, contexte);
+
+    /// <summary>Ghidra: winsys3d.c DirectDrawCreate @ 0x00a279d6 — `jmp [1215248h]` : le thunk d'import.</summary>
+    internal static int DirectDrawCreate(void* guid, void** objet, void* exterieur)
+        => ((delegate* unmanaged[Stdcall]<void*, void**, void*, int>)*Winsys3dData.ImportDirectDrawCreate_01215248)(guid, objet, exterieur);
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a017d0 @ 0x00a017d0 — cree l'objet DirectDraw du pilote par defaut,
+    /// met `*compte` a 0, enumere ses modes d'affichage par le rappel natif `LAB_00a01000`
+    /// (`EnumDisplayModes(0, NULL, compte, rappel)`, case `+0x20`), puis le libere (`Release`, `+8`).
+    /// Le premier argument n'est pas lu. Le retour de `DirectDrawCreate` n'est pas teste. `ret 8`.
+    /// </summary>
+    internal static void EnumererModes(int inutilise, int* compte)
+    {
+        void* dd;
+        DirectDrawCreate(null, &dd, null);
+        void** vtable = *(void***)dd;
+        *compte = 0;
+        ((delegate* unmanaged[Stdcall]<void*, uint, void*, int*, IntPtr, int>)vtable[0x20 / 4])(
+            dd, 0, null, compte, Winsys3dData.RappelModes_00a01000);
+        ((delegate* unmanaged[Stdcall]<void*, uint>)(*(void***)dd)[8 / 4])(dd);
+    }
+
+    /// <summary>Le `strlen` + `rep movsd` + `rep movsb` du compilateur : copie jusqu'au NUL compris, sans borne.</summary>
+    private static void CopierChaine(byte* destination, byte* source)
+    {
+        int i = 0;
+        do destination[i] = source[i]; while (source[i++] != 0);
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a010d0 @ 0x00a010d0 — dresse la liste des pilotes et montre le
+    /// dialogue 0x66. `ret 4`.
+    ///
+    /// Le bloc des pilotes, sur la pile a `S+0x14`, est ce que recoivent le rappel d'enumeration et
+    /// le dialogue : un compte, 20 noms, 20 descriptions, 20 mots (`-1` pour Glide), 20 drapeaux,
+    /// le pointeur <paramref name="parametres"/>, puis 37 mots pour `grSstQueryBoards`. Entree 0 :
+    /// « Software » / « Direct3D Software Emulation », avec les modes du pilote par defaut ; puis
+    /// les pilotes DirectDraw ; puis Glide si `GLIDE2X.DLL` compte au moins une carte.
+    ///
+    /// Au retour : un dialogue en echec (-1) detruit la bitmap et la palette et quitte (0). Un compte
+    /// remis a 0 donne « display » / « unknown » et rend 0. Sinon le pilote choisi est copie dans
+    /// <paramref name="parametres"/> (`+4` le nom, `+0x18` la description) — **sans borne**, voir
+    /// LB-048 —, les chaines sont liberees, et le corps rend 1.
+    /// </summary>
+    internal static int ListerPilotes(byte* parametres)
+    {
+        byte* pile = stackalloc byte[0x1e0];            // [S + 0x10] .. [S + 0x1f0]
+        int* compte = (int*)(pile + 4);                  // S+0x14
+        void** noms = (void**)(pile + 8);                // S+0x18
+        void** descriptions = (void**)(pile + 0x58);     // S+0x68
+        int* guides = (int*)(pile + 0xa8);               // S+0xb8
+        int* drapeaux = (int*)(pile + 0xf8);             // S+0x108
+        byte** appel = (byte**)(pile + 0x148);           // S+0x158
+        int* cartes = (int*)(pile + 0x14c);              // S+0x15c
+
+        noms[0] = Tableaux.Strdup(Winsys3dData.Chaine(0x00a2c0b8));            // « Software »
+        descriptions[0] = Tableaux.Strdup(Winsys3dData.Chaine(0x00a2c09c));    // « Direct3D Software Emulation »
+        guides[0] = 0;
+        drapeaux[0] = 0;
+        EnumererModes(0, drapeaux);
+        *compte = 1;
+        DirectDrawEnumerateA(Winsys3dData.RappelPilotes_00a01810, compte);
+
+        IntPtr glide = Win32.LoadLibraryA(Winsys3dData.Chaine(0x00a2c090));    // « GLIDE2X.DLL »
+        if (glide != IntPtr.Zero)
+        {
+            var getProcAddress = (delegate* unmanaged[Stdcall]<IntPtr, byte*, void*>)*Winsys3dData.ImportGetProcAddress_0121532c;
+            void* interroger = getProcAddress(glide, Winsys3dData.Chaine(0x00a2c07c));   // « _grSstQueryBoards@4 »
+            ((delegate* unmanaged[Stdcall]<int*, int>)interroger)(cartes);
+            Win32.FreeLibrary(glide);
+            if (cartes[0] != 0)
+            {
+                noms[*compte] = Tableaux.Strdup(Winsys3dData.Chaine(0x00a2c074));          // « Glide »
+                descriptions[*compte] = Tableaux.Strdup(Winsys3dData.Chaine(0x00a2c068));  // « 3Dfx Glide »
+                guides[*compte] = -1;
+                drapeaux[*compte] = 4;
+                *compte = *compte + 1;
+            }
+        }
+
+        Winsys3dData.ParametresDialogue_00a2e8e0 = parametres;
+        *appel = parametres;
+        nint choix = Win32.DialogBoxParamA(Winsys3dData.InstanceDll_00a2e8e8, (byte*)0x66,
+            *(IntPtr*)parametres, Winsys3dData.ProcedureDialogue_00a012f0, (nint)compte);
+        if (choix == -1)
+        {
+            Win32.DeleteObject(*(IntPtr*)(parametres + 0x11c));
+            Win32.DeleteObject(*(IntPtr*)(parametres + 0x120));
+            Win32.ExitProcess(0);
+        }
+
+        if (*compte == 0)
+        {
+            CopierChaine(parametres + 4, Winsys3dData.Chaine(0x00a2c060));       // « display »
+            CopierChaine(parametres + 0x18, Winsys3dData.Chaine(0x00a2c058));    // « unknown »
+            return 0;
+        }
+
+        CopierChaine(parametres + 4, (byte*)noms[choix]);
+        CopierChaine(parametres + 0x18, (byte*)descriptions[choix]);
+        for (int i = 0; i < *compte; i++)
+        {
+            Blaze.Wsyskern.WsysFree((byte*)noms[i]);
+            Blaze.Wsyskern.WsysFree((byte*)descriptions[i]);
+        }
+        return 1;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c Setup3DDevice @ 0x00a01910 (ordinal 823) — le lanceur : lit le pilote et la
+    /// resolution dans le fichier de configuration a cote de l'executable (`Blaze.cfg`), montre le
+    /// dialogue de choix s'il y a une bitmap, ecrit ce qui a change, et pose les deux drapeaux
+    /// `Glide` (pilote « GLIDE ») et `DAT_011be73c` (pilote « SOFTWARE ») que l'initialisation
+    /// (789) relit. `ret 0Ch`.
+    ///
+    /// Le bloc passe au dialogue commence a `S+0x10` : fenetre (0), nom du pilote (`+4`, **vingt
+    /// octets seulement**), description (`+0x18`), resolution (`+0x118`), bitmap, palette et chaines
+    /// (`+0x11c`, `+0x120`, `+0x124`). Suivent le chemin du fichier (`S+0x138`) et un tampon (`S+0x238`).
+    ///
+    /// `wsprintfA(tampon, "%d", n)` est rendu par le formatage decimal de .NET, identique pour un
+    /// entier. `_strrchr` et `_strcmpi` sont ceux de la CRT liee dans la DLL, sur des chaines ASCII.
+    /// </summary>
+    internal static void Setup3DDevice(IntPtr bitmap, IntPtr palette, byte** chaines)
+    {
+        byte* pile = stackalloc byte[0x328];             // [S + 0x10] .. [S + 0x338]
+        byte* bloc = pile;                                // S+0x10, le bloc du dialogue
+        byte* nom = pile + 4;                             // S+0x14
+        byte* description = pile + 0x18;                  // S+0x28
+        int* resolution = (int*)(pile + 0x118);           // S+0x128
+        byte* fichier = pile + 0x128;                     // S+0x138
+        byte* tampon = pile + 0x228;                      // S+0x238
+
+        Win32.GetModuleFileNameA(IntPtr.Zero, fichier, 0x100);
+        byte* point = null;                               // _strrchr(fichier, '.')
+        for (byte* p = fichier; ; p++)
+        {
+            if (*p == (byte)'.') point = p;
+            if (*p == 0) break;
+        }
+        if (point != null) *point = 0;
+        Win32.lstrcatA(fichier, Winsys3dData.Chaine(0x00a2c13c));                 // « .cfg »
+
+        *(IntPtr*)(bloc + 0x120) = palette;
+        *(int*)bloc = 0;
+        *(IntPtr*)(bloc + 0x11c) = bitmap;
+        *(byte***)(bloc + 0x124) = chaines;
+
+        byte* sectionPilote = Winsys3dData.Chaine(0x00a2c124);                   // « D3DDriver »
+        byte* sectionOptions = Winsys3dData.Chaine(0x00a2c104);                  // « Options »
+        byte* cleResolution = Winsys3dData.Chaine(0x00a2c10c);                   // « Resolution »
+        Win32.GetPrivateProfileStringA(sectionPilote, Winsys3dData.Chaine(0x00a2c130), Winsys3dData.Chaine(0x00a2c138),
+            tampon, 0x100, fichier);                                             // « Driver », défaut « !! »
+        CopierChaine(nom, tampon);
+        Win32.GetPrivateProfileStringA(sectionPilote, Winsys3dData.Chaine(0x00a2c118), Winsys3dData.Chaine(0x00a2c138),
+            tampon, 0x100, fichier);                                             // « Description »
+        CopierChaine(description, tampon);
+        int lue = (int)Win32.GetPrivateProfileIntA(sectionOptions, cleResolution, 2, fichier);
+        *resolution = lue;
+
+        if (bitmap != IntPtr.Zero)
+        {
+            if (ListerPilotes(bloc) == -1)
+            {
+                Win32.DeleteObject(bitmap);
+                Win32.DeleteObject(palette);
+                Win32.ExitProcess(1);
+            }
+            if (*resolution != lue)
+            {
+                EcrireEntier(tampon, *resolution);
+                Win32.WritePrivateProfileStringA(sectionOptions, cleResolution, tampon, fichier);
+                EcrireEntier(tampon, Winsys3dData.TaillesParResolution_00a2c018[*resolution]);
+                Win32.WritePrivateProfileStringA(sectionOptions, Winsys3dData.Chaine(0x00a2c0f8), tampon, fichier);   // « Size »
+                byte* petit = *resolution < 2 ? Winsys3dData.Chaine(0x00a2c0f4) : Winsys3dData.Chaine(0x00a2c0f0);   // « 1 » / « 0 »
+                Win32.WritePrivateProfileStringA(sectionOptions, Winsys3dData.Chaine(0x00a2c0e8), petit, fichier);   // « Small »
+            }
+        }
+
+        Winsys3dData.Glide_011be738 = ComparerSansCasse(nom, Winsys3dData.Chaine(0x00a2c0e0)) == 0 ? 1 : 0;      // « GLIDE »
+        Winsys3dData.Unknown_011be73c = ComparerSansCasse(nom, Winsys3dData.Chaine(0x00a2c0d4)) == 0 ? 1 : 0;    // « SOFTWARE »
+        Win32.WritePrivateProfileStringA(sectionPilote, Winsys3dData.Chaine(0x00a2c130), nom, fichier);
+        Win32.WritePrivateProfileStringA(sectionPilote, Winsys3dData.Chaine(0x00a2c118), description, fichier);
+    }
+
+    /// <summary>`wsprintfA(tampon, "%d", n)`.</summary>
+    private static void EcrireEntier(byte* tampon, int n)
+    {
+        string texte = n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        for (int i = 0; i < texte.Length; i++) tampon[i] = (byte)texte[i];
+        tampon[texte.Length] = 0;
+    }
+
+    /// <summary>`_strcmpi` de la CRT (locale « C ») : compare en ramenant les lettres ASCII en minuscules.</summary>
+    private static int ComparerSansCasse(byte* a, byte* b)
+    {
+        for (int i = 0; ; i++)
+        {
+            int ca = a[i], cb = b[i];
+            if (ca >= 'A' && ca <= 'Z') ca += 0x20;
+            if (cb >= 'A' && cb <= 'Z') cb += 0x20;
+            if (ca != cb || ca == 0) return ca - cb;
+        }
+    }
 }

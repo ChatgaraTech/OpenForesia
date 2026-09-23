@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 92 | 4 088 | 1 926 | 7 % | 58 |
-| `winsys3d` | 604 | 27 092 | 3 | 247 | 13 423 | 1 181 | 50 % | 242 |
+| `winsys3d` | 604 | 27 092 | 2 | 247 | 13 423 | 1 181 | 50 % | 247 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -308,23 +308,22 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**3 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
+**2 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
 soit **14 604 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
 1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 423 lignes,
 50 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**240 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**245 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (3)
+### Les points d'entree employes (2)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
 | 337 | — | `0x00a1df00` | `FUN_00a1df00` | 62 | oui |
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | oui |
-| 823 | `Setup3DDevice` | `0x00a01910` | `Setup3DDevice` | 118 | **non** |
 
 ### La cloture — ce qu'il faut transcrire (247 fonctions, 13 423 lignes)
 
@@ -345,7 +344,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a06420` | **`FUN_00a06420`** | 186 | 1 | oui |
 | `0x00a22010` | **`FUN_00a22010`** | 181 | 0 | oui |
 | `0x00a226c0` | **`FUN_00a226c0`** | 170 | 0 | oui |
-| `0x00a010d0` | `FUN_00a010d0` | 164 | 1 | **non** |
+| `0x00a010d0` | **`FUN_00a010d0`** | 164 | 1 | oui |
 | `0x00a03980` | **`FUN_00a03980`** | 150 | 1 | oui |
 | `0x00a053e0` | **`FUN_00a053e0`** | 143 | 0 | oui |
 | `0x00a0aa90` | **`FUN_00a0aa90`** | 132 | 1 | oui |
@@ -355,7 +354,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a08080` | **`FUN_00a08080`** | 126 | 1 | oui |
 | `0x00a03110` | **`FUN_00a03110`** | 123 | 1 | oui |
 | `0x00a24000` | **`FUN_00a24000`** | 122 | 1 | oui |
-| `0x00a01910` | **`Setup3DDevice`** | 118 | 0 | **non** |
+| `0x00a01910` | **`Setup3DDevice`** | 118 | 0 | oui |
 | `0x00a20630` | **`FUN_00a20630`** | 116 | 0 | oui |
 | `0x00a12350` | **`FUN_00a12350`** | 115 | 1 | oui |
 | `0x00a078c0` | **`FUN_00a078c0`** | 112 | 1 | oui |
@@ -528,7 +527,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a024a0` | **`FUN_00a024a0`** | 20 | 1 | oui |
 | `0x00a046e0` | **`FUN_00a046e0`** | 20 | 0 | oui |
 | `0x00a05060` | **`FUN_00a05060`** | 20 | 0 | oui |
-| `0x00a017d0` | `FUN_00a017d0` | 19 | 1 | **non** |
+| `0x00a017d0` | **`FUN_00a017d0`** | 19 | 1 | oui |
 | `0x00a0cdd0` | **`FUN_00a0cdd0`** | 19 | 1 | oui |
 | `0x00a20e70` | **`FUN_00a20e70`** | 19 | 0 | oui |
 | `0x00a26ab0` | **`FUN_00a26ab0`** | 19 | 1 | oui |
@@ -565,8 +564,8 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a26a30` | **`FUN_00a26a30`** | 14 | 1 | oui |
 | `0x00a26a70` | **`FUN_00a26a70`** | 14 | 1 | oui |
 | `0x00a27120` | **`FUN_00a27120`** | 14 | 3 | oui |
-| `0x00a279d0` | `DirectDrawEnumerateA` | 14 | 1 | **non** |
-| `0x00a279d6` | `DirectDrawCreate` | 14 | 1 | **non** |
+| `0x00a279d0` | **`DirectDrawEnumerateA`** | 14 | 1 | oui |
+| `0x00a279d6` | **`DirectDrawCreate`** | 14 | 1 | oui |
 | `0x00a04650` | **`FUN_00a04650`** | 13 | 0 | oui |
 | `0x00a04fd0` | **`FUN_00a04fd0`** | 13 | 0 | oui |
 | `0x00a04fe0` | **`FUN_00a04fe0`** | 13 | 0 | oui |

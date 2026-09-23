@@ -39,8 +39,10 @@ internal static unsafe class Winsys3d
     //   [3] OK button (id 1)      [4] Cancel button (id 2)
     // The DLL null-checks the array pointer itself but then dereferences all five entries
     // unconditionally, so a non-null array must have five valid strings.
-    [DllImport("winsys3d.dll")]
-    internal static extern int Setup3DDevice(IntPtr hBitmap, IntPtr hPalette, byte** titleStrings);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Device.cs`. `ret 0Ch` et aucune valeur rendue : l'ancien
+    // `int` de retour lisait un `eax` quelconque, et le seul site l'ignore.
+    internal static void Setup3DDevice(IntPtr hBitmap, IntPtr hPalette, byte** titleStrings)
+        => Libraries.Winsys3dDevice.Setup3DDevice(hBitmap, hPalette, titleStrings);
 
     // winsys3d.dll ordinal 756, confirmed against winsys3d.c (decompiled DLL source): builds
     // gamma-correction / RGB translation tables from a float multiplier (default 1.0f = 0x3f800000).

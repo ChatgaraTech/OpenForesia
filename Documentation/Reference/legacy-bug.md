@@ -2138,3 +2138,28 @@ de 28 minutes d'affilée.
 **Reproduit tel quel** dans `src/Libraries/winsys3d/Cadence.cs`, jusqu'à l'ordre des lectures :
 les valeurs sont prises avant la première écriture, comme dans le binaire, pour que le
 recouvrement produise les mêmes valeurs.
+
+## LB-048 — Le nom du pilote 3D tient sur 20 octets, mais se copie sans borne
+
+**Où** : `winsys3d.c`, `Setup3DDevice` @ `0x00a01910` (ordinal 823) et `FUN_00a010d0` @
+`0x00a010d0`, le lanceur qui choisit le pilote. **Trouvé à la lecture** le 2026-09-23 — non observé.
+
+Le bloc que `Setup3DDevice` tient sur sa pile et passe au dialogue réserve **20 octets** au nom du
+pilote (`+4`), puis la description (`+0x18`). Deux copies y écrivent un nom **sans borne**, par
+`strlen` puis `rep movsd`/`rep movsb` :
+
+- `Setup3DDevice` y copie la clé `Driver` de `Blaze.cfg`, lue dans un tampon de 256 octets ;
+- `FUN_00a010d0` y copie le nom du pilote choisi dans le dialogue.
+
+Un nom de 20 caractères ou plus déborde sur la description. Comme la description est écrite
+**juste après**, elle écrase la fin du nom et son NUL : le nom lu ensuite devient les 20 premiers
+caractères suivis de la description. C'est ce texte que `Setup3DDevice` compare à « GLIDE » et
+« SOFTWARE », puis réécrit dans `Blaze.cfg` sous `Driver` — le fichier garde le nom corrompu, et
+le lancement suivant le relit tel quel.
+
+**Conséquence** : aucune observée. Les noms en jeu — « Software », « Glide », et les noms de
+pilote DirectDraw que le rappel d'énumération range — sont courts. Il faudrait un pilote au nom de
+20 caractères ou plus, ou un `Blaze.cfg` écrit à la main.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Device.cs` : les deux corps prennent leur cadre
+de pile d'un seul `stackalloc`, aux mêmes décalages, pour que le débordement tombe au même endroit.
