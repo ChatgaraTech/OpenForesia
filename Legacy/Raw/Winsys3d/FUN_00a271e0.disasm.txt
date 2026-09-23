@@ -1,0 +1,286 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a271e0  section .text  offset fichier 0x265e0  600 octets
+
+  00a271e0  53                    push      ebx
+  00a271e1  8b5c2410              mov       ebx,[esp+10h]
+  00a271e5  55                    push      ebp
+  00a271e6  8b6c2410              mov       ebp,[esp+10h]
+  00a271ea  8bc5                  mov       eax,ebp
+  00a271ec  56                    push      esi
+  00a271ed  c1f807                sar       eax,7
+  00a271f0  83e003                and       eax,3
+  00a271f3  57                    push      edi
+  00a271f4  83fbff                cmp       ebx,0FFFFFFFFh
+  00a271f7  8bf9                  mov       edi,ecx
+  00a271f9  89442418              mov       [esp+18h],eax
+  00a271fd  7509                  jne       short 00A27208h
+  00a271ff  83f802                cmp       eax,2
+  00a27202  0f8c11020000          jl        near 00A27419h
+
+LAB_00a27208:
+  00a27208  837c242001            cmp       dword [esp+20h],1
+  00a2720d  7511                  jne       short 00A27220h
+  00a2720f  a188d1b200            mov       eax,[0B2D188h]
+  00a27214  85c0                  test      eax,eax
+  00a27216  7508                  jne       short 00A27220h
+  00a27218  c744242000000000      mov       dword [esp+20h],0
+
+LAB_00a27220:
+  00a27220  8b442420              mov       eax,[esp+20h]
+  00a27224  8b742414              mov       esi,[esp+14h]
+  00a27228  83e800                sub       eax,0
+  00a2722b  742d                  je        short 00A2725Ah
+  00a2722d  48                    dec       eax
+  00a2722e  7412                  je        short 00A27242h
+  00a27230  48                    dec       eax
+  00a27231  7551                  jne       short 00A27284h
+  00a27233  6878d0ac00            push      0ACD078h
+  00a27238  56                    push      esi
+  00a27239  55                    push      ebp
+  00a2723a  53                    push      ebx
+  00a2723b  e840c7fdff            call      00A03980h
+  00a27240  eb40                  jmp       short 00A27282h
+
+LAB_00a27242:
+  00a27242  833d7cd0b20010        cmp       dword [0B2D07Ch],10h
+  00a27249  7c2f                  jl        short 00A2727Ah
+  00a2724b  6878d0a800            push      0A8D078h
+  00a27250  56                    push      esi
+  00a27251  55                    push      ebp
+  00a27252  53                    push      ebx
+  00a27253  e828c7fdff            call      00A03980h
+  00a27258  eb28                  jmp       short 00A27282h
+
+LAB_00a2725a:
+  00a2725a  833d7cd0b20010        cmp       dword [0B2D07Ch],10h
+  00a27261  7c17                  jl        short 00A2727Ah
+  00a27263  f7c500100000          test      ebp,1000h
+  00a27269  750f                  jne       short 00A2727Ah
+  00a2726b  6878d0aa00            push      0AAD078h
+  00a27270  56                    push      esi
+  00a27271  55                    push      ebp
+  00a27272  53                    push      ebx
+  00a27273  e808c7fdff            call      00A03980h
+  00a27278  eb08                  jmp       short 00A27282h
+
+LAB_00a2727a:
+  00a2727a  56                    push      esi
+  00a2727b  55                    push      ebp
+  00a2727c  53                    push      ebx
+  00a2727d  e8dec1fdff            call      00A03460h
+
+LAB_00a27282:
+  00a27282  8907                  mov       [edi],eax
+
+LAB_00a27284:
+  00a27284  833f00                cmp       dword [edi],0
+  00a27287  0f848c010000          je        near 00A27419h
+  00a2728d  8bce                  mov       ecx,esi
+  00a2728f  895f04                mov       [edi+4],ebx
+  00a27292  8d4708                lea       eax,[edi+8]
+  00a27295  8b11                  mov       edx,[ecx]
+  00a27297  8910                  mov       [eax],edx
+  00a27299  8b5104                mov       edx,[ecx+4]
+  00a2729c  895004                mov       [eax+4],edx
+  00a2729f  8b5108                mov       edx,[ecx+8]
+  00a272a2  895008                mov       [eax+8],edx
+  00a272a5  8b490c                mov       ecx,[ecx+0Ch]
+  00a272a8  89480c                mov       [eax+0Ch],ecx
+  00a272ab  8b06                  mov       eax,[esi]
+  00a272ad  8b4e08                mov       ecx,[esi+8]
+  00a272b0  2bc8                  sub       ecx,eax
+  00a272b2  83e920                sub       ecx,20h
+  00a272b5  742d                  je        short 00A272E4h
+  00a272b7  83e920                sub       ecx,20h
+  00a272ba  7412                  je        short 00A272CEh
+  00a272bc  83e940                sub       ecx,40h
+  00a272bf  7407                  je        short 00A272C8h
+  00a272c1  b8d04c1c01            mov       eax,11C4CD0h
+  00a272c6  eb30                  jmp       short 00A272F8h
+
+LAB_00a272c8:
+  00a272c8  c1f805                sar       eax,5
+  00a272cb  40                    inc       eax
+  00a272cc  eb1c                  jmp       short 00A272EAh
+
+LAB_00a272ce:
+  00a272ce  c1f805                sar       eax,5
+  00a272d1  83c009                add       eax,9
+  00a272d4  8bc8                  mov       ecx,eax
+  00a272d6  c1e108                shl       ecx,8
+  00a272d9  03c8                  add       ecx,eax
+  00a272db  8d048dd04c1c01        lea       eax,[ecx*4+11C4CD0h]
+  00a272e2  eb14                  jmp       short 00A272F8h
+
+LAB_00a272e4:
+  00a272e4  c1f805                sar       eax,5
+  00a272e7  83c011                add       eax,11h
+
+LAB_00a272ea:
+  00a272ea  8bd0                  mov       edx,eax
+  00a272ec  c1e208                shl       edx,8
+  00a272ef  03d0                  add       edx,eax
+  00a272f1  8d0495d04c1c01        lea       eax,[edx*4+11C4CD0h]
+
+LAB_00a272f8:
+  00a272f8  894718                mov       [edi+18h],eax
+  00a272fb  8b4604                mov       eax,[esi+4]
+  00a272fe  8b4e0c                mov       ecx,[esi+0Ch]
+  00a27301  2bc8                  sub       ecx,eax
+  00a27303  83e920                sub       ecx,20h
+  00a27306  742d                  je        short 00A27335h
+  00a27308  83e920                sub       ecx,20h
+  00a2730b  7412                  je        short 00A2731Fh
+  00a2730d  83e940                sub       ecx,40h
+  00a27310  7407                  je        short 00A27319h
+  00a27312  b8d04c1c01            mov       eax,11C4CD0h
+  00a27317  eb30                  jmp       short 00A27349h
+
+LAB_00a27319:
+  00a27319  c1f805                sar       eax,5
+  00a2731c  40                    inc       eax
+  00a2731d  eb1c                  jmp       short 00A2733Bh
+
+LAB_00a2731f:
+  00a2731f  c1f805                sar       eax,5
+  00a27322  83c009                add       eax,9
+  00a27325  8bd0                  mov       edx,eax
+  00a27327  c1e208                shl       edx,8
+  00a2732a  03d0                  add       edx,eax
+  00a2732c  8d0495d04c1c01        lea       eax,[edx*4+11C4CD0h]
+  00a27333  eb14                  jmp       short 00A27349h
+
+LAB_00a27335:
+  00a27335  c1f805                sar       eax,5
+  00a27338  83c011                add       eax,11h
+
+LAB_00a2733b:
+  00a2733b  8bc8                  mov       ecx,eax
+  00a2733d  c1e108                shl       ecx,8
+  00a27340  03c8                  add       ecx,eax
+  00a27342  8d048dd04c1c01        lea       eax,[ecx*4+11C4CD0h]
+
+LAB_00a27349:
+  00a27349  89471c                mov       [edi+1Ch],eax
+  00a2734c  8b06                  mov       eax,[esi]
+  00a2734e  8b4e08                mov       ecx,[esi+8]
+  00a27351  2bc8                  sub       ecx,eax
+  00a27353  83e920                sub       ecx,20h
+  00a27356  742d                  je        short 00A27385h
+  00a27358  83e920                sub       ecx,20h
+  00a2735b  7412                  je        short 00A2736Fh
+  00a2735d  83e940                sub       ecx,40h
+  00a27360  7407                  je        short 00A27369h
+  00a27362  b868e81b01            mov       eax,11BE868h
+  00a27367  eb30                  jmp       short 00A27399h
+
+LAB_00a27369:
+  00a27369  c1f805                sar       eax,5
+  00a2736c  40                    inc       eax
+  00a2736d  eb1c                  jmp       short 00A2738Bh
+
+LAB_00a2736f:
+  00a2736f  c1f805                sar       eax,5
+  00a27372  83c009                add       eax,9
+  00a27375  8bc8                  mov       ecx,eax
+  00a27377  c1e108                shl       ecx,8
+  00a2737a  03c8                  add       ecx,eax
+  00a2737c  8d048d68e81b01        lea       eax,[ecx*4+11BE868h]
+  00a27383  eb14                  jmp       short 00A27399h
+
+LAB_00a27385:
+  00a27385  c1f805                sar       eax,5
+  00a27388  83c011                add       eax,11h
+
+LAB_00a2738b:
+  00a2738b  8bd0                  mov       edx,eax
+  00a2738d  c1e208                shl       edx,8
+  00a27390  03d0                  add       edx,eax
+  00a27392  8d049568e81b01        lea       eax,[edx*4+11BE868h]
+
+LAB_00a27399:
+  00a27399  894720                mov       [edi+20h],eax
+  00a2739c  8b4604                mov       eax,[esi+4]
+  00a2739f  8b760c                mov       esi,[esi+0Ch]
+  00a273a2  2bf0                  sub       esi,eax
+  00a273a4  83ee20                sub       esi,20h
+  00a273a7  742d                  je        short 00A273D6h
+  00a273a9  83ee20                sub       esi,20h
+  00a273ac  7412                  je        short 00A273C0h
+  00a273ae  83ee40                sub       esi,40h
+  00a273b1  7407                  je        short 00A273BAh
+  00a273b3  b868e81b01            mov       eax,11BE868h
+  00a273b8  eb30                  jmp       short 00A273EAh
+
+LAB_00a273ba:
+  00a273ba  c1f805                sar       eax,5
+  00a273bd  40                    inc       eax
+  00a273be  eb1c                  jmp       short 00A273DCh
+
+LAB_00a273c0:
+  00a273c0  c1f805                sar       eax,5
+  00a273c3  83c009                add       eax,9
+  00a273c6  8bd0                  mov       edx,eax
+  00a273c8  c1e208                shl       edx,8
+  00a273cb  03d0                  add       edx,eax
+  00a273cd  8d049568e81b01        lea       eax,[edx*4+11BE868h]
+  00a273d4  eb14                  jmp       short 00A273EAh
+
+LAB_00a273d6:
+  00a273d6  c1f805                sar       eax,5
+  00a273d9  83c011                add       eax,11h
+
+LAB_00a273dc:
+  00a273dc  8bc8                  mov       ecx,eax
+  00a273de  c1e108                shl       ecx,8
+  00a273e1  03c8                  add       ecx,eax
+  00a273e3  8d048d68e81b01        lea       eax,[ecx*4+11BE868h]
+
+LAB_00a273ea:
+  00a273ea  894724                mov       [edi+24h],eax
+  00a273ed  8b442420              mov       eax,[esp+20h]
+  00a273f1  83e002                and       eax,2
+  00a273f4  81e500100000          and       ebp,1000h
+  00a273fa  89472c                mov       [edi+2Ch],eax
+  00a273fd  8b442418              mov       eax,[esp+18h]
+  00a27401  0be8                  or        ebp,eax
+  00a27403  c7472800000000        mov       dword [edi+28h],0
+  00a2740a  896f30                mov       [edi+30h],ebp
+  00a2740d  b801000000            mov       eax,1
+  00a27412  5f                    pop       edi
+  00a27413  5e                    pop       esi
+  00a27414  5d                    pop       ebp
+  00a27415  5b                    pop       ebx
+  00a27416  c21000                ret       10h
+
+LAB_00a27419:
+  00a27419  5f                    pop       edi
+  00a2741a  5e                    pop       esi
+  00a2741b  5d                    pop       ebp
+  00a2741c  33c0                  xor       eax,eax
+  00a2741e  5b                    pop       ebx
+  00a2741f  c21000                ret       10h
+  00a27422  90                    nop
+  00a27423  90                    nop
+  00a27424  90                    nop
+  00a27425  90                    nop
+  00a27426  90                    nop
+  00a27427  90                    nop
+  00a27428  90                    nop
+  00a27429  90                    nop
+  00a2742a  90                    nop
+  00a2742b  90                    nop
+  00a2742c  90                    nop
+  00a2742d  90                    nop
+  00a2742e  90                    nop
+  00a2742f  90                    nop
+  00a27430  53                    push      ebx
+  00a27431  55                    push      ebp
+  00a27432  56                    push      esi
+  00a27433  8bf1                  mov       esi,ecx
+  00a27435  57                    push      edi
+  00a27436  833e                  (bad)
+  (octet invalide - la plage demandee deborde probablement du code)

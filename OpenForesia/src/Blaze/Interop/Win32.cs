@@ -38,6 +38,43 @@ internal static unsafe class Win32
 
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr GetModuleHandleA(byte* lpModuleName);
 
+    // Appele par `SetTimingMode` de winsys3d (Libraries/winsys3d/Cadence.cs).
+    [DllImport("kernel32.dll")] internal static extern int QueryPerformanceCounter(long* lpPerformanceCount);
+
+    // La pompe de messages de winsys3d, FUN_00a01d70 (Libraries/winsys3d/Cadence.cs).
+    [DllImport("user32.dll")] internal static extern int TranslateMessage(Blaze.MSG* lpMsg);
+    [DllImport("user32.dll")] internal static extern int WaitMessage();
+    [DllImport("kernel32.dll")] internal static extern IntPtr SetUnhandledExceptionFilter(IntPtr lpTopLevelExceptionFilter);
+
+    // L'initialisation du device de winsys3d, FUN_00a06420 / FUN_00a03110 (Libraries/winsys3d/Device.cs).
+    [DllImport("winmm.dll")] internal static extern uint timeSetEvent(uint uDelay, uint uResolution, IntPtr lpTimeProc, nuint dwUser, uint fuEvent);
+    [DllImport("winmm.dll")] internal static extern uint timeKillEvent(uint uTimerID);
+    [DllImport("kernel32.dll")] internal static extern int QueryPerformanceFrequency(long* lpFrequency);
+    [DllImport("kernel32.dll")] internal static extern int FreeLibrary(IntPtr hLibModule);
+    [DllImport("user32.dll")] internal static extern IntPtr SetWindowLongA(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    // Le dialogue de choix du pilote de winsys3d, Setup3DDevice / FUN_00a010d0 (Libraries/winsys3d/Device.cs).
+    // L'image de winsys3d (Libraries/winsys3d/Image.cs) : ses ressources, lues dans le fichier comme des donnees.
+    [DllImport("kernel32.dll")] internal static extern IntPtr LoadLibraryExA(byte* lpLibFileName, IntPtr hFile, uint dwFlags);
+    [DllImport("kernel32.dll")] internal static extern byte* lstrcatA(byte* lpString1, byte* lpString2);
+    [DllImport("kernel32.dll")] internal static extern uint GetPrivateProfileStringA(byte* lpAppName, byte* lpKeyName, byte* lpDefault, byte* lpReturnedString, uint nSize, byte* lpFileName);
+    // La procedure du dialogue de choix du pilote, FUN_00a012f0 (Libraries/winsys3d/Device.cs).
+    [DllImport("user32.dll")] internal static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
+    [DllImport("user32.dll")] internal static extern nint SendMessageA(IntPtr hWnd, uint Msg, nuint wParam, nint lParam);
+    [DllImport("user32.dll")] internal static extern nint SendDlgItemMessageA(IntPtr hDlg, int nIDDlgItem, uint Msg, nuint wParam, nint lParam);
+    [DllImport("user32.dll")] internal static extern int SetDlgItemTextA(IntPtr hDlg, int nIDDlgItem, byte* lpString);
+    [DllImport("user32.dll")] internal static extern int EndDialog(IntPtr hDlg, nint nResult);
+    [DllImport("gdi32.dll")] internal static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+    [DllImport("gdi32.dll")] internal static extern IntPtr SelectObject(IntPtr hdc, IntPtr h);
+    [DllImport("gdi32.dll")] internal static extern int SetStretchBltMode(IntPtr hdc, int mode);
+    [DllImport("gdi32.dll")] internal static extern int StretchBlt(IntPtr hdcDest, int xDest, int yDest, int wDest, int hDest, IntPtr hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, uint rop);
+    [DllImport("gdi32.dll")] internal static extern int PatBlt(IntPtr hdc, int x, int y, int w, int h, uint rop);
+    [DllImport("gdi32.dll")] internal static extern int DeleteDC(IntPtr hdc);
+    [DllImport("user32.dll")] internal static extern nint DialogBoxIndirectParamA(IntPtr hInstance, byte* hDialogTemplate, IntPtr hWndParent, IntPtr lpDialogFunc, nint dwInitParam);
+    [DllImport("user32.dll")] internal static extern IntPtr CreateIconFromResourceEx(byte* presbits, uint dwResSize, int fIcon, uint dwVer, int cxDesired, int cyDesired, uint Flags);
+    [DllImport("user32.dll")] internal static extern nint CallWindowProcA(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, nuint wParam, nint lParam);
+    [DllImport("user32.dll")] internal static extern nint DialogBoxParamA(IntPtr hInstance, byte* lpTemplateName, IntPtr hWndParent, IntPtr lpDialogFunc, nint dwInitParam);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetModuleFileNameA(IntPtr hModule, byte* lpFilename, uint nSize);
 
     [DllImport("kernel32.dll")] internal static extern IntPtr HeapCreate(uint flOptions, nuint dwInitialSize, nuint dwMaximumSize);
@@ -134,6 +171,9 @@ internal static unsafe class Win32
 
     [DllImport("winmm.dll")] internal static extern uint joyReleaseCapture(uint uJoyID);
 
+    // `JOYINFO` = quatre UINT : wXpos, wYpos, wZpos, wButtons. Rend 0 (JOYERR_NOERROR) si lu.
+    [DllImport("winmm.dll")] internal static extern uint joyGetPos(uint uJoyID, uint* pji);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern byte* lstrcpyA(byte* lpString1, byte* lpString2);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int lstrcmpiA(byte* lpString1, byte* lpString2);
@@ -162,6 +202,8 @@ internal static unsafe class Win32
 
     [DllImport("kernel32.dll")] internal static extern int SetEvent(IntPtr hEvent);
 
+    [DllImport("kernel32.dll")] internal static extern int ResetEvent(IntPtr hEvent);
+
     [DllImport("kernel32.dll")] internal static extern uint WaitForMultipleObjects(uint nCount, IntPtr* lpHandles, int bWaitAll, uint dwMilliseconds);
 
     [DllImport("kernel32.dll")] internal static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
@@ -171,5 +213,53 @@ internal static unsafe class Win32
     [DllImport("kernel32.dll")] internal static extern void* VirtualAlloc(void* lpAddress, nuint dwSize, uint flAllocationType, uint flProtect);
 
     [DllImport("kernel32.dll")] internal static extern nuint VirtualQuery(void* lpAddress, out Blaze.MEMORY_BASIC_INFORMATION lpBuffer, nuint dwLength);
+
+    // -----------------------------------------------------------------------------------------
+    // Ce que les DLL d'aide de 1998 appellent, et que `src/Libraries/` reprend en les transcrivant.
+    // Ces declarations ne servent a aucun corps de `Blaze.c` : elles sont ici parce que c'est le
+    // seul endroit du depot ou vit la surface P/Invoke du systeme, et qu'une DLL reconstruite
+    // appelle Win32 exactement comme le jeu le fait.
+    // -----------------------------------------------------------------------------------------
+
+    // `wvsprintfA` et non `sprintf` : c'est ce que wsyskern appelle, et son jeu de conversions est
+    // plus pauvre que celui de la CRT (%s %d %u %x %c %%, pas de flottant). Transcrire les appels
+    // vers la CRT changerait le rendu des messages d'erreur sur les formats que wvsprintf refuse.
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] internal static extern int wvsprintfA(byte* lpOutput, byte* lpFormat, void* arglist);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr FindResourceA(IntPtr hModule, byte* lpName, byte* lpType);
+    [DllImport("kernel32.dll")] internal static extern IntPtr LoadResource(IntPtr hModule, IntPtr hResInfo);
+    [DllImport("kernel32.dll")] internal static extern void* LockResource(IntPtr hResData);
+    [DllImport("kernel32.dll")] internal static extern int FreeResource(IntPtr hResData);
+
+    [DllImport("user32.dll")] internal static extern IntPtr GetDC(IntPtr hWnd);
+    [DllImport("user32.dll")] internal static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    [DllImport("gdi32.dll")] internal static extern IntPtr CreatePalette(void* lplgpl);
+    [DllImport("gdi32.dll")] internal static extern IntPtr SelectPalette(IntPtr hdc, IntPtr hpal, int bForceBackground);
+    [DllImport("gdi32.dll")] internal static extern uint RealizePalette(IntPtr hdc);
+    [DllImport("gdi32.dll")] internal static extern IntPtr CreateDIBitmap(IntPtr hdc, void* lpbmih, uint fdwInit, void* lpbInit, void* lpbmi, uint fuUsage);
+
+    // La section critique de `winsys3d` (ordinaux 40 et 41, `&DAT_00b6d6d8`). Ce sont les VRAIES
+    // fonctions Win32 et non un verrou .NET : `LeaveCriticalSection` sans possession ne dit rien,
+    // la ou `Monitor.Exit` leve. Le jeu relache une fois de trop a l'extinction — voir
+    // `Libraries/winsys3d/SectionCritique.cs`.
+    [DllImport("kernel32.dll")] internal static extern void InitializeCriticalSection(void* lpCriticalSection);
+    [DllImport("kernel32.dll")] internal static extern void EnterCriticalSection(void* lpCriticalSection);
+    [DllImport("kernel32.dll")] internal static extern void LeaveCriticalSection(void* lpCriticalSection);
+
+    // La famille de fichiers de la carte memoire (`winsys3d`, ordinaux 18 a 25, 29 et 30). Voir
+    // `Libraries/winsys3d/CarteMemoire.cs` : ce sont des enveloppes d'une ligne autour de ces
+    // appels-ci, plus la resolution du descripteur en chemin.
+    //
+    // `lpFindFileData` est un `void*` et non une structure : les deux corps qui l'emploient
+    // lisent `WIN32_FIND_DATAA` par offsets (nFileSizeLow a 0x20, cFileName a 0x2c), exactement
+    // comme le cadre de pile de l'original.
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr FindFirstFileA(byte* lpFileName, void* lpFindFileData);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int FindNextFileA(IntPtr hFindFile, void* lpFindFileData);
+    [DllImport("kernel32.dll")] internal static extern int FindClose(IntPtr hFindFile);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int DeleteFileA(byte* lpFileName);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int MoveFileA(byte* lpExistingFileName, byte* lpNewFileName);
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int SetCurrentDirectoryA(byte* lpPathName);
+    [DllImport("kernel32.dll")] internal static extern int WriteFile(IntPtr hFile, void* lpBuffer, uint nNumberOfBytesToWrite, uint* lpNumberOfBytesWritten, void* lpOverlapped);
 
 }

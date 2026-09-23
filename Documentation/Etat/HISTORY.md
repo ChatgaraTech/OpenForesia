@@ -4,6 +4,509 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-23
+
+- feat : **les données de 1998 extraites des DLL sont du C# lisible** — `ConstantesRdata.cs`,
+  `ValeursInitiales.cs`, `Exports.cs`, `ModeleDialogue.cs`, `Curseur.cs` (318 lignes), générés par
+  `extraire-donnees` et vérifiés octet par octet contre les DLL ; plus de liste de relocations.
+  Seules les deux polices restent en binaire (`src/Libraries/Donnees/`, avec un `LISEZMOI.md`)
+- doc : le curseur de la fenêtre des films est entièrement transparent — il cache la souris
+  pendant les cinématiques
+
+- doc : plus aucune DLL livrée (lot 19) — testé en jeu par Vincent
+
+- feat : **plus aucune DLL de 1998 n'est livrée** — les données qu'on lisait encore dans
+  `winsys3d.dll` et `wsyskern.dll` sont extraites (`OpenForesia.Tools extraire-donnees`) dans
+  `src/Libraries/Donnees/` et embarquées dans l'assemblage. Seul `ir41_32.ax` (Indeo) reste
+- fix : le curseur de la fenêtre des films, chargé dans `wsyskern.dll`, sortait nul depuis que la
+  DLL n'est plus chargée ; il est reconstitué depuis son image extraite
+- feat : les modes `OPENFORESIA_LEGACY_3DHELP`, `LEGACY_STARTUP` et `CAPTURE_CAPS` sont retirés —
+  ils exigeaient le vrai `3dhelp.dll`
+
+- feat : **`winsys3d.dll` n'est plus chargée** — sa mémoire est une image construite en C# depuis
+  le fichier (sections de données, relocations, exports), son point d'entrée est transcrit, `VS.Log`
+  compris (`Libraries/winsys3d/Image.cs`). L'import de 701 et `OPENFORESIA_LEGACY_DRAWOTAG` sont
+  retirés. **Pas encore exercé**
+
+- doc : la procédure du dialogue de choix du pilote (lot 17) testée en jeu par Vincent
+
+- feat : **la procédure du dialogue de choix du pilote est en C#** — le dernier code natif de
+  `winsys3d` que le jeu exécute, hors son point d'entrée. **Pas encore exercé**
+- doc : les rappels natifs et le tas de `wsyskern` (lot 16) testés en jeu par Vincent
+
+- feat : **le C# n'importe plus rien de `wsyskern.dll`** — `Malloc` et `Free` sont portés, après
+  les rappels natifs de `winsys3d` qui partageaient son tas : la procédure de fenêtre, le minuteur de
+  17 ms et les deux énumérations DirectDraw, en `[UnmanagedCallersOnly]`. **Pas encore exercé**
+- doc : la section critique (correctif) testée en jeu par Vincent
+
+- fix : **la section critique des ordinaux 40/41 n'excluait plus le minuteur natif** — le port du
+  2026-09-21 créait sa propre section, en croyant que rien dans la DLL ne prenait la sienne ; le
+  rappel du minuteur (`LAB_00a06360`, jamais décompilé) la prend autour de `DeliverEvent`. Le port
+  désigne maintenant la section de la DLL
+- doc : les passerelles de tas de `wsyskern` ne peuvent pas encore tomber — la procédure de fenêtre
+  et le rappel d'énumération des pilotes, restés natifs, libèrent ou allouent dans ce tas ce que le
+  C# alloue ou libère
+- doc : `InitTrigTables` (lot 15) testé en jeu par Vincent
+
+- feat : **`InitTrigTables` (337) est en C#** — la table de sinus et, ce que Ghidra cachait, les
+  quatre tables de racines carrées de `SquareRoot0`. `winsys3d` n'a plus qu'un import, 701, gardé
+  pour `OPENFORESIA_LEGACY_DRAWOTAG`. **Pas encore exercé**
+- doc : `Setup3DDevice` (lot 14) testé en jeu par Vincent
+
+- feat : **toute la clôture de `winsys3d` est en C# — 247 corps sur 247** : `Setup3DDevice` (823),
+  le lanceur et sa liste de pilotes, dans `Device.cs`. Restent deux imports, 337 et 701, aux corps
+  déjà portés. **Pas encore exercé**
+- doc : **LB-048** — le nom du pilote 3D tient sur 20 octets mais se copie sans borne ; un nom long
+  part corrompu dans `Blaze.cfg`
+- fix : la façade déclarait `Setup3DDevice` rendant un `int` ; il ne rend rien
+- doc : l'initialisation du device (lot 13) testée en jeu par Vincent
+
+- feat : **l'initialisation du device de `winsys3d` est en C#** — 789 et 750, avec la préparation
+  du device, la construction du cache de textures et, côté `wsyskern`, `IdentityMatrix` et
+  `ScaleMatrix`. `winsys3d` passe à 242 corps, 3 points d'entrée. **Pas encore exercé**
+- doc : `FUN_10006a40` initialise les matrices nulle et unité de `wsyskern` — la note « que rien
+  n'écrit » du lot 7 était fausse (sans effet : c'est des zéros)
+- doc : `CreateTranslationTables` (lot 12) testé en jeu par Vincent
+
+- feat : **`CreateTranslationTables` (756) est en C#** — les tables de couleurs des textures, dans
+  `ChargementTextures.cs`. `winsys3d` passe à 233 corps, 5 points d'entrée. **Pas encore exercé**
+- doc : `0x00add078` est la moitié haute de la table du genre 2 — la semi-transparence PS émulée
+  par l'alpha
+- doc : les polices (lot 11) testées en jeu par Vincent
+
+- feat : **les polices de `winsys3d` sont en C#** — `FntLoad` (710), `FntOpen` (668) et
+  `Krom2RawAdd` (57) dans `TexteEcran.cs`, avec `GetTimInfo`, `LoadTPage` et `LoadClut`.
+  `winsys3d` passe à 232 corps, 6 points d'entrée. **Pas encore exercé**
+- fix : la façade décrivait 710 comme la création d'un bitmap de taille donnée et 668 comme un
+  canal de console inutilisé ; ce sont `FntLoad(tx, ty)` et `FntOpen`
+- doc : l'attente d'image (lot 10) testée en jeu par Vincent
+
+- feat : **l'attente d'image est en C#** — le `VSync(n)` de la libgpu (132) et la pompe de messages
+  `PollMessages` (784) dans `Cadence.cs`. `winsys3d` passe à 226 corps, 9 points d'entrée.
+  **Pas encore exercé**
+- doc : **LB-047** — le journal des attentes d'image a 100 000 places et un indice sans borne : à
+  la 100 000ᵉ image (~28 min), il écrase `VSyncDelayed` et la cadence. Transcrit tel quel
+- doc : les réglages du device (lot 9) testés en jeu par Vincent
+
+- feat : **les réglages du device et la cadence sont en C#** — `SetTextureFilterMode` (798),
+  `ChangeResolution` (749) et le rappel de perte du device (790) dans `winsys3d/Device.cs`
+  (fichier neuf), `SetTimingMode` (822) dans `Cadence.cs`. `winsys3d` passe à 222 corps,
+  10 points d'entrée. **Pas encore exercé**
+- doc : l'éclairage (lot 8) testé en jeu par Vincent
+
+- feat : **l'éclairage du GTE émulé est en C#** — la passe par triangles (793), `NormalColorCol3`
+  et ses appelées dans `winsys3d/Eclairage.cs` (fichier neuf), `ApplyMatrixLV` dans
+  `Matrices.cs`. `winsys3d` passe à 218 corps, 14 points d'entrée. **Pas encore exercé**
+- doc : `SetGeomScreen` (lot 7) testé en jeu par Vincent
+
+- feat : **tout le GTE importé est en C#** — `SetGeomScreen` (379) et la projection du device
+  (564) dans `winsys3d/Matrices.cs`, `ZeroMatrix` et `ProjectionMatrix` de `wsyskern` dans
+  `wsyskern/Matrices.cs` (fichier neuf). `winsys3d` passe à 212 corps, 15 points d'entrée.
+  **Pas encore exercé**
+- doc : le lot 6 (360, 418, 795) testé en jeu par Vincent
+
+- feat : **la fin du GTE émulé est en C#, sauf `SetGeomScreen`** — `CompMatrix` (360), la
+  projection de sommets par lots (418) et sa jumelle sans profondeur (795), avec leurs deux
+  branches MMX / scalaire, dans `Matrices.cs`. `winsys3d` passe à 210 corps, 16 points d'entrée.
+  **Pas encore exercé**
+- doc : **LB-046** — la branche MMX de 418/795, celle qui tourne, ne garde que 16 bits de la
+  translation et arrondit deux fois ; la branche scalaire ne fait ni l'un ni l'autre
+- fix : la façade déclarait `Ordinal_360(dest, a, b)` ; c'est `(a, b, dest)`. Les sites d'appel
+  passaient déjà le bon ordre
+
+- feat : **les événements `libapi` de `winsys3d` sont en C#** — `OpenEvent`, `TestEvent`,
+  `DeliverEvent` et les livraisons de fin d'opération carte (ordinaux 6, 9, 12, 67–69), dans
+  `Evenements.cs`. `winsys3d` passe à 205 corps, 19 points d'entrée. **Pas encore exercé**
+- doc : **LB-045** — `OpenEvent` n'enchaîne pas le nouvel événement ; `DeliverEvent` ne voit que
+  le premier ouvert. Sans effet : la carte mémoire est déclarée finie d'office. Transcrit tel quel
+
+- feat : **neuf corps du GTE émulé sont en C#** — les réglages `SetRotMatrix`, `SetLightMatrix`,
+  `SetColorMatrix`, `SetTransMatrix`, `SetBackColor`, `SetGeomOffset` et les calculs
+  `VectorNormal`, `SquareRoot0` et la rotation-translation de vecteurs courts (ordinaux 366–369,
+  376, 378, 439, 442, 792), dans `Matrices.cs`. `winsys3d` passe à 200 corps, 24 points
+  d'entrée. **Pas encore exercé**
+- doc : la VRAM (lot 3) testée en jeu par Vincent, jusqu'à la montagne du dragon de feu
+
+- feat : **la VRAM PlayStation émulée est en C#** — `ClearImage`, `LoadImage`, `MoveImage`,
+  `StoreImage` (665, 674, 676, 684) et l'invalidation du cache qu'ils déclenchent
+  (`winsys3d/Vram.cs`, fichier neuf), plus `ReInitializeAllTextures` (785) et `ReleaseTexture`
+  (788) dans `CacheTextures.cs`. `winsys3d` passe à 191 corps, 33 points d'entrée. **Pas encore
+  exercé**
+- doc : **LB-044** — la couleur de `ClearImage` décale la composante bleue au lieu d'assembler
+  le pixel ; juste pour le noir, le seul cas du jeu. Le `TODO(REVERSE)` de l'ordinal 665 est levé
+- doc : `PutDispEnv` et les manettes (lot 2) testés en jeu par Vincent, combats compris
+
+- feat : **`PutDispEnv` (657) et la lecture des manettes sont en C#** — la fin d'image
+  (recentrage, attente du balayage, présentation) dans `ListeAffichage.cs` avec `GetDispEnv`
+  (656), le clavier et les joysticks vers les deux tampons de manette dans `winsys3d/Manettes.cs`
+  (fichier neuf). `winsys3d` passe à 181 corps, 39 points d'entrée. **Pas encore exercé**
+- doc : **LB-043** — la manette 2 ignore son joystick (test inversé) et hérite des boutons de la
+  manette 1 (registre jamais remis à zéro). Transcrit tel quel
+- doc : les décalages d'écran (lot 1) testés en jeu par Vincent, sans défaut vu
+
+- feat : **les décalages d'écran de `winsys3d` sont en C#** — `SetShift`, `SetAbsShift`,
+  `GetAbsShift`, `ShiftVertices` (`winsys3d/DecalageEcran.cs`, fichier neuf), premier lot hors du
+  chemin d'affichage. `winsys3d` passe à 178 corps portés, 40 points d'entrée restants. **Pas
+  encore exercé**
+
+- fix : **l'image n'était jamais effacée** — le `PutDrawEnv` porté (ordinal 660) rangeait le
+  `DRAWENV` du jeu dans un tableau C# privé, alors que `DrawOTag` lit son octet `isbg` dans la
+  mémoire de la DLL (`DAT_011be6f0`, +0x18 du bloc, sous un autre nom Ghidra). Tout ce que la scène
+  ne recouvrait pas gardait les images précédentes : l'écran de chargement dans le noir de la
+  mine, la traînée des fenêtres de texte. Le bloc est maintenant aliasé (`Data.DrawEnv_011be6d8`)
+
+- feat : **le chemin d'affichage de `winsys3d` est entièrement en C#** — étape 10, 22 corps dans
+  `ConstructionPaquets.cs` : la reconstruction `c4f0` (755), le choix d'objet `06a40` (678), la
+  résolution `1cff0` (563), `07ca0` et les 18 producteurs, un par mode de primitive TMD.
+  `DrawOTag` et tout ce qu'il atteint sont portés (134 corps sur 157, les 23 autres ne sont
+  atteints par rien) ; `Natif.cs` est supprimé, sa dette à zéro. `winsys3d` passe à 174 corps.
+  **Pas encore exercé**
+- doc : les paquets de modèles de `winsys3d` sont des **TMD PlayStation** (identifiant 0x41,
+  table d'objets de sept mots, modes F3..GT4 et segments) ; Ghidra range la couleur des
+  producteurs en flottant là où le binaire l'écrit en entier — transcrits sur le désassemblage
+- doc : **LB-041** — le quadrilatère TMD plat sans lumière est émis en liste de triangles, un
+  seul triangle tracé ; **LB-042** — les producteurs texturés divisent chaque `u v` par ~140
+  millions, donc toujours 0. Transcrits tels quels
+- doc : l'écart assumé de l'étape 9 est levé : aucun producteur ne lit un champ que son
+  adaptateur n'écrit pas
+
+- feat : **le constructeur de paquets est en C#** — étape 9, 17 corps :
+  `winsys3d/ConstructionPaquets.cs` (fichier neuf), avec `ConstruirePaquet` (`dde0`, ordinal
+  752), `AllouerPaquet` (`c480`) et 15 adaptateurs qui font des enregistrements de modèle des
+  paquets de primitive pour 8 producteurs, encore natifs (étape 10). `winsys3d` passe à 152
+  corps portés, le chemin d'affichage à 112 sur 157. **Pas encore exercé**
+- doc : les 15 adaptateurs sont **engendrés** depuis `winsys3d.c` par un script (six formes
+  d'affectation, aucune laissée de côté), puis vérifiés au désassembleur sur trois d'entre eux ;
+  les mémos de couleur `DAT_011be764/768/76c` sont des mots de 16 bits
+
+- feat : **le chargement des textures est en C# — plus rien du sous-système des textures n'est
+  natif.** Étape 8, 6 corps : `winsys3d/ChargementTextures.cs` (fichier neuf) pour la conversion
+  VRAM PS → objet texture (`271e0`, `03460` image DIB 4/8/24 bits, `03980` 16 bits par table), et
+  le `qsort` de la CRT transcrit dans `CacheTextures.cs`, pour garder l'ordre des dates égales.
+  `winsys3d` passe à 135 corps portés, le chemin d'affichage à 95 sur 157. **Pas encore exercé**
+- doc : **LB-040** — une page 16 bits en mode soustractif noircit la fin de ses lignes : le pixel
+  semi-transparent est effacé par un mot de 32 bits et la source n'avance plus. Transcrit tel quel
+- doc : l'argument anonyme de Ghidra dans `FUN_00a03980` est une couleur-clé `{0, 0}` construite
+  sur la pile ; la clé d'une page 16 bits vaut 0, pas -1. Relevés sous `Legacy/Raw/Winsys3d/`
+
+- feat : **l'intérieur du cache de textures et la liaison de texture sont en C#** — étape 7,
+  24 corps : relevés par genre de primitive, enregistrement des demandes, emplacements (attribution,
+  arrondi, recherche, placement, libération, éviction), liaison (`27880`/`27430`) et choix du
+  mélange selon `abr` (`03400`/`03430`/`03c80`, dans `Primitives.cs`). `winsys3d` passe à 129
+  corps portés, le chemin d'affichage à 89 sur 157. **Pas encore exercé en jeu**
+- fix : Ghidra perd la branche semi-transparente de `FUN_00a264f0` (« bad instruction data ») et y
+  écrit `genre = genre` au lieu de `genre |= nouveau` ; `FUN_00a278c0` rend 1999 quand tout est pris,
+  un chemin sans retour chez Ghidra. Transcrits sur le désassemblage
+- doc : **23 corps du chemin d'affichage ne sont jamais atteints** — les exports 548 à 555, 704, 753
+  et 754 écrivent le tampon mais rien ne les appelle : ~3 300 lignes retirées du devis. Il reste 45
+  corps atteints (étapes 8 à 10) au chemin d'affichage, puis 72 hors de lui. Compte dans
+  `byebye-dll.md`
+
+- feat : **`DrawOTag` n'appelle plus directement aucun corps natif** — étape 6, ses six
+  dernières appelées. Deux fichiers neufs : `winsys3d/CacheTextures.cs` (ouvrir le relevé,
+  relever les pages de texture de l'OT, les charger en évinçant les plus anciennes) et
+  `winsys3d/TexteEcran.cs` (fenêtres de texte, console de 30 lignes, textes GDI de
+  `WinDrawText` — porté en entier avec ses cinq sous-corps). `winsys3d` passe à 105 corps portés,
+  le périmètre d'affichage à 65 sur 157. **Pas encore exercé en jeu**
+- fix : Ghidra fait passer à `FUN_00a01f00` l'adresse d'une locale ; le binaire lui passe le HDC
+  qu'elle contient (`FUN_00a02820`, 0x00a02846). Transcrit d'après le binaire
+- doc : trois `__thiscall` de plus sur `DAT_012141d4` (`FUN_00a27920`, `FUN_00a27850`,
+  `FUN_00a27820`) et un tri `cdecl` (`FUN_00a27e00`) à comparaison passée par adresse ; la liste
+  d'éviction du cache (500 entrées) déborde sans garde sur la table qui la suit — reproduit tel
+  quel. Relevé sous `Legacy/Raw/Winsys3d/FUN_00a26f20.disasm.txt`
+
+- feat : **le répartiteur `RejouerNoeud` n'appelle plus rien de natif** — étape 5, les cinq
+  dernières appelées : les rejeux `FUN_00a0e000`, `FUN_00a133e0`, `FUN_00a0e040`
+  (`CheminAffichage.cs`), le sprite tourné `FUN_00a0e0c0` (`Primitives.SpriteTourne`) et le fond
+  en tuiles `FUN_00a142a0` (`winsys3d/FondTuiles.cs`, fichier neuf). `winsys3d` passe à 94 corps
+  portés, le périmètre d'affichage à 54 sur 157. **Pas encore exercé en jeu**
+- doc : les deux gros corps transcrits **sur le désassemblage**, pile x87 suivie instruction par
+  instruction — relevés sous `Legacy/Raw/Winsys3d/FUN_00a0e0c0.disasm.txt` et
+  `FUN_00a142a0.disasm.txt`. Un écart assumé : leurs sommets sur pile n'ont ni `z` ni `rhw` dans
+  l'original (ce que la pile contenait) ; le C# y met zéro
+- doc : **LB-038** — le sprite tourné prend la largeur pour l'amplitude de texture en v ;
+  **LB-039** — une cellule `0xffff` fait boucler le fond en tuiles pour toujours. Trouvés à la
+  lecture, transcrits tels quels
+
+- feat : **les 42 primitives GPU du répartiteur sont en C#** — étape 4 du chemin d'affichage,
+  `src/Libraries/winsys3d/Primitives.cs`. Six familles de forme : plates (9), texturées
+  semi-transparentes brutes (7) et opaques (7), modulées semi-transparentes (5) et opaques (5),
+  Gouraud (9), plus `FUN_00a03db0` (`ChoisirMelange`). 42 des 47 cas de `RejouerNoeud` ne passent
+  plus par la DLL ; `winsys3d` passe de 46 à 89 corps portés. **Pas encore exercé en jeu**
+- doc : **LB-036** — `LINE_G3` et `LINE_G4` ne tracent que leur premier segment (`LINELIST` sur
+  trois sommets) ; **LB-037** — `POLY_G4` croise les positions des coins 2 et 3 mais pas leurs
+  couleurs. Deux défauts de `winsys3d.dll` trouvés à la lecture, transcrits tels quels
+- fix : `DAT_00a2c488` s'appelait « le type de primitive courant » ; c'est **la page de texture
+  liée** (-1 et -2 : aucune). Renommée `PageTexture_00a2c488`, dans `Data.cs`, `winsys3d.md` et
+  `census-display-path.awk`
+- doc : `Data.cs` désigne le second tampon de sommets `&DAT_011be7e8`, les quatre tables de
+  coordonnées de texture `DAT_011cb1c0..1cc`, la table d'alpha par mode `abr` `DAT_00a2c5a8`
+  (`7f ff ff 3f`, relue dans le binaire) et les tables de conversion écran de `SetShift`
+
+- feat : **le consommateur du tampon de commandes est en C#** — `FUN_00a0cdd0` et `FUN_00a0cd20`
+  (`CheminAffichage.RejouerPaquet` / `RejouerPaquetCourant`), étape 3 du chemin d'affichage.
+  C'est là que le paquet devient des appels `DrawPrimitive`. Vérifiés au désassembleur, table
+  de sauts comprise ; **pas encore exercés en jeu**
+- doc : `FUN_00a27880` est un **`__thiscall`** dont `this` est `DAT_012141d4`
+  (`mov ecx,[12141D4h]` avant le `call`, `ret 10h`) — Ghidra le déclare à la définition et
+  l'oublie à ses 30 sites d'appel. Ajouté à `Natif.cs` avec `FUN_00a0c4f0` ; `DAT_012141d4`
+  aliasé dans `Data.cs`
+- doc : `byebye-dll.md` enregistre la décision prise (l'aliasing) et l'état du chemin
+  d'affichage étape par étape ; `DLLAtteignables.md` et `CheminAffichage.md` régénérés
+  (44 → 46 corps portés, 4 → 6 dans le périmètre)
+
+## 2026-09-22
+
+- fix : **`DrawOTag` plantait a la premiere image (0xC0000005)** — `DeviceVtable` n'avait qu'UNE
+  indirection la ou il en faut deux. L'expression `*(void***)x` venait d'`Options.cs`, ou elle est
+  juste parce que `x` y est la **valeur** que rend l'ordinal 750 ; appliquee a l'**adresse** de la
+  globale, elle rendait le device lui-meme et `vtable[0x2c]` lisait a `device + 0xb0`, dans
+  l'objet. Le binaire le dit en trois temps : `mov ecx,[11BE760h]`, `mov eax,[ecx]`,
+  `call [eax+0B0h]` — deux `mov` avant le `call`, donc deux indirections
+- doc : cinquieme garde-fou de l'aliasing dans `src/Libraries/LISEZMOI.md` — **compter les
+  indirections sur le desassemblage, pas sur une expression qui marche ailleurs**. Les 33 autres
+  globales aliasees ont ete reverifiees une par une : toutes en `*(T*)At(va)`, une seule
+  indirection, ce qui est correct puisqu'elles nomment une variable A cette adresse
+- feat : **`FUN_00a13400`, le repartiteur de primitives, est en C#** — 118 etiquettes de `case`,
+  42 gestionnaires, le pavage des sprites et les cinq blocs de matrice.
+  `Libraries/winsys3d/CheminAffichage.RejouerNoeud`. Les 48 appelees restent natives, appelees par
+  adresse. **Controle mecanique : 118 etiquettes des deux cotes, aucun code de primitive en ecart**
+- doc : `Legacy/Raw/Winsys3d/FUN_00a13400.arites.txt` — les arites des 49 appelees, lues dans le
+  binaire (`ret N`) puis **recoupees avec les sites d'appel**. 47 concordaient du premier coup ;
+  deux ont demande le desassembleur, dont `FUN_00a0e040` que le releve automatique donnait a zero
+  argument alors qu'il en prend un (le releve avait franchi la fin du corps). **Un releve
+  automatique d'arite n'est pas une preuve**
+- doc : quatre points que Ghidra seul ne tranche pas sur ce corps, tous resolus — `local_50` du cas
+  0xe3 est `param_1 + 2` (`lea eax,[esi+8]` a 0x00a13a12) ; le cas 0xe2 **chute** dans les cas 0..3
+  sans `break` ; le drapeau `Elo_NoLighting` est **OU-e dans la cle du switch**, il redirige vers la
+  variante non eclairee au lieu de tester ; et `DAT_00a2c5a0` vaut **-1 sans jamais etre ecrit**,
+  c'est le marqueur « ce paquet ne porte pas de matrice »
+- doc : `_DAT_00a2a0b8` vaut `0x39800000`, soit **1/4096** — la virgule fixe 4.12 de la libgte, la
+  meme que le `>> 12` de `ScaleMatrix`. La matrice 3x3 du paquet part vers le device **transposee**
+  en 4x4 de flottants : la PlayStation range par lignes, Direct3D attend l'autre sens
+- feat : **le chemin d'affichage est ouvert — `DrawOTag` (ordinal 701) est en C#.** Premiere pierre
+  d'un perimetre de 157 corps : `Libraries/winsys3d/CheminAffichage.cs`, avec ses sept appelees
+  encore natives et ses globales aliasees. **`OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche l'original**
+  pour comparer les deux a l'ecran
+- feat : **`Libraries/winsys3d/Data.cs` — les globales de `winsys3d` aliasees sur le `.data` reel
+  de la DLL chargee** (base par `GetModuleHandleA`, RVA = VA - 0x00a00000). Il n'y a plus deux
+  copies, il n'y en a qu'une : le lot redevient divisible corps par corps. Sixieme regle ecrite
+  dans `src/Libraries/LISEZMOI.md`, avec ses quatre garde-fous
+- feat : `Libraries/winsys3d/Natif.cs` — les corps pas encore portes, appeles **par adresse**
+  (ils ne sont pas exportes, aucun `[DllImport]` ne les atteint). Echafaudage et tableau de bord :
+  il doit avoir disparu quand le perimetre sera porte. Arites prouvees au desassembleur
+- doc : le desassemblage de `DrawOTag` corrige Ghidra sur trois points — `VSyncDelayed` est
+  `DAT_011be67c`, l'arene est un **double tampon** (`x = 0x40000 - x`, pas une accumulation), et
+  les deux ecritures d'arene sont dans l'ordre inverse
+- fix : `Natif.cs` portait la **vignette canonique** `winsys3d.c <nom> @ <adresse>` sur ses sept
+  entrees, et le recensement a compte huit corps portes la ou il y en avait un. Forme neutralisee,
+  piege documente dans le fichier — c'est la lecon « une mention n'est pas une transcription »
+  prise par l'autre bout
+- doc : **le rejeu n'est pas séparable non plus — troisième piste fermée par la mesure.** La
+  clôture de `DrawOTag` contient **20 des 38 producteurs** (1 883 l.) et 68 de ses 134 corps
+  touchent un mémo d'état ; `DrawOTag` lui-même remet `DAT_00a2c484/488/48c` à -1 à chaque image.
+  Le porter seul laisserait les producteurs natifs allonger un enregistrement mort
+- feat : **`census-display-path.sh` + `.awk`**, et `Documentation/Etat/CheminAffichage.md` — la
+  carte du dernier lot. Graine (tampon ou mémo) + fermeture descendante : **157 corps, 12 408
+  lignes, 70 formes, 26 coutures externes toutes de 13 à 123 lignes, et UN SEUL `[DllImport]`
+  dedans** — l'ordinal 701. L'ordre de travail est par forme de squelette, pas par taille
+- doc : `CLAUDE.md` référence le nouveau document ; `byebye-dll.md` garde la trace des **trois**
+  pistes ouvertes puis fermées dans la journée (`DAT_011be760`, le tampon seul, le rejeu seul),
+  pour qu'on ne refasse pas le chemin
+- doc : **le consommateur du tampon de commandes est `FUN_00a0cd20`** (46 lignes), atteint par
+  `DrawOTag` (701) -> `FUN_00a13400` -> `FUN_00a0cdd0`. La chaîne est fermée : `FUN_00a0dde0`
+  (ordinal 752) construit un paquet et le lie dans l'OT du jeu avec le tag `| 0x80000000` ;
+  `DrawOTag` parcourt l'OT deux fois — textures, puis rejeu — entre `BeginScene` et `EndScene`
+- doc : **le format du paquet** — en-tête de 8 octets, enregistrements de 0x10, sentinelle
+  `0xffffffff` sur le mot d'opcode suivant. Quatre opcodes négatifs et un cas par défaut qui **est
+  un `DrawPrimitive` sérialisé** : `[type prim][type sommet][sommets][nombre]`, slot `+0xbc`
+- doc : **le mémo d'état sert à GROUPER, pas à dédoublonner** — à état inchangé le producteur
+  incrémente sur place le mot « nombre » de l'enregistrement précédent et range ses sommets à la
+  suite. Deux primitives deviennent un `DrawPrimitive`. C'est la vraie raison pour laquelle les
+  38 producteurs sont indivisibles
+- fix : `DAT_011be7ac` **n'est pas un symbole réutilisé** — ma note du même jour était fausse.
+  `winsys3d.c:8718` est `FUN_00a0c440` (ordinal 754) qui **libère un paquet** en lisant son en-tête
+  pour recoudre l'OT. La globale veut dire « le paquet courant », partout
+- doc : le devis mesuré — `FUN_00a0cd20` seul 46 l. (mais non exporté), le rejeu 97 corps /
+  7 022 l., `DrawOTag` entier 134 corps / 9 091 l., les producteurs 38 corps / 4 886 l. et
+  11 formes. **L'ordre est le rejeu d'abord** : c'est le seul lot qui franchisse une frontière déjà
+  matérielle
+- doc : **`DAT_011be760` n'est pas le levier de la masse — mesuré, et ma note de la veille était
+  fausse.** En retirant la globale de la carte, la masse passe de 425 à 419 corps : le seul qui se
+  détache est l'ordinal 750, qui est `return DAT_011be760;`. Et ce n'en était pas une, de soudure :
+  la valeur pointe déjà sur un objet C# (`SyntheticDevice` détourne `GetProcAddress`), et
+  `Options.cs` appelle sa vtable directement depuis `src/Blaze/` depuis le 2026-08-12
+- doc : **le chemin d'affichage de `winsys3d` est en deux familles DISJOINTES** — 38 producteurs
+  qui écrivent le tampon de commandes (`DAT_011be7dc`, 4 886 l., **11 squelettes**) et 73 appelants
+  de device (`DAT_011be760`, 4 696 l., 36 squelettes), **zéro recouvrement**. Les producteurs sont
+  le lot identifié : cohérent, fermé, et sans besoin ni du device ni de la vtable
+- doc : ce qui soude vraiment la masse est le **cache d'état** du tampon (`DAT_00a2c480/484/488/48c`,
+  `DAT_00a2c578/57c`) : deux caches feraient sauter une commande d'état posée par l'autre moitié —
+  une primitive avec le mélange de la précédente, par intermittence
+- doc : **`DAT_011be7ac` est un symbole réutilisé** (nœud de liste chaînée en `winsys3d.c:8718`,
+  base du tampon en 8737). Les comptes de soudure de `DLLGlobales.md` sont donc surévalués pour
+  cette globale, et probablement pour d'autres — lire les sites avant de bâtir un lot sur un chiffre
+- feat : **les quatre derniers corps isolés de `winsys3d` sont portés — il ne reste que la masse.**
+  `Cdrom.cs` (92, `CdSearchFile`), `Matrices.cs` (794, libgte `ScaleMatrix`), `Evenements.cs`
+  (10, libapi `EnableEvent`) et `Cadence.cs` (135/136, un casier et ses deux accesseurs). Quatre
+  familles PSY-Q, un fichier chacune, chacun amorce du lot que la masse rendra un jour
+- doc : **l'ordinal 92 est `CdSearchFile`**, établi par trois preuves concordantes — `DAT_00dedd58`
+  fait 0x18 octets, soit exactement une `CdlFILE` ; la signature `(CdlFILE*, char*) -> CdlFILE*` ;
+  et le site d'appel qui passe `"BLAZE_ALL.1"`. C'est l'ordinal 94 (`CdComstr`, non importé) qui
+  nomme la famille : son `switch` rend `"CdlNop"`, `"CdlSetloc"`, `"CdlPlay"`…
+- doc : la `CdlFILE` que rend l'ordinal 92 **n'est écrite par personne** — une seule référence à
+  `DAT_00dedd58` dans les 27 000 lignes de `winsys3d.c`. Vingt-quatre octets de zéros dont
+  l'adresse circule, et dont l'unique appelant jette le retour
+- doc : `byebye-dll.md` n'a plus de liste de courses mais un front unique. Le levier de la masse
+  est `DAT_011be760`, le pointeur de device : **touché par 73 corps, écrit par un seul**, et c'est
+  la couture que `Host/SyntheticDevice.cs` occupe déjà côté 3dhelp
+- feat : **le lecteur de conteneur TIM quitte `winsys3d.dll`** — les ordinaux 677 et 662
+  (`OpenTIM`/`ReadTIM`) dans `src/Libraries/winsys3d/Tim.cs`, c'était la composante 3 : deux corps,
+  une seule globale (`DAT_011be790`) dont les dix références tiennent dans la paire
+- feat : les ordinaux **765 et 767** partent avec eux — ils se sont révélés être deux **souches
+  vides** de plus, `FUN_00a02e10` (`xor eax,eax ; ret 8`) et `FUN_00a02e40` (`ret 8`)
+- doc : le relevé des souches de `Souches.cs` était incomplet — **huit corps et 223 exports**, pas
+  quatre et 149. Les quatre manquants ont deux ou trois arguments, là où le relevé n'avait cherché
+  que des arités 0 et 1 ; la recette pour les trouver toutes (compter les corps, pas les ordinaux)
+  est écrite dans le pavé de tête
+- feat : **la famille de fichiers de la carte mémoire quitte `winsys3d.dll`** — les ordinaux 18 à
+  25 (`firstfile`, `nextfile`, `erase`, `open`, `close`, `lseek`, `read`, `write`) sont transcrits
+  dans `src/Libraries/winsys3d/CarteMemoire.cs`, avec leur pivot `FUN_00a03f80` et les ordinaux 29
+  et 30 que la composante lui soude. **8 imports retirés** ; les composantes 2, 9, 10, 12 et 13 de
+  `DLLGlobales.md` disparaissent d'un coup
+- feat : `_splitpath` et `_makepath` (wsyskern, ordinaux 4 et 5) dans
+  `src/Libraries/wsyskern/Chemins.cs` — c'est `winsys3d` qui les importe, pas le jeu, donc le
+  relevé ne les voyait pas
+- feat : l'ordinal 97 rejoint `Souches.cs` — `FUN_00a046e0` est une **cinquième souche vide**
+  (`xor eax,eax ; ret 0Ch`, 9 ordinaux), trouvée au milieu du `libapi` et non avec les quatre
+  autres ; une sixième existe (`FUN_00a046f0`, ordinaux 28 et 73), que personne n'importe
+- doc : **LB-035** — l'ordinal 29 de `winsys3d` résout ses deux descripteurs dans le même casier
+  statique et renomme donc un fichier en lui-même. Cassé dans le binaire vendu, reproduit tel quel
+- doc : `Documentation/DLL/winsys3d.md` — la convention `~` des noms de carte mémoire (écrite par
+  `FUN_00a03f80`, relue par 18 et 19), les drapeaux de l'ordinal 21, et les cinq ordinaux de
+  `wsyskern` que `winsys3d` importe
+- doc : `byebye-dll.md`, `DLLAtteignables.md` et `DLLGlobales.md` remis à jour — `winsys3d` passe
+  de 61 à 44 points d'entrée et de 21 à 42 corps portés sur la journée ; **des quatorze
+  composantes, il n'en reste qu'une** — la masse, 425 corps et 22 415 lignes
+
+
+## 2026-09-21
+
+- feat : **`census-dll-globals.sh` — la carte des globales**, avec `census-dll-globals.awk` et
+  `Documentation/Etat/DLLGlobales.md`. Il soude les corps par deux relations — un appel vers une
+  fonction non exportée, et une globale qu'un corps **écrit** pendant qu'un autre la touche — et
+  sort les composantes. Une composante se porte entière ou pas du tout
+- doc : **la conclusion « il n'y a plus de petit lot » était fausse.** La carte trouve, à côté de
+  la masse soudée (composante 1 : **425 corps, 22 415 lignes, 33 points d'entrée**), **treize
+  composantes indépendantes** totalisant 21 corps et ~530 lignes : les ordinaux 10, 18-25, 92, 97,
+  136, 662, 677, 765, 767, 794. Portables tout de suite, une par une
+- fix : `ListeAffichage.cs` donnait 677 et 662 pour bloqués sur « dix lecteurs natifs ». C'étaient
+  dix **références** réparties sur **deux corps** — ces deux-là. La paire est une composante
+  fermée. Compter des références quand la question porte sur des corps : c'est précisément
+  l'erreur que la carte existe pour ne plus refaire à la main
+- feat : **`winsys3d` — ce qui se détache de la liste d'affichage** (65 → 61 imports) :
+  `SetDefDispEnv` (658), `SetDefDrawEnv` (661), `ClearOTagR` (688) et le casier d'environnement
+  (659/660), dans `Libraries/winsys3d/ListeAffichage.cs`
+- doc : **`DrawOTag` (701) n'est pas portable, et le relevé dit pourquoi** — treize globales de la
+  DLL, sept appels internes, **quatre emplacements de la vtable du device de 3dhelp**. Le tableau
+  corps par corps des quatorze entrées libgpu est dans l'en-tête du fichier : 4 portables, 10
+  bloquées. Le reste de `winsys3d` est essentiellement **un seul lot indivisible**
+- doc : `ClearOTagR` confirme que **la liste est adressée sur 24 bits** — l'octet de poids fort
+  porte la taille de la primitive. La pseudo-C écrit une danse de XOR que le compilateur a bien
+  émise (`and 0FFFFFFh ; xor ; and 0FFFFFFh ; xor`, forme MSVC 1996 d'un champ de bits) et qui se
+  réduit à `précédent & 0xffffff` — prouvé algébriquement et sur le code machine
+- feat : **`winsys3d` — la section critique portée** (67 → 65 imports) : ordinaux 40 et 41,
+  `Libraries/winsys3d/SectionCritique.cs`. Elle ne protège **rien à l'intérieur de la DLL** —
+  `DAT_00b6d6d8` n'apparaît que dans ces deux corps et son initialiseur, sur 27 000 lignes : elle
+  est prêtée au jeu, pas interne. C'est ce qui rend le portage possible là où l'ordinal 337 reste
+  bloqué
+- doc : **le jeu relâche la section une fois de trop.** `Startup.cs` la prend une fois (l. 384) et
+  la relâche deux (l. 406 et l. 541, à l'extinction, sans prise correspondante). Win32 ne dit rien
+  sur un `LeaveCriticalSection` non possédé ; `Monitor.Exit` lève. Le portage passe donc par les
+  **vraies fonctions kernel32** sur notre propre `CRITICAL_SECTION` — un `lock` C# aurait fait
+  planter l'extinction. L'appel en trop est dans `Blaze.c`, donc reproduit
+- feat : **`winsys3d` — la trigonométrie libgte portée** (70 → 67 imports) : `rcos` (450/452),
+  `rsin` (451/453) et `ratan2` (457). Table de 5 120 entrées, **4 096 pas par tour et 4 096 pour
+  1.0** — la convention PSX de bout en bout, les trois constantes relevées dans le binaire tombant
+  juste au dernier chiffre
+- fix : **les deux `fmul` d'échelle manquaient à la pseudo-C.** Ghidra rend `fsin(...)` puis
+  `__ftol()` à la suite, ce qui aurait donné une table de zéros et de ±1. Le désassemblage montre
+  `fmul [0A2A0D8h]` avant et `fmul [0A2A0E0h]` après. Transcrire depuis `winsys3d.c` seul aurait
+  produit un corps qui compile et rend faux partout
+- doc : **`winsys3d` ne se porte pas au détail comme `wsyskern`.** `InitTrigTables` (337), et les
+  ordinaux 376, 378 et 379 écrivent des globales de la DLL que 21 corps encore natifs relisent :
+  les porter isolément laisserait la copie native à zéro. Ils restent natifs jusqu'à ce que leurs
+  consommateurs le soient. Les trois portés ici ne le sont que parce que leur table est une
+  **fonction pure de constantes** — deux copies identiques par construction, pas de l'état partagé
+- feat : **`winsys3d` — les souches vides, 21 imports en moins** (91 → 70). Quatre corps seulement :
+  `0x00a02490` et `0x00a26470` sans argument, `0x00a02e20` et `0x00a02870` à un argument. Sur les
+  **830 exports** de la DLL, **149 pointent sur l'un de ces quatre** — le portage PSY-Q a gardé les
+  exports pour que le source du jeu compile, et leur a donné un corps vide
+- doc : les quatre `ret N`, relus au désassembleur, confirment que les 21 signatures d'`Interop/`
+  concordent avec le corps qu'elles atteignent. Contrôle déjà fait le 2026-08-21 — il avait alors
+  trouvé `Ordinal_45` déclaré à deux arguments pour un corps en `ret 4`, soit quatre octets laissés
+  sur la pile à chaque appel
+- feat : **la famille tableau est portée — `wsyskern` n'a plus que deux `[DllImport]`**, tous deux
+  la passerelle de tas. `Tableaux.cs` : l'objet C++ de vingt octets, ses trois classes concrètes
+  (entiers, chaînes, flottants), les quatre emplacements de vtable employés, le flux de lecture de
+  lignes, le remplacement d'échappements, et `strtolong`. **49 corps sur 83 portés**
+- doc : **le recensement sous-estimait, et il l'annonçait** — les douze corps de vtable sont
+  atteints par POINTEUR, donc invisibles à la clôture ; six manquaient même à `wsyskern.c`, Ghidra
+  ne décompilant pas le code atteint par sa seule adresse. Transcrits au désassembleur, relevés
+  sous `Legacy/Raw/Wsyskern/`. La clôture de `wsyskern` passe de 53 à 83 corps une fois les
+  transcriptions vues
+- doc : `disasm` marche sur les DLL d'aide autant que sur `Blaze.exe` — la base de chargement sort
+  de l'`ImageBase` du PE, rien n'est codé en dur pour `Blaze.exe`
+- doc : `strtolong` (0x10011f50) **n'est pas `strtol`** : `$` force l'hexadécimal à la Pascal, `0b`
+  le binaire, et surtout **un zéro suivi d'un chiffre se lit en base dix** — « 010 » vaut dix, pas
+  huit. Une donnée du CD lue avec `strtol` sortirait fausse sans rien signaler
+- feat : **le codec de `wsyskern` est transcrit** — `Codec.cs`, `Fichiers.cs`, `Data.cs` : les dix-huit
+  corps de décompression, `decrypt`, `LoadFile` et `LoadBitmapFile`. **35 corps sur 53 portés**, et
+  il ne reste que la famille tableau (4 exports)
+- doc : **le décompresseur est LHA `-lh5-` (LZHUF)**, établi sur les constantes et non sur une
+  ressemblance : `NC` 510, `NT` 19, `NP` 14, seuil 3, dictionnaire 8 192, `left`/`right` à
+  `2 * NC - 1`. Un seul écart avec LHA d'origine — `fillbuf` consulte **deux** compteurs d'entrée,
+  donc un en-tête qui ment fait entrer des zéros au lieu de lire au-delà du tampon. Correspondance
+  des corps et disposition de l'en-tête dans `Documentation/DLL/wsyskern.md`
+- doc : la table de `decrypt` (`DAT_10049b88`) relevée dans le binaire — **neuf octets**,
+  `ea 7b 22 25 0c 35 2d 1f 47`. Neuf et non huit : la rotation prend `rang & 7`, le ou exclusif
+  prend `rang % 9`. À huit octets, un octet sur neuf serait déchiffré faux
+- doc : `LB-033` la double fermeture de handle de `LoadBitmapFile` sur le chemin compressé, `LB-034`
+  le mode « stocké » du décompresseur, inatteignable parce que sa garde n'accepte pas son propre
+  code de format — code mort dans le binaire vendu
+- feat : **`src/Libraries/` existe, et `wsyskern` y entre** — un répertoire par DLL, sa source de
+  vérité étant `wsyskern.c` et non `Blaze.c` ; `LISEZMOI.md` pose les cinq règles. Premier lot :
+  `Gamma`, `DIBCopyBlock`, `LoadBitmapEx`, `PaletteFromDIB` et les sept corps de messages —
+  **trois `[DllImport]` en moins**, aucun site d'appel touché, la façade `Interop/` renvoyant
+  désormais vers `Libraries/`
+- doc : **la règle découverte en écrivant le lot — ne pas couper une représentation en deux.** Le
+  tas (`Malloc` sert, `Free` rend), les vtables de `CreateArray`, et l'état du codec sous section
+  critique interdisent de porter par sujet : on porte par **sous-arbre complet d'un point
+  d'entrée**. `Malloc` et `Free` restent donc des passerelles vers le natif — un seul tas — jusqu'à
+  ce que la DLL soit portée en entier
+- fix : le recensement comptait la CRT liée statiquement comme du travail à faire. Ghidra n'en
+  préfixe qu'une partie d'un souligné ; sur `wsyskern` **40 fonctions et 1 655 lignes** restaient en
+  `FUN_` anonyme, dont `_NMSG_WRITE` et le tas à petits blocs de MSVC. `crt-dll.txt` porte les
+  amorces avec leur preuve, et le script en prend la descendance : le devis de `wsyskern` passe de
+  93 corps à **53**, celui des cinq DLL de 17 832 lignes à **15 319**
+
+- feat : **`census-dll-surface.sh` — la feuille de route des cinq DLL d'aide**, avec son compagnon
+  `census-dll-surface.awk`, son raccourci `tests/update-DLLAtteignables.bat` et le document généré
+  `Documentation/Etat/DLLAtteignables.md`. Il lit la **table d'exports directement dans les
+  binaires** (aucun `dotnet`), résout chaque `[DllImport]` en adresse, et calcule la **clôture**
+  des appels : le devis réel est de **17 832 lignes sur 135 623 — 13 %**, pas la somme des cinq
+  décompilations
+- doc : `playst.dll` (41 713 l.) n'est nommée par aucun binaire du jeu — c'est le SDK PSY-Q de Sony,
+  vraisemblablement la génération qui a précédé `winsys3d`, restée sur le CD ; `3dhelp` et `gldhelp`
+  n'exportent qu'une fonction chacune, tout le reste passant par la vtable du device
+- feat : forme canonique de traçabilité pour un corps de DLL transcrit —
+  `// Ghidra: winsys3d.c FUN_00a05060 @ 0x00a05060`, les trois pièces ensemble. Les cinq corps déjà
+  écrits (`EnableKBInput`, `GetKBChar`, `FUN_00a03f50`, `FUN_00a261e0`, `FUN_00a26220`) y sont
+  ramenés. Une règle plus lâche comptait 14 corps portés là où il y en avait 5 : le dépôt cite ces
+  fonctions en prose, et une mention n'est pas une transcription
+
+---
+
 ## 2026-09-20
 
 - feat : **la grotte scellée est complète — 349 sur 349, et le dépôt avec elle** : les 1 430

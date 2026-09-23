@@ -1,0 +1,60 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a04270  section .text  offset fichier 0x3670  96 octets
+
+  00a04270  a124dcde00            mov       eax,[0DEDC24h]
+  00a04275  56                    push      esi
+  00a04276  85c0                  test      eax,eax
+  00a04278  7445                  je        short 00A042BFh
+  00a0427a  8b4c240c              mov       ecx,[esp+0Ch]
+  00a0427e  8b542408              mov       edx,[esp+8]
+  00a04282  be00200000            mov       esi,2000h
+
+LAB_00a04287:
+  00a04287  3910                  cmp       [eax],edx
+  00a04289  750a                  jne       short 00A04295h
+  00a0428b  394808                cmp       [eax+8],ecx
+  00a0428e  7505                  jne       short 00A04295h
+  00a04290  397004                cmp       [eax+4],esi
+  00a04293  740b                  je        short 00A042A0h
+
+LAB_00a04295:
+  00a04295  8b4018                mov       eax,[eax+18h]
+  00a04298  85c0                  test      eax,eax
+  00a0429a  75eb                  jne       short 00A04287h
+  00a0429c  5e                    pop       esi
+  00a0429d  c20800                ret       8
+
+LAB_00a042a0:
+  00a042a0  39700c                cmp       [eax+0Ch],esi
+  00a042a3  7517                  jne       short 00A042BCh
+  00a042a5  c7400400400000        mov       dword [eax+4],4000h
+  00a042ac  a194e71b01            mov       eax,[11BE794h]
+  00a042b1  50                    push      eax
+  00a042b2  ff159c522101          call      dword [121529Ch]
+  00a042b8  5e                    pop       esi
+  00a042b9  c20800                ret       8
+
+LAB_00a042bc:
+  00a042bc  ff5010                call      dword [eax+10h]
+
+LAB_00a042bf:
+  00a042bf  5e                    pop       esi
+  00a042c0  c20800                ret       8
+  00a042c3  90                    nop
+  00a042c4  90                    nop
+  00a042c5  90                    nop
+  00a042c6  90                    nop
+  00a042c7  90                    nop
+  00a042c8  90                    nop
+  00a042c9  90                    nop
+  00a042ca  90                    nop
+  00a042cb  90                    nop
+  00a042cc  90                    nop
+  00a042cd  90                    nop
+  00a042ce  90                    nop
+  00a042cf  90                    nop
+
+5 cible(s) de saut interne : 0x00a04287, 0x00a04295, 0x00a042a0, 0x00a042bc, 0x00a042bf

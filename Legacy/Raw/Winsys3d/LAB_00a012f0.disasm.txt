@@ -1,0 +1,470 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a012f0  section .text  offset fichier 0x6f0  1216 octets
+
+  00a012f0  8b442408              mov       eax,[esp+8]
+  00a012f4  83ec50                sub       esp,50h
+  00a012f7  83e82b                sub       eax,2Bh
+  00a012fa  53                    push      ebx
+  00a012fb  55                    push      ebp
+  00a012fc  56                    push      esi
+  00a012fd  57                    push      edi
+  00a012fe  0f8422030000          je        near 00A01626h
+  00a01304  2de5000000            sub       eax,0E5h
+  00a01309  0f8499010000          je        near 00A014A8h
+  00a0130f  48                    dec       eax
+  00a01310  740c                  je        short 00A0131Eh
+  00a01312  33c0                  xor       eax,eax
+  00a01314  5f                    pop       edi
+  00a01315  5e                    pop       esi
+  00a01316  5d                    pop       ebp
+  00a01317  5b                    pop       ebx
+  00a01318  83c450                add       esp,50h
+  00a0131b  c21000                ret       10h
+
+LAB_00a0131e:
+  00a0131e  8b44246c              mov       eax,[esp+6Ch]
+  00a01322  8bc8                  mov       ecx,eax
+  00a01324  25ffff0000            and       eax,0FFFFh
+  00a01329  c1e910                shr       ecx,10h
+  00a0132c  3de8030000            cmp       eax,3E8h
+  00a01331  0f8fce000000          jg        near 00A01405h
+  00a01337  742a                  je        short 00A01363h
+  00a01339  48                    dec       eax
+  00a0133a  0f8495000000          je        near 00A013D5h
+  00a01340  48                    dec       eax
+  00a01341  0f85e9020000          jne       near 00A01630h
+  00a01347  8b442464              mov       eax,[esp+64h]
+  00a0134b  6aff                  push      0FFFFFFFFh
+  00a0134d  50                    push      eax
+  00a0134e  ff15ac532101          call      dword [12153ACh]
+  00a01354  b801000000            mov       eax,1
+  00a01359  5f                    pop       edi
+  00a0135a  5e                    pop       esi
+  00a0135b  5d                    pop       ebp
+  00a0135c  5b                    pop       ebx
+  00a0135d  83c450                add       esp,50h
+  00a01360  c21000                ret       10h
+
+LAB_00a01363:
+  00a01363  83f902                cmp       ecx,2
+  00a01366  746d                  je        short 00A013D5h
+  00a01368  83f901                cmp       ecx,1
+  00a0136b  0f85bf020000          jne       near 00A01630h
+  00a01371  8b742464              mov       esi,[esp+64h]
+  00a01375  8b3d78532101          mov       edi,[1215378h]
+  00a0137b  68e8030000            push      3E8h
+  00a01380  56                    push      esi
+  00a01381  ffd7                  call      edi
+  00a01383  68eb030000            push      3EBh
+  00a01388  56                    push      esi
+  00a01389  8bd8                  mov       ebx,eax
+  00a0138b  ffd7                  call      edi
+  00a0138d  8b0de4e8a200          mov       ecx,[0A2E8E4h]
+  00a01393  8bf0                  mov       esi,eax
+  00a01395  8b9144010000          mov       edx,[ecx+144h]
+  00a0139b  81c218010000          add       edx,118h
+  00a013a1  52                    push      edx
+  00a013a2  6a00                  push      0
+  00a013a4  6a00                  push      0
+  00a013a6  6888010000            push      188h
+  00a013ab  53                    push      ebx
+  00a013ac  ff157c532101          call      dword [121537Ch]
+  00a013b2  8b0de4e8a200          mov       ecx,[0A2E8E4h]
+  00a013b8  8b9481f4000000        mov       edx,[ecx+eax*4+0F4h]
+  00a013bf  52                    push      edx
+  00a013c0  56                    push      esi
+  00a013c1  e87a030000            call      00A01740h
+  00a013c6  b801000000            mov       eax,1
+  00a013cb  5f                    pop       edi
+  00a013cc  5e                    pop       esi
+  00a013cd  5d                    pop       ebp
+  00a013ce  5b                    pop       ebx
+  00a013cf  83c450                add       esp,50h
+  00a013d2  c21000                ret       10h
+
+LAB_00a013d5:
+  00a013d5  8b742464              mov       esi,[esp+64h]
+  00a013d9  6a00                  push      0
+  00a013db  6a00                  push      0
+  00a013dd  689f010000            push      19Fh
+  00a013e2  68e8030000            push      3E8h
+  00a013e7  56                    push      esi
+  00a013e8  ff1580532101          call      dword [1215380h]
+  00a013ee  50                    push      eax
+  00a013ef  56                    push      esi
+  00a013f0  ff15ac532101          call      dword [12153ACh]
+  00a013f6  b801000000            mov       eax,1
+  00a013fb  5f                    pop       edi
+  00a013fc  5e                    pop       esi
+  00a013fd  5d                    pop       ebp
+  00a013fe  5b                    pop       ebx
+  00a013ff  83c450                add       esp,50h
+  00a01402  c21000                ret       10h
+
+LAB_00a01405:
+  00a01405  3deb030000            cmp       eax,3EBh
+  00a0140a  0f8520020000          jne       near 00A01630h
+  00a01410  50                    push      eax
+  00a01411  8b442468              mov       eax,[esp+68h]
+  00a01415  50                    push      eax
+  00a01416  ff1578532101          call      dword [1215378h]
+  00a0141c  8b3d7c532101          mov       edi,[121537Ch]
+  00a01422  6a00                  push      0
+  00a01424  8bf0                  mov       esi,eax
+  00a01426  6a00                  push      0
+  00a01428  6888010000            push      188h
+  00a0142d  56                    push      esi
+  00a0142e  ffd7                  call      edi
+  00a01430  8d4c2410              lea       ecx,[esp+10h]
+  00a01434  51                    push      ecx
+  00a01435  50                    push      eax
+  00a01436  6889010000            push      189h
+  00a0143b  56                    push      esi
+  00a0143c  ffd7                  call      edi
+  00a0143e  33ed                  xor       ebp,ebp
+  00a01440  bf00c0a200            mov       edi,0A2C000h
+
+LAB_00a01445:
+  00a01445  8b37                  mov       esi,[edi]
+  00a01447  8d442410              lea       eax,[esp+10h]
+
+LAB_00a0144b:
+  00a0144b  8a10                  mov       dl,[eax]
+  00a0144d  8a1e                  mov       bl,[esi]
+  00a0144f  8aca                  mov       cl,dl
+  00a01451  3ad3                  cmp       dl,bl
+  00a01453  751e                  jne       short 00A01473h
+  00a01455  84c9                  test      cl,cl
+  00a01457  7416                  je        short 00A0146Fh
+  00a01459  8a5001                mov       dl,[eax+1]
+  00a0145c  8a5e01                mov       bl,[esi+1]
+  00a0145f  8aca                  mov       cl,dl
+  00a01461  3ad3                  cmp       dl,bl
+  00a01463  750e                  jne       short 00A01473h
+  00a01465  83c002                add       eax,2
+  00a01468  83c602                add       esi,2
+  00a0146b  84c9                  test      cl,cl
+  00a0146d  75dc                  jne       short 00A0144Bh
+
+LAB_00a0146f:
+  00a0146f  33c0                  xor       eax,eax
+  00a01471  eb05                  jmp       short 00A01478h
+
+LAB_00a01473:
+  00a01473  1bc0                  sbb       eax,eax
+  00a01475  83d8ff                sbb       eax,0FFFFFFFFh
+
+LAB_00a01478:
+  00a01478  85c0                  test      eax,eax
+  00a0147a  7511                  jne       short 00A0148Dh
+  00a0147c  a1e4e8a200            mov       eax,[0A2E8E4h]
+  00a01481  8b8844010000          mov       ecx,[eax+144h]
+  00a01487  89a918010000          mov       [ecx+118h],ebp
+
+LAB_00a0148d:
+  00a0148d  83c704                add       edi,4
+  00a01490  45                    inc       ebp
+  00a01491  81ff14c0a200          cmp       edi,0A2C014h
+  00a01497  7cac                  jl        short 00A01445h
+  00a01499  b801000000            mov       eax,1
+  00a0149e  5f                    pop       edi
+  00a0149f  5e                    pop       esi
+  00a014a0  5d                    pop       ebp
+  00a014a1  5b                    pop       ebx
+  00a014a2  83c450                add       esp,50h
+  00a014a5  c21000                ret       10h
+
+LAB_00a014a8:
+  00a014a8  8b7c2464              mov       edi,[esp+64h]
+  00a014ac  8b3578532101          mov       esi,[1215378h]
+  00a014b2  68e8030000            push      3E8h
+  00a014b7  57                    push      edi
+  00a014b8  ffd6                  call      esi
+  00a014ba  68eb030000            push      3EBh
+  00a014bf  57                    push      edi
+  00a014c0  8bd8                  mov       ebx,eax
+  00a014c2  ffd6                  call      esi
+  00a014c4  8b2d7c532101          mov       ebp,[121537Ch]
+  00a014ca  6a00                  push      0
+  00a014cc  8b542474              mov       edx,[esp+74h]
+  00a014d0  6a00                  push      0
+  00a014d2  6884010000            push      184h
+  00a014d7  53                    push      ebx
+  00a014d8  89442478              mov       [esp+78h],eax
+  00a014dc  8915e4e8a200          mov       [0A2E8E4h],edx
+  00a014e2  ffd5                  call      ebp
+  00a014e4  a1e4e8a200            mov       eax,[0A2E8E4h]
+  00a014e9  33f6                  xor       esi,esi
+  00a014eb  833800                cmp       dword [eax],0
+  00a014ee  7e24                  jle       short 00A01514h
+  00a014f0  bf54000000            mov       edi,54h
+
+LAB_00a014f5:
+  00a014f5  8b0438                mov       eax,[eax+edi]
+  00a014f8  50                    push      eax
+  00a014f9  6a00                  push      0
+  00a014fb  6880010000            push      180h
+  00a01500  53                    push      ebx
+  00a01501  ffd5                  call      ebp
+  00a01503  a1e4e8a200            mov       eax,[0A2E8E4h]
+  00a01508  46                    inc       esi
+  00a01509  83c704                add       edi,4
+  00a0150c  3b30                  cmp       esi,[eax]
+  00a0150e  7ce5                  jl        short 00A014F5h
+  00a01510  8b7c2464              mov       edi,[esp+64h]
+
+LAB_00a01514:
+  00a01514  8b8844010000          mov       ecx,[eax+144h]
+  00a0151a  83c118                add       ecx,18h
+  00a0151d  51                    push      ecx
+  00a0151e  6a00                  push      0
+  00a01520  688c010000            push      18Ch
+  00a01525  53                    push      ebx
+  00a01526  ffd5                  call      ebp
+  00a01528  83f8ff                cmp       eax,0FFFFFFFFh
+  00a0152b  7514                  jne       short 00A01541h
+  00a0152d  8b15e4e8a200          mov       edx,[0A2E8E4h]
+  00a01533  6a00                  push      0
+  00a01535  8b02                  mov       eax,[edx]
+  00a01537  48                    dec       eax
+  00a01538  50                    push      eax
+  00a01539  6886010000            push      186h
+  00a0153e  53                    push      ebx
+  00a0153f  ffd5                  call      ebp
+
+LAB_00a01541:
+  00a01541  8b0de4e8a200          mov       ecx,[0A2E8E4h]
+  00a01547  8b9144010000          mov       edx,[ecx+144h]
+  00a0154d  81c218010000          add       edx,118h
+  00a01553  52                    push      edx
+  00a01554  6a00                  push      0
+  00a01556  6a00                  push      0
+  00a01558  6888010000            push      188h
+  00a0155d  53                    push      ebx
+  00a0155e  ffd5                  call      ebp
+  00a01560  8b0de4e8a200          mov       ecx,[0A2E8E4h]
+  00a01566  8b9481f4000000        mov       edx,[ecx+eax*4+0F4h]
+  00a0156d  8b44246c              mov       eax,[esp+6Ch]
+  00a01571  52                    push      edx
+  00a01572  50                    push      eax
+  00a01573  e8c8010000            call      00A01740h
+  00a01578  8b0de4e8a200          mov       ecx,[0A2E8E4h]
+  00a0157e  8b9144010000          mov       edx,[ecx+144h]
+  00a01584  8b8224010000          mov       eax,[edx+124h]
+  00a0158a  85c0                  test      eax,eax
+  00a0158c  0f8481000000          je        near 00A01613h
+  00a01592  8b00                  mov       eax,[eax]
+  00a01594  50                    push      eax
+  00a01595  57                    push      edi
+  00a01596  ff1584532101          call      dword [1215384h]
+  00a0159c  8b0de4e8a200          mov       ecx,[0A2E8E4h]
+  00a015a2  8b3588532101          mov       esi,[1215388h]
+  00a015a8  8b9144010000          mov       edx,[ecx+144h]
+  00a015ae  8b8224010000          mov       eax,[edx+124h]
+  00a015b4  8b4804                mov       ecx,[eax+4]
+  00a015b7  51                    push      ecx
+  00a015b8  68e9030000            push      3E9h
+  00a015bd  57                    push      edi
+  00a015be  ffd6                  call      esi
+  00a015c0  8b15e4e8a200          mov       edx,[0A2E8E4h]
+  00a015c6  8b8244010000          mov       eax,[edx+144h]
+  00a015cc  8b8824010000          mov       ecx,[eax+124h]
+  00a015d2  8b5108                mov       edx,[ecx+8]
+  00a015d5  52                    push      edx
+  00a015d6  68ea030000            push      3EAh
+  00a015db  57                    push      edi
+  00a015dc  ffd6                  call      esi
+  00a015de  a1e4e8a200            mov       eax,[0A2E8E4h]
+  00a015e3  8b8844010000          mov       ecx,[eax+144h]
+  00a015e9  8b9124010000          mov       edx,[ecx+124h]
+  00a015ef  8b420c                mov       eax,[edx+0Ch]
+  00a015f2  50                    push      eax
+  00a015f3  6a01                  push      1
+  00a015f5  57                    push      edi
+  00a015f6  ffd6                  call      esi
+  00a015f8  8b0de4e8a200          mov       ecx,[0A2E8E4h]
+  00a015fe  8b9144010000          mov       edx,[ecx+144h]
+  00a01604  8b8224010000          mov       eax,[edx+124h]
+  00a0160a  8b4810                mov       ecx,[eax+10h]
+  00a0160d  51                    push      ecx
+  00a0160e  6a02                  push      2
+  00a01610  57                    push      edi
+  00a01611  ffd6                  call      esi
+
+LAB_00a01613:
+  00a01613  53                    push      ebx
+  00a01614  ff158c532101          call      dword [121538Ch]
+  00a0161a  33c0                  xor       eax,eax
+  00a0161c  5f                    pop       edi
+  00a0161d  5e                    pop       esi
+  00a0161e  5d                    pop       ebp
+  00a0161f  5b                    pop       ebx
+  00a01620  83c450                add       esp,50h
+  00a01623  c21000                ret       10h
+
+LAB_00a01626:
+  00a01626  8b542470              mov       edx,[esp+70h]
+  00a0162a  52                    push      edx
+  00a0162b  e810000000            call      00A01640h
+
+LAB_00a01630:
+  00a01630  5f                    pop       edi
+  00a01631  5e                    pop       esi
+  00a01632  5d                    pop       ebp
+  00a01633  b801000000            mov       eax,1
+  00a01638  5b                    pop       ebx
+  00a01639  83c450                add       esp,50h
+  00a0163c  c21000                ret       10h
+  00a0163f  90                    nop
+  00a01640  51                    push      ecx
+  00a01641  53                    push      ebx
+  00a01642  56                    push      esi
+  00a01643  8b742410              mov       esi,[esp+10h]
+  00a01647  57                    push      edi
+  00a01648  8b4618                mov       eax,[esi+18h]
+  00a0164b  50                    push      eax
+  00a0164c  ff156c522101          call      dword [121526Ch]
+  00a01652  8b0de0e8a200          mov       ecx,[0A2E8E0h]
+  00a01658  8bf8                  mov       edi,eax
+  00a0165a  8b911c010000          mov       edx,[ecx+11Ch]
+  00a01660  52                    push      edx
+  00a01661  57                    push      edi
+  00a01662  ff1568522101          call      dword [1215268h]
+  00a01668  8b1d64522101          mov       ebx,[1215264h]
+  00a0166e  6a00                  push      0
+  00a01670  89442410              mov       [esp+10h],eax
+  00a01674  a1e0e8a200            mov       eax,[0A2E8E0h]
+  00a01679  8b8820010000          mov       ecx,[eax+120h]
+  00a0167f  51                    push      ecx
+  00a01680  57                    push      edi
+  00a01681  ffd3                  call      ebx
+  00a01683  89442414              mov       [esp+14h],eax
+  00a01687  a1e0e8a200            mov       eax,[0A2E8E0h]
+  00a0168c  8b881c010000          mov       ecx,[eax+11Ch]
+  00a01692  85c9                  test      ecx,ecx
+  00a01694  7466                  je        short 00A016FCh
+  00a01696  8b9020010000          mov       edx,[eax+120h]
+  00a0169c  8b4618                mov       eax,[esi+18h]
+  00a0169f  55                    push      ebp
+  00a016a0  6a00                  push      0
+  00a016a2  52                    push      edx
+  00a016a3  50                    push      eax
+  00a016a4  ffd3                  call      ebx
+  00a016a6  8b4e18                mov       ecx,[esi+18h]
+  00a016a9  8be8                  mov       ebp,eax
+  00a016ab  51                    push      ecx
+  00a016ac  ff1560522101          call      dword [1215260h]
+  00a016b2  8b5618                mov       edx,[esi+18h]
+  00a016b5  6a04                  push      4
+  00a016b7  52                    push      edx
+  00a016b8  ff155c522101          call      dword [121525Ch]
+  00a016be  8b4620                mov       eax,[esi+20h]
+  00a016c1  8b5628                mov       edx,[esi+28h]
+  00a016c4  8b4e1c                mov       ecx,[esi+1Ch]
+  00a016c7  682000cc00            push      0CC0020h
+  00a016cc  68f0000000            push      0F0h
+  00a016d1  6840010000            push      140h
+  00a016d6  6a00                  push      0
+  00a016d8  6a00                  push      0
+  00a016da  2bd0                  sub       edx,eax
+  00a016dc  57                    push      edi
+  00a016dd  52                    push      edx
+  00a016de  8b5624                mov       edx,[esi+24h]
+  00a016e1  2bd1                  sub       edx,ecx
+  00a016e3  52                    push      edx
+  00a016e4  50                    push      eax
+  00a016e5  8b4618                mov       eax,[esi+18h]
+  00a016e8  51                    push      ecx
+  00a016e9  50                    push      eax
+  00a016ea  ff1558522101          call      dword [1215258h]
+  00a016f0  8b4e18                mov       ecx,[esi+18h]
+  00a016f3  6a00                  push      0
+  00a016f5  55                    push      ebp
+  00a016f6  51                    push      ecx
+  00a016f7  ffd3                  call      ebx
+  00a016f9  5d                    pop       ebp
+  00a016fa  eb20                  jmp       short 00A0171Ch
+
+LAB_00a016fc:
+  00a016fc  8b4620                mov       eax,[esi+20h]
+  00a016ff  8b5628                mov       edx,[esi+28h]
+  00a01702  8b4e1c                mov       ecx,[esi+1Ch]
+  00a01705  2bd0                  sub       edx,eax
+  00a01707  6a42                  push      42h
+  00a01709  52                    push      edx
+  00a0170a  8b5624                mov       edx,[esi+24h]
+  00a0170d  2bd1                  sub       edx,ecx
+  00a0170f  52                    push      edx
+  00a01710  50                    push      eax
+  00a01711  8b4618                mov       eax,[esi+18h]
+  00a01714  51                    push      ecx
+  00a01715  50                    push      eax
+  00a01716  ff1580522101          call      dword [1215280h]
+
+LAB_00a0171c:
+  00a0171c  8b4c2414              mov       ecx,[esp+14h]
+  00a01720  6a00                  push      0
+  00a01722  51                    push      ecx
+  00a01723  57                    push      edi
+  00a01724  ffd3                  call      ebx
+  00a01726  8b54240c              mov       edx,[esp+0Ch]
+  00a0172a  52                    push      edx
+  00a0172b  57                    push      edi
+  00a0172c  ff1568522101          call      dword [1215268h]
+  00a01732  57                    push      edi
+  00a01733  ff1550522101          call      dword [1215250h]
+  00a01739  5f                    pop       edi
+  00a0173a  5e                    pop       esi
+  00a0173b  5b                    pop       ebx
+  00a0173c  59                    pop       ecx
+  00a0173d  c20400                ret       4
+  00a01740  8b44240c              mov       eax,[esp+0Ch]
+  00a01744  ba01000000            mov       edx,1
+  00a01749  53                    push      ebx
+  00a0174a  55                    push      ebp
+  00a0174b  8b08                  mov       ecx,[eax]
+  00a0174d  56                    push      esi
+  00a0174e  d3e2                  shl       edx,cl
+  00a01750  8b4c2414              mov       ecx,[esp+14h]
+  00a01754  57                    push      edi
+  00a01755  85d1                  test      ecx,edx
+  00a01757  7506                  jne       short 00A0175Fh
+  00a01759  c70002000000          mov       dword [eax],2
+
+LAB_00a0175f:
+  00a0175f  8b5c2414              mov       ebx,[esp+14h]
+  00a01763  8b2d7c532101          mov       ebp,[121537Ch]
+  00a01769  6a00                  push      0
+  00a0176b  6a00                  push      0
+  00a0176d  6884010000            push      184h
+  00a01772  53                    push      ebx
+  00a01773  ffd5                  call      ebp
+  00a01775  33ff                  xor       edi,edi
+  00a01777  be00c0a200            mov       esi,0A2C000h
+
+LAB_00a0177c:
+  00a0177c  8b442418              mov       eax,[esp+18h]
+  00a01780  ba01000000            mov       edx,1
+  00a01785  8bcf                  mov       ecx,edi
+  00a01787  d3e2                  shl       edx,cl
+  00a01789  85d0                  test      eax,edx
+  00a0178b  740d                  je        short 00A0179Ah
+  00a0178d  8b0e                  mov       ecx,[esi]
+  00a0178f  51                    push      ecx
+  00a01790  6a00                  push      0
+  00a01792  6880010000            push      180h
+  00a01797  53                    push      ebx
+  00a01798  ffd5                  call      ebp
+
+LAB_00a0179a:
+  00a0179a  83c604                add       esi,4
+  00a0179d  47                    inc       edi
+  00a0179e  81fe14c0a200          cmp       esi,0A2C014h
+  00a017a4  7cd6                  jl        short 00A0177Ch
+  00a017a6  8b54241c              mov       edx,[esp+1Ch]
+  00a017aa  8b02                  mov       eax,[edx]
+  00a017ac  8b0c8500              (bad)
+  (octet invalide — la plage demandee deborde probablement du code)

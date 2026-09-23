@@ -21,8 +21,8 @@ namespace OpenForesia.Blaze;
 internal static unsafe class Winsys3d
 {
     // winsys3d ordinal 57 (winsys3d.c FUN_00a05060) â€” maps a Shift-JIS code to a 16x16 1bpp glyph
-    // inside the KANJI resource the DLL locks at startup, or to a blank when it is out of range.
-    [DllImport("winsys3d.dll", EntryPoint = "#57")] internal static extern ushort* Ordinal_57(uint sjis);
+    // inside the KANJI resource the DLL locks at startup, or to a diagonal-line glyph (0x00a2c388) when out of range.
+    internal static ushort* Ordinal_57(uint sjis) => Libraries.Winsys3dTexteEcran.Krom2RawAdd(sjis); // PORTE 2026-09-23 — Libraries/winsys3d/TexteEcran.cs, libgpu Krom2RawAdd
 
     // winsys3d.dll ordinal 823 (named export). Role now fully confirmed by reading its body and
     // its callee chain in winsys3d.c (FUN_00a010d0 -> dialog proc FUN_00a012f0): despite the name,
@@ -39,13 +39,16 @@ internal static unsafe class Winsys3d
     //   [3] OK button (id 1)      [4] Cancel button (id 2)
     // The DLL null-checks the array pointer itself but then dereferences all five entries
     // unconditionally, so a non-null array must have five valid strings.
-    [DllImport("winsys3d.dll")]
-    internal static extern int Setup3DDevice(IntPtr hBitmap, IntPtr hPalette, byte** titleStrings);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Device.cs`. `ret 0Ch` et aucune valeur rendue : l'ancien
+    // `int` de retour lisait un `eax` quelconque, et le seul site l'ignore.
+    internal static void Setup3DDevice(IntPtr hBitmap, IntPtr hPalette, byte** titleStrings)
+        => Libraries.Winsys3dDevice.Setup3DDevice(hBitmap, hPalette, titleStrings);
 
     // winsys3d.dll ordinal 756, confirmed against winsys3d.c (decompiled DLL source): builds
     // gamma-correction / RGB translation tables from a float multiplier (default 1.0f = 0x3f800000).
-    [DllImport("winsys3d.dll")]
-    internal static extern void CreateTranslationTables(float gamma);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/ChargementTextures.cs`, a cote des convertisseurs
+    // qui relisent ces tables.
+    internal static void CreateTranslationTables(float gamma) => Libraries.Winsys3dChargementTextures.CreateTranslationTables(gamma);
 
     // The following winsys3d.dll entry points are exported by ordinal only (no name in the DLL's
     // own export table). Their RVAs were resolved against winsys3d.dll's export directory and
@@ -62,18 +65,20 @@ internal static unsafe class Winsys3d
     //     hook. TODO(REVERSE): the callback passed at the RunApplication call site
     //     (Ghidra: &LAB_00512ef0) has no decompiled function body in Blaze.c (Ghidra only saw it
     //     addressed-of, never as a call target), so it cannot be reconstructed yet.
-    [DllImport("winsys3d.dll", EntryPoint = "#337")] internal static extern void InitTrigTables();
+    internal static void InitTrigTables() => Libraries.Winsys3dTrigonometrie.InitTrigTables(); // PORTE 2026-09-23 — Libraries/winsys3d/Trigonometrie.cs, avec les quatre tables de racines de SquareRoot0
 
     // libgte rcos/rsin. Bodies: winsys3d.c FUN_00a25c20 / FUN_00a25c40 â€” both plain lookups into the
     // same 0x1000-entry table at DAT_011cb420, rcos being rsin shifted a quarter turn
     // (`table[(a + 0x400) & 0xfff]`). 0x1000 steps per full turn, the PlayStation convention, which
     // is what makes `i << 8` sixteen evenly spaced positions in the character carousel.
     // Ordinals 452/453 are aliases of these same two entries.
-    [DllImport("winsys3d.dll", EntryPoint = "#450")] internal static extern int GetCosTableEntry(int index);
+    /// <summary>Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25c20 @ 0x00a25c20.</summary>
+    internal static int GetCosTableEntry(int index) => Libraries.Winsys3dTrigonometrie.Rcos(index);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#451")] internal static extern uint GetSinTableEntry(int index);
+    /// <summary>Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25c40 @ 0x00a25c40.</summary>
+    internal static uint GetSinTableEntry(int index) => Libraries.Winsys3dTrigonometrie.Rsin((uint)index);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#790")] internal static extern void SetDeviceLostCallback(void* callback);
+    internal static void SetDeviceLostCallback(void* callback) => Libraries.Winsys3dDevice.SetDeviceLostCallback(callback); // PORTE 2026-09-23 — Libraries/winsys3d/Device.cs, ordinal 790
 
     // The following winsys3d.dll ordinals are used directly by RunMainLoop (Ghidra: FUN_00529c10)
     // and its immediate dependency graph. Signatures/behavior were confirmed against winsys3d.c â€”
@@ -90,115 +95,174 @@ internal static unsafe class Winsys3d
     // (RET 4), alors que Ghidra les avait décompilés en (void) — la même classe de piège que
     // documente déjà test-protocol.md, attrapée ici avant d'écrire le P/Invoke plutôt qu'après un
     // plantage natif.
-    [DllImport("winsys3d.dll", EntryPoint = "#9")] internal static extern int Ordinal_9(int* transferState); // real: FUN_00a041d0, ResetEvent + un contrôle d'état sur *param_1
+    internal static int Ordinal_9(int* transferState) => Libraries.Winsys3dEvenements.TestEvent(transferState); // PORTE 2026-09-23 — libapi TestEvent, Libraries/winsys3d/Evenements.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "#18")] internal static extern byte* Ordinal_18(void* pathDescriptor, byte* dest); // real: FUN_00a044c0, FindFirstFileA + copie du nom tronqué et de la taille dans *dest ; null si aucune entrée
+    // ------------------------------------------------------------------------------------------
+    // LA FAMILLE DE FICHIERS DE LA CARTE MEMOIRE — portée le 2026-09-22.
+    //
+    // Les huit ordinaux 18 à 25 sont maintenant dans `Libraries/winsys3d/CarteMemoire.cs`, avec
+    // le pivot `FUN_00a03f80` qui résout un descripteur en chemin Win32. Ce sont les composantes
+    // 2, 9, 10, 12 et 13 de `DLLGlobales.md` : elles ne touchent que deux globales, et aucune
+    // fonction restée native ne les partage. Les commentaires de rôle sont conservés sur place —
+    // la polarité inversée de l'ordinal 20 et le 0xffffffff des ordinaux 24/25 sont des pièges,
+    // pas des détails.
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>real: FUN_00a044c0, FindFirstFileA + copie du nom tronqué et de la taille dans
+    /// <c>*dest</c> ; null si aucune entrée.</summary>
+    internal static byte* Ordinal_18(void* pathDescriptor, byte* dest)
+        => Libraries.Winsys3dCarteMemoire.TrouverPremier((byte*)pathDescriptor, dest);
 
     // real: FUN_00a04560, FindNextFileA + même copie. Ghidra le décompile `void`, mais FUN_005126c0
     // (Legacy/Raw/Blaze/FUN_005126c0.asm:36, `TEST EAX,EAX` juste après le CALL) teste bien EAX au
     // retour : le premier `return;` de la fonction laisse BVar2(=le FindNextFileA FALSE) dans EAX par
     // convention de code-gen, donc EAX vaut 0 exactement quand il n'y a plus d'entrée — déclaré `int`
     // ici pour pouvoir lire cette valeur, même si le vrai prototype ne la nomme pas.
-    [DllImport("winsys3d.dll", EntryPoint = "#19")] internal static extern int Ordinal_19(byte* dest);
+    internal static int Ordinal_19(byte* dest) => Libraries.Winsys3dCarteMemoire.TrouverSuivant(dest);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#20")] internal static extern int Ordinal_20(void* pathDescriptor); // real: FUN_00a045e0, DeleteFileA — **polarité inversée** : rend 1 si la suppression a ÉCHOUÉ, 0 si elle a réussi (`NEG EAX; SBB EAX,EAX; INC EAX` en fin de corps)
+    /// <summary>real: FUN_00a045e0, DeleteFileA — **polarité inversée** : rend 1 si la suppression
+    /// a ÉCHOUÉ, 0 si elle a réussi (<c>NEG EAX; SBB EAX,EAX; INC EAX</c> en fin de corps).</summary>
+    internal static int Ordinal_20(void* pathDescriptor)
+        => Libraries.Winsys3dCarteMemoire.Supprimer((byte*)pathDescriptor);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#21")] internal static extern IntPtr Ordinal_21(void* pathDescriptor, uint flags); // real: FUN_00a04600, CreateFileA
+    /// <summary>real: FUN_00a04600, CreateFileA.</summary>
+    internal static IntPtr Ordinal_21(void* pathDescriptor, uint flags)
+        => Libraries.Winsys3dCarteMemoire.Ouvrir((byte*)pathDescriptor, flags);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#22")] internal static extern int Ordinal_22(IntPtr handle); // real: FUN_00a04650, CloseHandle
+    /// <summary>real: FUN_00a04650, CloseHandle.</summary>
+    internal static int Ordinal_22(IntPtr handle) => Libraries.Winsys3dCarteMemoire.Fermer(handle);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#23")] internal static extern int Ordinal_23(IntPtr handle, int offset, uint method); // real: FUN_00a04660, SetFilePointer
+    /// <summary>real: FUN_00a04660, SetFilePointer.</summary>
+    internal static int Ordinal_23(IntPtr handle, int offset, uint method)
+        => Libraries.Winsys3dCarteMemoire.Deplacer(handle, offset, method);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#24")] internal static extern uint Ordinal_24(IntPtr handle, void* buffer, uint size); // real: FUN_00a04680, ReadFile (0xffffffff sur échec)
+    /// <summary>real: FUN_00a04680, ReadFile (0xffffffff sur échec).</summary>
+    internal static uint Ordinal_24(IntPtr handle, void* buffer, uint size)
+        => Libraries.Winsys3dCarteMemoire.Lire(handle, buffer, size);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#25")] internal static extern uint Ordinal_25(IntPtr handle, void* buffer, uint size); // real: FUN_00a046b0, WriteFile (0xffffffff sur échec)
+    /// <summary>real: FUN_00a046b0, WriteFile (0xffffffff sur échec).</summary>
+    internal static uint Ordinal_25(IntPtr handle, void* buffer, uint size)
+        => Libraries.Winsys3dCarteMemoire.Ecrire(handle, buffer, size);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#67")] internal static extern int Ordinal_67(int unused); // real: FUN_00a050f0, RET 4 confirmé — un paramètre ignoré ; rend toujours 1
+    internal static int Ordinal_67(int unused) => Libraries.Winsys3dEvenements.LivrerFinCarteLogicielle(); // PORTE 2026-09-23 — livre une fin d'E/S SwCARD, rend 1
 
-    [DllImport("winsys3d.dll", EntryPoint = "#68")] internal static extern int Ordinal_68(int unused); // real: FUN_00a050d0, même famille qu'Ordinal_67/69
+    internal static int Ordinal_68(int unused) => Libraries.Winsys3dEvenements.LivrerFinCarteMaterielle(); // PORTE 2026-09-23 — livre une fin d'E/S HwCARD, rend 1
 
-    [DllImport("winsys3d.dll", EntryPoint = "#69")] internal static extern int Ordinal_69(int unused); // real: FUN_00a050f0 — même corps qu'Ordinal_67, deux ordinaux pour la même adresse
+    internal static int Ordinal_69(int unused) => Libraries.Winsys3dEvenements.LivrerFinCarteLogicielle(); // PORTE 2026-09-23 — meme corps qu'Ordinal_67
 
-    [DllImport("winsys3d.dll", EntryPoint = "#72")] internal static extern uint Ordinal_72(int unused); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
+    internal static uint Ordinal_72(int unused) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
 
-    [DllImport("winsys3d.dll", EntryPoint = "#684")] internal static extern uint Ordinal_684(short* rect, void* destination); // real: FUN_00a05f50, copie rectangulaire VRAM→mémoire (icône de sauvegarde) ; rect = {x,y,w,h}
+    // winsys3d 684, libgpu `StoreImage` : VRAM -> memoire (icone de sauvegarde). PORTE le 2026-09-23 — `Libraries/winsys3d/Vram.cs`.
+    internal static uint Ordinal_684(short* rect, void* destination) => (uint)Libraries.Winsys3dVram.StoreImage(rect, (byte*)destination);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#41")] internal static extern void Ordinal_41(); // real: LeaveCriticalSection on the DLL's internal device lock
+    /// <summary>Porte : <c>Libraries/winsys3d/SectionCritique.cs</c>, winsys3d.c FUN_00a04fe0 @ 0x00a04fe0.</summary>
+    internal static void Ordinal_41() => Libraries.Winsys3dSectionCritique.Sortir();
 
     // Ordinal_45 : souche `xor eax,eax; ret 4` (0x00a02e20). **UN seul argument** — le `ret 4` le dit
     // sans ambiguite. Il en portait DEUX ici jusqu'au 2026-08-21, ce qui laissait 4 octets sur la pile
     // a chaque appel en stdcall. Corrige sur la foi du code machine, pas de la pseudo-C.
-    [DllImport("winsys3d.dll", EntryPoint = "#45")] internal static extern int Ordinal_45(void* a);
+    internal static int Ordinal_45(void* a) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
     // Ordinal_46 : souche `xor eax,eax; ret` (0x00a02490), cdecl sans argument. Rend toujours 0,
     // donc le test `Ordinal_46() < 0` de FUN_00513dd0 est toujours faux dans cette version de la DLL.
-    [DllImport("winsys3d.dll", EntryPoint = "#46", CallingConvention = CallingConvention.Cdecl)] internal static extern int Ordinal_46();
+    internal static int Ordinal_46() => (int)Libraries.Winsys3dSouches.RendZero();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#92")] internal static extern void* Ordinal_92(void* a, void* b); // confirmed no-op (FUN_00a05160 ignores its args)
+    // real: winsys3d.c FUN_00a05160 — libcd `CdSearchFile`, vidé par le portage PC : il ignore ses
+    // deux arguments et rend l'adresse d'une `CdlFILE` statique de 24 octets que personne n'écrit.
+    // L'original passe ici `(&DAT_005e9040, "BLAZE_ALL.1")` ; le site C# passe `null, null`, ce qui
+    // ne change rien puisque le corps ne les lit pas. Voir `Libraries/winsys3d/Cdrom.cs`.
+    internal static void* Ordinal_92(void* a, void* b) => Libraries.Winsys3dCdrom.CdSearchFile(a, (byte*)b);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#104")] internal static extern uint Ordinal_104(void* a); // confirmed no-op, returns 0 (FUN_00a02e20)
+    internal static uint Ordinal_104(void* a) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op, returns 0 (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#110")] internal static extern void Ordinal_110(int a); // confirmed no-op (FUN_00a02e20)
+    internal static void Ordinal_110(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#116")] internal static extern uint Ordinal_116(); // confirmed no-op, returns 0 (FUN_00a02490)
+    internal static uint Ordinal_116() => Libraries.Winsys3dSouches.RendZero(); // confirmed no-op, returns 0 (FUN_00a02490)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#129")] internal static extern void Ordinal_129(); // confirmed no-op (FUN_00a02490)
+    internal static void Ordinal_129() => _ = Libraries.Winsys3dSouches.RendZero(); // confirmed no-op (FUN_00a02490)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#132")] internal static extern int Ordinal_132(int a); // real: winsys3d.c FUN_00a053e0, VSync/frame-pacing wait â€” DLL-internal timing state
+    // real: winsys3d.c FUN_00a053e0, libgpu VSync(n) — the frame-pacing wait.
+    internal static int Ordinal_132(int a) => Libraries.Winsys3dCadence.VSync(a); // PORTE 2026-09-23 — Libraries/winsys3d/Cadence.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "#136")] internal static extern int Ordinal_136(int a); // real: winsys3d.c FUN_00a05770, get/set DAT_011be6a4 ("frame time offset"?), returns previous value
+    // real: winsys3d.c FUN_00a05770, get/set DAT_011be6a4 ("frame time offset"?), returns previous
+    // value. Porté avec l'ordinal 135, son lecteur, que personne n'importe — une composante se porte
+    // entière. Le rôle reste non établi : voir `Libraries/winsys3d/Cadence.cs`.
+    internal static int Ordinal_136(int a) => (int)Libraries.Winsys3dCadence.Unknown_00a05770((uint)a);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#138")] internal static extern void Ordinal_138(); // confirmed no-op (FUN_00a26470)
+    internal static void Ordinal_138() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#368")] internal static extern void Ordinal_368(void* eightDwordStruct); // real: winsys3d.c FUN_00a20ed0, copies 8 dwords into DLL-internal "shading defaults" state (EXT_011d0828); exact field semantics TODO(REVERSE)
+    internal static void Ordinal_368(void* eightDwordStruct) => Libraries.Winsys3dMatrices.SetColorMatrix((byte*)eightDwordStruct); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, vraisemblablement SetColorMatrix (0x011d0828)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#378")] internal static extern void Ordinal_378(int a, int b); // real: winsys3d.c FUN_00a21020, stores (a,b) into DLL-internal state (EXT_011cb414/EXT_011cb410); exact semantics TODO(REVERSE)
+    internal static void Ordinal_378(int a, int b) => Libraries.Winsys3dMatrices.SetGeomOffset(a, b); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, par la forme SetGeomOffset (0x011cb414/410)
 
     // Ordinals 376/379/457 are winsys3d.dll's port of the PlayStation SDK's **libgte** (the
     // geometry engine), the sibling of the libgpu ordinals below. Identified from their bodies:
-    [DllImport("winsys3d.dll", EntryPoint = "#376")] internal static extern void Ordinal_376(byte r, byte g, byte b); // real: winsys3d.c FUN_00a20fe0 â€” libgte SetBackColor: three bytes into DAT_011f0898
+    internal static void Ordinal_376(byte r, byte g, byte b) => Libraries.Winsys3dMatrices.SetBackColor(r, g, b); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetBackColor
 
-    [DllImport("winsys3d.dll", EntryPoint = "#379")] internal static extern void Ordinal_379(int h); // real: winsys3d.c FUN_00a21040 â€” libgte SetGeomScreen: stores the projection distance, then rebuilds the 0x10000-entry reciprocal table at EXT_011d0898
+    // real: winsys3d.c FUN_00a21040 — libgte SetGeomScreen: stores the projection distance, rebuilds the
+    // 0x10000-entry reciprocal table at EXT_011d0898, then updates the device projection (FUN_00a1dbc0,
+    // which calls wsyskern ProjectionMatrix — also ported, Libraries/wsyskern/Matrices.cs).
+    internal static void Ordinal_379(int h) => Libraries.Winsys3dMatrices.SetGeomScreen(h); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "#457")] internal static extern int Ordinal_457(int y, int x); // real: winsys3d.c FUN_00a25d10 â€” libgte ratan2
+    /// <summary>
+    /// Porte : <c>Libraries/winsys3d/Trigonometrie.cs</c>, winsys3d.c FUN_00a25d10 @ 0x00a25d10 —
+    /// libgte ratan2. L'ordre des arguments est confirme par le desassemblage (`fild [esp+4]` puis
+    /// `fild [esp+8]`, et `fpatan` divise st(1) par st(0)) : c'est bien `ratan2(y, x)`.
+    /// </summary>
+    internal static int Ordinal_457(int y, int x) => Libraries.Winsys3dTrigonometrie.Ratan2(y, x);
 
     // Ghidra nomme ce thunk `ReleaseTexture` parce qu'il l'a resolu par la table d'imports ; le nom
     // vient donc de la DLL elle-meme. Le corps est winsys3d.c 25890 : un renvoi d'une ligne vers
     // FUN_00a27700, avec l'ordinal en commentaire. Le site d'appel de FUN_0050bf20 (0x0050ca48)
     // empile un seul argument (`push 18h`), et le thunk du jeu est en 0x00545ad6 — un
     // `jmp dword [608804h]`.
-    [DllImport("winsys3d.dll", EntryPoint = "#788")] internal static extern void ReleaseTexture(int handle); // real: winsys3d.c ReleaseTexture @ 0x00a27990
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/CacheTextures.cs` : vide la page de texture `handle & 0x1f`.
+    internal static void ReleaseTexture(int handle) => Libraries.Winsys3dCacheTextures.ReleaseTexture(handle);
 
     // libgte VectorNormal : divise un vecteur par sa longueur en 1.12 et rend cette longueur.
     // **La variante a trois `int` en sortie, pas la variante a trois `short`** — celle-la est
     // l'ordinal 440 (winsys3d.c FUN_00a259d0), a l'octet pres le meme corps. La distinction n'est
     // pas cosmetique : la sortie ecrase ici trois emplacements de pile de quatre octets, et
     // l'ordinal 440 n'en aurait rempli que six.
-    [DllImport("winsys3d.dll", EntryPoint = "#439")] internal static extern uint Ordinal_439(int* vector, int* normalized); // real: winsys3d.c FUN_00a25910
+    internal static uint Ordinal_439(int* vector, int* normalized) => Libraries.Winsys3dMatrices.VectorNormal(vector, normalized); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte VectorNormal
 
     // libgte RotTrans par lot : `count` sommets passes par le registre MATRIX (ordinal 814), avec
     // la rangee de translation, mais SANS division perspective — a la difference de l'ordinal 418.
     // Les deux tableaux sont a pas de QUATRE shorts (huit octets), dont trois seulement sont
     // ecrits : c'est ce qui donne la nappe {x, y, z, _} que FUN_00534330 relit ensuite.
-    [DllImport("winsys3d.dll", EntryPoint = "#792")] internal static extern void Ordinal_792(short* source, short* destination, uint count); // real: winsys3d.c FUN_00a22dd0
+    internal static void Ordinal_792(short* source, short* destination, uint count) => Libraries.Winsys3dMatrices.RotTransVecteursCourts(source, destination, count); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "#442")] internal static extern uint Ordinal_442(uint squared); // real: winsys3d.c FUN_00a25b50 â€” libgte SquareRoot0: a four-way table lookup on the magnitude of the argument, then a single Newton step (x/g + g >> 1), masked to 16 bits. Its callers all pass a sum of squares and read a distance back.
+    internal static uint Ordinal_442(uint squared) => Libraries.Winsys3dMatrices.SquareRoot0(squared); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SquareRoot0 : table selon la grandeur, un pas de Newton, 16 bits
 
     // The five entry points FUN_0051d1f0 (the animated-model draw) needs. Identified from their
     // bodies; see Documentation/DLL/winsys3d.md. Declared ahead of that reconstruction so the
     // identification is not lost.
-    [DllImport("winsys3d.dll", EntryPoint = "#366")] internal static extern void Ordinal_366(void* matrix); // real: winsys3d.c FUN_00a20e70 â€” libgte SetRotMatrix: copies the nine rotation shorts into the MATRIX register (ordinal 814, offset 0)
+    internal static void Ordinal_366(void* matrix) => Libraries.Winsys3dMatrices.SetRotMatrix((byte*)matrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetRotMatrix
 
-    [DllImport("winsys3d.dll", EntryPoint = "#367")] internal static extern void Ordinal_367(void* matrix); // real: winsys3d.c FUN_00a20eb0 â€” libgte SetLightMatrix: copies **huit dwords** (0x20 octets, pas neuf shorts) depuis `matrix` dans le registre de matrice d'eclairage, c'est-a-dire l'export de donnees 815. C'est la raison pour laquelle FUN_0051c420 recopie lui aussi 0x20 octets a la main.
+    internal static void Ordinal_367(void* matrix) => Libraries.Winsys3dMatrices.SetLightMatrix((byte*)matrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetLightMatrix (huit mots)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#369")] internal static extern void Ordinal_369(void* matrix); // real: winsys3d.c FUN_00a20ef0 â€” libgte SetTransMatrix: copies the three translations from the matrix's +0x14/+0x18/+0x1c into the same register's translation row
+    internal static void Ordinal_369(void* matrix) => Libraries.Winsys3dMatrices.SetTransMatrix((byte*)matrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, libgte SetTransMatrix
 
-    [DllImport("winsys3d.dll", EntryPoint = "#360")] internal static extern void Ordinal_360(void* destMatrix, void* a, void* b); // real: winsys3d.c FUN_00a20630 â€” composes two matrices (libgte CompMatrix family), with its own MMX/scalar split
+    // real: winsys3d.c FUN_00a20630 — libgte CompMatrix. Le PREMIER argument est l'operande gauche et
+    // le TROISIEME la destination : l'ancienne declaration les nommait a l'envers, les sites passaient
+    // deja (parent, os, destination).
+    internal static void Ordinal_360(void* a, void* b, void* destMatrix) => Libraries.Winsys3dMatrices.CompMatrix((short*)a, (short*)b, (short*)destMatrix); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs, branches MMX et scalaire
 
-    [DllImport("winsys3d.dll", EntryPoint = "#418")] internal static extern void Ordinal_418(void* vertices, void* outScreenXy, void* outDepth, void* outFlags, uint count); // real: winsys3d.c FUN_00a22010 â€” batch RotTransPers: transforms `count` vertices through the MATRIX register (ordinal 814) into screen XY and depth arrays. MMX/scalar split inside.
+    // real: winsys3d.c FUN_00a22010 — batch RotTransPers: transforms `count` x 3 vertices through the
+    // MATRIX register (ordinal 814) into screen XY and depth arrays. MMX/scalar split inside, and the
+    // two branches do NOT compute the same thing — see Libraries/winsys3d/Matrices.cs.
+    internal static void Ordinal_418(void* vertices, void* outScreenXy, void* outDepth, void* outFlags, uint count)
+        => Libraries.Winsys3dMatrices.RotTransPersParTrois((short*)vertices, (int*)outScreenXy, (uint*)outDepth, (ushort*)outFlags, count); // PORTE 2026-09-23
 
-    [DllImport("winsys3d.dll", EntryPoint = "#793")] internal static extern void Ordinal_793(void* normals, void* outColours, uint triangleCount); // real: winsys3d.c FUN_00a03e70 â€” batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
+    // real: winsys3d.c FUN_00a03e70 — batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set
+    // writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
+    internal static void Ordinal_793(void* normals, void* outColours, uint triangleCount)
+        => Libraries.Winsys3dEclairage.EclairerTriangles((byte*)normals, (uint*)outColours, (int)triangleCount); // PORTE 2026-09-23 — Libraries/winsys3d/Eclairage.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "#794")] internal static extern void Ordinal_794(void* matrix, void* scale); // real: winsys3d.c FUN_00a20540 â€” libgte ScaleMatrix: scales each of the matrix's three columns by one component of `scale`.
+    // real: winsys3d.c FUN_00a20540 â€” libgte ScaleMatrix: scales each of the matrix's three columns
+    // by one component of `scale`, in 4.12 fixed point. Le seul des neuf ordinaux libgte importés
+    // qui ne touche aucun registre émulé du GTE : voir `Libraries/winsys3d/Matrices.cs`.
+    internal static void Ordinal_794(void* matrix, void* scale)
+        => Libraries.Winsys3dMatrices.ScaleMatrix((short*)matrix, (short*)scale);
 
     // real: winsys3d.c FUN_00a226c0 â€” the depth-less sibling of ordinal 418, taken when the model's
     // 0x400 flag is set. **Three** parameters, not two: Ghidra names them (param_1, param_2,
@@ -207,133 +271,177 @@ internal static unsafe class Winsys3d
     // the third is the count: the scalar loop ends on `while (param_2 != 0)` after the swap, and the
     // MMX path runs `for (iVar4 = (int)param_3 * 3; iVar4 != 0; iVar4--)` without swapping. Same
     // count as ordinal 418, and three vertices consumed per unit in both.
-    [DllImport("winsys3d.dll", EntryPoint = "#795")] internal static extern void Ordinal_795(void* vertices, void* outScreenXy, uint count);
+    internal static void Ordinal_795(void* vertices, void* outScreenXy, uint count)
+        => Libraries.Winsys3dMatrices.RotTransPersParTroisSansProfondeur((short*)vertices, (int*)outScreenXy, count); // PORTE 2026-09-23 — Libraries/winsys3d/Matrices.cs
 
     // winsys3d.c FUN_00a05ac0 â€” libgpu `SetDefDispEnv(DISPENV*, x, y, w, h)`. Writes disp={x,y,w,h},
     // screen={0,0,0x100,0xf0}, isinter=0, isrgb24=0 (18 of the struct's 20 bytes).
-    [DllImport("winsys3d.dll", EntryPoint = "#658")] internal static extern void SetDefDispEnv(void* dispEnv, short x, short y, short w, short h);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05ac0 @ 0x00a05ac0.</summary>
+    internal static void SetDefDispEnv(void* dispEnv, short x, short y, short w, short h)
+        => Libraries.Winsys3dListeAffichage.SetDefDispEnv(dispEnv, x, y, w, h);
 
     // winsys3d.c FUN_00a05b50 â€” libgpu `SetDefDrawEnv(DRAWENV*, x, y, w, h)`. Writes clip={x,y,w,h},
     // ofs={x,y}, tw={0,0,0,0}, tpage=10, dtd=1, dfe=1, isbg=0, r0=g0=b0=0 (first 28 bytes of 92).
-    [DllImport("winsys3d.dll", EntryPoint = "#661")] internal static extern void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05b50 @ 0x00a05b50.</summary>
+    internal static void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h)
+        => Libraries.Winsys3dListeAffichage.SetDefDrawEnv(drawEnv, x, y, w, h);
 
     // Game-state-0 ordinals. winsys3d.c declares all of these with no parameters, but that is the
     // same decompiler artifact seen throughout this project â€” the **call sites are authoritative**,
     // and the argument counts below are theirs (Blaze.c: FUN_00529a80 and FUN_00542160).
-    [DllImport("winsys3d.dll", EntryPoint = "#97")] internal static extern int Ordinal_97(int a, int b, int c);
+    //
+    // 2026-09-22 : l'ordinal 97 est une SOUCHE, `xor eax,eax ; ret 0Ch` (FUN_00a046e0). Le `ret 0Ch`
+    // confirme les trois arguments ci-dessus, et le corps confirme qu'il ne fait rien.
+    internal static int Ordinal_97(int a, int b, int c) => (int)Libraries.Winsys3dSouches.RendZeroTroisArguments();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#762")] internal static extern void Ordinal_762(void* p);
+    internal static void Ordinal_762(void* p) => Libraries.Winsys3dSouches.RienUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#765")] internal static extern int Ordinal_765(int a, uint rgb);
+    // 2026-09-22 : SOUCHE, `xor eax,eax ; ret 8` (FUN_00a02e10, 22 ordinaux). Le `ret 8` confirme
+    // les deux arguments ci-dessus.
+    internal static int Ordinal_765(int a, uint rgb) => (int)Libraries.Winsys3dSouches.RendZeroDeuxArguments();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#766")] internal static extern int Ordinal_766(void* p);
+    internal static int Ordinal_766(void* p) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#767")] internal static extern void Ordinal_767(int a, uint rgb);
+    // 2026-09-22 : SOUCHE, `ret 8` (FUN_00a02e40, 41 ordinaux). Meme controle d arite.
+    internal static void Ordinal_767(int a, uint rgb) => Libraries.Winsys3dSouches.RienDeuxArguments();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#768")] internal static extern int Ordinal_768(int a);
+    internal static int Ordinal_768(int a) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#769")] internal static extern int Ordinal_769(int a);
+    internal static int Ordinal_769(int a) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#770")] internal static extern int Ordinal_770(void* p);
+    internal static int Ordinal_770(void* p) => (int)Libraries.Winsys3dSouches.RendZeroUnArgument();
 
     // Frame ordinals. 688 is libgpu `ClearOTagR(u_long *ot, int n)` â€” winsys3d.c FUN_00a06160 keeps
     // both parameters, unlike its neighbours. 657/660 take a DISPENV/DRAWENV (PutDispEnv/PutDrawEnv
     // shaped), 701 takes the ordering table (DrawOTag shaped).
-    [DllImport("winsys3d.dll", EntryPoint = "#688")] internal static extern uint* Ordinal_688(uint* ot, int count);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a06160 @ 0x00a06160 — ClearOTagR.</summary>
+    internal static uint* Ordinal_688(uint* ot, int count) => Libraries.Winsys3dListeAffichage.ClearOTagR(ot, count);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#657")] internal static extern int Ordinal_657(void* env);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c> — PutDispEnv, avec la lecture des manettes (<c>Manettes.cs</c>).</summary>
+    internal static int Ordinal_657(void* env) => Libraries.Winsys3dListeAffichage.PutDispEnv(env);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#660")] internal static extern int Ordinal_660(void* env);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05b30 @ 0x00a05b30.</summary>
+    internal static int Ordinal_660(void* env) => Libraries.Winsys3dListeAffichage.PutDrawEnv(env);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#701")] internal static extern void Ordinal_701(uint* ot);
+    // ------------------------------------------------------------------------------------------
+    // ORDINAL 701, `DrawOTag` — la PORTE du chemin d'affichage, portée le 2026-09-22.
+    //
+    // Le dernier `[DllImport]` de winsys3d. Il a survécu jusqu'au 2026-09-23 pour une seule raison :
+    // `OPENFORESIA_LEGACY_DRAWOTAG=1` rebranchait l'original, pour comparer les deux à l'écran.
+    // Retiré avec le chargement de la DLL elle-même (`Libraries/winsys3d/Image.cs`) : sans la
+    // DLL, il n'y a plus d'original à rebrancher.
+    // ------------------------------------------------------------------------------------------
+    internal static void Ordinal_701(uint* ot) => Libraries.Winsys3dCheminAffichage.DrawOTag(ot);
 
     // libgpu MoveImage(RECT* src, int dstX, int dstY) â€” copies a rectangle inside the emulated
     // VRAM. Body confirmed at winsys3d.c:5348 (`/* 0x5df0  676 */`): it walks `src->h` rows of
     // `src->w` texels from the arena and writes them at (dstX, dstY).
-    [DllImport("winsys3d.dll", EntryPoint = "#676")] internal static extern void Ordinal_676(ushort* sourceRect, int destinationX, int destinationY);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Vram.cs`.
+    internal static void Ordinal_676(ushort* sourceRect, int destinationX, int destinationY) => _ = Libraries.Winsys3dVram.MoveImage((short*)sourceRect, destinationX, destinationY);
 
-    // real: winsys3d.c FUN_00a05e90 â€” libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
-    // RECT and floods VRAM), but its colour math decompiles as
-    // `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match ClearImage's plain (r,g,b).
-    // TODO(REVERSE): left un-renamed until that is explained rather than assumed.
-    [DllImport("winsys3d.dll", EntryPoint = "#665")] internal static extern int Ordinal_665(void* rect, byte r, byte g, uint b);
+    // winsys3d 665 : libgpu `ClearImage(RECT*, r, g, b)`. Sa couleur `((b & 0xff) << (g + 10)) << (r + 5)`
+    // est un defaut du binaire (LB-044), juste pour le noir, le seul cas employe. PORTE le 2026-09-23 —
+    // `Libraries/winsys3d/Vram.cs`.
+    internal static int Ordinal_665(void* rect, byte r, byte g, uint b) => Libraries.Winsys3dVram.ClearImage((short*)rect, r, g, b);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#667")] internal static extern void Ordinal_667(int a); // confirmed no-op (FUN_00a02e20)
+    internal static void Ordinal_667(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#668")] internal static extern int Ordinal_668(int a, int b, int c, int d, int e, int f); // real: winsys3d.c FUN_00a020a0, registers a debug/console text channel slot (unused feature in the shipped build)
+    internal static int Ordinal_668(int a, int b, int c, int d, int e, int f) => Libraries.Winsys3dTexteEcran.FntOpen(a, b, c, d, e, f); // PORTE 2026-09-23 — Libraries/winsys3d/TexteEcran.cs, libgpu FntOpen(x, y, w, h, isbg, n) : ouvre une fenetre de texte
 
     // real: winsys3d.c FUN_00a05d50 â€” libgpu `LoadImage(RECT*, u_long* data)`: copies `data` row by
     // row into the VRAM rectangle. `rect` is a 4-short RECT {x,y,w,h}, and the body early-outs on
     // rect.y > 0x1ff, confirming a 1024x512 VRAM addressing scheme.
-    [DllImport("winsys3d.dll", EntryPoint = "#674")] internal static extern int Ordinal_674(void* rect, void* srcBuffer);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Vram.cs`.
+    internal static int Ordinal_674(void* rect, void* srcBuffer) => Libraries.Winsys3dVram.LoadImage((short*)rect, (byte*)srcBuffer);
+
+    // ------------------------------------------------------------------------------------------
+    // LE LECTEUR DE CONTENEUR TIM — porté le 2026-09-22, `Libraries/winsys3d/Tim.cs`. C'était la
+    // composante 3 de `DLLGlobales.md` : deux corps, une seule globale (`DAT_011be790`), dont les
+    // dix références tiennent dans cette paire.
+    // ------------------------------------------------------------------------------------------
 
     // winsys3d.c FUN_00a05bb0 â€” libgpu `OpenTIM(u_long *addr)`. Parks a cursor at `addr + 4` in the
     // DLL global DAT_011be790; ReadTIM below consumes and clears it, so the pair is one-shot.
-    [DllImport("winsys3d.dll", EntryPoint = "#677")] internal static extern int OpenTim(void* timData);
+    internal static int OpenTim(void* timData) => Libraries.Winsys3dTim.OpenTim(timData);
 
     // winsys3d.c FUN_00a05bd0 â€” libgpu `ReadTIM(TIM_IMAGE*)`. Parses the TIM header the cursor
     // points at and fills the 5-dword TIM_IMAGE below. When the header's bit 3 is clear the image
     // has no CLUT and it writes mode=2, crect=null, caddr=null.
-    [DllImport("winsys3d.dll", EntryPoint = "#662")] internal static extern void ReadTim(Resources.TimImage* image);
+    //
+    // Le renvoi prend un `uint*` et non un `TimImage*` : `Libraries/` ne connait pas les types de
+    // `src/Blaze/`, et ne doit pas — ce sont deux programmes distincts (LISEZMOI.md). La structure
+    // fait exactement cinq mots, c'est ce que la DLL ecrit, et c'est le cast qui le dit.
+    internal static void ReadTim(Resources.TimImage* image) => Libraries.Winsys3dTim.ReadTim((uint*)image);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#681")] internal static extern void Ordinal_681(int a); // confirmed no-op (FUN_00a02e20)
+    internal static void Ordinal_681(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#710")] internal static extern void Ordinal_710(int width, int height); // real: winsys3d.c FUN_00a026e0, (re)creates the DLL's text/console overlay bitmap at the given size
+    internal static void Ordinal_710(int width, int height) => Libraries.Winsys3dTexteEcran.FntLoad(width, height); // PORTE 2026-09-23 — Libraries/winsys3d/TexteEcran.cs, libgpu FntLoad(tx, ty) : les deux arguments sont la position VRAM de la police, pas une taille
 
-    [DllImport("winsys3d.dll", EntryPoint = "#712")] internal static extern void Ordinal_712(int a); // confirmed no-op (FUN_00a02870)
+    internal static void Ordinal_712(int a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#720")] internal static extern void Ordinal_720(nint a); // confirmed no-op (FUN_00a02870)
+    internal static void Ordinal_720(nint a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#771")] internal static extern void Ordinal_771(); // confirmed no-op (FUN_00a26470)
+    internal static void Ordinal_771() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#789")] internal static extern int Ordinal_789(int a, int b); // real: winsys3d.c FUN_00a06420, device (re)init/teardown dispatcher; inert when a==0 besides storing b
+    // real: winsys3d.c FUN_00a06420, device (re)init/teardown dispatcher. a == 0 initialises (b is the
+    // display mode), a == -1/-2 shuts down, anything else only stores b.
+    internal static int Ordinal_789(int a, int b) => Libraries.Winsys3dDevice.InitialiserDevice(a, b); // PORTE 2026-09-23 — Libraries/winsys3d/Device.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "SetShift")] internal static extern void SetShift(int x, int y, int zoomLevel, int flag); // real, named export (ordinal 796): camera/view shift+zoom, winsys3d.c confirmed
+    // winsys3d SetShift (ordinal 796) : decalage de vue et zoom. PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void SetShift(int x, int y, int zoomLevel, int flag) => Libraries.Winsys3dDecalageEcran.SetShift(x, y, zoomLevel, flag);
 
     // winsys3d.dll ordinals used by FUN_00504460 (joystick/interrupt-style event-handler
     // (de)registration bookkeeping â€” see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
-    [DllImport("winsys3d.dll", EntryPoint = "#6")] internal static extern void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback); // real: winsys3d.c FUN_00a040d0, registers a handler, returns an opaque handle
+    internal static void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback) => Libraries.Winsys3dEvenements.OpenEvent(messageId, (int)p2, (int)p3, callback); // PORTE 2026-09-23 — libapi OpenEvent, Libraries/winsys3d/Evenements.cs
 
-    [DllImport("winsys3d.dll", EntryPoint = "#10")] internal static extern int Ordinal_10(void* handle); // real: winsys3d.c FUN_00a04220 — **arme** le gestionnaire (état 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130)
+    // real: winsys3d.c FUN_00a04220 — libapi `EnableEvent` : **arme** le gestionnaire (état
+    // 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130).
+    // Le nœud appartient à l'appelant — il vient de l'ordinal 6, resté natif, donc du tas de
+    // `wsyskern` : une seule mémoire, vue des deux côtés. Voir `Libraries/winsys3d/Evenements.cs`.
+    internal static int Ordinal_10(void* handle) => Libraries.Winsys3dEvenements.EnableEvent(handle);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#40")] internal static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument
+    /// <summary>Porte : <c>Libraries/winsys3d/SectionCritique.cs</c>, winsys3d.c FUN_00a04fd0 @ 0x00a04fd0. winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument</summary>
+    internal static void Ordinal_40() => Libraries.Winsys3dSectionCritique.Entrer();
 
-    [DllImport("winsys3d.dll", EntryPoint = "#63")] internal static extern void Ordinal_63(int a); // confirmed no-op (FUN_00a02870)
+    internal static void Ordinal_63(int a) => Libraries.Winsys3dSouches.RienUnArgument(); // confirmed no-op (FUN_00a02870)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#64")] internal static extern int Ordinal_64(); // confirmed no-op, returns 0 (FUN_00a02490)
+    internal static int Ordinal_64() => (int)Libraries.Winsys3dSouches.RendZero(); // confirmed no-op, returns 0 (FUN_00a02490)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#66")] internal static extern void Ordinal_66(); // confirmed no-op (FUN_00a26470)
+    internal static void Ordinal_66() => Libraries.Winsys3dSouches.Rien(); // confirmed no-op (FUN_00a26470)
 
-    [DllImport("winsys3d.dll", EntryPoint = "#750")] internal static extern void* Ordinal_750(); // real: winsys3d.c FUN_00a01e30, returns the DLL's main device-interface pointer (DAT_011be760)
+    internal static void* Ordinal_750() => Libraries.Winsys3dDevice.LireDevice(); // PORTE 2026-09-23 avec 789, son ecrivain — Libraries/winsys3d/Device.cs ; real: winsys3d.c FUN_00a01e30, returns DAT_011be760
 
     // winsys3d.dll: ReInitializeAllTextures is a named export (called by winsys3d.c itself at
     // winsys3d.c:4119). Zoom8BitTextures is an imported *data* symbol, same category as
     // TexFilterPossible/MainMem â€” resolved lazily via GetProcAddress, since P/Invoke has no
     // mechanism for imported data.
-    [DllImport("winsys3d.dll")] internal static extern void ReInitializeAllTextures();
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/CacheTextures.cs`.
+    internal static void ReInitializeAllTextures() => Libraries.Winsys3dCacheTextures.ReInitializeAllTextures();
 
     // winsys3d.dll named exports (ordinal 776 and its setter) â€” the viewport shift the options page
     // saves and restores around its own screen.
-    [DllImport("winsys3d.dll")] internal static extern void GetAbsShift(int* x, int* y);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void GetAbsShift(int* x, int* y) => Libraries.Winsys3dDecalageEcran.GetAbsShift(x, y);
 
-    [DllImport("winsys3d.dll")] internal static extern void SetAbsShift(int x, int y);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void SetAbsShift(int x, int y) => Libraries.Winsys3dDecalageEcran.SetAbsShift(x, y);
 
     // winsys3d, exports nommÃ©s. `ShiftVertices` (ordinal 824, winsys3d.c:4913) applique
     // `x = dÃ©calage + (Size + 9) * 32 / 320 * x` â€” le facteur documentÃ© dans la section
     // Â« Coordinate scaling Â». Le fond de page passe par lui ; les widgets, eux, par la mise Ã 
     // l'Ã©chelle que le jeu fait lui-mÃªme (FUN_00510110). Les deux coexistent, c'est voulu.
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern void ShiftVertices(TlVertex* vertices, int count);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void ShiftVertices(TlVertex* vertices, int count) => Libraries.Winsys3dDecalageEcran.ShiftVertices((float*)vertices, count);
 
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern void SetTextureFilterMode(int mode);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Device.cs`, ordinal 798.
+    internal static void SetTextureFilterMode(int mode) => Libraries.Winsys3dDevice.SetTextureFilterMode(mode);
 
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern int SetTimingMode(int mode);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Cadence.cs`, ordinal 822.
+    internal static int SetTimingMode(int mode) => Libraries.Winsys3dCadence.SetTimingMode(mode);
 
     // winsys3d ordinal 749 (winsys3d.c:6010) : demande au device le mode d'affichage d'index
     // `resolution` par son slot `+0xE8`, et ne retient le changement que si le device l'accepte.
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern int ChangeResolution(int resolution);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Device.cs`.
+    internal static int ChangeResolution(int resolution) => Libraries.Winsys3dDevice.ChangeResolution(resolution);
 
 }

@@ -1,0 +1,48 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a1dbc0  section .text  offset fichier 0x1cfc0  112 octets
+
+  00a1dbc0  83ec44                sub       esp,44h
+  00a1dbc3  8b442448              mov       eax,[esp+48h]
+  00a1dbc7  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a1dbcd  a3f8c5a200            mov       [0A2C5F8h],eax
+  00a1dbd2  56                    push      esi
+  00a1dbd3  0fbf05bce61b01        movsx     eax,word [11BE6BCh]
+  00a1dbda  99                    cdq
+  00a1dbdb  2bc2                  sub       eax,edx
+  00a1dbdd  8b31                  mov       esi,[ecx]
+  00a1dbdf  d1f8                  sar       eax,1
+  00a1dbe1  89442404              mov       [esp+4],eax
+  00a1dbe5  51                    push      ecx
+  00a1dbe6  db442408              fild      dword [esp+8]
+  00a1dbea  8d54240c              lea       edx,[esp+0Ch]
+  00a1dbee  da742450              fidiv     dword [esp+50h]
+  00a1dbf2  d9e8                  fld1
+  00a1dbf4  d9f3                  fpatan
+  00a1dbf6  dcc0                  fadd      to st0
+  00a1dbf8  d91c24                fstp      dword [esp]
+  00a1dbfb  db05f4c5a200          fild      dword [0A2C5F4h]
+  00a1dc01  51                    push      ecx
+  00a1dc02  d91c24                fstp      dword [esp]
+  00a1dc05  db05f0c5a200          fild      dword [0A2C5F0h]
+  00a1dc0b  51                    push      ecx
+  00a1dc0c  d91c24                fstp      dword [esp]
+  00a1dc0f  52                    push      edx
+  00a1dc10  ff15d8532101          call      dword [12153D8h]
+  00a1dc16  8b0d60e71b01          mov       ecx,[11BE760h]
+  00a1dc1c  50                    push      eax
+  00a1dc1d  ff5678                call      dword [esi+78h]
+  00a1dc20  5e                    pop       esi
+  00a1dc21  83c444                add       esp,44h
+  00a1dc24  c20400                ret       4
+  00a1dc27  90                    nop
+  00a1dc28  90                    nop
+  00a1dc29  90                    nop
+  00a1dc2a  90                    nop
+  00a1dc2b  90                    nop
+  00a1dc2c  90                    nop
+  00a1dc2d  90                    nop
+  00a1dc2e  90                    nop
+  00a1dc2f  90                    nop

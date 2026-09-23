@@ -1,0 +1,37 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a27530  section .text  offset fichier 0x26930  48 octets
+
+  00a27530  8bc1                  mov       eax,ecx
+  00a27532  56                    push      esi
+  00a27533  bed0070000            mov       esi,7D0h
+  00a27538  8d5004                lea       edx,[eax+4]
+
+LAB_00a2753b:
+  00a2753b  8b0dd0412101          mov       ecx,[12141D0h]
+  00a27541  890a                  mov       [edx],ecx
+  00a27543  83c204                add       edx,4
+  00a27546  4e                    dec       esi
+  00a27547  75f2                  jne       short 00A2753Bh
+  00a27549  c70000000000          mov       dword [eax],0
+  00a2754f  5e                    pop       esi
+  00a27550  c3                    ret
+  00a27551  90                    nop
+  00a27552  90                    nop
+  00a27553  90                    nop
+  00a27554  90                    nop
+  00a27555  90                    nop
+  00a27556  90                    nop
+  00a27557  90                    nop
+  00a27558  90                    nop
+  00a27559  90                    nop
+  00a2755a  90                    nop
+  00a2755b  90                    nop
+  00a2755c  90                    nop
+  00a2755d  90                    nop
+  00a2755e  90                    nop
+  00a2755f  90                    nop
+
+1 cible(s) de saut interne : 0x00a2753b

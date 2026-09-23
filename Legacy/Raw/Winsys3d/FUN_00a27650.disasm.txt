@@ -1,0 +1,64 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a27650  section .text  offset fichier 0x26a50  128 octets
+
+  00a27650  a1d0412101            mov       eax,[12141D0h]
+  00a27655  53                    push      ebx
+  00a27656  8b1de4532101          mov       ebx,[12153E4h]
+  00a2765c  55                    push      ebp
+  00a2765d  56                    push      esi
+  00a2765e  57                    push      edi
+  00a2765f  85c0                  test      eax,eax
+  00a27661  8be9                  mov       ebp,ecx
+  00a27663  7520                  jne       short 00A27685h
+  00a27665  6a34                  push      34h
+  00a27667  ffd3                  call      ebx
+  00a27669  85c0                  test      eax,eax
+  00a2766b  740e                  je        short 00A2767Bh
+  00a2766d  8bc8                  mov       ecx,eax
+  00a2766f  e8ccfaffff            call      00A27140h
+  00a27674  a3d0412101            mov       [12141D0h],eax
+  00a27679  eb0a                  jmp       short 00A27685h
+
+LAB_00a2767b:
+  00a2767b  c705d041210100000000  mov       dword [12141D0h],0
+
+LAB_00a27685:
+  00a27685  b900800000            mov       ecx,8000h
+  00a2768a  33c0                  xor       eax,eax
+  00a2768c  8dbd80000000          lea       edi,[ebp+80h]
+  00a27692  8bf5                  mov       esi,ebp
+  00a27694  f3ab                  rep stosd
+  00a27696  b9e8030000            mov       ecx,3E8h
+  00a2769b  83c8ff                or        eax,0FFFFFFFFh
+  00a2769e  8dbd80000200          lea       edi,[ebp+20080h]
+  00a276a4  f3ab                  rep stosd
+  00a276a6  bf20000000            mov       edi,20h
+
+LAB_00a276ab:
+  00a276ab  68441f0000            push      1F44h
+  00a276b0  ffd3                  call      ebx
+  00a276b2  85c0                  test      eax,eax
+  00a276b4  7409                  je        short 00A276BFh
+  00a276b6  8bc8                  mov       ecx,eax
+  00a276b8  e873feffff            call      00A27530h
+  00a276bd  eb02                  jmp       short 00A276C1h
+
+LAB_00a276bf:
+  00a276bf  33c0                  xor       eax,eax
+
+LAB_00a276c1:
+  00a276c1  8906                  mov       [esi],eax
+  00a276c3  83c604                add       esi,4
+  00a276c6  4f                    dec       edi
+  00a276c7  75e2                  jne       short 00A276ABh
+  00a276c9  5f                    pop       edi
+  00a276ca  8bc5                  mov       eax,ebp
+  00a276cc  5e                    pop       esi
+  00a276cd  5d                    pop       ebp
+  00a276ce  5b                    pop       ebx
+  00a276cf  c3                    ret
+
+5 cible(s) de saut interne : 0x00a2767b, 0x00a27685, 0x00a276ab, 0x00a276bf, 0x00a276c1

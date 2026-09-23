@@ -1,0 +1,76 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a1df00  section .text  offset fichier 0x1d300  256 octets
+
+  00a1df00  83ec14                sub       esp,14h
+  00a1df03  53                    push      ebx
+  00a1df04  55                    push      ebp
+  00a1df05  56                    push      esi
+  00a1df06  57                    push      edi
+  00a1df07  33f6                  xor       esi,esi
+  00a1df09  b908000000            mov       ecx,8
+  00a1df0e  33c0                  xor       eax,eax
+  00a1df10  bf70081d01            mov       edi,11D0870h
+  00a1df15  f3ab                  rep stosd
+  00a1df17  8935cc0e1f01          mov       [11F0ECCh],esi
+  00a1df1d  89742410              mov       [esp+10h],esi
+  00a1df21  bf20b41c01            mov       edi,11CB420h
+
+LAB_00a1df26:
+  00a1df26  db442410              fild      dword [esp+10h]
+  00a1df2a  dc0dd8a0a200          fmul      qword [0A2A0D8h]
+  00a1df30  d9fe                  fsin
+  00a1df32  dc0de0a0a200          fmul      qword [0A2A0E0h]
+  00a1df38  e81f9e0000            call      00A27D5Ch
+  00a1df3d  8b542410              mov       edx,[esp+10h]
+  00a1df41  8907                  mov       [edi],eax
+  00a1df43  83c704                add       edi,4
+  00a1df46  42                    inc       edx
+  00a1df47  81ff20041d01          cmp       edi,11D0420h
+  00a1df4d  89542410              mov       [esp+10h],edx
+  00a1df51  7cd3                  jl        short 00A1DF26h
+  00a1df53  89742414              mov       [esp+14h],esi
+  00a1df57  89742418              mov       [esp+18h],esi
+  00a1df5b  33db                  xor       ebx,ebx
+  00a1df5d  89742410              mov       [esp+10h],esi
+  00a1df61  bd10b21c01            mov       ebp,11CB210h
+  00a1df66  bf900c1f01            mov       edi,11F0C90h
+
+LAB_00a1df6b:
+  00a1df6b  db442410              fild      dword [esp+10h]
+  00a1df6f  d9fa                  fsqrt
+  00a1df71  e8e69d0000            call      00A27D5Ch
+  00a1df76  db442414              fild      dword [esp+14h]
+  00a1df7a  6689047520061d01      mov       [esi*2+11D0620h],ax
+  00a1df82  d9fa                  fsqrt
+  00a1df84  e8d39d0000            call      00A27D5Ch
+  00a1df89  db442418              fild      dword [esp+18h]
+  00a1df8d  6689047520041d01      mov       [esi*2+11D0420h],ax
+  00a1df95  d9fa                  fsqrt
+  00a1df97  e8c09d0000            call      00A27D5Ch
+  00a1df9c  895c241c              mov       [esp+1Ch],ebx
+  00a1dfa0  c744242000000000      mov       dword [esp+20h],0
+  00a1dfa8  df6c241c              fild      qword [esp+1Ch]
+  00a1dfac  668907                mov       [edi],ax
+  00a1dfaf  d9fa                  fsqrt
+  00a1dfb1  e8a69d0000            call      00A27D5Ch
+  00a1dfb6  8b542418              mov       edx,[esp+18h]
+  00a1dfba  66894500              mov       [ebp],ax
+  00a1dfbe  8b442414              mov       eax,[esp+14h]
+  00a1dfc2  81c200000100          add       edx,10000h
+  00a1dfc8  0500010000            add       eax,100h
+  00a1dfcd  81c300000001          add       ebx,1000000h
+  00a1dfd3  83c702                add       edi,2
+  00a1dfd6  46                    inc       esi
+  00a1dfd7  83c502                add       ebp,2
+  00a1dfda  81ff900e1f01          cmp       edi,11F0E90h
+  00a1dfe0  89442414              mov       [esp+14h],eax
+  00a1dfe4  89542418              mov       [esp+18h],edx
+  00a1dfe8  89742410              mov       [esp+10h],esi
+  00a1dfec  0f8c79ffffff          jl        near 00A1DF6Bh
+  00a1dff2  b908000000            mov       ecx,8
+  00a1dff7  be00c6a200            mov       esi,0A2C600h
+  00a1dffc  bf70081d              (bad)
+  (octet invalide — la plage demandee deborde probablement du code)

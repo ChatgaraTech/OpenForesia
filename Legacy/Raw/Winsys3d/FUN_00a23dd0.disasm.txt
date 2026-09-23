@@ -1,0 +1,90 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a23dd0  section .text  offset fichier 0x231d0  176 octets
+
+  00a23dd0  56                    push      esi
+  00a23dd1  8b74240c              mov       esi,[esp+0Ch]
+  00a23dd5  57                    push      edi
+  00a23dd6  8b7c240c              mov       edi,[esp+0Ch]
+  00a23dda  33c0                  xor       eax,eax
+  00a23ddc  33d2                  xor       edx,edx
+  00a23dde  8a07                  mov       al,[edi]
+  00a23de0  8a5701                mov       dl,[edi+1]
+  00a23de3  0faf06                imul      eax,[esi]
+  00a23de6  0faf5604              imul      edx,[esi+4]
+  00a23dea  33c9                  xor       ecx,ecx
+  00a23dec  8a4f02                mov       cl,[edi+2]
+  00a23def  0faf4e08              imul      ecx,[esi+8]
+  00a23df3  c1f80c                sar       eax,0Ch
+  00a23df6  c1fa0c                sar       edx,0Ch
+  00a23df9  c1f90c                sar       ecx,0Ch
+  00a23dfc  85c0                  test      eax,eax
+  00a23dfe  7d04                  jge       short 00A23E04h
+  00a23e00  33c0                  xor       eax,eax
+  00a23e02  eb0c                  jmp       short 00A23E10h
+
+LAB_00a23e04:
+  00a23e04  3dff000000            cmp       eax,0FFh
+  00a23e09  7e05                  jle       short 00A23E10h
+  00a23e0b  b8ff000000            mov       eax,0FFh
+
+LAB_00a23e10:
+  00a23e10  85d2                  test      edx,edx
+  00a23e12  7d04                  jge       short 00A23E18h
+  00a23e14  33d2                  xor       edx,edx
+  00a23e16  eb0d                  jmp       short 00A23E25h
+
+LAB_00a23e18:
+  00a23e18  81faff000000          cmp       edx,0FFh
+  00a23e1e  7e05                  jle       short 00A23E25h
+  00a23e20  baff000000            mov       edx,0FFh
+
+LAB_00a23e25:
+  00a23e25  85c9                  test      ecx,ecx
+  00a23e27  7d04                  jge       short 00A23E2Dh
+  00a23e29  33c9                  xor       ecx,ecx
+  00a23e2b  eb0d                  jmp       short 00A23E3Ah
+
+LAB_00a23e2d:
+  00a23e2d  81f9ff000000          cmp       ecx,0FFh
+  00a23e33  7e05                  jle       short 00A23E3Ah
+  00a23e35  b9ff000000            mov       ecx,0FFh
+
+LAB_00a23e3a:
+  00a23e3a  8b742414              mov       esi,[esp+14h]
+  00a23e3e  8806                  mov       [esi],al
+  00a23e40  885601                mov       [esi+1],dl
+  00a23e43  884e02                mov       [esi+2],cl
+  00a23e46  8a4703                mov       al,[edi+3]
+  00a23e49  884603                mov       [esi+3],al
+  00a23e4c  5f                    pop       edi
+  00a23e4d  5e                    pop       esi
+  00a23e4e  c20c00                ret       0Ch
+  00a23e51  90                    nop
+  00a23e52  90                    nop
+  00a23e53  90                    nop
+  00a23e54  90                    nop
+  00a23e55  90                    nop
+  00a23e56  90                    nop
+  00a23e57  90                    nop
+  00a23e58  90                    nop
+  00a23e59  90                    nop
+  00a23e5a  90                    nop
+  00a23e5b  90                    nop
+  00a23e5c  90                    nop
+  00a23e5d  90                    nop
+  00a23e5e  90                    nop
+  00a23e5f  90                    nop
+  00a23e60  8b0dc80e1f01          mov       ecx,[11F0EC8h]
+  00a23e66  55                    push      ebp
+  00a23e67  56                    push      esi
+  00a23e68  8b742410              mov       esi,[esp+10h]
+  00a23e6c  81e1ff000000          and       ecx,0FFh
+  00a23e72  8bd6                  mov       edx,esi
+  00a23e74  57                    push      edi
+  00a23e75  8b7c2410              mov       edi,[esp+10h]
+  00a23e79  0fafd1                imul      edx,ecx
+  00a23e7c  b8001000              (bad)
+  (octet invalide — la plage demandee deborde probablement du code)

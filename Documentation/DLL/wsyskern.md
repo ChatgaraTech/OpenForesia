@@ -110,3 +110,71 @@ both on that title bitmap; it never calls the capitalized `Malloc` directly.
 Everything else — `wsyskern.dll` has ~758 named exports and only the three above
 have been read. Also unread: `PaletteFromDIB`, `FUN_10003260` (the non-`"BM"`
 fallback noted above), and the `filenotfound`/`fileerror`/`warn*` reporters.
+
+---
+
+## Le décompresseur : LHA `-lh5-` (LZHUF) — établi le 2026-09-21
+
+Les dix-huit corps autour de `0x10003400`, partagés par `Unpack` (export 145) et par le chemin de
+repli de `LoadBitmapFile`, sont **le décodeur LHA `-lh5-`**, autrement dit LZHUF. L'identification
+ne repose pas sur une ressemblance mais sur les constantes, qui sont toutes celles de la source de
+LHA :
+
+| constante | valeur | où elle se lit |
+|---|---:|---|
+| `NC` | 510 (`0x1fe`) | `Malloc(0x1fe)` pour `c_len`, et le test `0x1fd < j` de `decode_c` |
+| `NT` | 19 (`0x13`) | `read_pt_len(19, 5, 3)` |
+| `NP` | 14 (`0xe`) | `read_pt_len(14, 4, -1)` |
+| seuil | 3 | `j = c - 0xfd`, soit `c - (255 + 1 - 3)` |
+| dictionnaire | 8 192 | l'anneau masqué à `0x1fff`, les blocs de `0x2000` |
+| `left`/`right` | 1 019 mots | `Malloc(0x7f6)`, soit `2 * NC - 1` |
+| bits de table | 12 et 8 | `c_table` de 4 096 mots, `pt_table` de 256 |
+
+La correspondance des corps :
+
+| Ghidra | LHA |
+|---|---|
+| `FUN_10003620` / `FUN_10003e40` / `FUN_10003600` | `fillbuf` / `getbits` / `init_getbits` |
+| `FUN_10003870` / `FUN_100039a0` | `read_pt_len` / `read_c_len` |
+| `FUN_10003bb0` | `make_table` |
+| `FUN_100037b0` / `FUN_10003b10` / `FUN_100036d0` | `decode_c` / `decode_p` / `decode` |
+| `FUN_10003480` | le pilote par blocs de 8 192 |
+| `FUN_10003260` / `Unpack` | les deux entrées, fichier et mémoire |
+
+**Un seul écart avec LHA d'origine, et il est volontaire** : `fillbuf` consulte *deux* compteurs
+d'entrée là où LHA n'en a qu'un. `DAT_10057e2c` vient de l'en-tête du conteneur, `DAT_10057e0c` de
+la taille réelle du tampon ; le premier épuisé fait entrer des zéros. Un fichier dont l'en-tête ment
+est donc décodé jusqu'au bout avec du remplissage au lieu de lire au-delà du tampon.
+
+### L'en-tête du conteneur
+
+L'en-tête recopié commence à l'**octet 2** du fichier, donc `EnTete[i]` est `fichier[2 + i]` :
+
+```
+fichier[0]      longueur N de l'en-tête (0 => ce n'est pas un conteneur)
+fichier[1]      inutilisé
+EnTete[0..4]    la signature « xxxxx » — EnTete[3] porte le CODE DE FORMAT avant écrasement
+EnTete[5..8]    taille compressée    (petit-boutien)
+EnTete[9..12]   taille décompressée  (petit-boutien)
+```
+
+Le code de format est lu puis **remplacé par `'x'`** avant la comparaison : c'est ainsi que la même
+signature vaut pour `'4'`, `'5'` et `'x'`. Le tampon d'en-tête fait exactement 256 octets —
+`DAT_10057f60` suit immédiatement `DAT_10057e60` — ce qui suffit puisque N tient sur un octet.
+
+## `decrypt` (export 196) et sa table — relevée le 2026-09-21
+
+`DAT_10049b88` fait **neuf octets**, pas huit, et le dixième est nul. Relevée dans
+`Legacy/Binaries/wsyskern.dll` (`.rdata`, décalage fichier `0x47d88`) :
+
+```
+ea 7b 22 25 0c 35 2d 1f 47
+```
+
+Neuf, c'est ce qui confirme le double indexage du corps : la **rotation** prend `rang & 7` — les
+huit premiers — tandis que le **ou exclusif** prend `rang % 9` et atteint le neuvième. Les deux
+périodes diffèrent, ce qui allonge le motif à 72 octets. Une table transcrite à huit octets aurait
+déchiffré juste un octet sur neuf, et la faute n'aurait sauté aux yeux sur aucun cas court.
+
+Le nombre magique de tête est `0x9DE29BEE` ; l'octet 4, ou exclusif `0x16`, donne la longueur de
+clé.

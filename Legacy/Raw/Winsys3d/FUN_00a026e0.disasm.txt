@@ -1,0 +1,88 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a026e0  section .text  offset fichier 0x1ae0  192 octets
+
+  00a026e0  8b0dd4e61b01          mov       ecx,[11BE6D4h]
+  00a026e6  83ec3c                sub       esp,3Ch
+  00a026e9  8d442400              lea       eax,[esp]
+  00a026ed  83c104                add       ecx,4
+  00a026f0  53                    push      ebx
+  00a026f1  55                    push      ebp
+  00a026f2  50                    push      eax
+  00a026f3  51                    push      ecx
+  00a026f4  e8b7b10100            call      00A1D8B0h
+  00a026f9  6880000000            push      80h
+  00a026fe  6800010000            push      100h
+  00a02703  8b5c2454              mov       ebx,[esp+54h]
+  00a02707  8b6c2450              mov       ebp,[esp+50h]
+  00a0270b  8b54241c              mov       edx,[esp+1Ch]
+  00a0270f  53                    push      ebx
+  00a02710  55                    push      ebp
+  00a02711  6a00                  push      0
+  00a02713  6a00                  push      0
+  00a02715  52                    push      edx
+  00a02716  e855390000            call      00A06070h
+  00a0271b  25ffff0000            and       eax,0FFFFh
+  00a02720  b908000000            mov       ecx,8
+  00a02725  a398c1a200            mov       [0A2C198h],eax
+  00a0272a  8a442408              mov       al,[esp+8]
+  00a0272e  84c1                  test      cl,al
+  00a02730  744b                  je        short 00A0277Dh
+  00a02732  57                    push      edi
+  00a02733  56                    push      esi
+  00a02734  8b742428              mov       esi,[esp+28h]
+  00a02738  8d7c242c              lea       edi,[esp+2Ch]
+  00a0273c  53                    push      ebx
+  00a0273d  8d442430              lea       eax,[esp+30h]
+  00a02741  55                    push      ebp
+  00a02742  50                    push      eax
+  00a02743  f3a5                  rep movsd
+  00a02745  66c74424380080        mov       word [esp+38h],8000h
+  00a0274c  e8cf380000            call      00A06020h
+  00a02751  83c520                add       ebp,20h
+  00a02754  53                    push      ebx
+  00a02755  8d4c2430              lea       ecx,[esp+30h]
+  00a02759  25ffff0000            and       eax,0FFFFh
+  00a0275e  55                    push      ebp
+  00a0275f  51                    push      ecx
+  00a02760  a334eaa200            mov       [0A2EA34h],eax
+  00a02765  66c74424380000        mov       word [esp+38h],0
+  00a0276c  e8af380000            call      00A06020h
+  00a02771  25ffff0000            and       eax,0FFFFh
+  00a02776  5e                    pop       esi
+  00a02777  a338eaa200            mov       [0A2EA38h],eax
+  00a0277c  5f                    pop       edi
+
+LAB_00a0277d:
+  00a0277d  5d                    pop       ebp
+  00a0277e  5b                    pop       ebx
+  00a0277f  83c43c                add       esp,3Ch
+  00a02782  c20800                ret       8
+  00a02785  90                    nop
+  00a02786  90                    nop
+  00a02787  90                    nop
+  00a02788  90                    nop
+  00a02789  90                    nop
+  00a0278a  90                    nop
+  00a0278b  90                    nop
+  00a0278c  90                    nop
+  00a0278d  90                    nop
+  00a0278e  90                    nop
+  00a0278f  90                    nop
+  00a02790  33c0                  xor       eax,eax
+  00a02792  c22000                ret       20h
+  00a02795  90                    nop
+  00a02796  90                    nop
+  00a02797  90                    nop
+  00a02798  90                    nop
+  00a02799  90                    nop
+  00a0279a  90                    nop
+  00a0279b  90                    nop
+  00a0279c  90                    nop
+  00a0279d  90                    nop
+  00a0279e  90                    nop
+  00a0279f  90                    nop
+
+1 cible(s) de saut interne : 0x00a0277d

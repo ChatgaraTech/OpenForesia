@@ -1749,3 +1749,417 @@ une Sacuba reçoit un jour une altération.
 `TickSceneEntityAi_004D9D90` (`Ai/ImmortalCastle/Sacuba.cs`) le transcrit tel quel, garde comprise.
 **Ne pas sortir le second bloc de la garde** : c'est vraisemblablement l'intention de l'auteur,
 mais ce serait une déviation.
+
+## LB-033 — `LoadBitmapFile` ferme deux fois le même handle sur le chemin compressé
+
+**Où** : `wsyskern.c`, `LoadBitmapFile` @ `0x10010500` (export 115) et `FUN_10003260` @ `0x10003260`.
+
+Quand le fichier n'est pas un `.BMP` brut, `LoadBitmapFile` le confie à `FUN_10003260`, qui lit le
+fichier en entier puis appelle `CloseHandle` lui-même. De retour, `LoadBitmapFile` rappelle
+`CloseHandle` sur le même handle :
+
+```c
+psVar3 = (short *)FUN_10003260(hFile);   /* ferme deja hFile */
+CloseHandle(hFile);                      /* une seconde fois */
+```
+
+**Conséquence** : aucune, en pratique. Sous Win32, fermer un handle déjà fermé échoue avec
+`ERROR_INVALID_HANDLE` et le code ne teste pas le retour. Le seul risque théorique serait qu'un
+autre thread se voie attribuer la même valeur de handle entre les deux appels — le jeu ne charge
+pas d'image depuis deux threads.
+
+**Reproduit tel quel** dans `src/Libraries/wsyskern/Fichiers.cs`. Le chemin `BM` direct, lui, ne
+ferme qu'une fois : la double fermeture ne concerne que les fichiers compressés.
+
+## LB-034 — Le mode « stocké » du décompresseur est inatteignable
+
+**Où** : `wsyskern.c`, `FUN_10003480` @ `0x10003480`.
+
+Le pilote de décompression porte deux chemins : décoder par Huffman, ou **recopier tel quel** quand
+le code de format vaut `'0'` (`_Val == 0x30`). Mais la garde placée juste avant n'accepte que trois
+codes :
+
+```c
+pcVar1 = _strchr("45x", _Val);
+if (pcVar1 != (char *)0x0) { ... if (_Val == 0x30) { /* recopie directe */ } ... }
+```
+
+`strchr("45x", '0')` rend `NULL`, donc un fichier marqué `'0'` est refusé avant d'atteindre la
+branche qui saurait le traiter. **La recopie directe n'est donc jamais exécutée** : c'est du code
+mort dans le binaire vendu, vraisemblablement un mode retiré de l'outil de compression sans que la
+garde soit mise à jour.
+
+**Reproduit tel quel** : la branche est transcrite dans `Codec.cs` avec sa garde, parce que ce n'est
+pas à la transcription de décider si c'est un oubli.
+
+## LB-035 — L'ordinal 29 de `winsys3d` renomme un fichier en lui-même
+
+**Où** : `winsys3d.c`, `FUN_00a04700` @ `0x00a04700` (ordinal 29), et son appelée
+`FUN_00a03f80` @ `0x00a03f80`.
+
+`FUN_00a03f80` résout un descripteur de carte mémoire en chemin Win32, **dans un casier statique**
+— `DAT_00dedc58`, 0x100 octets — dont il rend l'adresse. L'ordinal 29 l'appelle deux fois de
+suite, une par descripteur :
+
+```c
+lpExistingFileName = (LPCSTR)FUN_00a03f80(param_1);   /* ecrit DAT_00dedc58 */
+lpNewFileName      = (LPCSTR)FUN_00a03f80(param_2);   /* le REECRIT */
+MoveFileA(lpExistingFileName,lpNewFileName);          /* deux fois le meme pointeur */
+```
+
+Les deux pointeurs valent `&DAT_00dedc58`, et le contenu est celui de la **seconde** résolution.
+`MoveFileA` reçoit donc deux fois le nom d'arrivée, et renomme ce fichier en lui-même — ou échoue
+s'il n'existe pas encore, ce qui est le cas nominal d'un renommage.
+
+**Conséquence** : aucune, parce que rien n'appelle cet ordinal. Ni `Blaze.c` ni la reconstruction
+ne l'importent, et c'est vraisemblablement la raison : le défaut aurait sauté aux yeux au premier
+essai. Le même piège guette l'ordinal 30 (`SetCurrentDirectoryA`), qui n'a qu'un descripteur et
+s'en tire donc indemne.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/CarteMemoire.cs` : les deux appels y sont, dans
+l'ordre, sur le même casier. Le correctif, s'il en fallait un, tiendrait en une copie du premier
+chemin dans un tampon local avant la seconde résolution.
+
+## LB-036 — `LINE_G3` et `LINE_G4` ne tracent que leur premier segment
+
+**Où** : `winsys3d.c`, `FUN_00a0eaf0` @ `0x00a0eaf0` (`LINE_G3`, codes 0x58..0x5b) et
+`FUN_00a0ecf0` @ `0x00a0ecf0` (`LINE_G4`, codes 0x5c..0x5f). **Trouvé à la lecture** le
+2026-09-23, en portant les primitives GPU — pas constaté en jeu.
+
+Une ligne brisée PlayStation de trois ou quatre points devient chez Direct3D un
+`DrawPrimitive(2 = D3DPT_LINELIST, ..., 3 sommets)` : `push 3 ; push 2` à `0x00a0ec7d` et à
+`0x00a0eed1`. Une *liste* de lignes prend les sommets deux par deux ; avec trois sommets, elle en
+trace **un** segment, du sommet 0 au sommet 1, et ignore le troisième. Leurs jumelles à couleur
+unique, `LINE_F3` et `LINE_F4`, passent bien `3 = D3DPT_LINESTRIP`. `LINE_G4` n'écrit d'ailleurs
+que trois positions pour quatre couleurs.
+
+**Conséquence** : non observée. Toute ligne brisée dégradée que le jeu enverrait perdrait tous ses
+segments sauf le premier ; reste à savoir si le jeu en envoie.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Primitives.cs` (`LineG3`, `LineG4`). Le
+correctif tiendrait en un type de primitive `LINESTRIP`, et une quatrième position pour `LINE_G4`.
+
+## LB-037 — `POLY_G4` échange les couleurs de deux coins
+
+**Où** : `winsys3d.c`, `FUN_00a0ff50` @ `0x00a0ff50` (`POLY_G4`, codes 0x38..0x3b). **Trouvé à la
+lecture** le 2026-09-23 — pas constaté en jeu.
+
+La PlayStation range un quadrilatère en « Z » ; Direct3D, en éventail, veut le tour du contour. Le
+corps croise donc les sommets 2 et 3… **pour les positions seulement** : le sommet D3D 2 prend la
+position du sommet PS 3 (mots 0x20/0x22, `fstp [11CB178h]` à `0x00a10175`) mais la couleur du
+sommet PS 2 (octets 0x14..0x16, `mov [11CB188h]` à `0x00a1009f`), et le sommet D3D 3 l'inverse.
+Le dégradé sort avec les couleurs de deux coins échangées.
+
+`POLY_GT4` (`FUN_00a101c0`, `FUN_00a12350`) croise, lui, couleur, texture et position ensemble :
+le défaut est propre à la variante non texturée.
+
+**Conséquence** : non observée. Un quadrilatère uni n'en montre rien ; seul un dégradé dont les
+deux coins en question diffèrent le trahit.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Primitives.cs` (`PolyG4`). Le correctif
+tiendrait en l'échange des octets de couleur 0x14 et 0x1c.
+
+## LB-038 — Le sprite tourné de `winsys3d` prend la largeur pour la hauteur de texture
+
+**Où** : `winsys3d.c`, `FUN_00a0e0c0` @ `0x00a0e0c0` (opcode 0xe5 du répartiteur). **Trouvé à la
+lecture** le 2026-09-23 — pas constaté en jeu.
+
+Le paquet porte une largeur (mot `+8`) et une hauteur (mot `+0xa`), et la géométrie emploie bien
+les deux. Mais les coordonnées de texture s'étendent de `v` à `v + largeur`, pas `v + hauteur` :
+`add ecx,eax` à `0x00a0e4f3` et `0x00a0e51e`, où `eax` est le mot `+8` chargé plus haut
+(`mov ax,[esi+8]`). Ghidra le montre aussi (`uVar8`, la largeur, dans les deux branches en v).
+
+**Conséquence** : non observée. Un sprite carré n'en montre rien ; un sprite plus haut que large
+écrase sa texture verticalement, un plus large l'étire.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Primitives.cs` (`SpriteTourne`). Le correctif
+tiendrait en la hauteur à la place de la largeur dans les deux lectures de la table `v`.
+
+## LB-039 — Une cellule `0xffff` fige le fond en tuiles
+
+**Où** : `winsys3d.c`, `FUN_00a142a0` @ `0x00a142a0` (opcode 0xe8 du répartiteur). **Trouvé à la
+lecture** le 2026-09-23 — pas constaté en jeu.
+
+La lecture de la carte de cellules est une boucle qui relit le même mot tant qu'il vaut `0xffff` :
+
+```
+00a144f5  ... mov ax,[esi+edx*2]      ; carte[ligne * largeur + colonne]
+00a14513  cmp eax,0FFFFh
+00a14518  je  short 00A144F5h         ; ligne, colonne : inchangées
+```
+
+Rien ne change d'un tour à l'autre. Une carte qui contiendrait ce code — vraisemblablement prévu
+pour « cellule vide, à sauter » — bloquerait l'image pour toujours.
+
+**Conséquence** : non observée ; les cartes du jeu n'en contiennent sans doute pas, sans quoi le
+jeu se figerait. À vérifier si un fond ne s'affiche jamais.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/FondTuiles.cs`. Le correctif serait de passer
+à la cellule suivante, en avançant la colonne.
+
+## LB-040 — Une texture 16 bits en mode soustractif noircit la fin de ses lignes
+
+**Où** : `winsys3d.c`, `FUN_00a03460` @ `0x00a03460` (la conversion d'une page de texture en image
+DIB, chemin 16 → 24 bits). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Quand la CLUT porte le marquage `0x8000` — le mode de semi-transparence soustractif —, un pixel
+dont le bit 15 est posé doit sortir noir. Le binaire l'écrit ainsi :
+
+```
+00a0364d  test ah,80h
+00a03650  jne  00A0367Bh              ; pixel « transparent »
+...                                   ; chemin normal : trois octets, puis add esi,2
+00a0367b  mov dword [edi],0           ; QUATRE octets à zéro sur un pixel de TROIS
+00a03681  add edi,3                   ; la destination avance... pas la source
+```
+
+Deux défauts en un : l'écriture de 32 bits déborde d'un octet sur le pixel suivant (ou, pour le
+dernier d'une ligne, sur la ligne voisine de l'image montante) ; et surtout **`esi` n'avance pas**.
+Le pixel suivant relit le même pixel transparent, et ainsi de suite : **toute la fin de la ligne
+sort noire**, à partir du premier pixel semi-transparent.
+
+**Conséquence** : non observée. Elle ne touche que les pages 16 bits directes employées en mode
+soustractif, sur un device de moins de 16 bits ou pour une page marquée 0x1000 — un cas rare.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/ChargementTextures.cs` (`Dib24`). Le correctif
+tiendrait en un `add esi,2` dans les deux branches et une écriture de trois octets.
+
+## LB-041 — Un quadrilatère TMD plat sans éclairage ne trace qu'un triangle
+
+**Où** : `winsys3d.c`, `FUN_00a08510` @ `0x00a08510` (le producteur du mode TMD `0x29`, F4 sans
+source de lumière). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Les trois autres producteurs de quadrilatères (`F4` éclairé, `G4`, `GT4`, `FT4`) rangent leurs
+quatre sommets dans l'ordre 0, 1, 3, 2 et émettent la commande **6** — `D3DPT_TRIANGLEFAN`. Celui-ci
+range ses sommets de la même façon, mais émet la commande **4**, `D3DPT_TRIANGLELIST` :
+
+```
+00a087aa  mov [0A2C578h],edi        ; edi = 4
+00a087b0  mov [edx+ecx*4],edi       ; l'opcode du DrawPrimitive
+...
+00a08828  add edx,edi               ; compte += 4 sommets
+```
+
+Une liste de triangles à quatre sommets n'en trace qu'un — les sommets 0, 1 et 3 — et le quatrième
+est ignoré : **la moitié du quadrilatère manque**. Et comme la commande est écrite sans consulter
+le mémo, deux F4 sans lumière de suite font deux enregistrements, là où les triangles s'allongent.
+
+**Conséquence** : non observée. Elle ne touche que les faces F4 non éclairées d'un modèle TMD, ou
+les paquets construits par les adaptateurs des genres 5 et 12/13 de l'ordinal 752.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/ConstructionPaquets.cs`
+(`F4SansLumiere_00a08510`). Le correctif tiendrait en une constante : 6 au lieu de 4.
+
+## LB-042 — Les producteurs TMD texturés mettent toujours u = v = 0
+
+**Où** : `winsys3d.c`, les huit producteurs texturés des modes TMD `0x24`, `0x25`, `0x2c`,
+`0x2d`, `0x34`, `0x35`, `0x3c`, `0x3d` (`FUN_00a08850`, `08c80`, `094d0`, `09070`, `0a1a0`,
+`0a670`, `0b390`, `0b930`). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Chaque coordonnée de texture part d'un octet de la primitive (0 à 255) et passe par une
+**division entière** que le compilateur a faite en multiplication :
+
+```
+00a08af5  mov  eax,3D2C183Dh
+00a08b09  mov  dl,[esi+4]          ; u0, un octet
+00a08b0c  imul edx                 ; edx = (u0 * 0x3D2C183D) >> 32
+00a08b0e  sar  edx,19h
+00a08b13  shr  eax,1Fh ; add edx,eax
+00a08b23  fild dword [esp+10h]
+00a08b27  fstp dword [ecx+18h]     ; tu du premier sommet
+```
+
+Le diviseur que donnent ces constantes est voisin de **140 422 000** — elles varient d'un
+producteur à l'autre (0x3D2C183D, 0x7A582FCB, 0x1E960961, 0x0F4AFC53...), mais toutes tombent
+là. Pour un octet, le quotient vaut toujours **0**. Ghidra ne s'y trompe pas : il replie le
+calcul et écrit `0.0`.
+
+**Conséquence** : non observée. Un modèle TMD texturé converti par ce chemin tirerait toutes ses
+faces du texel (0, 0) de sa page — une couleur unie. Que les modèles du jeu s'affichent texturés
+laisse penser qu'ils passent ailleurs (les primitives GPU du répartiteur, qui portent leurs `u v`
+en clair) ; c'est à confirmer.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/ConstructionPaquets.cs`
+(`QuotientMagique`), constante par constante. L'intention probable était `octet / 256.0f`.
+
+## LB-043 — La manette 2 ignore son joystick et hérite des boutons de la manette 1
+
+**Où** : `winsys3d.c`, `FUN_00a049c0` @ `0x00a049c0` (la lecture des manettes, appelée en fin
+d'image par `PutDispEnv`, ordinal 657). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Deux défauts dans la même fonction, qui ne touchent que la seconde manette :
+
+```
+00a04a39  call joyGetPos(0, &joy)
+00a04a3d  je   00A04A56h            ; manette 1 : valeurs neutres si la lecture ÉCHOUE
+...
+00a04cf9  call joyGetPos(1, &joy)
+00a04cfd  jne  00A04D1Ah            ; manette 2 : valeurs neutres si la lecture RÉUSSIT
+```
+
+**Le test du joystick 2 est inversé.** Branché, il est remplacé par les valeurs neutres : ses
+axes et ses boutons ne comptent jamais. Absent, `joyGetPos` échoue sans remplir la structure,
+qui garde ce que le joystick 1 y a laissé — **la manette 2 recopie le premier joystick**.
+
+**Les bits ne sont pas remis à zéro entre les deux manettes.** Les deux s'accumulent dans `bx`
+(`or bh,80h` à 0x00a04d4f, sur le registre qui porte encore la manette 1) : chaque bouton pressé
+sur la manette 1 l'est aussi sur la manette 2.
+
+**Conséquence** : non observée. En jeu à un joueur, sans effet visible si la manette 2 n'est pas
+lue ; à deux, le second joueur ne pourrait jouer qu'au clavier, et ses personnages recevraient
+aussi les commandes du premier.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Manettes.cs`. Le correctif tiendrait en un
+`je` au lieu du `jne` et une remise à zéro de `bx` avant la seconde lecture.
+
+## LB-044 — `ClearImage` décale la composante bleue au lieu d'assembler la couleur
+
+**Où** : `winsys3d.c`, `FUN_00a05e90` @ `0x00a05e90` (ordinal 665, `ClearImage(RECT*, r, g, b)` de
+la `libgpu`). **Trouvé à la lecture** le 2026-09-23 — sans effet dans le jeu.
+
+La couleur de remplissage devrait être un pixel 15 bits, `(b >> 3) << 10 | (g >> 3) << 5 | r >> 3`.
+Le binaire calcule autre chose :
+
+```
+00a05e90  mov cl,[esp+0Ch]         ; g
+00a05e94  mov eax,[esp+10h]        ; b
+00a05e98  add ecx,0Ah
+00a05e9b  and eax,0FFh
+00a05ea0  shl eax,cl               ; b << (g + 10)
+00a05ea2  mov cl,[esp+8]           ; r
+00a05ea7  add ecx,5
+00a05eb0  shl eax,cl               ; ... << (r + 5)
+```
+
+Les deux autres composantes servent de **décalages** à la bleue (masqués à cinq bits par le
+processeur). Le résultat est ensuite doublé dans les deux moitiés d'un mot de 32 bits.
+
+**Conséquence** : aucune. Le seul appel du jeu (`FUN_00529eb0`, à l'initialisation de la vue)
+efface en `(0, 0, 0)`, et `0` décalé reste `0`. Toute autre couleur sortirait fausse.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Vram.cs` (`ClearImage`).
+
+## LB-045 — `OpenEvent` n'enchaîne pas le nouvel événement : seul le premier est jamais livré
+
+**Où** : `winsys3d.c`, `FUN_00a040d0` @ `0x00a040d0` (ordinal 6, `OpenEvent` de la `libapi`),
+et ce qu'en voit `FUN_00a04270` (ordinal 12, `DeliverEvent`). **Trouvé à la lecture** le
+2026-09-23 — sans effet visible.
+
+Un événement est un nœud de sept mots, dont `[5]` le précédent et `[6]` le suivant. `OpenEvent`
+remplit le nouveau nœud et l'ajoute en fin de liste :
+
+```
+00a04104  mov ecx,[0DEDC20h]        ; l'ancien dernier
+00a0410a  mov [eax+14h],ecx         ; nouveau[5] = ancien dernier
+00a0410d  mov dword [eax+18h],0     ; nouveau[6] = 0
+...
+00a04123  mov [0DEDC20h],eax        ; dernier = nouveau
+```
+
+mais n'écrit jamais `ancien[6] = nouveau`, et aucun autre corps de la famille ne le fait.
+`DeliverEvent` part de la tête et suit `[6]` : il ne voit que le **premier événement ouvert**.
+Si celui-ci est fermé (ordinal 7), la tête devient son suivant, nul, et la liste paraît vide alors
+que d'autres événements sont ouverts.
+
+**Conséquence** : aucune observée. Les seuls événements livrés en jeu sont les fins
+d'entrée-sortie de la carte mémoire (ordinaux 67, 68, 69), et `TestEvent` (9) les déclare arrivées
+d'office, quel que soit l'état du nœud — la carte n'attend donc jamais une livraison perdue.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Evenements.cs`.
+
+## LB-046 — La projection MMX tronque la translation à 16 bits et arrondit deux fois
+
+**Où** : `winsys3d.c`, `FUN_00a22010` @ `0x00a22010` (ordinal 418) et sa jumelle `FUN_00a226c0`
+@ `0x00a226c0` (ordinal 795), la projection des sommets de modèle par lots. **Trouvé à la
+lecture** le 2026-09-23 — effet non observé.
+
+Les deux corps ont une branche scalaire et une branche MMX, choisies par `MMXInstalled`, que
+l'initialisation pose à 1 sur tout processeur postérieur au Pentium MMX. **Les deux branches ne
+calculent pas la même chose.** La scalaire fait, par composante :
+
+```
+x = (m0.vx + m1.vy + m2.vz) >> 12  +  tx          ; un arrondi, tx sur 32 bits
+```
+
+La MMX met la translation dans le quatrième mot du `pmaddwd`, en face d'un `0x1000` constant
+(`DAT_00a2a0d0`), puis décale chaque moitié avant de les additionner :
+
+```
+00a225ad  movd  mm3,[esi+14h]      ; tx
+00a225bb  psllq mm3,30h            ; ... ses 16 bits BAS seulement, dans le mot 3
+00a22615  pmaddwd mm4,mm0          ; (vx.m0 + vy.m1 , vz.m2 + 0x1000.(short)tx)
+00a2261b  psrad mm4,0Ch            ; chaque moitié décalée
+00a22630  paddd mm3,mm4            ; puis additionnée
+```
+
+soit `((vx.m0 + vy.m1) >> 12) + ((vz.m2) >> 12) + (short)tx`. Deux écarts :
+
+- **la translation perd ses bits hauts** : une composante hors de ±32 767 repart de l'autre côté ;
+- **deux arrondis au lieu d'un** : le résultat peut valoir un de moins que la branche scalaire.
+
+**Conséquence** : aucune constatée. Le second écart déplace un sommet d'au plus une unité avant la
+perspective. Le premier ne mordrait que sur un modèle placé à plus de 32 767 unités de la caméra
+sur un axe, ce qui le sortirait vraisemblablement de l'écran de toute façon — non vérifié.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Matrices.cs`, les deux branches, avec le
+drapeau aliasé : c'est la MMX qui tourne.
+
+## LB-047 — Le journal des attentes d'image déborde à la 100 000ᵉ image sur les globales de la cadence
+
+**Où** : `winsys3d.c`, `FUN_00a053e0` @ `0x00a053e0` (ordinal 132, le `VSync(n)` de la `libgpu`),
+que le jeu appelle **une fois par image** depuis `FrameEnd` (`Screens/State00/MainMenu.cs`).
+**Trouvé à la lecture** le 2026-09-23 — non observé.
+
+À chaque appel, 132 incrémente `DAT_011be69c` puis écrit un enregistrement de 0x28 octets (compteur
+d'images, image attendue, compteur de performance, échéance, rattrapage, attente, retard, `n`) à
+`0x00dedd78 + indice * 0x28`. La zone fait **exactement 100 000 enregistrements** —
+`0x011be678 − 0x00dedd78 = 4 000 000` — et **l'indice n'est jamais borné ni remis à zéro** : aucune
+autre écriture de `DAT_011be69c` dans toute la DLL.
+
+Le 100 000ᵉ appel (≈ 27 min 47 s à 60 images/s) écrit donc son enregistrement **sur les globales
+de la cadence elles-mêmes** :
+
+| champ écrit | globale recouverte | conséquence |
+|---|---|---|
+| image attendue | `0x011be67c`, **`VSyncDelayed`** | non nul → `DrawOTag` et `PutDispEnv` sautent tout |
+| compteur, mot bas | `0x011be680`, l'image attendue | valeur sans rapport |
+| compteur, mot haut | `0x011be684`, **les tops par image** | quelques unités au lieu de ~166 667 |
+| échéance / rattrapage | `0x011be688 .. 0x011be694` | mélangés |
+| `n` | `0x011be69c`, **l'indice lui-même** | le journal repart de `n + 1` |
+
+**Conséquence** : en **mode de cadence 0**, le mode par défaut, l'image attendue vaut 0 tant que
+`SetTimingMode` n'a jamais été appelé, donc `VSyncDelayed` reçoit 0 et rien ne se voit : le mode 0
+ne consulte ni les tops ni le rattrapage. **Si le joueur est passé par la page « Timing »** des
+options, l'image attendue est non nulle : `VSyncDelayed` reste alors non nul pour toujours en
+mode 0 — plus aucune image dessinée ni présentée, **l'écran se fige**. En modes 1 à 3, les tops
+par image deviennent minuscules et la cadence est perdue. Non vérifié en jeu : il faut jouer près
+de 28 minutes d'affilée.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Cadence.cs`, jusqu'à l'ordre des lectures :
+les valeurs sont prises avant la première écriture, comme dans le binaire, pour que le
+recouvrement produise les mêmes valeurs.
+
+## LB-048 — Le nom du pilote 3D tient sur 20 octets, mais se copie sans borne
+
+**Où** : `winsys3d.c`, `Setup3DDevice` @ `0x00a01910` (ordinal 823) et `FUN_00a010d0` @
+`0x00a010d0`, le lanceur qui choisit le pilote. **Trouvé à la lecture** le 2026-09-23 — non observé.
+
+Le bloc que `Setup3DDevice` tient sur sa pile et passe au dialogue réserve **20 octets** au nom du
+pilote (`+4`), puis la description (`+0x18`). Deux copies y écrivent un nom **sans borne**, par
+`strlen` puis `rep movsd`/`rep movsb` :
+
+- `Setup3DDevice` y copie la clé `Driver` de `Blaze.cfg`, lue dans un tampon de 256 octets ;
+- `FUN_00a010d0` y copie le nom du pilote choisi dans le dialogue.
+
+Un nom de 20 caractères ou plus déborde sur la description. Comme la description est écrite
+**juste après**, elle écrase la fin du nom et son NUL : le nom lu ensuite devient les 20 premiers
+caractères suivis de la description. C'est ce texte que `Setup3DDevice` compare à « GLIDE » et
+« SOFTWARE », puis réécrit dans `Blaze.cfg` sous `Driver` — le fichier garde le nom corrompu, et
+le lancement suivant le relit tel quel.
+
+**Conséquence** : aucune observée. Les noms en jeu — « Software », « Glide », et les noms de
+pilote DirectDraw que le rappel d'énumération range — sont courts. Il faudrait un pilote au nom de
+20 caractères ou plus, ou un `Blaze.cfg` écrit à la main.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Device.cs` : les deux corps prennent leur cadre
+de pile d'un seul `stackalloc`, aux mêmes décalages, pour que le débordement tombe au même endroit.

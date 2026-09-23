@@ -1,0 +1,74 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a1d8b0  section .text  offset fichier 0x1ccb0  176 octets
+
+  00a1d8b0  8b4c2404              mov       ecx,[esp+4]
+  00a1d8b4  56                    push      esi
+  00a1d8b5  8b11                  mov       edx,[ecx]
+  00a1d8b7  f6c208                test      dl,8
+  00a1d8ba  7432                  je        short 00A1D8EEh
+  00a1d8bc  8b44240c              mov       eax,[esp+0Ch]
+  00a1d8c0  8910                  mov       [eax],edx
+  00a1d8c2  668b7108              mov       si,[ecx+8]
+  00a1d8c6  8b5104                mov       edx,[ecx+4]
+  00a1d8c9  66897010              mov       [eax+10h],si
+  00a1d8cd  668b710a              mov       si,[ecx+0Ah]
+  00a1d8d1  66897012              mov       [eax+12h],si
+  00a1d8d5  668b710c              mov       si,[ecx+0Ch]
+  00a1d8d9  66897014              mov       [eax+14h],si
+  00a1d8dd  668b710e              mov       si,[ecx+0Eh]
+  00a1d8e1  c1ea02                shr       edx,2
+  00a1d8e4  66897016              mov       [eax+16h],si
+  00a1d8e8  42                    inc       edx
+  00a1d8e9  8d7110                lea       esi,[ecx+10h]
+  00a1d8ec  eb1d                  jmp       short 00A1D90Bh
+
+LAB_00a1d8ee:
+  00a1d8ee  8b44240c              mov       eax,[esp+0Ch]
+  00a1d8f2  33f6                  xor       esi,esi
+  00a1d8f4  ba01000000            mov       edx,1
+  00a1d8f9  8930                  mov       [eax],esi
+  00a1d8fb  66897010              mov       [eax+10h],si
+  00a1d8ff  66897012              mov       [eax+12h],si
+  00a1d903  66897014              mov       [eax+14h],si
+  00a1d907  66897016              mov       [eax+16h],si
+
+LAB_00a1d90b:
+  00a1d90b  897018                mov       [eax+18h],esi
+  00a1d90e  668b749104            mov       si,[ecx+edx*4+4]
+  00a1d913  66897004              mov       [eax+4],si
+  00a1d917  668b749106            mov       si,[ecx+edx*4+6]
+  00a1d91c  66897006              mov       [eax+6],si
+  00a1d920  668b749108            mov       si,[ecx+edx*4+8]
+  00a1d925  66897008              mov       [eax+8],si
+  00a1d929  668b74910a            mov       si,[ecx+edx*4+0Ah]
+  00a1d92e  8d4c910c              lea       ecx,[ecx+edx*4+0Ch]
+  00a1d932  6689700a              mov       [eax+0Ah],si
+  00a1d936  89480c                mov       [eax+0Ch],ecx
+  00a1d939  5e                    pop       esi
+  00a1d93a  c20800                ret       8
+  00a1d93d  90                    nop
+  00a1d93e  90                    nop
+  00a1d93f  90                    nop
+  00a1d940  8b0d0cb21c01          mov       ecx,[11CB20Ch]
+  00a1d946  b801000000            mov       eax,1
+  00a1d94b  2bc1                  sub       eax,ecx
+  00a1d94d  a30cb21c01            mov       [11CB20Ch],eax
+  00a1d952  c3                    ret
+  00a1d953  90                    nop
+  00a1d954  90                    nop
+  00a1d955  90                    nop
+  00a1d956  90                    nop
+  00a1d957  90                    nop
+  00a1d958  90                    nop
+  00a1d959  90                    nop
+  00a1d95a  90                    nop
+  00a1d95b  90                    nop
+  00a1d95c  90                    nop
+  00a1d95d  90                    nop
+  00a1d95e  90                    nop
+  00a1d95f  90                    nop
+
+2 cible(s) de saut interne : 0x00a1d8ee, 0x00a1d90b

@@ -1,0 +1,253 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a09e60  section .text  offset fichier 0x9260  832 octets
+
+  00a09e60  a188c4a200            mov       eax,[0A2C488h]
+  00a09e65  53                    push      ebx
+  00a09e66  56                    push      esi
+  00a09e67  b9feffffff            mov       ecx,0FFFFFFFEh
+  00a09e6c  33f6                  xor       esi,esi
+  00a09e6e  3bc1                  cmp       eax,ecx
+  00a09e70  57                    push      edi
+  00a09e71  0f848b000000          je        near 00A09F02h
+  00a09e77  8b1578c5a200          mov       edx,[0A2C578h]
+  00a09e7d  b8fbffffff            mov       eax,0FFFFFFFBh
+  00a09e82  3bd0                  cmp       edx,eax
+  00a09e84  7508                  jne       short 00A09E8Eh
+  00a09e86  39357cc5a200          cmp       [0A2C57Ch],esi
+  00a09e8c  746e                  je        short 00A09EFCh
+
+LAB_00a09e8e:
+  00a09e8e  8b15dce71b01          mov       edx,[11BE7DCh]
+  00a09e94  8b3dace71b01          mov       edi,[11BE7ACh]
+  00a09e9a  a378c5a200            mov       [0A2C578h],eax
+  00a09e9f  890497                mov       [edi+edx*4],eax
+  00a09ea2  a1dce71b01            mov       eax,[11BE7DCh]
+  00a09ea7  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a09ead  40                    inc       eax
+  00a09eae  a3dce71b01            mov       [11BE7DCh],eax
+  00a09eb3  89357cc5a200          mov       [0A2C57Ch],esi
+  00a09eb9  893482                mov       [edx+eax*4],esi
+  00a09ebc  a1dce71b01            mov       eax,[11BE7DCh]
+  00a09ec1  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a09ec7  40                    inc       eax
+  00a09ec8  a3dce71b01            mov       [11BE7DCh],eax
+  00a09ecd  893482                mov       [edx+eax*4],esi
+  00a09ed0  a1dce71b01            mov       eax,[11BE7DCh]
+  00a09ed5  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a09edb  40                    inc       eax
+  00a09edc  a3dce71b01            mov       [11BE7DCh],eax
+  00a09ee1  893482                mov       [edx+eax*4],esi
+  00a09ee4  a1dce71b01            mov       eax,[11BE7DCh]
+  00a09ee9  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a09eef  40                    inc       eax
+  00a09ef0  a3dce71b01            mov       [11BE7DCh],eax
+  00a09ef5  c70482ffffffff        mov       dword [edx+eax*4],0FFFFFFFFh
+
+LAB_00a09efc:
+  00a09efc  890d88c4a200          mov       [0A2C488h],ecx
+
+LAB_00a09f02:
+  00a09f02  a180c4a200            mov       eax,[0A2C480h]
+  00a09f07  83f001                xor       eax,1
+  00a09f0a  a809                  test      al,9
+  00a09f0c  0f8487000000          je        near 00A09F99h
+  00a09f12  8b1578c5a200          mov       edx,[0A2C578h]
+  00a09f18  a1a4c5a200            mov       eax,[0A2C5A4h]
+  00a09f1d  3bd1                  cmp       edx,ecx
+  00a09f1f  7508                  jne       short 00A09F29h
+  00a09f21  39057cc5a200          cmp       [0A2C57Ch],eax
+  00a09f27  7470                  je        short 00A09F99h
+
+LAB_00a09f29:
+  00a09f29  8b15dce71b01          mov       edx,[11BE7DCh]
+  00a09f2f  8b3dace71b01          mov       edi,[11BE7ACh]
+  00a09f35  890d78c5a200          mov       [0A2C578h],ecx
+  00a09f3b  890c97                mov       [edi+edx*4],ecx
+  00a09f3e  8b0ddce71b01          mov       ecx,[11BE7DCh]
+  00a09f44  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a09f4a  41                    inc       ecx
+  00a09f4b  890ddce71b01          mov       [11BE7DCh],ecx
+  00a09f51  a37cc5a200            mov       [0A2C57Ch],eax
+  00a09f56  89048a                mov       [edx+ecx*4],eax
+  00a09f59  a1dce71b01            mov       eax,[11BE7DCh]
+  00a09f5e  8b0dace71b01          mov       ecx,[11BE7ACh]
+  00a09f64  40                    inc       eax
+  00a09f65  a3dce71b01            mov       [11BE7DCh],eax
+  00a09f6a  893481                mov       [ecx+eax*4],esi
+  00a09f6d  a1dce71b01            mov       eax,[11BE7DCh]
+  00a09f72  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a09f78  40                    inc       eax
+  00a09f79  a3dce71b01            mov       [11BE7DCh],eax
+  00a09f7e  893482                mov       [edx+eax*4],esi
+  00a09f81  a1dce71b01            mov       eax,[11BE7DCh]
+  00a09f86  8b0dace71b01          mov       ecx,[11BE7ACh]
+  00a09f8c  40                    inc       eax
+  00a09f8d  a3dce71b01            mov       [11BE7DCh],eax
+  00a09f92  c70481ffffffff        mov       dword [ecx+eax*4],0FFFFFFFFh
+
+LAB_00a09f99:
+  00a09f99  8b4c2410              mov       ecx,[esp+10h]
+  00a09f9d  33d2                  xor       edx,edx
+  00a09f9f  c70580c4a20005000000  mov       dword [0A2C480h],5
+  00a09fa9  a1a8e71b01            mov       eax,[11BE7A8h]
+  00a09fae  668b5110              mov       dx,[ecx+10h]
+  00a09fb2  33db                  xor       ebx,ebx
+  00a09fb4  8bfa                  mov       edi,edx
+  00a09fb6  8b542414              mov       edx,[esp+14h]
+  00a09fba  0fbf3cfa              movsx     edi,word [edx+edi*8]
+  00a09fbe  897c2410              mov       [esp+10h],edi
+  00a09fc2  33ff                  xor       edi,edi
+  00a09fc4  db442410              fild      dword [esp+10h]
+  00a09fc8  d918                  fstp      dword [eax]
+  00a09fca  668b7910              mov       di,[ecx+10h]
+  00a09fce  0fbf7cfa02            movsx     edi,word [edx+edi*8+2]
+  00a09fd3  897c2410              mov       [esp+10h],edi
+  00a09fd7  33ff                  xor       edi,edi
+  00a09fd9  db442410              fild      dword [esp+10h]
+  00a09fdd  d95804                fstp      dword [eax+4]
+  00a09fe0  668b7910              mov       di,[ecx+10h]
+  00a09fe4  0fbf7cfa04            movsx     edi,word [edx+edi*8+4]
+  00a09fe9  897c2410              mov       [esp+10h],edi
+  00a09fed  33ff                  xor       edi,edi
+  00a09fef  db442410              fild      dword [esp+10h]
+  00a09ff3  d95808                fstp      dword [eax+8]
+  00a09ff6  668b7912              mov       di,[ecx+12h]
+  00a09ffa  0fbf3cfa              movsx     edi,word [edx+edi*8]
+  00a09ffe  897c2410              mov       [esp+10h],edi
+  00a0a002  33ff                  xor       edi,edi
+  00a0a004  db442410              fild      dword [esp+10h]
+  00a0a008  d95820                fstp      dword [eax+20h]
+  00a0a00b  668b7912              mov       di,[ecx+12h]
+  00a0a00f  0fbf7cfa02            movsx     edi,word [edx+edi*8+2]
+  00a0a014  897c2410              mov       [esp+10h],edi
+  00a0a018  33ff                  xor       edi,edi
+  00a0a01a  db442410              fild      dword [esp+10h]
+  00a0a01e  d95824                fstp      dword [eax+24h]
+  00a0a021  668b7912              mov       di,[ecx+12h]
+  00a0a025  0fbf7cfa04            movsx     edi,word [edx+edi*8+4]
+  00a0a02a  897c2410              mov       [esp+10h],edi
+  00a0a02e  33ff                  xor       edi,edi
+  00a0a030  db442410              fild      dword [esp+10h]
+  00a0a034  d95828                fstp      dword [eax+28h]
+  00a0a037  668b7914              mov       di,[ecx+14h]
+  00a0a03b  0fbf3cfa              movsx     edi,word [edx+edi*8]
+  00a0a03f  897c2410              mov       [esp+10h],edi
+  00a0a043  33ff                  xor       edi,edi
+  00a0a045  db442410              fild      dword [esp+10h]
+  00a0a049  d95840                fstp      dword [eax+40h]
+  00a0a04c  668b7914              mov       di,[ecx+14h]
+  00a0a050  0fbf7cfa02            movsx     edi,word [edx+edi*8+2]
+  00a0a055  897c2410              mov       [esp+10h],edi
+  00a0a059  33ff                  xor       edi,edi
+  00a0a05b  db442410              fild      dword [esp+10h]
+  00a0a05f  d95844                fstp      dword [eax+44h]
+  00a0a062  668b7914              mov       di,[ecx+14h]
+  00a0a066  0fbf54fa04            movsx     edx,word [edx+edi*8+4]
+  00a0a06b  89542410              mov       [esp+10h],edx
+  00a0a06f  33d2                  xor       edx,edx
+  00a0a071  db442410              fild      dword [esp+10h]
+  00a0a075  d95848                fstp      dword [eax+48h]
+  00a0a078  8a5104                mov       dl,[ecx+4]
+  00a0a07b  8a5905                mov       bl,[ecx+5]
+  00a0a07e  c1e208                shl       edx,8
+  00a0a081  03d3                  add       edx,ebx
+  00a0a083  33db                  xor       ebx,ebx
+  00a0a085  8a5906                mov       bl,[ecx+6]
+  00a0a088  c1e208                shl       edx,8
+  00a0a08b  03d3                  add       edx,ebx
+  00a0a08d  33db                  xor       ebx,ebx
+  00a0a08f  895010                mov       [eax+10h],edx
+  00a0a092  8a5909                mov       bl,[ecx+9]
+  00a0a095  33d2                  xor       edx,edx
+  00a0a097  8a5108                mov       dl,[ecx+8]
+  00a0a09a  c1e208                shl       edx,8
+  00a0a09d  03d3                  add       edx,ebx
+  00a0a09f  33db                  xor       ebx,ebx
+  00a0a0a1  8a590a                mov       bl,[ecx+0Ah]
+  00a0a0a4  c1e208                shl       edx,8
+  00a0a0a7  03d3                  add       edx,ebx
+  00a0a0a9  895030                mov       [eax+30h],edx
+  00a0a0ac  33d2                  xor       edx,edx
+  00a0a0ae  33db                  xor       ebx,ebx
+  00a0a0b0  8a510c                mov       dl,[ecx+0Ch]
+  00a0a0b3  8a590d                mov       bl,[ecx+0Dh]
+  00a0a0b6  c1e208                shl       edx,8
+  00a0a0b9  03d3                  add       edx,ebx
+  00a0a0bb  33db                  xor       ebx,ebx
+  00a0a0bd  8a590e                mov       bl,[ecx+0Eh]
+  00a0a0c0  89705c                mov       [eax+5Ch],esi
+  00a0a0c3  c1e208                shl       edx,8
+  00a0a0c6  03d3                  add       edx,ebx
+  00a0a0c8  897058                mov       [eax+58h],esi
+  00a0a0cb  895050                mov       [eax+50h],edx
+  00a0a0ce  89703c                mov       [eax+3Ch],esi
+  00a0a0d1  897038                mov       [eax+38h],esi
+  00a0a0d4  89701c                mov       [eax+1Ch],esi
+  00a0a0d7  897018                mov       [eax+18h],esi
+  00a0a0da  8b3d78c5a200          mov       edi,[0A2C578h]
+  00a0a0e0  b904000000            mov       ecx,4
+  00a0a0e5  ba02000000            mov       edx,2
+  00a0a0ea  3bf9                  cmp       edi,ecx
+  00a0a0ec  7508                  jne       short 00A0A0F6h
+  00a0a0ee  39157cc5a200          cmp       [0A2C57Ch],edx
+  00a0a0f4  7473                  je        short 00A0A169h
+
+LAB_00a0a0f6:
+  00a0a0f6  8b3ddce71b01          mov       edi,[11BE7DCh]
+  00a0a0fc  8b1dace71b01          mov       ebx,[11BE7ACh]
+  00a0a102  890d78c5a200          mov       [0A2C578h],ecx
+  00a0a108  890cbb                mov       [ebx+edi*4],ecx
+  00a0a10b  8b0ddce71b01          mov       ecx,[11BE7DCh]
+  00a0a111  8b3dace71b01          mov       edi,[11BE7ACh]
+  00a0a117  41                    inc       ecx
+  00a0a118  890ddce71b01          mov       [11BE7DCh],ecx
+  00a0a11e  89157cc5a200          mov       [0A2C57Ch],edx
+  00a0a124  89148f                mov       [edi+ecx*4],edx
+  00a0a127  8b0ddce71b01          mov       ecx,[11BE7DCh]
+  00a0a12d  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a0a133  41                    inc       ecx
+  00a0a134  890ddce71b01          mov       [11BE7DCh],ecx
+  00a0a13a  89048a                mov       [edx+ecx*4],eax
+  00a0a13d  a1dce71b01            mov       eax,[11BE7DCh]
+  00a0a142  8b0dace71b01          mov       ecx,[11BE7ACh]
+  00a0a148  40                    inc       eax
+  00a0a149  a3dce71b01            mov       [11BE7DCh],eax
+  00a0a14e  893481                mov       [ecx+eax*4],esi
+  00a0a151  a1dce71b01            mov       eax,[11BE7DCh]
+  00a0a156  8b15ace71b01          mov       edx,[11BE7ACh]
+  00a0a15c  40                    inc       eax
+  00a0a15d  a3dce71b01            mov       [11BE7DCh],eax
+  00a0a162  c70482ffffffff        mov       dword [edx+eax*4],0FFFFFFFFh
+
+LAB_00a0a169:
+  00a0a169  a1ace71b01            mov       eax,[11BE7ACh]
+  00a0a16e  8b0ddce71b01          mov       ecx,[11BE7DCh]
+  00a0a174  5f                    pop       edi
+  00a0a175  5e                    pop       esi
+  00a0a176  8b5488fc              mov       edx,[eax+ecx*4-4]
+  00a0a17a  5b                    pop       ebx
+  00a0a17b  83c203                add       edx,3
+  00a0a17e  895488fc              mov       [eax+ecx*4-4],edx
+  00a0a182  a1a8e71b01            mov       eax,[11BE7A8h]
+  00a0a187  83c060                add       eax,60h
+  00a0a18a  a3a8e71b01            mov       [11BE7A8h],eax
+  00a0a18f  c20c00                ret       0Ch
+  00a0a192  90                    nop
+  00a0a193  90                    nop
+  00a0a194  90                    nop
+  00a0a195  90                    nop
+  00a0a196  90                    nop
+  00a0a197  90                    nop
+  00a0a198  90                    nop
+  00a0a199  90                    nop
+  00a0a19a  90                    nop
+  00a0a19b  90                    nop
+  00a0a19c  90                    nop
+  00a0a19d  90                    nop
+  00a0a19e  90                    nop
+  00a0a19f  90                    nop
+
+7 cible(s) de saut interne : 0x00a09e8e, 0x00a09efc, 0x00a09f02, 0x00a09f29, 0x00a09f99, 0x00a0a0f6, 0x00a0a169

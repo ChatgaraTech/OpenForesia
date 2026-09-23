@@ -125,7 +125,7 @@ the reconstruction; see `REVERSE_STATUS.md` TODO #32.
 1024x512 VRAM addressing. **Caveat on 665**: it takes a `RECT` and floods VRAM
 like `ClearImage`, but its colour math decompiles as
 `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match libgpu's plain
-`(r, g, b)` parameters — left un-renamed in `Blaze.cs` until explained.
+`(r, g, b)` parameters — left un-renamed in `Blaze.cs` until explained. **Explained 2026-09-23** : c'est bien `ClearImage`, et la formule est un défaut du binaire (**LB-044**), juste pour le noir. 674/676/684 sont `LoadImage`/`MoveImage`/`StoreImage` ; les quatre sont portés dans `Libraries/winsys3d/Vram.cs`.
 
 ## Coordinate scaling: `Size`, the lookup tables, and the display-mode table — **CONFIRMED**
 
@@ -878,3 +878,339 @@ chemins.
 pas : les trois modes additifs sont ceux des effets lumineux — nuages de la carte du monde, onde de
 choc, auréoles. Rendus opaques, ils peignent leur planche en aplat au lieu de s'ajouter au fond, et
 une planche en dégradé y devient une tache sombre. C'est exactement le défaut relevé le 2026-08-30.
+
+## La famille de fichiers (ordinaux 18–25, 29, 30) est **PORTÉE** — 2026-09-22
+
+Les huit ordinaux `libapi` de la section précédente vivent maintenant dans
+`OpenForesia/src/Libraries/winsys3d/CarteMemoire.cs`, avec leur pivot `FUN_00a03f80` et les
+ordinaux 29 (`rename`) et 30 (`chdir`) que la composante lui soude. Ce qu'il a fallu établir, et
+qui ne se relit pas dans `Blaze.c` :
+
+### La convention `~` — le chiffrement de pauvre d'un nom de carte mémoire
+
+Un nom de fichier PlayStation contient un `:` (`BASLUS-XXXXX:nom`), interdit sous Windows. Le
+portage le remplace, et **les deux bouts sont dans deux corps différents** :
+
+- à l'**écriture**, `FUN_00a03f80` copie le descripteur puis change en `~` le premier `:` trouvé
+  **à partir de l'octet 2** — à partir de 2 pour ne pas manger le `C:` d'un chemin absolu ;
+- à la **lecture**, `FUN_00a044c0` (18) et `FUN_00a04560` (19) regardent `cFileName[4]` puis
+  `cFileName[5]` : si l'un vaut `~`, le nom utile commence juste après (indice 5 ou 6).
+
+Les deux corps tronquent ensuite le nom à **19 caractères**, par un `'\0'` écrit d'office à
+l'indice `0x13` — avant même d'en mesurer la longueur. La fiche que l'appelant reçoit fait au
+moins 0x1c octets : le nom NUL-terminé à l'offset 0, la taille du fichier à l'offset 0x18.
+
+### Les drapeaux de l'ordinal 21 ne sont pas ceux de Win32
+
+`FUN_00a04600` calcule l'accès par `((drapeaux * 4) | (drapeaux & 2)) << 29` : le bit 0 du
+paramètre devient `GENERIC_READ`, le bit 1 `GENERIC_WRITE`. La disposition est `OPEN_EXISTING`,
+ou `OPEN_ALWAYS` si le bit `0x200` est posé. Partage, sécurité, attributs et modèle sont nuls.
+C'est ce qui explique les valeurs vues aux sites d'appel : `1` = lecture, `2` = écriture,
+`3` = les deux, `0x30200` = écriture + création.
+
+### Deux ordinaux de plus dans la table des souches
+
+`FUN_00a046e0` (`xor eax,eax ; ret 0Ch`) et `FUN_00a046f0` (`mov eax,1 ; ret 4`) sont une
+**cinquième et une sixième souche vide**, au milieu du `libapi` et non avec les quatre recensées
+le 2026-08-21. Neuf ordinaux aboutissent à la première (26, 33, 34, 97, 102, 105, 107, 126, 249),
+deux à la seconde (28, 73). Le `ret 0Ch` confirme au passage les trois arguments avec lesquels
+`Interop/Winsys3d.cs` déclarait l'ordinal 97.
+
+### `winsys3d` importe cinq ordinaux de `wsyskern`, pas seulement des exports nommés
+
+Sa table d'imports (section `WSYSKERN.dll`) nomme les ordinaux 1, 2, 3, 4, 5 en plus de
+`ProjectionMatrix`, `Strdup`, `Free`, `Malloc`, `Gamma` et `ScaleMatrix`. Les ordinaux 4 et 5 sont
+`_splitpath` et `_makepath` (`FUN_10013160` et `FUN_10012ef0`), que `FUN_00a03f80` emploie sur son
+chemin `cdrom:`. **Aucun n'est importé par `Blaze.exe`**, donc `DLLAtteignables.md` ne les voyait
+pas : ils sont transcrits dans `Libraries/wsyskern/Chemins.cs`.
+
+### L'ordinal 29 est cassé dans le binaire vendu
+
+`FUN_00a04700` résout ses deux descripteurs dans le même casier statique `DAT_00dedc58` et passe
+donc deux fois le nom d'arrivée à `MoveFileA`. Voir **LB-035** dans
+`Documentation/Reference/legacy-bug.md`.
+
+## `OpenTIM` / `ReadTIM` (ordinaux 677 et 662) sont **PORTÉS** — 2026-09-22
+
+`src/Libraries/winsys3d/Tim.cs`. Les deux corps ne lisent aucun fichier : un TIM est déjà en
+mémoire quand ils le voient, et tout leur travail est de l'arithmétique de pointeurs.
+
+`OpenTIM` retient `données + 4` dans `DAT_011be790` — il saute le mot d'identification sans le
+lire — et **rend toujours 0** sans rien vérifier. `ReadTIM` remplit les cinq mots du `TIM_IMAGE`
+puis remet `DAT_011be790` à zéro : **l'état est à un seul appel de profondeur**. Deux `ReadTIM`
+de suite et le second sort par son premier test sans rien écrire, laissant la structure de
+l'appelant avec les valeurs du TIM précédent — pas remise à zéro, laissée telle quelle.
+
+La carte d'un TIM telle que ces deux corps la lisent, en mots de 32 bits depuis `p` :
+
+| | |
+|---|---|
+| `p[0]` | le drapeau : mode de pixel sur 3 bits, bit 3 posé s'il y a une CLUT |
+| `p[1]` | la longueur **en octets** du bloc qui suit, son propre mot compris |
+| `p+2` | le rectangle du bloc — x, y, w, h, quatre shorts |
+| `p+4` | les données du bloc |
+
+Avec CLUT, le bloc d'image commence à `p + p[1]/4 + 1` ; sans, il n'y a qu'un bloc à `p + 1`. Le
+corps calcule les deux cas avec la même expression en posant `saut = 1` dans le second, et le mode
+forcé à 2 n'est pas un défaut prudent : c'est `TIM_16BIT`, un TIM sans palette étant 16 bits
+directs.
+
+## Il y a **huit** corps de souche, pas quatre — 2026-09-22
+
+Le relevé du 2026-08-21 en comptait quatre pour 149 exports. Il en manquait quatre, et le total
+est **223 exports sur 830** :
+
+| adresse | forme | rend / arité | ordinaux | importé |
+|---|---|---|---:|---|
+| `0x00a02490` | `xor eax,eax ; ret` | 0, aucun argument | 22 | 46, 64, 116, 129 |
+| `0x00a02870` | `ret 4` | rien, un argument | 41 | 63, 712, 720, 762 |
+| `0x00a02e10` | `xor eax,eax ; ret 8` | 0, **deux** arguments | 22 | 765 |
+| `0x00a02e20` | `xor eax,eax ; ret 4` | 0, un argument | 53 | dix ordinaux |
+| `0x00a02e40` | `ret 8` | rien, **deux** arguments | 41 | 767 |
+| `0x00a26470` | `ret` | rien, aucun argument | 33 | 66, 138, 771 |
+| `0x00a046e0` | `xor eax,eax ; ret 0Ch` | 0, **trois** arguments | 9 | 97 |
+| `0x00a046f0` | `mov eax,1 ; ret 4` | **1**, un argument | 2 | aucun |
+
+Ghidra décompile les huit exactement pareil — `return 0;` ou `return;`, sans paramètre —, donc
+**seul le `ret N` donne l'arité**. `0x00a02e10` et `0x00a02e40` sont les jumelles à deux arguments
+de `0x00a02e20` et `0x00a02870`, à trente octets de distance ; `0x00a046e0` et `0x00a046f0` vivent
+au milieu du `libapi`, juste après l'ordinal 25.
+
+**Comment on les trouve toutes** : compter les corps, pas les ordinaux. `grep -c "0x2e10  *[0-9]"
+winsys3d.c` donne les 22 ordinaux de la troisième ligne, et le même grep sur chaque adresse donne
+la colonne. Le relevé d'origine avait cherché par l'ordinal importé, ce qui ne pouvait pas voir
+une souche dont aucun ordinal importé ne dépendait encore.
+
+## La `libcd` survit en une seule fonction — ordinal 92 = `CdSearchFile` — 2026-09-22
+
+Le jeu de 1998 lisait ses données par le lecteur CD de la PlayStation. Le portage PC lit un
+système de fichiers ordinaire, et la famille `libcd` a donc été vidée. Ce qu'il en reste :
+
+| ordinal | corps | ce qu'il en reste |
+|---:|---|---|
+| 92 | `FUN_00a05160` | rend `&DAT_00dedd58` **en ignorant ses deux arguments** |
+| 93 | `FUN_00a02e10` | souche : rend 0, deux arguments |
+| 94 | `FUN_00a05170` | `CdComstr` : rend `"CdlNop"`, `"CdlSetloc"`, `"CdlPlay"`, `"CdlForward"`, `"CdlBackward"` — pas importé |
+| 95, 104 | `FUN_00a02e20` | souche : rend 0, un argument |
+
+**C'est l'ordinal 94 qui nomme la famille** : son `switch` rend les commandes de la `libcd`, mot
+pour mot. Personne ne l'importe, mais il établit que 92–104 sont ce bloc-là.
+
+Et l'ordinal 92 est `CdSearchFile`, par trois preuves concordantes :
+
+1. **la taille du bloc rendu.** `DAT_00dedd58` fait 0x18 octets (`DAT_00dedd70` suit) — soit
+   exactement une `CdlFILE` : `CdlLOC pos` (4), `u_long size` (4), `char name[16]` ;
+2. **la signature.** `CdSearchFile(CdlFILE *fp, char *name)` rend un `CdlFILE*` — le corps prend
+   bien deux arguments (`ret 8`) et rend bien un pointeur ;
+3. **le site d'appel.** `Blaze.c:74553` : `Ordinal_92(&DAT_005e9040, PTR_s_BLAZE_ALL_1_00566bbc)`
+   — un tampon de sortie et le nom d'un fichier du CD, `BLAZE_ALL.1`.
+
+La `CdlFILE` rendue **n'est écrite par personne** : `DAT_00dedd58` a une seule référence dans les
+27 000 lignes de `winsys3d.c`, celle qui en prend l'adresse. Ce sont 24 octets de zéros — position
+nulle, taille nulle, nom vide — et le jeu ne s'en aperçoit pas : son unique site jette le retour.
+
+## Ordinaux 794, 10 et 135/136 — **PORTÉS**, 2026-09-22
+
+- **794** (`FUN_00a20540`, libgte `ScaleMatrix`) : multiplie chaque **colonne** de la matrice 3×3
+  par une composante de l'échelle, en virgule fixe **4.12** (`sar 0Ch`, `ONE` = 4096). Opérandes
+  sign-étendus (`movsx`) et décalage arithmétique : traiter la matrice en non signé la
+  retournerait. C'est le **seul des neuf ordinaux libgte importés qui ne touche aucun registre
+  émulé du GTE**, d'où son portage isolé. `Libraries/winsys3d/Matrices.cs`.
+- **10** (`FUN_00a04220`, libapi `EnableEvent`) : arme un nœud, `EvStWAIT` → `EvStACTIVE`, et rend
+  1 seulement s'il était bien en attente. Il ne parcourt pas la liste chaînée — c'est ce qui le
+  détache des sept autres. Le nœud vient de l'ordinal 6, donc du tas de `wsyskern` : une seule
+  mémoire, vue des deux côtés. `Libraries/winsys3d/Evenements.cs`.
+- **135/136** (`FUN_00a05760`/`FUN_00a05770`) : un casier `DAT_011be6a4`, son lecteur et son
+  échangeur, **et rien d'autre dans la DLL ne le touche** (trois références en tout). Le jeu
+  appelle 136 une fois au démarrage avec 0 et jette la valeur rendue. Le rôle reste **non
+  établi** — la forme (échange rendant l'ancienne valeur, appelé une fois avec 0) évoque le
+  `SetGraphDebug` de la `libgpu`, rien ne le prouve. `Libraries/winsys3d/Cadence.cs`.
+
+## La carte du chemin d'affichage : deux familles disjointes — 2026-09-22
+
+Mesuré sur `winsys3d.c`, en classant les corps par la globale qu'ils touchent :
+
+| famille | reconnue à | corps | lignes | squelettes de contrôle distincts |
+|---|---|---:|---:|---:|
+| les **producteurs** | ils écrivent `DAT_011be7dc` | 38 | 4 886 | **11** |
+| les **appelants de device** | ils lisent `DAT_011be760` | 73 | 4 696 | 36 |
+| *recouvrement* | | **0** | | |
+
+**Zéro recouvrement.** Aucun des 38 producteurs n'appelle le device ; aucun des 73 appelants
+n'écrit le tampon. C'est la structure du portage de 1998 : une moitié traduit les primitives
+PlayStation en un flux de commandes, l'autre parle à Direct3D.
+
+### Le tampon de commandes
+
+`FUN_00a0c480` l'alloue — `Malloc(n * 0x94)` — et remet tout l'état d'un coup :
+
+```
+DAT_011be7ac = Malloc(n * 0x94)       la base
+DAT_011be7dc = 2                      le curseur d'écriture (en dwords)
+DAT_011be7a8 = DAT_011be7ac + n*0x14  la zone de sommets, dans le même bloc
+DAT_00a2c480 = 8 ; DAT_00a2c484/488/48c = -1 ; DAT_00a2c578/57c = -1
+```
+
+Les commandes occupent les `n * 0x14` premiers dwords, les sommets le reste. Chaque producteur
+avance `DAT_011be7a8` de `0x18` ou `0x20` **floats** — soit 3 ou 4 `TLVERTEX` de 32 octets : un
+triangle ou un quad.
+
+Les mots de commande repérés : `0xfffffffb`, `0xfffffffd`, `0xfffffffe` en tête de bloc, `0xffffffff`
+en fin, et des opcodes positifs (`1`, `4`, `6`) pour les primitives.
+
+### Le cache d'état, et pourquoi il interdit de couper
+
+`DAT_00a2c480/484/488/48c` et `DAT_00a2c578/57c` mémorisent **la dernière commande d'état émise**.
+Un producteur n'écrit une commande d'état que si le cache dit qu'elle a changé :
+
+```c
+if (DAT_00a2c488 != -2) {                       /* la page de texture liee */
+    if ((DAT_00a2c578 != -5) || (DAT_00a2c57c != 0)) { ...émettre... }
+    DAT_00a2c488 = -2;
+}
+```
+
+Porter la moitié des producteurs donnerait **deux caches** : la moitié portée croirait l'état déjà
+posé parce que la moitié native l'a posé, et sauterait la commande. La primitive sortirait avec le
+mélange de la précédente, par intermittence. C'est le pire cas de la règle « ne pas couper une
+représentation en deux ».
+
+### `DAT_011be7ac` est un symbole réutilisé — attention aux comptes
+
+La même adresse sert de pointeur de travail à des corps sans rapport avec l'affichage :
+`winsys3d.c:8718` s'en sert comme nœud de liste chaînée puis le `Free`. Ghidra confond sous un seul
+nom ce que le compilateur a réutilisé. **Les comptes de soudure de `DLLGlobales.md` sont donc
+surévalués pour cette globale**, et probablement pour d'autres : avant de bâtir un lot sur un
+chiffre de ce tableau, lire les sites.
+
+### `DAT_011be760` n'est pas une soudure, et n'est pas un levier
+
+Le pointeur de device est touché par 73 corps et écrit par un seul (`FUN_00a06420`, ordinal 789),
+ce qui en faisait le candidat évident pour une coupure. **Mesure faite : non.** En relançant
+`census-dll-globals.awk` avec cette globale retirée de la carte, la masse passe de 425 corps à
+419 — le seul corps qui se détache est l'**ordinal 750** (`FUN_00a01e30`), qui est littéralement
+`return DAT_011be760;`.
+
+Et ce n'en a jamais été une, de soudure : la valeur est **une poignée vers un objet que la
+reconstruction possède déjà**. `Host/SyntheticDevice.cs` détourne `GetProcAddress` dans la table
+d'imports de `winsys3d`, donc le `DAT_011be760` de la DLL native pointe sur un objet C# ; et
+`Screens/State00/Options.cs` appelle sa vtable directement depuis `src/Blaze/` depuis le
+2026-08-12. Un corps porté n'a pas besoin d'une copie : il relit la globale par l'ordinal 750, ce
+que l'original fait aussi — il ne la met jamais en cache.
+
+**Corollaire : ne pas porter l'ordinal 750.** Notre copie serait vide, l'écrivain (789) étant
+natif. Le `[DllImport]` de 750 *est* la fenêtre sur la globale native ; le remplacer par une
+lecture du `.data` de la DLL chargée serait le même travail, déguisé en portage.
+
+## Le consommateur du tampon, et la chaîne complète — 2026-09-22
+
+**`FUN_00a0cd20`, 46 lignes.** C'est le seul corps de la DLL qui lise un paquet de commandes, et
+il se trouve en remontant les appelants depuis `DAT_011be7ac` : les deux seuls corps qui touchent
+la base du tampon sans jamais écrire le curseur sont `FUN_00a0dde0` (le constructeur) et
+`FUN_00a0cd20` (le lecteur).
+
+```
+  CONSTRUCTION, pendant l'image
+    FUN_00a0dde0 (ordinal 752)
+      -> FUN_00a0c480(n)                Malloc(n * 0x94), curseur à 2, mémos à -1
+      -> switch (genre de primitive) -> l'un des ~31 producteurs
+      -> *noeud = paquet | 0x80000000   lie le paquet dans l'OT du jeu
+
+  AFFICHAGE, à DrawOTag
+    FUN_00a061b0 (701)  device[0x60|0x5c](0,0) ; device[0xb0]()      BeginScene
+      parcours de l'OT (liens 24 bits, sentinelle 0x00ffffff)
+        FUN_00a13400 -> FUN_00a0cdd0 -> DAT_011be7ac = *noeud -> FUN_00a0cd20()
+      device[0xb4]()                                                  EndScene
+```
+
+`DrawOTag` fait **deux** parcours de l'OT : le premier appelle `FUN_00a26b20` sur chaque nœud
+(la passe de textures, précédée de `FUN_00a26490` et suivie de `FUN_00a027a0`/`FUN_00a26f20`), le
+second rejoue les paquets.
+
+### Le format du paquet
+
+En-tête de 8 octets (`[0]` lien OT, `[1]` longueur), puis des enregistrements de **0x10 octets**
+depuis l'offset 8 — d'où le `DAT_011be7dc = 2` de l'initialisation. La boucle s'arrête quand le mot
+d'opcode **suivant** vaut `0xffffffff` ; chaque producteur pose cette sentinelle sans avancer le
+curseur, et le producteur d'après l'écrase.
+
+| opcode | action du consommateur |
+|---|---|
+| `0xfffffffb` | `device[0x64](0)` — délie la texture |
+| `0xfffffffc` | `FUN_00a27880(arg0, arg2, 0, 0)` |
+| `0xfffffffd` | rien |
+| `0xfffffffe` | `device[0x8c](arg0)` |
+| **≥ 0** | `device[0xbc](opcode, arg0, arg1, arg2, 0)` — `DrawPrimitive` |
+
+L'enregistrement **est** un `DrawPrimitive` sérialisé :
+`[type de primitive][type de sommet][pointeur de sommets][nombre]`. Le slot `+0xbc` est celui que
+`3dhelp.md` documente et qu'`Options.cs` appelle déjà directement depuis C#.
+
+### Le mémo d'état sert à GROUPER, pas seulement à dédoublonner
+
+Quand l'état n'a pas changé, un producteur n'omet pas sa commande : **il allonge la précédente**.
+
+```c
+DAT_011be7ac[DAT_011be7dc + -1] = DAT_011be7ac[DAT_011be7dc + -1] + uVar8;   /* nombre += n */
+```
+
+Le mot « nombre » du dernier enregistrement est incrémenté sur place et les sommets se rangent à la
+suite dans la zone partagée : deux primitives consécutives de même état deviennent **un seul
+`DrawPrimitive`**. C'est ce qui rend les 38 producteurs indivisibles — porter la moitié ferait
+allonger par l'un un enregistrement écrit par l'autre.
+
+### CORRECTION — `DAT_011be7ac` n'est pas un symbole réutilisé
+
+Une section antérieure de ce document l'affirmait, sur la foi de `winsys3d.c:8718` qui s'en sert
+comme nœud de liste puis le `Free`. **C'est faux** : ce corps est `FUN_00a0c440` (ordinal 754), qui
+**libère un paquet** — il lit son en-tête (`[0]` le lien, `[1]` la longueur) pour recoudre l'OT
+avant de rendre la mémoire. La globale a un sens unique et cohérent : *le paquet courant*, qu'on le
+remplisse, qu'on le rejoue ou qu'on le libère.
+
+### Le devis, mesuré
+
+| lot | corps | lignes | remarque |
+|---|---:|---:|---|
+| `FUN_00a0cd20` seul | 1 | 46 | ne touche ni le curseur ni les mémos — mais non exporté |
+| le rejeu (`FUN_00a13400` et dessous) | 97 | 7 022 | lit un format connu, appelle notre device |
+| `DrawOTag` entier (701) | 134 | 9 091 | rejeu + passe de textures |
+| les producteurs | 38 | 4 886 | 11 formes ; à faire **après** le rejeu |
+
+**L'ordre : le rejeu d'abord.** C'est le seul lot qui franchisse une frontière déjà matérielle —
+le paquet en mémoire, format ci-dessus — au lieu d'une frontière inventée. Tant que le rejeu est
+natif, un paquet construit en C# devrait être identique au bit près ; l'inverse ne coûte rien, un
+paquet natif se relisant aussi bien depuis C#.
+
+## Les paquets de modèles sont des TMD PlayStation — ordinaux 755, 678, 563 **PORTÉS**, 2026-09-23
+
+**CONFIRMÉ.** Le second chemin qui remplit le tampon de commandes, `FUN_00a0c4f0` (755), convertit
+une **entrée de la table d'objets d'un TMD** — le format de modèle de la libgs. Les preuves :
+`FUN_00a06a40` (678) refuse un fichier dont le premier mot n'est pas `0x41`, l'identifiant TMD ;
+l'entrée qu'il lit fait sept mots (`vert_top`, `n_vert`, `normal_top`, `n_normal`,
+`primitive_top`, `n_primitive`, `scale`) ; `FUN_00a1cff0` (563) change les décalages en adresses
+une seule fois, selon le mot de drapeaux ; et les dix-huit codes du `switch` de `c4f0`
+(`mode & 0xfd`) sont les modes de primitive TMD, avec leurs tailles exactes.
+
+| mode | primitive | producteur | sommets |
+|---|---|---|---|
+| `0x20` / `0x21` | F3 éclairé / sans lumière | `078c0` / `07d80` | `D3DVERTEX` / `D3DLVERTEX` |
+| `0x24` / `0x25` | FT3 | `08850` / `08c80` | idem |
+| `0x28` / `0x29` | F4 | `08080` / `08510` | idem |
+| `0x2c` / `0x2d` | FT4 | `094d0` / `09070` | idem |
+| `0x30` / `0x31` | G3 | `09980` / `09e60` | idem |
+| `0x34` / `0x35` | GT3 | `0a1a0` / `0a670` | idem |
+| `0x38` / `0x39` | G4 | `0aa90` / `0b000` | idem |
+| `0x3c` / `0x3d` | GT4 | `0b390` / `0b930` | idem |
+| `0x40` / `0x50` | LF2 / LG2 | `0bdf0` / `0c110` | `D3DVERTEX`, sans normale |
+
+Le bit 1 du mode (la semi-transparence TMD) est **ignoré** : masqué avant l'aiguillage.
+
+L'**état de rendu** `DAT_00a2c480` se lit alors en bits : bit 0 Gouraud, bit 1 texturé, bit 2
+sans lumière, 8 = paquet neuf. C'est ce que `c4f0` compare pour regrouper.
+
+Les huit producteurs sans lumière sont aussi ceux que les adaptateurs de l'ordinal 752 appellent :
+un paquet construit par 752 et un TMD converti par 755 sortent donc des mêmes corps.
+
+**Deux pièges de Ghidra sur ces producteurs** (voir `ConstructionPaquets.cs`) : la couleur, qu'il
+écrit `(float)(rgb)`, est rangée en entier ; et les `u v`, qu'il écrit `0.0`, sont une division
+entière par ~140 millions — nulles en effet (**LB-042**). Et un défaut du binaire : **LB-041**.

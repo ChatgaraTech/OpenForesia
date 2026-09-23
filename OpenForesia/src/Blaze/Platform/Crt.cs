@@ -118,6 +118,10 @@ public static unsafe partial class Blaze
         if (!returnInsteadOfTerminate)
         {
             s_CrtTerminated = true;
+            // `ExitProcess` appelait le point d'entree de winsys3d.dll en `DLL_PROCESS_DETACH` (il
+            // arretait son minuteur, rendait la VRAM et ecrivait `VS.Log`). La DLL n'etant plus
+            // chargee, son point d'entree transcrit est appele ici, a la meme place.
+            Libraries.Winsys3dImage.Detacher();
             Win32.ExitProcess(exitCode);
         }
     }
