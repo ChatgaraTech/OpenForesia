@@ -115,7 +115,10 @@ nombre d'arguments et la convention `stdcall`.
    forcément chargée quand la classe l'est. Le dépôt a déjà payé ce prix une fois.
 4. **Le jour où la DLL part entièrement**, `Data.cs` se remplace par de vraies variables d'un seul
    geste, sans toucher aux appelants — c'est pour cela que tout passe par des propriétés `ref` et
-   que personne ne manipule la base directement.
+   que personne ne manipule la base directement. **Fait le 2026-09-23, autrement que prévu** : les
+   propriétés sont restées, et c'est la BASE qui a changé — elle désigne l'image que
+   `winsys3d/Image.cs` construit depuis le fichier (sections de données, relocations), la DLL
+   n'étant plus chargée. Mêmes adresses relatives, mêmes valeurs initiales, un seul geste.
 
 5. **Compter les indirections sur le désassemblage, pas sur une expression qui marche ailleurs.**
    Une globale aliasée nomme une variable *à* une adresse : `*(T*)At(va)`, une seule indirection.

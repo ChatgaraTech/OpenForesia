@@ -54,6 +54,8 @@ internal static unsafe class Win32
     [DllImport("user32.dll")] internal static extern IntPtr SetWindowLongA(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
     // Le dialogue de choix du pilote de winsys3d, Setup3DDevice / FUN_00a010d0 (Libraries/winsys3d/Device.cs).
+    // L'image de winsys3d (Libraries/winsys3d/Image.cs) : ses ressources, lues dans le fichier comme des donnees.
+    [DllImport("kernel32.dll")] internal static extern IntPtr LoadLibraryExA(byte* lpLibFileName, IntPtr hFile, uint dwFlags);
     [DllImport("kernel32.dll")] internal static extern byte* lstrcatA(byte* lpString1, byte* lpString2);
     [DllImport("kernel32.dll")] internal static extern uint GetPrivateProfileStringA(byte* lpAppName, byte* lpKeyName, byte* lpDefault, byte* lpReturnedString, uint nSize, byte* lpFileName);
     // La procedure du dialogue de choix du pilote, FUN_00a012f0 (Libraries/winsys3d/Device.cs).

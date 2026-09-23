@@ -289,6 +289,14 @@ internal static unsafe class Winsys3dCadence
     // tourner a chaque tour de boucle ; elle lit aussi les manettes (`Manettes.cs`).
     // ============================================================================================
 
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a01d60 @ 0x00a01d60 — le filtre d'exceptions que la pompe installe
+    /// avant son `RaiseException` : `or eax,-1 ; ret 4`, soit `EXCEPTION_CONTINUE_EXECUTION` pour
+    /// toute exception non geree. Porte avec l'image de la DLL, qui n'a plus de code a designer.
+    /// </summary>
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
+    private static int FiltreExceptions(void* informations) => -1;
+
     /// <summary>La case `+0x3c` de la vtable du device : non nul s'il faut continuer sans attendre de message.</summary>
     private const int Device_Actif = 0x3c / 4;
 
@@ -336,7 +344,8 @@ internal static unsafe class Winsys3dCadence
                 {
                     Winsys3dData.QuitteRecu_00dedbf0 = 1;
                     Winsys3dDevice.Unknown_00a069b0(-2);
-                    System.IntPtr precedent = Win32.SetUnhandledExceptionFilter(Winsys3dData.FiltreExceptions_00a01d60);
+                    System.IntPtr precedent = Win32.SetUnhandledExceptionFilter(
+                        (System.IntPtr)(delegate* unmanaged[Stdcall]<void*, int>)&FiltreExceptions);
                     Blaze.Blaze.RaiseQuitException();
                     Win32.SetUnhandledExceptionFilter(precedent);
                     Win32.ExitProcess(1);

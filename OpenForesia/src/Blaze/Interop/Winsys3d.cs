@@ -326,25 +326,12 @@ internal static unsafe class Winsys3d
     // ------------------------------------------------------------------------------------------
     // ORDINAL 701, `DrawOTag` — la PORTE du chemin d'affichage, portée le 2026-09-22.
     //
-    // C'est le seul `[DllImport]` du périmètre de `Documentation/Etat/CheminAffichage.md` : 157
-    // corps et 12 408 lignes sont derrière lui. Seul le corps de `DrawOTag` est transcrit pour
-    // l'instant ; ses sept appelées restent natives, appelées **par adresse** (`Natif.cs`), et ses
-    // globales sont celles de la DLL, aliasées (`Data.cs`). L'image doit donc être identique.
-    //
-    // **`OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche l'original**, pour pouvoir comparer les deux à
-    // l'écran — c'est la seule vérification qui vaille sur ce lot, et le même genre d'échappatoire
-    // que `OPENFORESIA_LEGACY_3DHELP`. À retirer quand le périmètre sera porté.
+    // Le dernier `[DllImport]` de winsys3d. Il a survécu jusqu'au 2026-09-23 pour une seule raison :
+    // `OPENFORESIA_LEGACY_DRAWOTAG=1` rebranchait l'original, pour comparer les deux à l'écran.
+    // Retiré avec le chargement de la DLL elle-même (`Libraries/winsys3d/Image.cs`) : sans la
+    // DLL, il n'y a plus d'original à rebrancher.
     // ------------------------------------------------------------------------------------------
-    [DllImport("winsys3d.dll", EntryPoint = "#701")] private static extern void Ordinal_701_Natif(uint* ot);
-
-    private static readonly bool s_DrawOTagLegacy =
-        Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_DRAWOTAG") == "1";
-
-    internal static void Ordinal_701(uint* ot)
-    {
-        if (s_DrawOTagLegacy) { Ordinal_701_Natif(ot); return; }
-        Libraries.Winsys3dCheminAffichage.DrawOTag(ot);
-    }
+    internal static void Ordinal_701(uint* ot) => Libraries.Winsys3dCheminAffichage.DrawOTag(ot);
 
     // libgpu MoveImage(RECT* src, int dstX, int dstY) â€” copies a rectangle inside the emulated
     // VRAM. Body confirmed at winsys3d.c:5348 (`/* 0x5df0  676 */`): it walks `src->h` rows of

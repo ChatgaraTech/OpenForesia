@@ -106,8 +106,8 @@ internal static unsafe class Winsys3dDevice
     // aussi : c'est cette entree que `Host/SyntheticDevice.cs` detourne pour substituer son device.
     // Appeler `GetProcAddress` directement contournerait le detournement.
     //
-    // Deux codes restent natifs et sont passes par adresse, comme dans l'original : le rappel du
-    // minuteur (`LAB_00a06360`) et la procedure de fenetre (`LAB_00a02ee0`).
+    // Les codes que la DLL passait par adresse — le minuteur, la procedure de fenetre, les rappels
+    // DirectDraw, le dialogue — sont portes eux aussi, en `[UnmanagedCallersOnly]`, lots 16 et 17.
     // ============================================================================================
 
     private const int Device_Detruire = 0x00 / 4;
@@ -247,9 +247,9 @@ internal static unsafe class Winsys3dDevice
             AppelerRappel();
 
             float* c = Winsys3dData.ConstantesUv_00a2a070;
-            RemplirTablesUv((float*)Winsys3dData.TablesUvSpriteDefaut_011c4cd0, c[1], c[3], c[5], c[7]);
+            RemplirTablesUv((float*)Winsys3dData.TablesUvSpriteDefaut_011c4cd0, c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]);
             RetoucherTablesUvSprite((uint*)Winsys3dData.TablesUvSpriteDefaut_011c4cd0);
-            RemplirTablesUv((float*)Winsys3dData.TablesUvPolyDefaut_011be868, c[9], c[10], c[11], c[12]);
+            RemplirTablesUv((float*)Winsys3dData.TablesUvPolyDefaut_011be868, c[0], c[9], c[2], c[10], c[4], c[11], c[6], c[12]);
 
             PreparerDevice(Winsys3dData.Fenetre_011be79c);
             if (Winsys3dData.Unknown_011be73c != 0)
@@ -298,28 +298,29 @@ internal static unsafe class Winsys3dDevice
     }
 
     /// <summary>
-    /// Les deux boucles x87 de 789 (0x00a06605 et 0x00a066f1) : 25 tables de 0x101 `float` a la
-    /// suite de <paramref name="b"/>. La table 0 vaut `o0 - i . k0` ; pour `k` de 1 a 8, avec
-    /// `v = i - 0x20 (k - 1)`, les tables `k`, `8 + k` et `16 + k` valent `o1 - v . k1`,
-    /// `o2 - v . k2` et `o3 - v . k3`. Ce sont les tables 32, 64 et 128 que
-    /// `ChargementTextures.TableUv` choisit (`+ 0x11`, `+ 9`, `+ 1`).
+    /// Les boucles x87 de 789 (0x00a06605 et 0x00a066f1) et du point d'entree (0x00a01bdc, voir
+    /// `Image.cs`) : 25 tables de 0x101 `float` a la suite de <paramref name="b"/>. La table 0 vaut
+    /// `o0 - i . k0` ; pour `k` de 1 a 8, avec `v = i - 0x20 (k - 1)`, les tables `k`, `8 + k` et
+    /// `16 + k` valent `o1 - v . k1`, `o2 - v . k2` et `o3 - v . k3`. Ce sont les tables 32, 64 et
+    /// 128 que `ChargementTextures.TableUv` choisit (`+ 0x11`, `+ 9`, `+ 1`). Les trois boucles ont
+    /// la meme forme ; seules les constantes changent.
     ///
     /// Produit et difference se font sur la pile x87 puis `fstp dword` : le C# calcule en `double`
     /// et arrondit une fois en `float`, ce que fait le 387 en precision double (le reglage des
     /// processus Windows 32 bits). Voir l'ecart assume de `wsyskern/Matrices.cs`.
     /// </summary>
-    private static void RemplirTablesUv(float* b, float o0, float o1, float o2, float o3)
+    internal static void RemplirTablesUv(float* b, float k0, float o0, float k1, float o1,
+                                         float k2, float o2, float k3, float o3)
     {
-        float* c = Winsys3dData.ConstantesUv_00a2a070;
         for (int i = 0; i <= 0x100; i++)
         {
-            b[i] = (float)(o0 - (double)i * c[0]);
+            b[i] = (float)(o0 - (double)i * k0);
             int v = i;
             for (int k = 1; k <= 8; k++)
             {
-                b[k * 0x101 + i] = (float)(o1 - (double)v * c[2]);
-                b[(8 + k) * 0x101 + i] = (float)(o2 - (double)v * c[4]);
-                b[(16 + k) * 0x101 + i] = (float)(o3 - (double)v * c[6]);
+                b[k * 0x101 + i] = (float)(o1 - (double)v * k1);
+                b[(8 + k) * 0x101 + i] = (float)(o2 - (double)v * k2);
+                b[(16 + k) * 0x101 + i] = (float)(o3 - (double)v * k3);
                 v -= 0x20;
             }
         }
@@ -331,7 +332,7 @@ internal static unsafe class Winsys3dDevice
     /// utile des tables 128 (tant que `pas` &lt; 0x1694), 64 (tant que &lt; 0x1f9c) et 32 — un peu
     /// sous 1.0 (0.9996, 0.9992, 0.9984, 0.9969), pour ne pas deborder de la page.
     /// </summary>
-    private static void RetoucherTablesUvSprite(uint* b)
+    internal static void RetoucherTablesUvSprite(uint* b)
     {
         b[0x100] = 0x3f7fe666;
         uint* p = b + (0x011c71f4 - 0x011c4cd0) / 4;

@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **0** | tout | **fini le 2026-09-23** : `Malloc` et `Free` portés, le C# n'importe plus rien de la DLL |
-| `winsys3d` | 1 (701, gardé pour la comparaison) | **249 / 249** | **toute la clôture est en C#** ; 701 est un choix, voir la fin |
+| `winsys3d` | **0** | **249 / 249** | **fini le 2026-09-23** : la DLL n'est plus chargée ; sa mémoire est une image construite en C# (`Image.cs`) |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -830,6 +830,48 @@ Deux détails gardés : OK rend l'élément qui a **le focus** dans la liste (`L
 s'arrêter** au premier égal. **Il ne reste de code natif de `winsys3d` exécuté que son point
 d'entrée** (chargement, déchargement), plus l'import de 701 gardé pour la comparaison. **Pas encore
 exercé** — c'est la fenêtre de choix du pilote au lancement : listes, bitmap, textes, OK, Annuler.
+Testé en jeu par Vincent le même jour.
+
+## Lot 18 — `winsys3d.dll` n'est plus chargée (2026-09-23)
+
+Décidé par Vincent : aller jusqu'au bout, et perdre `OPENFORESIA_LEGACY_DRAWOTAG`. La DLL n'avait
+plus qu'un rôle — **porter sa mémoire**, celle que `Data.cs` désigne. `Libraries/winsys3d/Image.cs`
+(fichier neuf, validé par Vincent) la construit sans charger la DLL :
+
+1. une zone de 0x816000 octets à zéro (jusqu'à la fin de `.idata`) ;
+2. `.rdata` et `.data` copiées depuis le fichier `winsys3d.dll`, à leur RVA ;
+3. **les 16 relocations** qui tombent dans ces deux sections, appliquées pour la base réelle (deux
+   visent du code : la table de portée SEH de la détection MMX, inerte) ;
+4. les **trois entrées d'import** que le C# appelle à travers la table, comme le binaire :
+   `GetProcAddress` (détourné par `SyntheticDevice`, qui remplace désormais l'entrée de l'image),
+   `DirectDrawEnumerateA`, `DirectDrawCreate` ;
+5. **le point d'entrée transcrit** (`entry`) : au chargement, à la première lecture de l'image —
+   tables UV, section critique, VRAM, `MainMem`, ressources police et kanji, `hInstance` — ; au
+   déchargement, **juste avant l'`ExitProcess` de la CRT** (`Platform/Crt.cs`), là où Windows
+   l'appelait : minuteur, VRAM, et **`VS.Log`** (`FUN_00a052e0`), que la DLL native écrivait déjà
+   à chaque fermeture — premier bloc vide compris.
+
+`Data.cs` n'a pas changé : seule sa base est devenue celle de l'image — le garde-fou 4. Les
+ressources (police « TIM » 0x65, « KANJI » 0x70, dialogue 0x66) sont lues dans le même fichier
+chargé **comme données** (`LOAD_LIBRARY_AS_DATAFILE`) : ni code, ni point d'entrée, ni imports.
+
+Consommateurs basculés : les exports de données (`MainMem`, `VSyncDelayed`, `TexFilterPossible`,
+`Zoom8BitTextures`, les registres GTE 799–821) passent par `Winsys3dImage.Exporte`, qui lit la
+table d'exports du fichier ; `DeviceShim` (le chemin du vrai `3dhelp`) prend la base de l'image ;
+le filtre d'exceptions de la pompe (`FUN_00a01d60`) est porté ; **l'import de 701 et
+`OPENFORESIA_LEGACY_DRAWOTAG` sont retirés**. L'arène basse de la liste d'affichage
+(`EnsureDisplayListArena`) est inchangée : elle écrase `MainMem` après le point d'entrée, comme
+avant.
+
+**Pas encore exercé**, et c'est le plus risqué des lots : tout passe par l'image. Une erreur de
+chargement se verrait au démarrage (écran noir, plantage, police ou kanji absents, dialogue de
+pilote vide) ; une erreur de déchargement, à la fermeture (`VS.Log` absent ou différent).
+
+### Ce qui reste, après le lot 18
+
+Aucune des cinq DLL de 1998 n'est plus chargée comme code. `winsys3d.dll` est lue comme un fichier
+de données (sections, relocations, exports, ressources). `3dhelp.dll` ne l'est qu'avec
+`OPENFORESIA_LEGACY_3DHELP=1`. `gldhelp`, inatteignable, et `playst`, morte, jamais.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

@@ -53,7 +53,9 @@
 //
 // `winsys3d.dll` a pour `ImageBase` 0x00a00000, mais elle porte une section `.reloc` : Windows
 // peut la charger ailleurs. **On ne se sert donc jamais de la VA telle quelle** — on prend la
-// base reelle rendue par `GetModuleHandleA` et on y ajoute la RVA, soit `VA - 0x00a00000`.
+// base reelle et on y ajoute la RVA, soit `VA - 0x00a00000`. Depuis le 2026-09-23, cette base est
+// celle de l'IMAGE que `Image.cs` construit depuis le fichier, sans le code : la DLL n'est plus
+// chargee du tout. Relire « base reelle » comme « base de l'image ».
 //
 // Les quatre regions en jeu, toutes dans `.data` (VA 0x00a2c000 .. 0x01214214, 8,2 Mo dont
 // l'essentiel est non initialise dans le fichier) :
@@ -74,31 +76,13 @@ internal static unsafe class Winsys3dData
     /// <summary>L'`ImageBase` du PE, celle a laquelle les VA de `winsys3d.c` sont exprimees.</summary>
     private const nuint ImageBase = 0x00a00000;
 
-    private static byte* s_Base;
-
     /// <summary>
-    /// La base de chargement REELLE de `winsys3d.dll`. Resolue paresseusement et non dans un
-    /// initialiseur statique : la DLL n'est pas forcement chargee quand cette classe l'est, et le
-    /// depot a deja paye une fois le prix des initialiseurs statiques dont l'ordre n'est pas
-    /// specifie (le decoupage de `WorldMapTick.cs`, huit champs rendus `null + offset`).
+    /// La base de l'image memoire de `winsys3d`. **Depuis le 2026-09-23, ce n'est plus la DLL
+    /// chargee** : c'est l'image que `Image.cs` construit depuis le fichier, sans son code, et dont
+    /// il execute le point d'entree transcrit. Les proprietes ci-dessous n'ont pas change — seule
+    /// cette base a change, d'un geste, comme le prevoyait le garde-fou 4.
     /// </summary>
-    private static byte* Base
-    {
-        get
-        {
-            if (s_Base != null) return s_Base;
-
-            IntPtr module = Win32.GetModuleHandleA(Blaze.Blaze.ToAnsiZ("winsys3d.dll"));
-            if (module == IntPtr.Zero) module = Win32.LoadLibraryA(Blaze.Blaze.ToAnsiZ("winsys3d.dll"));
-            if (module == IntPtr.Zero)
-                throw new InvalidOperationException(
-                    "winsys3d.dll n'est pas chargee : les globales aliasees de Libraries/winsys3d " +
-                    "n'ont pas d'adresse. Voir src/Libraries/winsys3d/Data.cs.");
-
-            s_Base = (byte*)module;
-            return s_Base;
-        }
-    }
+    private static byte* Base => Winsys3dImage.Base;
 
     /// <summary>Une VA de `winsys3d.c` traduite en adresse reelle. `VA - 0x00a00000` est la RVA.</summary>
     private static byte* At(nuint va) => Base + (va - ImageBase);
@@ -848,13 +832,6 @@ internal static unsafe class Winsys3dData
     /// <summary>_DAT_00dedbf0 — pose a 1 par la pompe de messages quand elle voit `WM_QUIT`.</summary>
     internal static ref int QuitteRecu_00dedbf0 => ref *(int*)At(0x00dedbf0);
 
-    /// <summary>
-    /// FUN_00a01d60 — un CODE, pas une donnee : le filtre d'exceptions `or eax,-1 ; ret 4`
-    /// (`EXCEPTION_CONTINUE_EXECUTION`) que la pompe installe avant `RaiseException`. On passe son
-    /// adresse native a `SetUnhandledExceptionFilter`, comme l'original.
-    /// </summary>
-    internal static IntPtr FiltreExceptions_00a01d60 => (IntPtr)At(0x00a01d60);
-
     // ----------------------------------------------------------------------------------------
     // L'initialisation du device — `Device.cs` (789) et `FUN_00a03110`.
     // ----------------------------------------------------------------------------------------
@@ -944,7 +921,7 @@ internal static unsafe class Winsys3dData
     // ----------------------------------------------------------------------------------------
 
     /// <summary>DAT_00a2e8e8 — le `HINSTANCE` de la DLL, pose par son point d'entree : celui dont le dialogue 0x66 est une ressource.</summary>
-    internal static IntPtr InstanceDll_00a2e8e8 => *(IntPtr*)At(0x00a2e8e8);
+    internal static ref IntPtr InstanceDll_00a2e8e8 => ref *(IntPtr*)At(0x00a2e8e8);
 
     /// <summary>DAT_00a2e8e0 — le bloc de parametres du dialogue en cours, que sa procedure (native) relit.</summary>
     internal static ref byte* ParametresDialogue_00a2e8e0 => ref *(byte**)At(0x00a2e8e0);

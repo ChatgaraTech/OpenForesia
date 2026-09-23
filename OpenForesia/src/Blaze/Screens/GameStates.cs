@@ -76,10 +76,10 @@ public static unsafe partial class Blaze
     {
         if (s_Zoom8BitTextures == null)
         {
-            IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+            IntPtr module = (IntPtr)Libraries.Winsys3dImage.Base /* image memoire de winsys3d : Libraries/winsys3d/Image.cs */;
             if (module != IntPtr.Zero)
             {
-                s_Zoom8BitTextures = (uint*)Win32.GetProcAddress(module, ToAnsiZ("Zoom8BitTextures"));
+                s_Zoom8BitTextures = (uint*)(IntPtr)Libraries.Winsys3dImage.Exporte(ToAnsiZ("Zoom8BitTextures"));
             }
         }
         return s_Zoom8BitTextures;

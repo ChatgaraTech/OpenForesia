@@ -184,73 +184,24 @@ internal static unsafe class SyntheticDevice
     }
 
     /// <summary>
-    /// Détourne <c>GetProcAddress</c> dans la table d'imports de <c>winsys3d.dll</c>. À appeler
-    /// **avant** <c>Ordinal_789</c>. Sans effet si le module n'est pas chargé ou l'entrée absente.
+    /// Détourne <c>GetProcAddress</c> dans la table d'imports de <c>winsys3d</c>. À appeler
+    /// **avant** <c>Ordinal_789</c>.
+    /// <para>
+    /// Depuis le 2026-09-23, la DLL n'est plus chargée : sa mémoire est l'image que construit
+    /// <c>Libraries/winsys3d/Image.cs</c>, et le 789 porté appelle <c>GetProcAddress</c> à travers
+    /// l'entrée <c>0x0121532c</c> de cette image, comme le binaire. C'est donc cette entrée qu'on
+    /// remplace — directement : il n'y a plus de table d'imports chargée à parcourir.
+    /// </para>
     /// </summary>
     internal static void InstallSyntheticDevice()
     {
         if ((!s_UseSyntheticDevice && !s_CaptureDeviceCaps) || s_RealGetProcAddress != null) return;
 
-        IntPtr winsys3d = Win32.GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
-        if (winsys3d == IntPtr.Zero)
-        {
-            Console.Error.WriteLine("[SYNTH] winsys3d.dll non chargé — device synthétique inactif");
-            return;
-        }
+        void** entree = OpenForesia.Libraries.Winsys3dData.ImportGetProcAddress_0121532c;
+        s_RealGetProcAddress = *entree;
+        *entree = (delegate* unmanaged[Stdcall]<IntPtr, byte*, void*>)&GetProcAddressThunk;
 
-        void* replacement = (delegate* unmanaged[Stdcall]<IntPtr, byte*, void*>)&GetProcAddressThunk;
-        if (!PatchImportEntry(winsys3d, "KERNEL32.dll", "GetProcAddress", replacement, out s_RealGetProcAddress))
-        {
-            Console.Error.WriteLine("[SYNTH] entrée GetProcAddress introuvable — device synthétique inactif");
-            return;
-        }
-
-        Console.Error.WriteLine("[SYNTH] GetProcAddress détourné dans winsys3d");
-    }
-
-    /// <summary>
-    /// Remplace une entrée de la table d'imports d'un module chargé ; les RVA y sont relatives à la
-    /// base du module.
-    /// </summary>
-    private static bool PatchImportEntry(IntPtr module, string dll, string function, void* replacement, out void* original)
-    {
-        original = null;
-        byte* b = (byte*)module;
-
-        int lfanew = *(int*)(b + 0x3C);
-        byte* nt = b + lfanew;
-        if (*(uint*)nt != 0x00004550) return false;              // "PE\0\0"
-
-        uint importRva = *(uint*)(nt + 0x80);                     // DataDirectory[1].VirtualAddress
-        if (importRva == 0) return false;
-
-        for (byte* desc = b + importRva; ; desc += 20)
-        {
-            uint nameRva = *(uint*)(desc + 12);
-            if (nameRva == 0) break;
-            if (!AsciiEqualsIgnoreCase(b + nameRva, dll)) continue;
-
-            uint oftRva = *(uint*)(desc + 0);
-            uint ftRva = *(uint*)(desc + 16);
-            if (ftRva == 0) continue;
-
-            uint* names = (uint*)(b + (oftRva != 0 ? oftRva : ftRva));
-            void** slots = (void**)(b + ftRva);
-
-            for (int i = 0; names[i] != 0; i++)
-            {
-                if ((names[i] & 0x80000000u) != 0) continue;      // importé par ordinal
-                if (!AsciiEqualsIgnoreCase(b + names[i] + 2, function)) continue;   // IMAGE_IMPORT_BY_NAME
-
-                uint old;
-                if (VirtualProtect(&slots[i], (nuint)sizeof(void*), 0x04 /* PAGE_READWRITE */, &old) == 0) return false;
-                original = slots[i];
-                slots[i] = replacement;
-                VirtualProtect(&slots[i], (nuint)sizeof(void*), old, &old);
-                return true;
-            }
-        }
-        return false;
+        Console.Error.WriteLine("[SYNTH] GetProcAddress détourné dans l'image de winsys3d");
     }
 
     private static bool AsciiEqualsIgnoreCase(byte* p, string s)

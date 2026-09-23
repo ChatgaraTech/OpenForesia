@@ -409,10 +409,10 @@ public static unsafe partial class Blaze
     {
         if (s_MainMemExref != null) return;
 
-        IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+        IntPtr module = (IntPtr)Libraries.Winsys3dImage.Base /* image memoire de winsys3d : Libraries/winsys3d/Image.cs */;
         if (module != IntPtr.Zero)
         {
-            s_MainMemExref = (byte**)Win32.GetProcAddress(module, ToAnsiZ("MainMem"));
+            s_MainMemExref = (byte**)(IntPtr)Libraries.Winsys3dImage.Exporte(ToAnsiZ("MainMem"));
         }
     }
 
@@ -434,9 +434,9 @@ public static unsafe partial class Blaze
         if (!s_VSyncDelayedResolved)
         {
             s_VSyncDelayedResolved = true;
-            IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+            IntPtr module = (IntPtr)Libraries.Winsys3dImage.Base /* image memoire de winsys3d : Libraries/winsys3d/Image.cs */;
             if (module != IntPtr.Zero)
-                s_VSyncDelayedExref = (int*)Win32.GetProcAddress(module, ToAnsiZ("VSyncDelayed"));
+                s_VSyncDelayedExref = (int*)(IntPtr)Libraries.Winsys3dImage.Exporte(ToAnsiZ("VSyncDelayed"));
         }
 
         // TODO(REVERSE) : si l'export nomme n'existe pas sous ce nom, le zero rendu ici fait
@@ -487,7 +487,7 @@ public static unsafe partial class Blaze
     {
         if (s_GteResolved) return;
 
-        IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+        IntPtr module = (IntPtr)Libraries.Winsys3dImage.Base /* image memoire de winsys3d : Libraries/winsys3d/Image.cs */;
         if (module == IntPtr.Zero)
         {
             throw new NotImplementedException(
@@ -497,45 +497,45 @@ public static unsafe partial class Blaze
 
         // GetProcAddress accepte un ordinal à la place d'un nom quand le pointeur tient dans son
         // mot bas — la convention MAKEINTRESOURCE. Ces exports n'ont pas de nom.
-        s_GteMac801 = (byte*)Win32.GetProcAddress(module, (byte*)801);
-        s_GteVector802 = (byte*)Win32.GetProcAddress(module, (byte*)802);
-        s_GteVector803 = (byte*)Win32.GetProcAddress(module, (byte*)803);   // le second vecteur d'entrée, celui que FUN_0051f650 utilise
-        s_GteSxy805 = (byte*)Win32.GetProcAddress(module, (byte*)805);
-        s_GteSxy806 = (byte*)Win32.GetProcAddress(module, (byte*)806);
-        s_GteSxy807 = (byte*)Win32.GetProcAddress(module, (byte*)807);
-        s_GteMac0808 = (byte*)Win32.GetProcAddress(module, (byte*)808);
-        s_GteIr813 = (byte*)Win32.GetProcAddress(module, (byte*)813);
-        s_GteMatrix814 = (byte*)Win32.GetProcAddress(module, (byte*)814);
+        s_GteMac801 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)801);
+        s_GteVector802 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)802);
+        s_GteVector803 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)803);   // le second vecteur d'entrée, celui que FUN_0051f650 utilise
+        s_GteSxy805 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)805);
+        s_GteSxy806 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)806);
+        s_GteSxy807 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)807);
+        s_GteMac0808 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)808);
+        s_GteIr813 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)813);
+        s_GteMatrix814 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)814);
 
         // Les registres du chemin de projection, utilisés par le cull par partie de
         // FUN_0051d1f0. 809 reçoit le (x | y<<16) projeté, 811 la profondeur, 810 sa version
         // divisée par 4 qui sert d'emplacement d'OT, 815 la matrice de normales, 819/820 le
         // décalage écran posé par SetGeomOffset et 821 la table de réciproques de SetGeomScreen.
-        s_GteSxy809 = (byte*)Win32.GetProcAddress(module, (byte*)809);
-        s_GteSz810 = (byte*)Win32.GetProcAddress(module, (byte*)810);
-        s_GteSz811 = (byte*)Win32.GetProcAddress(module, (byte*)811);
-        s_GteLightMatrix815 = (byte*)Win32.GetProcAddress(module, (byte*)815);
-        s_GteOfx819 = (byte*)Win32.GetProcAddress(module, (byte*)819);
-        s_GteOfy820 = (byte*)Win32.GetProcAddress(module, (byte*)820);
-        s_GteRecip821 = (byte*)Win32.GetProcAddress(module, (byte*)821);
+        s_GteSxy809 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)809);
+        s_GteSz810 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)810);
+        s_GteSz811 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)811);
+        s_GteLightMatrix815 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)815);
+        s_GteOfx819 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)819);
+        s_GteOfy820 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)820);
+        s_GteRecip821 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)821);
 
         // Ghidra: EXT_00b6d198, la couleur que la passe d'éclairage (ordinal 793) consomme.
         // Identifié par le corps de l'ordinal 793 lui-même, qui la passe à FUN_00a24000.
-        s_GteLightColour817 = (byte*)Win32.GetProcAddress(module, (byte*)817);
+        s_GteLightColour817 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)817);
 
         // **799 et 800 identifiés le 2026-08-18**, par leur usage dans FUN_005330d0 : la fonction
         // y écrit deux vecteurs 3D de 32 bits (les deux aretes d'un triangle, sommet - sommet),
         // puis dépose leur produit vectoriel dans 801 (MAC1..3) champ par champ. Ce sont donc les
         // **deux vecteurs d'entrée du produit vectoriel**, pas des registres de projection. La
         // table du TODO ci-dessus les donnait comme non établis.
-        s_GteVec799 = (byte*)Win32.GetProcAddress(module, (byte*)799);
-        s_GteVec800 = (byte*)Win32.GetProcAddress(module, (byte*)800);
+        s_GteVec799 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)799);
+        s_GteVec800 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)800);
 
         // **812 identifié le 2026-08-22**, par le corps de FUN_005327b0 (le `ScaleMatrix` du SDK) :
         // la fonction y dépose successivement les trois facteurs d'échelle avant de multiplier
         // chaque colonne de la matrice. C'est donc le registre de facteur scalaire, lu en
         // **ushort** — l'original écrit `*(undefined2 *)Ordinal_812_exref`.
-        s_GteScale812 = (byte*)Win32.GetProcAddress(module, (byte*)812);
+        s_GteScale812 = (byte*)(IntPtr)Libraries.Winsys3dImage.Exporte((byte*)812);
 
         if (s_GteMatrix814 == null || s_GteMac0808 == null)
         {

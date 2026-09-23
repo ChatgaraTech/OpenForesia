@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **`winsys3d.dll` n'est plus chargée** — sa mémoire est une image construite en C# depuis
+  le fichier (sections de données, relocations, exports), son point d'entrée est transcrit, `VS.Log`
+  compris (`Libraries/winsys3d/Image.cs`). L'import de 701 et `OPENFORESIA_LEGACY_DRAWOTAG` sont
+  retirés. **Pas encore exercé**
+
+- doc : la procédure du dialogue de choix du pilote (lot 17) testée en jeu par Vincent
+
 - feat : **la procédure du dialogue de choix du pilote est en C#** — le dernier code natif de
   `winsys3d` que le jeu exécute, hors son point d'entrée. **Pas encore exercé**
 - doc : les rappels natifs et le tas de `wsyskern` (lot 16) testés en jeu par Vincent

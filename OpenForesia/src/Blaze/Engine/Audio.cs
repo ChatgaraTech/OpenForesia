@@ -384,10 +384,10 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
     {
         if (s_TexFilterPossible == null)
         {
-            IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+            IntPtr module = (IntPtr)Libraries.Winsys3dImage.Base /* image memoire de winsys3d : Libraries/winsys3d/Image.cs */;
             if (module != IntPtr.Zero)
             {
-                s_TexFilterPossible = (uint*)Win32.GetProcAddress(module, ToAnsiZ("TexFilterPossible"));
+                s_TexFilterPossible = (uint*)(IntPtr)Libraries.Winsys3dImage.Exporte(ToAnsiZ("TexFilterPossible"));
             }
         }
         return s_TexFilterPossible;
