@@ -18,7 +18,7 @@ moities ne peuvent pas coexister ; l'une allongerait un enregistrement ecrit par
 |---|---:|---:|
 | graine (tampon ou memo) | 94 | |
 | **perimetre ferme** | **157** | **12 408** |
-| deja transcrits | 4 | |
+| deja transcrits | 95 | |
 
 **26 corps restent dehors tout en appelant le perimetre** — ce sont les coutures, et elles sont toutes minuscules :
 
@@ -159,7 +159,7 @@ moitie native la relit, notre copie serait morte.
 | `DAT_011be7a8` | la zone de sommets, dans le meme bloc | 38 |
 | `DAT_00a2c480` | l'etat de rendu courant | 84 |
 | `DAT_00a2c484` | memo d'etat | 53 |
-| `DAT_00a2c488` | le type de primitive courant | 85 |
+| `DAT_00a2c488` | la page de texture liee (-1, -2 : aucune) | 85 |
 | `DAT_00a2c48c` | memo d'etat | 33 |
 | `DAT_00a2c578` | la derniere commande d'etat ecrite | 38 |
 | `DAT_00a2c57c` | son argument | 38 |

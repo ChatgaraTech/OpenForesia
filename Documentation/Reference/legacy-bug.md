@@ -1819,3 +1819,107 @@ s'en tire donc indemne.
 **Reproduit tel quel** dans `src/Libraries/winsys3d/CarteMemoire.cs` : les deux appels y sont, dans
 l'ordre, sur le même casier. Le correctif, s'il en fallait un, tiendrait en une copie du premier
 chemin dans un tampon local avant la seconde résolution.
+
+## LB-036 — `LINE_G3` et `LINE_G4` ne tracent que leur premier segment
+
+**Où** : `winsys3d.c`, `FUN_00a0eaf0` @ `0x00a0eaf0` (`LINE_G3`, codes 0x58..0x5b) et
+`FUN_00a0ecf0` @ `0x00a0ecf0` (`LINE_G4`, codes 0x5c..0x5f). **Trouvé à la lecture** le
+2026-09-23, en portant les primitives GPU — pas constaté en jeu.
+
+Une ligne brisée PlayStation de trois ou quatre points devient chez Direct3D un
+`DrawPrimitive(2 = D3DPT_LINELIST, ..., 3 sommets)` : `push 3 ; push 2` à `0x00a0ec7d` et à
+`0x00a0eed1`. Une *liste* de lignes prend les sommets deux par deux ; avec trois sommets, elle en
+trace **un** segment, du sommet 0 au sommet 1, et ignore le troisième. Leurs jumelles à couleur
+unique, `LINE_F3` et `LINE_F4`, passent bien `3 = D3DPT_LINESTRIP`. `LINE_G4` n'écrit d'ailleurs
+que trois positions pour quatre couleurs.
+
+**Conséquence** : non observée. Toute ligne brisée dégradée que le jeu enverrait perdrait tous ses
+segments sauf le premier ; reste à savoir si le jeu en envoie.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Primitives.cs` (`LineG3`, `LineG4`). Le
+correctif tiendrait en un type de primitive `LINESTRIP`, et une quatrième position pour `LINE_G4`.
+
+## LB-037 — `POLY_G4` échange les couleurs de deux coins
+
+**Où** : `winsys3d.c`, `FUN_00a0ff50` @ `0x00a0ff50` (`POLY_G4`, codes 0x38..0x3b). **Trouvé à la
+lecture** le 2026-09-23 — pas constaté en jeu.
+
+La PlayStation range un quadrilatère en « Z » ; Direct3D, en éventail, veut le tour du contour. Le
+corps croise donc les sommets 2 et 3… **pour les positions seulement** : le sommet D3D 2 prend la
+position du sommet PS 3 (mots 0x20/0x22, `fstp [11CB178h]` à `0x00a10175`) mais la couleur du
+sommet PS 2 (octets 0x14..0x16, `mov [11CB188h]` à `0x00a1009f`), et le sommet D3D 3 l'inverse.
+Le dégradé sort avec les couleurs de deux coins échangées.
+
+`POLY_GT4` (`FUN_00a101c0`, `FUN_00a12350`) croise, lui, couleur, texture et position ensemble :
+le défaut est propre à la variante non texturée.
+
+**Conséquence** : non observée. Un quadrilatère uni n'en montre rien ; seul un dégradé dont les
+deux coins en question diffèrent le trahit.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Primitives.cs` (`PolyG4`). Le correctif
+tiendrait en l'échange des octets de couleur 0x14 et 0x1c.
+
+## LB-038 — Le sprite tourné de `winsys3d` prend la largeur pour la hauteur de texture
+
+**Où** : `winsys3d.c`, `FUN_00a0e0c0` @ `0x00a0e0c0` (opcode 0xe5 du répartiteur). **Trouvé à la
+lecture** le 2026-09-23 — pas constaté en jeu.
+
+Le paquet porte une largeur (mot `+8`) et une hauteur (mot `+0xa`), et la géométrie emploie bien
+les deux. Mais les coordonnées de texture s'étendent de `v` à `v + largeur`, pas `v + hauteur` :
+`add ecx,eax` à `0x00a0e4f3` et `0x00a0e51e`, où `eax` est le mot `+8` chargé plus haut
+(`mov ax,[esi+8]`). Ghidra le montre aussi (`uVar8`, la largeur, dans les deux branches en v).
+
+**Conséquence** : non observée. Un sprite carré n'en montre rien ; un sprite plus haut que large
+écrase sa texture verticalement, un plus large l'étire.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Primitives.cs` (`SpriteTourne`). Le correctif
+tiendrait en la hauteur à la place de la largeur dans les deux lectures de la table `v`.
+
+## LB-039 — Une cellule `0xffff` fige le fond en tuiles
+
+**Où** : `winsys3d.c`, `FUN_00a142a0` @ `0x00a142a0` (opcode 0xe8 du répartiteur). **Trouvé à la
+lecture** le 2026-09-23 — pas constaté en jeu.
+
+La lecture de la carte de cellules est une boucle qui relit le même mot tant qu'il vaut `0xffff` :
+
+```
+00a144f5  ... mov ax,[esi+edx*2]      ; carte[ligne * largeur + colonne]
+00a14513  cmp eax,0FFFFh
+00a14518  je  short 00A144F5h         ; ligne, colonne : inchangées
+```
+
+Rien ne change d'un tour à l'autre. Une carte qui contiendrait ce code — vraisemblablement prévu
+pour « cellule vide, à sauter » — bloquerait l'image pour toujours.
+
+**Conséquence** : non observée ; les cartes du jeu n'en contiennent sans doute pas, sans quoi le
+jeu se figerait. À vérifier si un fond ne s'affiche jamais.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/FondTuiles.cs`. Le correctif serait de passer
+à la cellule suivante, en avançant la colonne.
+
+## LB-040 — Une texture 16 bits en mode soustractif noircit la fin de ses lignes
+
+**Où** : `winsys3d.c`, `FUN_00a03460` @ `0x00a03460` (la conversion d'une page de texture en image
+DIB, chemin 16 → 24 bits). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Quand la CLUT porte le marquage `0x8000` — le mode de semi-transparence soustractif —, un pixel
+dont le bit 15 est posé doit sortir noir. Le binaire l'écrit ainsi :
+
+```
+00a0364d  test ah,80h
+00a03650  jne  00A0367Bh              ; pixel « transparent »
+...                                   ; chemin normal : trois octets, puis add esi,2
+00a0367b  mov dword [edi],0           ; QUATRE octets à zéro sur un pixel de TROIS
+00a03681  add edi,3                   ; la destination avance... pas la source
+```
+
+Deux défauts en un : l'écriture de 32 bits déborde d'un octet sur le pixel suivant (ou, pour le
+dernier d'une ligne, sur la ligne voisine de l'image montante) ; et surtout **`esi` n'avance pas**.
+Le pixel suivant relit le même pixel transparent, et ainsi de suite : **toute la fin de la ligne
+sort noire**, à partir du premier pixel semi-transparent.
+
+**Conséquence** : non observée. Elle ne touche que les pages 16 bits directes employées en mode
+soustractif, sur un device de moins de 16 bits ou pour une page marquée 0x1000 — un cas rare.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/ChargementTextures.cs` (`Dib24`). Le correctif
+tiendrait en un `add esi,2` dans les deux branches et une écriture de trois octets.

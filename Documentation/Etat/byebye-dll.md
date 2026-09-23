@@ -1,7 +1,7 @@
 # byebye-dll — se passer des cinq DLL de 1998
 
 Point de reprise du chantier. **Lire ce fichier en premier**, puis `DLLAtteignables.md` pour les
-chiffres à jour. Dernière mise à jour : **2026-09-22** — tout ce qui se détachait est porté ; la masse est cartographiée.
+chiffres à jour. Dernière mise à jour : **2026-09-23** — la masse est entamée par aliasing : `DrawOTag`, ses appelées directes et tout le sous-système des textures sont en C# ; il reste 2 étapes au chemin d'affichage.
 
 ## Le but
 
@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 44 | 42 / 246 | **en cours** ; sept lots faits — **il ne reste que la masse** |
+| `winsys3d` | 44 | 135 / 246 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -348,6 +348,191 @@ chose que la géométrie et les textures.
    ce que `Libraries/` veut dire, et `LISEZMOI.md` ne prévoit pas ce troisième cas.
 
 La question à trancher avant d'écrire une ligne est celle-là, pas le découpage.
+
+**Tranchée le 2026-09-22 : l'option 2, l'aliasing.** `LISEZMOI.md` en a fait la sixième règle,
+avec cinq garde-fous. Les globales sont désignées dans `winsys3d/Data.cs`, les corps pas encore
+portés sont appelés par adresse depuis `winsys3d/Natif.cs`.
+
+### Le chemin d'affichage par aliasing — où on en est
+
+Portage **de haut en bas**, un corps à la fois ; le tableau de bord est l'en-tête de `Natif.cs`.
+
+| étape | corps | état |
+|---|---|---|
+| 1 | `DrawOTag` (701) — `CheminAffichage.DrawOTag` | fait le 2026-09-22 ; `OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche l'original |
+| 2 | `FUN_00a13400`, le répartiteur — `RejouerNoeud` | fait le 2026-09-22 |
+| 3 | `FUN_00a0cdd0` + le consommateur `FUN_00a0cd20` — `RejouerPaquet` / `RejouerPaquetCourant` | **fait le 2026-09-23** |
+| 4 | les **42 primitives GPU** du répartiteur, six familles — `winsys3d/Primitives.cs` | **fait le 2026-09-23** |
+| 5 | les 5 dernières appelées du répartiteur : trois rejeux, le sprite tourné, le fond en tuiles | **fait le 2026-09-23** |
+| 6 | les six appelées de `DrawOTag` : cache de textures et texte à l'écran | **fait le 2026-09-23** |
+| 7 | l'intérieur du cache de textures et la liaison de texture | **fait le 2026-09-23** |
+| 8 | le chargement des textures, et le `qsort` de la CRT | **fait le 2026-09-23** |
+| 9 | le constructeur `dde0` (752) et ses 15 producteurs | **la suite** |
+| 10 | la reconstruction `c4f0` et ses producteurs | à faire |
+
+**Rien des étapes 3 et 4 n'a tourné.** L'étape 3 se voit dès qu'une scène passe par les opcodes
+0xe3/0xe4 (paquets de modèles 3D) : si le consommateur se trompait, ce sont les modèles qui
+disparaîtraient ou planteraient, pas le décor 2D. L'étape 4, elle, se voit **partout** : tout ce
+qui passe par l'OT du jeu sans tampon de commandes — sprites, tuiles, polygones plats ou
+texturés, lignes — sort désormais du C#. Une erreur y donne une image fausse dès le premier écran
+dessiné par `DrawOTag`.
+`OPENFORESIA_LEGACY_DRAWOTAG=1` rebranche tout l'original pour comparer.
+
+### Étape 4 — les primitives GPU, en six familles
+
+Les codes de l'aiguillage sont ceux de la `libgpu` PlayStation ; chaque gestionnaire traduit une
+primitive en un `DrawPrimitive` immédiat, sur l'un de **deux tableaux fixes de quatre
+`D3DTLVERTEX`** (`&DAT_011cb138`, `&DAT_011be7e8`). Le relevé par squelette de
+`CheminAffichage.md` a donné les familles exactement :
+
+| famille | forme | corps | ce que c'est |
+|---|---|---:|---|
+| 1 | `CIVIVCIIIVR` | 9 | plates : `LINE_F2/3/4`, `POLY_F3/4`, `TILE`, `TILE_1/8/16` |
+| 2 | `CIICRCIIVVR` | 7 | texturées semi-transparentes brutes (FT3/FT4/GT3/GT4, SPRT/8/16) |
+| 3 | `CICECIVVR` | 7 | les mêmes, opaques |
+| 4 | `CIICRCIIVIIIVR` | 5 | texturées semi-transparentes modulées (FT3/FT4, SPRT/8/16) |
+| 5 | `CICECIVIIIVR` | 5 | les mêmes, opaques |
+| 6 | (plusieurs) | 9 | Gouraud : `LINE_G2/3/4`, `POLY_G3/G4`, `POLY_GT3/GT4` ×2 |
+
+Plus `FUN_00a03db0` (`ChoisirMelange`), l'appelée commune du prologue. Restent natives et appelées
+par adresse : `FUN_00a27880` (liaison de texture, `__thiscall`) et `FUN_00a03c80` (mélange selon
+le mode `abr`), qui dépendent de corps encore jamais lus.
+
+Appris à l'étape 4 :
+
+- **`DAT_00a2c488` est la page de texture liée**, pas « le type de primitive » — renommée
+  `PageTexture_00a2c488` partout, y compris dans `census-display-path.awk` ;
+- **deux défauts du binaire**, transcrits tels quels : `LINE_G3`/`LINE_G4` ne tracent que leur
+  premier segment (**LB-036**) et `POLY_G4` échange les couleurs de deux coins (**LB-037**) ;
+- les pièges de lecture de Ghidra sur ces corps : temporaires rangés dans les sommets voisins,
+  variables réutilisées au point de rendre illisible la couleur des `GT3`/`GT4` semi-transparents
+  (le désassembleur tranche), et un `POLY_FT3` modulé qui n'écrit que trois couleurs quand son
+  jumeau brut en écrit quatre.
+
+Appris à l'étape 3 : **`FUN_00a27880` est un `__thiscall`** (this = `DAT_012141d4`) que Ghidra
+déclare comme tel mais dont il omet le `this` à ses 30 sites d'appel. Tout appel par adresse vers
+un corps de ce voisinage (`0x00a27xxx`, les autres `__thiscall` de Ghidra) doit d'abord regarder
+si `ecx` est chargé avant le `call`.
+
+### Étape 5 — les cinq dernières appelées du répartiteur
+
+Faite le 2026-09-23. Le répartiteur `RejouerNoeud` **n'appelle plus rien de natif**.
+
+| corps | opcode | où | ce que c'est |
+|---|---|---|---|
+| `FUN_00a0e000` | 0xe6 | `CheminAffichage.ConstruireEtRejouer` | construit le paquet si le bit 31 du descripteur est nul, puis le rejoue |
+| `FUN_00a133e0` | 0xe7 | `CheminAffichage.RejouerPaquetConstruit` | rejoue sans construire ; `ret 0Ch`, un seul des trois arguments lu |
+| `FUN_00a0e040` | 0xf9 | `CheminAffichage.RejouerListe` | rejoue une liste de descripteurs |
+| `FUN_00a0e0c0` | 0xe5 | `Primitives.SpriteTourne` | sprite à pivot, échelle et angle — **LB-038** |
+| `FUN_00a142a0` | 0xe8 | `FondTuiles.DessinerFond` (fichier neuf, validé par Vincent) | fond en tuiles qui défile — **LB-039** |
+
+Les deux gros ont été transcrits **sur le désassemblage**, pile x87 suivie instruction par
+instruction ; les relevés sont sous `Legacy/Raw/Winsys3d/`. Ghidra y donnait les bonnes formules
+— y compris les tables d'écran croisées du sprite non tourné, qui sont dans le binaire.
+
+**Un écart assumé, le seul des étapes 3 à 5** : ces deux corps gardent leurs sommets sur la pile et
+n'en écrivent ni `z`, ni `rhw`, ni la spéculaire. L'original y laisse ce que la pile contenait,
+ce qui n'est pas reproductible ; le C# y met zéro (`w = 1` pour le device). Si une différence se
+voit avec `OPENFORESIA_LEGACY_DRAWOTAG=1` sur un sprite tourné ou un fond en tuiles, c'est là.
+
+### Étape 6 — les six appelées de `DrawOTag`
+
+Faite le 2026-09-23. **`DrawOTag` n'appelle plus directement aucun corps natif.** Deux sujets,
+deux fichiers neufs validés par Vincent :
+
+| fichier | corps | ce que c'est |
+|---|---|---|
+| `winsys3d/CacheTextures.cs` | `FUN_00a26490`, `FUN_00a26b20`, `FUN_00a26f20` | le cache de 32 pages de texture : ouvrir le relevé, relever les pages que l'OT va lire, charger en évinçant les plus anciennes |
+| `winsys3d/TexteEcran.cs` | `FUN_00a027a0`, `FUN_00a027e0`, `FUN_00a02820`, + `024a0`, `024e0`, `02340`, `02380`, `01f00` | les fenêtres de texte (sprites), la console de 30 lignes (`POLY_FT4`), la file GDI de `WinDrawText` — **porté en entier** |
+
+Appris à l'étape 6 :
+
+- **Ghidra se trompe sur `FUN_00a02820`** : il passe au texte GDI l'adresse de la locale ; le
+  binaire passe le HDC qu'elle contient (`mov ecx,[esp] ; push ecx`) ;
+- **trois `__thiscall` de plus sur `DAT_012141d4`** — `FUN_00a27920`, `FUN_00a27850`,
+  `FUN_00a27820` —, et un `cdecl`, le tri `FUN_00a27e00`, qui reçoit sa comparaison par adresse
+  (`LAB_00a27100`, passée native telle quelle) ;
+- **la liste d'éviction déborde sans garde** sur la table qui la suit — reproduit à l'identique,
+  puisque les deux sont aliasées sur la mémoire de la DLL ;
+- la table de sauts du relevé a été **relue dans le binaire** (octets à `0x00a26d14`, cibles à
+  `0x00a26ca4`), pas prise à Ghidra.
+
+### Étape 7 — l'intérieur du cache de textures et la liaison
+
+Faite le 2026-09-23. **24 corps**, dans `CacheTextures.cs` (le cache) et `Primitives.cs` (le choix
+du mélange, `03400`/`03430`/`03c80`, à côté de `ChoisirMelange`) : les huit relevés par genre de
+primitive, l'enregistrement des demandes (`264f0`), l'attribution des emplacements (`278c0`),
+l'arrondi (`26e10`), la recherche, le placement, la libération et l'éviction des emplacements
+(`27920`, `27850`, `275e0`, `27140`, `275a0`, `27180`, `27820`, `27120`), et la liaison de texture
+(`27880`, `27430`) que toutes les primitives appellent.
+
+Appris à l'étape 7 :
+
+- **Ghidra perd la moitié de `FUN_00a264f0`** (« bad instruction data ») : la branche
+  semi-transparente, avec sa table de sauts à `0x00a26650`, a été transcrite sur le
+  désassemblage (`Legacy/Raw/Winsys3d/FUN_00a264f0.disasm.txt`). Et dans la branche qu'il donne,
+  il écrit `genre = genre` là où le binaire fait `genre |= nouveau` ;
+- **`FUN_00a278c0` rend 1999 quand tout est pris** (`mov eax,7CFh`), un chemin sans valeur de
+  retour chez Ghidra ;
+- **le cache est une petite hiérarchie C++** — cache, 32 pages, 2 000 emplacements de 0x34 octets
+  alloués par `Malloc` — dont Ghidra confond `this` et les arguments (`27850` surtout) ;
+- **`Malloc`/`Free` sont appelés par la façade, pas par la passerelle** de `Libraries/wsyskern` :
+  la table d'import de `winsys3d` nomme bien ces deux exports, et la passerelle ajoute un
+  `OutOfMemory` que l'original n'a pas. Un seul tas, puisque du natif libère encore ;
+- **le `qsort` de la CRT reste natif** (`27e00` + `27fb0` + `28010`, avec sa comparaison
+  `LAB_00a27100` = `a.date - b.date`) : `Array.Sort` ne rangerait pas les dates égales dans le
+  même ordre, donc n'évincerait pas les mêmes pages.
+
+### Étape 8 — le chargement des textures
+
+Faite le 2026-09-23. **6 corps.** `winsys3d/ChargementTextures.cs` (fichier neuf, validé par
+Vincent) pour la conversion de la VRAM PlayStation en objets texture — `271e0` (l'aiguillage par
+genre), `03460` (image DIB 4/8/24 bits, palette, zoom des pages 8 bits, couleur-clé) et `03980`
+(16 bits bruts par une table de 65 536 couleurs) —, et le `qsort` de la CRT (`27e00`, `27fb0`,
+`28010`, avec sa comparaison) **transcrit** dans `CacheTextures.cs`, pour garder l'ordre des dates
+égales. **Plus rien du sous-système des textures n'est natif.**
+
+Appris à l'étape 8 :
+
+- **LB-040** : dans la conversion 16 → 24 bits, un pixel semi-transparent en mode soustractif est
+  effacé par un mot de 32 bits sur 3 octets, et la source n'avance pas — toute la fin de la ligne
+  sort noire ;
+- l'argument anonyme de Ghidra dans `03980` (`&stack0xfffffdc0`) est une **couleur-clé `{0, 0}`**
+  construite sur la pile ; la clé d'une page 16 bits dans `03460` vaut **0**, pas -1 ;
+- **un genre inconnu ne charge rien**, et aucun des deux convertisseurs ne teste l'objet que rend
+  `device[0x10]` avant d'en lire la vtable ;
+- un écart assumé : `dwFourCC` du format de pixel n'est jamais écrit dans l'original (ce que la
+  pile contenait) ; le C# y met 0, sans effet pour un format RGB.
+
+### Ce qui reste — le compte exact (2026-09-23)
+
+Mesuré en croisant le périmètre de `CheminAffichage.md` (157 corps) avec la clôture ATTEINTE de
+`DLLAtteignables.md` :
+
+| | corps | lignes |
+|---|---:|---:|
+| chemin d'affichage, porté | 95 (89 à l'étape 7) | |
+| chemin d'affichage, **atteint et à porter** | **45** | ~3 900 |
+| chemin d'affichage, **jamais atteint** | 23 | ~3 300 |
+| `winsys3d` hors chemin d'affichage, atteint et à porter | 72 | |
+
+**Les 23 jamais atteints n'ont pas à être portés.** Ce sont surtout les exports 548 à 555
+(`FUN_00a149f0`..`FUN_00a1c800`, une vingtaine de corps de ~190 lignes), plus 704, 753 et 754 :
+ils écrivent le tampon de commandes, d'où leur place dans le périmètre, mais ni le jeu ni aucun
+corps atteint ne les appelle. Environ 3 300 lignes de moins que le devis ne le laissait croire.
+
+Les 45 restants du chemin d'affichage, en trois étapes :
+
+| étape | contenu | corps |
+|---|---|---:|
+| 8 | le chargement des textures (`271e0`, `03460` — 316 l. —, `03980`) et le `qsort` de la CRT | 6 |
+| 9 | le constructeur `dde0` (ordinal 752) et ses 15 producteurs `d260`..`dce0` — une seule forme presque partout (`CIDCWR`) | 16 |
+| 10 | la reconstruction `c4f0`, `c480`, et ses ~20 producteurs `06a40`..`0c110`, plus `1cff0` | 23 |
+
+Après l'étape 10, `DrawOTag` et tout ce qu'il atteint sont en C#. Resteront les **72 corps
+atteints hors du chemin d'affichage** — la géométrie GTE, l'initialisation du device
+(`Setup3DDevice`), `InitTrigTables`, les 43 autres points d'entrée —, puis les deux passerelles de
+tas de `wsyskern`, qui ne tomberont qu'avec le dernier corps de `winsys3d`.
 
 Lire `Documentation/DLL/winsys3d.md` avant de commencer — 52 Ko déjà accumulés.
 

@@ -4,8 +4,96 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-23
+
+- feat : **le chargement des textures est en C# — plus rien du sous-système des textures n'est
+  natif.** Étape 8, 6 corps : `winsys3d/ChargementTextures.cs` (fichier neuf) pour la conversion
+  VRAM PS → objet texture (`271e0`, `03460` image DIB 4/8/24 bits, `03980` 16 bits par table), et
+  le `qsort` de la CRT transcrit dans `CacheTextures.cs`, pour garder l'ordre des dates égales.
+  `winsys3d` passe à 135 corps portés, le chemin d'affichage à 95 sur 157. **Pas encore exercé**
+- doc : **LB-040** — une page 16 bits en mode soustractif noircit la fin de ses lignes : le pixel
+  semi-transparent est effacé par un mot de 32 bits et la source n'avance plus. Transcrit tel quel
+- doc : l'argument anonyme de Ghidra dans `FUN_00a03980` est une couleur-clé `{0, 0}` construite
+  sur la pile ; la clé d'une page 16 bits vaut 0, pas -1. Relevés sous `Legacy/Raw/Winsys3d/`
+
+- feat : **l'intérieur du cache de textures et la liaison de texture sont en C#** — étape 7,
+  24 corps : relevés par genre de primitive, enregistrement des demandes, emplacements (attribution,
+  arrondi, recherche, placement, libération, éviction), liaison (`27880`/`27430`) et choix du
+  mélange selon `abr` (`03400`/`03430`/`03c80`, dans `Primitives.cs`). `winsys3d` passe à 129
+  corps portés, le chemin d'affichage à 89 sur 157. **Pas encore exercé en jeu**
+- fix : Ghidra perd la branche semi-transparente de `FUN_00a264f0` (« bad instruction data ») et y
+  écrit `genre = genre` au lieu de `genre |= nouveau` ; `FUN_00a278c0` rend 1999 quand tout est pris,
+  un chemin sans retour chez Ghidra. Transcrits sur le désassemblage
+- doc : **23 corps du chemin d'affichage ne sont jamais atteints** — les exports 548 à 555, 704, 753
+  et 754 écrivent le tampon mais rien ne les appelle : ~3 300 lignes retirées du devis. Il reste 45
+  corps atteints (étapes 8 à 10) au chemin d'affichage, puis 72 hors de lui. Compte dans
+  `byebye-dll.md`
+
+- feat : **`DrawOTag` n'appelle plus directement aucun corps natif** — étape 6, ses six
+  dernières appelées. Deux fichiers neufs : `winsys3d/CacheTextures.cs` (ouvrir le relevé,
+  relever les pages de texture de l'OT, les charger en évinçant les plus anciennes) et
+  `winsys3d/TexteEcran.cs` (fenêtres de texte, console de 30 lignes, textes GDI de
+  `WinDrawText` — porté en entier avec ses cinq sous-corps). `winsys3d` passe à 105 corps portés,
+  le périmètre d'affichage à 65 sur 157. **Pas encore exercé en jeu**
+- fix : Ghidra fait passer à `FUN_00a01f00` l'adresse d'une locale ; le binaire lui passe le HDC
+  qu'elle contient (`FUN_00a02820`, 0x00a02846). Transcrit d'après le binaire
+- doc : trois `__thiscall` de plus sur `DAT_012141d4` (`FUN_00a27920`, `FUN_00a27850`,
+  `FUN_00a27820`) et un tri `cdecl` (`FUN_00a27e00`) à comparaison passée par adresse ; la liste
+  d'éviction du cache (500 entrées) déborde sans garde sur la table qui la suit — reproduit tel
+  quel. Relevé sous `Legacy/Raw/Winsys3d/FUN_00a26f20.disasm.txt`
+
+- feat : **le répartiteur `RejouerNoeud` n'appelle plus rien de natif** — étape 5, les cinq
+  dernières appelées : les rejeux `FUN_00a0e000`, `FUN_00a133e0`, `FUN_00a0e040`
+  (`CheminAffichage.cs`), le sprite tourné `FUN_00a0e0c0` (`Primitives.SpriteTourne`) et le fond
+  en tuiles `FUN_00a142a0` (`winsys3d/FondTuiles.cs`, fichier neuf). `winsys3d` passe à 94 corps
+  portés, le périmètre d'affichage à 54 sur 157. **Pas encore exercé en jeu**
+- doc : les deux gros corps transcrits **sur le désassemblage**, pile x87 suivie instruction par
+  instruction — relevés sous `Legacy/Raw/Winsys3d/FUN_00a0e0c0.disasm.txt` et
+  `FUN_00a142a0.disasm.txt`. Un écart assumé : leurs sommets sur pile n'ont ni `z` ni `rhw` dans
+  l'original (ce que la pile contenait) ; le C# y met zéro
+- doc : **LB-038** — le sprite tourné prend la largeur pour l'amplitude de texture en v ;
+  **LB-039** — une cellule `0xffff` fait boucler le fond en tuiles pour toujours. Trouvés à la
+  lecture, transcrits tels quels
+
+- feat : **les 42 primitives GPU du répartiteur sont en C#** — étape 4 du chemin d'affichage,
+  `src/Libraries/winsys3d/Primitives.cs`. Six familles de forme : plates (9), texturées
+  semi-transparentes brutes (7) et opaques (7), modulées semi-transparentes (5) et opaques (5),
+  Gouraud (9), plus `FUN_00a03db0` (`ChoisirMelange`). 42 des 47 cas de `RejouerNoeud` ne passent
+  plus par la DLL ; `winsys3d` passe de 46 à 89 corps portés. **Pas encore exercé en jeu**
+- doc : **LB-036** — `LINE_G3` et `LINE_G4` ne tracent que leur premier segment (`LINELIST` sur
+  trois sommets) ; **LB-037** — `POLY_G4` croise les positions des coins 2 et 3 mais pas leurs
+  couleurs. Deux défauts de `winsys3d.dll` trouvés à la lecture, transcrits tels quels
+- fix : `DAT_00a2c488` s'appelait « le type de primitive courant » ; c'est **la page de texture
+  liée** (-1 et -2 : aucune). Renommée `PageTexture_00a2c488`, dans `Data.cs`, `winsys3d.md` et
+  `census-display-path.awk`
+- doc : `Data.cs` désigne le second tampon de sommets `&DAT_011be7e8`, les quatre tables de
+  coordonnées de texture `DAT_011cb1c0..1cc`, la table d'alpha par mode `abr` `DAT_00a2c5a8`
+  (`7f ff ff 3f`, relue dans le binaire) et les tables de conversion écran de `SetShift`
+
+- feat : **le consommateur du tampon de commandes est en C#** — `FUN_00a0cdd0` et `FUN_00a0cd20`
+  (`CheminAffichage.RejouerPaquet` / `RejouerPaquetCourant`), étape 3 du chemin d'affichage.
+  C'est là que le paquet devient des appels `DrawPrimitive`. Vérifiés au désassembleur, table
+  de sauts comprise ; **pas encore exercés en jeu**
+- doc : `FUN_00a27880` est un **`__thiscall`** dont `this` est `DAT_012141d4`
+  (`mov ecx,[12141D4h]` avant le `call`, `ret 10h`) — Ghidra le déclare à la définition et
+  l'oublie à ses 30 sites d'appel. Ajouté à `Natif.cs` avec `FUN_00a0c4f0` ; `DAT_012141d4`
+  aliasé dans `Data.cs`
+- doc : `byebye-dll.md` enregistre la décision prise (l'aliasing) et l'état du chemin
+  d'affichage étape par étape ; `DLLAtteignables.md` et `CheminAffichage.md` régénérés
+  (44 → 46 corps portés, 4 → 6 dans le périmètre)
+
 ## 2026-09-22
 
+- fix : **`DrawOTag` plantait a la premiere image (0xC0000005)** — `DeviceVtable` n'avait qu'UNE
+  indirection la ou il en faut deux. L'expression `*(void***)x` venait d'`Options.cs`, ou elle est
+  juste parce que `x` y est la **valeur** que rend l'ordinal 750 ; appliquee a l'**adresse** de la
+  globale, elle rendait le device lui-meme et `vtable[0x2c]` lisait a `device + 0xb0`, dans
+  l'objet. Le binaire le dit en trois temps : `mov ecx,[11BE760h]`, `mov eax,[ecx]`,
+  `call [eax+0B0h]` — deux `mov` avant le `call`, donc deux indirections
+- doc : cinquieme garde-fou de l'aliasing dans `src/Libraries/LISEZMOI.md` — **compter les
+  indirections sur le desassemblage, pas sur une expression qui marche ailleurs**. Les 33 autres
+  globales aliasees ont ete reverifiees une par une : toutes en `*(T*)At(va)`, une seule
+  indirection, ce qui est correct puisqu'elles nomment une variable A cette adresse
 - feat : **`FUN_00a13400`, le repartiteur de primitives, est en C#** — 118 etiquettes de `case`,
   42 gestionnaires, le pavage des sprites et les cinq blocs de matrice.
   `Libraries/winsys3d/CheminAffichage.RejouerNoeud`. Les 48 appelees restent natives, appelees par

@@ -1064,7 +1064,7 @@ en fin, et des opcodes positifs (`1`, `4`, `6`) pour les primitives.
 Un producteur n'écrit une commande d'état que si le cache dit qu'elle a changé :
 
 ```c
-if (DAT_00a2c488 != -2) {                       /* le type de primitive courant */
+if (DAT_00a2c488 != -2) {                       /* la page de texture liee */
     if ((DAT_00a2c578 != -5) || (DAT_00a2c57c != 0)) { ...émettre... }
     DAT_00a2c488 = -2;
 }

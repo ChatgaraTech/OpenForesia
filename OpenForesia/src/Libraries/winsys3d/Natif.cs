@@ -13,8 +13,14 @@
 //
 //     etape 1   `DrawOTag` en C#, tout le reste natif                 FAIT le 2026-09-22
 //     etape 2   + `FUN_00a13400`, le repartiteur de primitives        FAIT le 2026-09-22
-//     etape 3   + `FUN_00a0cdd0`, puis le consommateur `FUN_00a0cd20`   <- la suite
-//     etape 4   les 48 appelees du repartiteur, par familles de forme
+//     etape 3   + `FUN_00a0cdd0`, puis le consommateur `FUN_00a0cd20` FAIT le 2026-09-23
+//     etape 4   les 42 primitives GPU du repartiteur, six familles      FAIT le 2026-09-23
+//     etape 5   les 5 opcodes 0xe*/0xf9 : rejeux, sprite tourne, fond  FAIT le 2026-09-23
+//     etape 6   les 6 appelees de `DrawOTag` : cache de textures, texte FAIT le 2026-09-23
+//     etape 7   l'interieur du cache de textures et la liaison        FAIT le 2026-09-23
+//     etape 8   le chargement des textures et le qsort de la CRT     FAIT le 2026-09-23
+//     etape 9   le constructeur `dde0` (752) et ses 15 producteurs  <- la suite
+//     etape 10  la reconstruction `c4f0` et ses producteurs
 //     ...       jusqu'a ce que plus rien n'appelle ici, et ce fichier disparait
 //
 // **Ce fichier est un echafaudage, pas une transcription.** Chaque entree qu'on y ajoute est une
@@ -92,38 +98,9 @@ internal static unsafe class Winsys3dNatif
     // LA DETTE — un corps par ligne, chacun encore natif.
     // ----------------------------------------------------------------------------------------
 
-    /// <summary>
-    /// winsys3d.c FUN_00a26490 en 0x00a26490 — NON PORTE — appele par `DrawOTag` juste avant le premier
-    /// parcours de l'OT, sans argument. C'est l'ouverture de la passe de textures.
-    /// </summary>
-    internal static void Fun_00a26490()
-        => ((delegate* unmanaged[Stdcall]<void>)At(0x00a26490))();
-
-    /// <summary>
-    /// winsys3d.c FUN_00a26b20 en 0x00a26b20 — NON PORTE (217 lignes) — appele sur chaque nœud de l'OT dont
-    /// l'octet de poids fort est non nul, pendant la passe de textures.
-    /// </summary>
-    internal static void Fun_00a26b20(uint* noeud)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a26b20))(noeud);
-
-    /// <summary>winsys3d.c FUN_00a027a0 en 0x00a027a0 — NON PORTE — ferme la passe de textures.</summary>
-    internal static void Fun_00a027a0()
-        => ((delegate* unmanaged[Stdcall]<void>)At(0x00a027a0))();
-
-    /// <summary>winsys3d.c FUN_00a26f20 en 0x00a26f20 — NON PORTE (111 lignes) — la suit immediatement.</summary>
-    internal static void Fun_00a26f20()
-        => ((delegate* unmanaged[Stdcall]<void>)At(0x00a26f20))();
-
     // `FUN_00a13400`, le repartiteur de primitives, EST PORTE depuis le 2026-09-22 —
     // `CheminAffichage.RejouerNoeud`. Ce sont ses 48 appelees qui sont listees plus bas.
 
-    /// <summary>winsys3d.c FUN_00a027e0 en 0x00a027e0 — NON PORTE — ferme le second parcours.</summary>
-    internal static void Fun_00a027e0()
-        => ((delegate* unmanaged[Stdcall]<void>)At(0x00a027e0))();
-
-    /// <summary>winsys3d.c FUN_00a02820 en 0x00a02820 — NON PORTE (25 lignes) — la queue de l'image.</summary>
-    internal static void Fun_00a02820()
-        => ((delegate* unmanaged[Stdcall]<void>)At(0x00a02820))();
     // ------------------------------------------------------------------------------------------
     // LES 48 APPELEES DU REPARTITEUR `FUN_00a13400`, porte le 2026-09-22.
     //
@@ -132,195 +109,50 @@ internal static unsafe class Winsys3dNatif
     // `FUN_00a133e0`, qui en prennent trois (`ret 0Ch`).
     // ------------------------------------------------------------------------------------------
 
-    /// <summary>winsys3d.c FUN_00a0cdd0 en 0x00a0cdd0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0cdd0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0cdd0))(p);
+    // `FUN_00a0cdd0` EST PORTE depuis le 2026-09-23 — `CheminAffichage.RejouerPaquet`, avec le
+    // consommateur `FUN_00a0cd20` (`RejouerPaquetCourant`). Ses deux appelees suivent.
+    //
+    // FAMILLE 1 (`CIVIVCIIIVR`) PORTEE le 2026-09-23 — `Primitives.cs` : les neuf primitives
+    // plates en dessin immediat, e580 e6a0 e7f0 ef40 f3f0 10690 10b60 10ca0 111c0. Leur appelee
+    // commune `FUN_00a03db0` est portee avec elles (`ChoisirMelange`).
+    //
+    // FAMILLE 2 (`CIICRCIIVVR`) PORTEE le 2026-09-23 — `Primitives.cs` : les sept texturees
+    // semi-transparentes brutes, 118e0 11cd0 12190 126d0 12ac0 12e60 13220. Elles appellent
+    // `FUN_00a27880` (plus haut) et `FUN_00a03c80` (ci-dessous).
+    //
+    // FAMILLES 3 a 6 PORTEES le 2026-09-23 — `Primitives.cs` : les opaques brutes (7), les
+    // modulees semi-transparentes (5) et opaques (5), les Gouraud (9). Plus aucune primitive GPU
+    // ne passe par ici : 42 des 47 cas du repartiteur sont en C#.
+    //
+    // ETAPE 5 FAITE le 2026-09-23 — les cinq dernieres appelees du repartiteur : les rejeux
+    // `FUN_00a0e000`, `FUN_00a133e0`, `FUN_00a0e040` (`CheminAffichage.cs`), le sprite tourne
+    // `FUN_00a0e0c0` (`Primitives.SpriteTourne`) et le fond en tuiles `FUN_00a142a0`
+    // (`FondTuiles.cs`). **Le repartiteur n'appelle plus rien ici.** Ce qui reste plus bas est
+    // appele par les corps portes : la liaison de texture, le melange selon `abr`, et les deux
+    // constructeurs de paquets, porte d'entree des producteurs.
 
-    /// <summary>winsys3d.c FUN_00a0e000 en 0x00a0e000 — NON PORTE. `ret 12`.</summary>
-    internal static void Fun_00a0e000(uint a, uint b, int c)
-        => ((delegate* unmanaged[Stdcall]<uint, uint, int, void>)At(0x00a0e000))(a, b, c);
+    /// <summary>
+    /// winsys3d.c FUN_00a0dde0 en 0x00a0dde0 — NON PORTE (81 lignes, ordinal 752). `ret 0Ch`, trois
+    /// arguments. Le CONSTRUCTEUR de paquets : aiguille sur l'un des producteurs du tampon de
+    /// commandes, puis pose le bit 31 du premier mot du descripteur (« construit »). Appele par
+    /// `CheminAffichage.ConstruireEtRejouer` quand ce bit est nul.
+    /// </summary>
+    internal static void Fun_00a0dde0(uint* descripteur, uint a, int b)
+        => ((delegate* unmanaged[Stdcall]<uint*, uint, int, void>)At(0x00a0dde0))(descripteur, a, b);
 
-    /// <summary>winsys3d.c FUN_00a0e040 en 0x00a0e040 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0e040(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0e040))(p);
+    // ------------------------------------------------------------------------------------------
+    // LES APPELEES DU CACHE DE TEXTURES (`CacheTextures.cs`, 2026-09-23). Arites lues sur les `ret`
+    // et recoupees aux sites d'appel ; TROIS `__thiscall` sur `DAT_012141d4` que Ghidra ne montre
+    // pas (`mov ecx,[12141D4h]` avant chaque `call`), et UN `cdecl` (`add esp,10h` apres).
+    // ------------------------------------------------------------------------------------------
 
-    /// <summary>winsys3d.c FUN_00a0e0c0 en 0x00a0e0c0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0e0c0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0e0c0))(p);
 
-    /// <summary>winsys3d.c FUN_00a0e580 en 0x00a0e580 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0e580(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0e580))(p);
 
-    /// <summary>winsys3d.c FUN_00a0e6a0 en 0x00a0e6a0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0e6a0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0e6a0))(p);
+    /// <summary>
+    /// winsys3d.c FUN_00a0c4f0 en 0x00a0c4f0 — NON PORTE (259 lignes). `ret 4`, appele par
+    /// `RejouerPaquet` quand le descripteur du paquet ne vaut pas -1 : (re)construit le paquet.
+    /// </summary>
+    internal static void Fun_00a0c4f0(uint* p)
+        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0c4f0))(p);
 
-    /// <summary>winsys3d.c FUN_00a0e7f0 en 0x00a0e7f0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0e7f0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0e7f0))(p);
-
-    /// <summary>winsys3d.c FUN_00a0e970 en 0x00a0e970 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0e970(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0e970))(p);
-
-    /// <summary>winsys3d.c FUN_00a0eaf0 en 0x00a0eaf0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0eaf0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0eaf0))(p);
-
-    /// <summary>winsys3d.c FUN_00a0ecf0 en 0x00a0ecf0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0ecf0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0ecf0))(p);
-
-    /// <summary>winsys3d.c FUN_00a0ef40 en 0x00a0ef40 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0ef40(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0ef40))(p);
-
-    /// <summary>winsys3d.c FUN_00a0f090 en 0x00a0f090 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0f090(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0f090))(p);
-
-    /// <summary>winsys3d.c FUN_00a0f260 en 0x00a0f260 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0f260(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0f260))(p);
-
-    /// <summary>winsys3d.c FUN_00a0f3f0 en 0x00a0f3f0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0f3f0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0f3f0))(p);
-
-    /// <summary>winsys3d.c FUN_00a0f570 en 0x00a0f570 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0f570(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0f570))(p);
-
-    /// <summary>winsys3d.c FUN_00a0f780 en 0x00a0f780 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0f780(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0f780))(p);
-
-    /// <summary>winsys3d.c FUN_00a0f940 en 0x00a0f940 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0f940(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0f940))(p);
-
-    /// <summary>winsys3d.c FUN_00a0fb40 en 0x00a0fb40 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0fb40(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0fb40))(p);
-
-    /// <summary>winsys3d.c FUN_00a0fdc0 en 0x00a0fdc0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0fdc0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0fdc0))(p);
-
-    /// <summary>winsys3d.c FUN_00a0ff50 en 0x00a0ff50 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a0ff50(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a0ff50))(p);
-
-    /// <summary>winsys3d.c FUN_00a101c0 en 0x00a101c0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a101c0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a101c0))(p);
-
-    /// <summary>winsys3d.c FUN_00a104c0 en 0x00a104c0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a104c0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a104c0))(p);
-
-    /// <summary>winsys3d.c FUN_00a10690 en 0x00a10690 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a10690(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a10690))(p);
-
-    /// <summary>winsys3d.c FUN_00a107e0 en 0x00a107e0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a107e0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a107e0))(p);
-
-    /// <summary>winsys3d.c FUN_00a109c0 en 0x00a109c0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a109c0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a109c0))(p);
-
-    /// <summary>winsys3d.c FUN_00a10b60 en 0x00a10b60 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a10b60(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a10b60))(p);
-
-    /// <summary>winsys3d.c FUN_00a10ca0 en 0x00a10ca0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a10ca0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a10ca0))(p);
-
-    /// <summary>winsys3d.c FUN_00a10df0 en 0x00a10df0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a10df0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a10df0))(p);
-
-    /// <summary>winsys3d.c FUN_00a11000 en 0x00a11000 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a11000(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a11000))(p);
-
-    /// <summary>winsys3d.c FUN_00a111c0 en 0x00a111c0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a111c0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a111c0))(p);
-
-    /// <summary>winsys3d.c FUN_00a11310 en 0x00a11310 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a11310(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a11310))(p);
-
-    /// <summary>winsys3d.c FUN_00a11520 en 0x00a11520 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a11520(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a11520))(p);
-
-    /// <summary>winsys3d.c FUN_00a116e0 en 0x00a116e0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a116e0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a116e0))(p);
-
-    /// <summary>winsys3d.c FUN_00a118e0 en 0x00a118e0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a118e0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a118e0))(p);
-
-    /// <summary>winsys3d.c FUN_00a11a90 en 0x00a11a90 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a11a90(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a11a90))(p);
-
-    /// <summary>winsys3d.c FUN_00a11cd0 en 0x00a11cd0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a11cd0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a11cd0))(p);
-
-    /// <summary>winsys3d.c FUN_00a11ec0 en 0x00a11ec0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a11ec0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a11ec0))(p);
-
-    /// <summary>winsys3d.c FUN_00a12190 en 0x00a12190 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a12190(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a12190))(p);
-
-    /// <summary>winsys3d.c FUN_00a12350 en 0x00a12350 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a12350(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a12350))(p);
-
-    /// <summary>winsys3d.c FUN_00a126d0 en 0x00a126d0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a126d0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a126d0))(p);
-
-    /// <summary>winsys3d.c FUN_00a128d0 en 0x00a128d0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a128d0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a128d0))(p);
-
-    /// <summary>winsys3d.c FUN_00a12ac0 en 0x00a12ac0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a12ac0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a12ac0))(p);
-
-    /// <summary>winsys3d.c FUN_00a12c70 en 0x00a12c70 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a12c70(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a12c70))(p);
-
-    /// <summary>winsys3d.c FUN_00a12e60 en 0x00a12e60 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a12e60(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a12e60))(p);
-
-    /// <summary>winsys3d.c FUN_00a13010 en 0x00a13010 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a13010(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a13010))(p);
-
-    /// <summary>winsys3d.c FUN_00a13220 en 0x00a13220 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a13220(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a13220))(p);
-
-    /// <summary>winsys3d.c FUN_00a133e0 en 0x00a133e0 — NON PORTE. `ret 12`.</summary>
-    internal static void Fun_00a133e0(uint a, uint b, int c)
-        => ((delegate* unmanaged[Stdcall]<uint, uint, int, void>)At(0x00a133e0))(a, b, c);
-
-    /// <summary>winsys3d.c FUN_00a142a0 en 0x00a142a0 — NON PORTE. `ret 4`.</summary>
-    internal static void Fun_00a142a0(uint* p)
-        => ((delegate* unmanaged[Stdcall]<uint*, void>)At(0x00a142a0))(p);
 }

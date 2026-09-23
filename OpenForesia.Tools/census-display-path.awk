@@ -188,7 +188,7 @@ END {
     printf "| `DAT_011be7a8` | la zone de sommets, dans le meme bloc | %d |\n", ng["DAT_011be7a8"]
     printf "| `DAT_00a2c480` | l'etat de rendu courant | %d |\n", ng["DAT_00a2c480"]
     printf "| `DAT_00a2c484` | memo d'etat | %d |\n", ng["DAT_00a2c484"]
-    printf "| `DAT_00a2c488` | le type de primitive courant | %d |\n", ng["DAT_00a2c488"]
+    printf "| `DAT_00a2c488` | la page de texture liee (-1, -2 : aucune) | %d |\n", ng["DAT_00a2c488"]
     printf "| `DAT_00a2c48c` | memo d'etat | %d |\n", ng["DAT_00a2c48c"]
     printf "| `DAT_00a2c578` | la derniere commande d'etat ecrite | %d |\n", ng["DAT_00a2c578"]
     printf "| `DAT_00a2c57c` | son argument | %d |\n", ng["DAT_00a2c57c"]

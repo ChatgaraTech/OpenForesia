@@ -100,7 +100,7 @@ exportés**, donc aucun `[DllImport]` ne les atteint. On les appelle par adresse
 l'arité **prouvée au désassembleur** — un `call` sans `add esp, N` derrière prouve à la fois le
 nombre d'arguments et la convention `stdcall`.
 
-**Les quatre garde-fous, qui ne sont pas négociables :**
+**Les cinq garde-fous, qui ne sont pas négociables :**
 
 1. **Une adresse aliasée ne doit jamais exister en double côté C#.** Tant qu'un seul corps reste
    natif, une copie serait morte à la seconde où le natif écrirait la vraie.
@@ -111,6 +111,17 @@ nombre d'arguments et la convention `stdcall`.
 4. **Le jour où la DLL part entièrement**, `Data.cs` se remplace par de vraies variables d'un seul
    geste, sans toucher aux appelants — c'est pour cela que tout passe par des propriétés `ref` et
    que personne ne manipule la base directement.
+
+5. **Compter les indirections sur le désassemblage, pas sur une expression qui marche ailleurs.**
+   Une globale aliasée nomme une variable *à* une adresse : `*(T*)At(va)`, une seule indirection.
+   Une valeur *dérivée* en demande une de plus, et rien ne le signale — les deux compilent et les
+   deux ont le même type. C'est le premier plantage du chantier, le 2026-09-22 : `DeviceVtable`
+   était écrit `*(void***)At(0x011be760)`, copié depuis `Options.cs` où la même expression est
+   juste parce qu'elle s'applique à la **valeur** que rend l'ordinal 750. Appliquée à l'**adresse**
+   de la globale, elle rendait le device lui-même, et `vtable[0x2c]` lisait à `device + 0xb0` —
+   dans l'objet. Le binaire donne la réponse en trois temps : `mov ecx,[11BE760h]` (le device),
+   `mov eax,[ecx]` (sa vtable), `call [eax+0B0h]` (la case). Deux `mov` avant le `call` = deux
+   indirections.
 
 **Ceci n'autorise pas l'aliasing par confort.** Une DLL qui se porte d'un bloc se porte d'un bloc,
 avec ses propres globales : c'est le cas de `wsyskern`, et c'est resté le cas par défaut. Le

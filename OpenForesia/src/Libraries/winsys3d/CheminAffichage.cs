@@ -8,9 +8,10 @@
 //
 // C'est le seul `[DllImport]` du perimetre de `Documentation/Etat/CheminAffichage.md`, et c'est
 // donc la porte : 157 corps et 12 408 lignes sont derriere lui. Il est porte ici **en premier et
-// seul**, avec ses sept appelees encore natives (`Natif.cs`) et ses globales aliasees sur le
-// `.data` reel de la DLL (`Data.cs`). Le jeu doit afficher exactement la meme chose qu'avant —
-// c'est la seule verification qui compte, et elle est disponible des maintenant.
+// seul**, avec ses sept appelees alors natives (`Natif.cs` ; toutes portees depuis, voir
+// `DrawOTag`) et ses globales aliasees sur le `.data` reel de la DLL (`Data.cs`). Le jeu doit
+// afficher exactement la meme chose qu'avant — c'est la seule verification qui compte, et elle
+// est disponible des maintenant.
 //
 // ============================================================================================
 // CE QUE `DrawOTag` FAIT, EN UNE IMAGE
@@ -80,10 +81,10 @@ internal static unsafe class Winsys3dCheminAffichage
     /// Ghidra: winsys3d.c FUN_00a061b0 @ 0x00a061b0 (ordinal 701) — `DrawOTag` : dessine une
     /// image entiere a partir de la table d'ordonnancement que le jeu a remplie.
     ///
-    /// Les sept appelees sont encore natives (`Natif.cs`) et les globales sont celles de la DLL
-    /// (`Data.cs`) : ce corps-ci est donc interchangeable avec l'original, et c'est voulu — il
-    /// doit produire la meme image avant qu'on porte la piece suivante,
-    /// <c>FUN_00a13400</c>.
+    /// Ses sept appelees sont toutes en C# depuis le 2026-09-23 : le cache de textures
+    /// (`CacheTextures.cs`), le repartiteur (<see cref="RejouerNoeud"/>) et le texte a l'ecran
+    /// (`TexteEcran.cs`). Les globales restent celles de la DLL (`Data.cs`), et ce que ces
+    /// appelees appellent a leur tour est encore en partie natif (`Natif.cs`).
     /// </summary>
     internal static void DrawOTag(uint* ot)
     {
@@ -95,7 +96,7 @@ internal static unsafe class Winsys3dCheminAffichage
         // de porter `DrawOTag` sans les producteurs tant que les globales etaient dupliquees :
         // ils auraient relu des memos que plus personne ne remettait a -1.
         Winsys3dData.Memo_00a2c484 = -1;
-        Winsys3dData.TypePrimitif_00a2c488 = -1;
+        Winsys3dData.PageTexture_00a2c488 = -1;
         Winsys3dData.Memo_00a2c48c = -1;
 
         // Le double tampon de l'arene de travail : 0 <-> 0x40000.
@@ -114,16 +115,16 @@ internal static unsafe class Winsys3dCheminAffichage
         Winsys3dData.CompteurImages_011be75c++;
 
         // ---- PASSE 1 : les textures de toute la scene, avant le moindre triangle ----
-        Winsys3dNatif.Fun_00a26490();
+        Winsys3dCacheTextures.OuvrirReleve();
         for (uint* noeud = ot; ; )
         {
-            if ((byte)(*noeud >> 24) != 0) Winsys3dNatif.Fun_00a26b20(noeud);
+            if ((byte)(*noeud >> 24) != 0) Winsys3dCacheTextures.ReleverNoeud(noeud);
             uint lien = *noeud & LienMasque;
             if (lien == LienFin) break;
             noeud = (uint*)lien;
         }
-        Winsys3dNatif.Fun_00a027a0();
-        Winsys3dNatif.Fun_00a26f20();
+        Winsys3dTexteEcran.LierPoliceFenetres();
+        Winsys3dCacheTextures.SatisfaireDemandes();
 
         // ---- l'effacement, puis BeginScene ----
         void** vtable = Winsys3dData.DeviceVtable;
@@ -148,13 +149,13 @@ internal static unsafe class Winsys3dCheminAffichage
             if (lien == LienFin) break;
             noeud = (uint*)lien;
         }
-        Winsys3dNatif.Fun_00a027e0();
+        Winsys3dTexteEcran.DessinerFenetres();
 
         vtable = Winsys3dData.DeviceVtable;
         device = Winsys3dData.Device_011be760;
         ((delegate* unmanaged[Thiscall]<void*, void>)vtable[Device_EndScene])(device);
 
-        Winsys3dNatif.Fun_00a02820();
+        Winsys3dTexteEcran.EcrireTextesGdi();
 
         // Le rappel de fin d'image, sans argument, s'il a ete pose.
         nint rappel = Winsys3dData.RappelFinImage_011be754;
@@ -229,84 +230,84 @@ internal static unsafe class Winsys3dCheminAffichage
             switch (cle)
             {
             case 0x20: case 0x21: case 0x22: case 0x23: 
-                Winsys3dNatif.Fun_00a0ef40(noeud); noeud += 4; restant -= 4; break;
+                Winsys3dPrimitives.PolyF3((byte*)noeud); noeud += 4; restant -= 4; break;
             case 0x24: 
-                Winsys3dNatif.Fun_00a0f090(noeud); noeud += 7; restant -= 7; break;
+                Winsys3dPrimitives.PolyFT3((byte*)noeud); noeud += 7; restant -= 7; break;
             case 0x25: 
-                Winsys3dNatif.Fun_00a0f260(noeud); noeud += 7; restant -= 7; break;
+                Winsys3dPrimitives.PolyFT3Brut((byte*)noeud); noeud += 7; restant -= 7; break;
             case 0x26: 
-                Winsys3dNatif.Fun_00a116e0(noeud); noeud += 7; restant -= 7; break;
+                Winsys3dPrimitives.PolyFT3Semi((byte*)noeud); noeud += 7; restant -= 7; break;
             case 0x27: 
-                Winsys3dNatif.Fun_00a118e0(noeud); noeud += 7; restant -= 7; break;
+                Winsys3dPrimitives.PolyFT3SemiBrut((byte*)noeud); noeud += 7; restant -= 7; break;
             case 0x28: case 0x29: case 0x2a: case 0x2b: 
-                Winsys3dNatif.Fun_00a0f3f0(noeud); noeud += 5; restant -= 5; break;
+                Winsys3dPrimitives.PolyF4((byte*)noeud); noeud += 5; restant -= 5; break;
             case 0x2c: 
-                Winsys3dNatif.Fun_00a0f570(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyFT4((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x2d: 
-                Winsys3dNatif.Fun_00a0f780(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyFT4Brut((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x2e: 
-                Winsys3dNatif.Fun_00a11a90(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyFT4Semi((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x2f: 
-                Winsys3dNatif.Fun_00a11cd0(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyFT4SemiBrut((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x30: case 0x31: case 0x32: case 0x33: 
-                Winsys3dNatif.Fun_00a0f940(noeud); noeud += 6; restant -= 6; break;
+                Winsys3dPrimitives.PolyG3((byte*)noeud); noeud += 6; restant -= 6; break;
             case 0x34: 
-                Winsys3dNatif.Fun_00a0fb40(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyGT3((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x35: 
-                Winsys3dNatif.Fun_00a0fdc0(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyGT3Brut((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x36: 
-                Winsys3dNatif.Fun_00a11ec0(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyGT3Semi((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x37: 
-                Winsys3dNatif.Fun_00a12190(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.PolyGT3SemiBrut((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x38: case 0x39: case 0x3a: case 0x3b: 
-                Winsys3dNatif.Fun_00a0ff50(noeud); noeud += 8; restant -= 8; break;
+                Winsys3dPrimitives.PolyG4((byte*)noeud); noeud += 8; restant -= 8; break;
             case 0x3c: 
-                Winsys3dNatif.Fun_00a101c0(noeud); noeud += 0xc; restant -= 0xc; break;
+                Winsys3dPrimitives.PolyGT4((byte*)noeud); noeud += 0xc; restant -= 0xc; break;
             case 0x3d: 
-                Winsys3dNatif.Fun_00a104c0(noeud); noeud += 0xc; restant -= 0xc; break;
+                Winsys3dPrimitives.PolyGT4Brut((byte*)noeud); noeud += 0xc; restant -= 0xc; break;
             case 0x3e: 
-                Winsys3dNatif.Fun_00a12350(noeud); noeud += 0xc; restant -= 0xc; break;
+                Winsys3dPrimitives.PolyGT4Semi((byte*)noeud); noeud += 0xc; restant -= 0xc; break;
             case 0x3f: 
-                Winsys3dNatif.Fun_00a126d0(noeud); noeud += 0xc; restant -= 0xc; break;
+                Winsys3dPrimitives.PolyGT4SemiBrut((byte*)noeud); noeud += 0xc; restant -= 0xc; break;
             case 0x40: case 0x41: case 0x42: case 0x43: 
             case 0x44: case 0x45: case 0x46: case 0x47: 
-                Winsys3dNatif.Fun_00a0e580(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.LineF2((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x48: case 0x49: case 0x4a: case 0x4b: 
-                Winsys3dNatif.Fun_00a0e6a0(noeud); noeud += 5; restant -= 5; break;
+                Winsys3dPrimitives.LineF3((byte*)noeud); noeud += 5; restant -= 5; break;
             case 0x4c: case 0x4d: case 0x4e: case 0x4f: 
-                Winsys3dNatif.Fun_00a0e7f0(noeud); noeud += 6; restant -= 6; break;
+                Winsys3dPrimitives.LineF4((byte*)noeud); noeud += 6; restant -= 6; break;
             case 0x50: case 0x51: case 0x52: case 0x53: 
             case 0x54: case 0x55: case 0x56: case 0x57: 
-                Winsys3dNatif.Fun_00a0e970(noeud); noeud += 4; restant -= 4; break;
+                Winsys3dPrimitives.LineG2((byte*)noeud); noeud += 4; restant -= 4; break;
             case 0x58: case 0x59: case 0x5a: case 0x5b: 
-                Winsys3dNatif.Fun_00a0eaf0(noeud); noeud += 7; restant -= 7; break;
+                Winsys3dPrimitives.LineG3((byte*)noeud); noeud += 7; restant -= 7; break;
             case 0x5c: case 0x5d: case 0x5e: case 0x5f: 
-                Winsys3dNatif.Fun_00a0ecf0(noeud); noeud += 9; restant -= 9; break;
+                Winsys3dPrimitives.LineG4((byte*)noeud); noeud += 9; restant -= 9; break;
             case 0x60: case 0x61: case 0x62: case 0x63: 
-                Winsys3dNatif.Fun_00a10690(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Tile((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x68: case 0x69: case 0x6a: case 0x6b: 
             case 0x6c: case 0x6d: case 0x6e: case 0x6f: 
-                Winsys3dNatif.Fun_00a10b60(noeud); noeud += 2; restant -= 2; break;
+                Winsys3dPrimitives.Tile1((byte*)noeud); noeud += 2; restant -= 2; break;
             case 0x70: case 0x71: case 0x72: case 0x73: 
-                Winsys3dNatif.Fun_00a10ca0(noeud); noeud += 2; restant -= 2; break;
+                Winsys3dPrimitives.Tile8((byte*)noeud); noeud += 2; restant -= 2; break;
             case 0x74: 
-                Winsys3dNatif.Fun_00a10df0(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt8((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x75: 
-                Winsys3dNatif.Fun_00a11000(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt8Brut((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x76: 
-                Winsys3dNatif.Fun_00a128d0(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt8Semi((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x77: 
-                Winsys3dNatif.Fun_00a12ac0(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt8SemiBrut((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x78: case 0x79: case 0x7a: case 0x7b: 
-                Winsys3dNatif.Fun_00a111c0(noeud); noeud += 2; restant -= 2; break;
+                Winsys3dPrimitives.Tile16((byte*)noeud); noeud += 2; restant -= 2; break;
             case 0x7c: 
-                Winsys3dNatif.Fun_00a11310(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt16((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x7d: 
-                Winsys3dNatif.Fun_00a11520(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt16Brut((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x7e: 
-                Winsys3dNatif.Fun_00a12c70(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt16Semi((byte*)noeud); noeud += 3; restant -= 3; break;
             case 0x7f: 
-                Winsys3dNatif.Fun_00a12e60(noeud); noeud += 3; restant -= 3; break;
+                Winsys3dPrimitives.Sprt16SemiBrut((byte*)noeud); noeud += 3; restant -= 3; break;
 
             // ---- le pavage des sprites : le seul cas qui ne soit pas un simple appel ----
             case 0x64: case 0x65: case 0x66: case 0x67:
@@ -396,35 +397,35 @@ internal static unsafe class Winsys3dCheminAffichage
             // ---- les opcodes qui posent une matrice puis RENDENT LA MAIN ----
             case 0xe3:
                 PoserMatriceSiPresente(noeud, 8);
-                Winsys3dNatif.Fun_00a0cdd0(noeud + 2);
+                RejouerPaquet(noeud + 2);
                 return;
 
             case 0xe4:
                 PoserMatriceSiPresente(noeud, 8);
-                Winsys3dNatif.Fun_00a0cdd0(noeud + 2);
+                RejouerPaquet(noeud + 2);
                 return;
 
             case 0xe5:
-                Winsys3dNatif.Fun_00a0e0c0(noeud + 2);
+                Winsys3dPrimitives.SpriteTourne((byte*)(noeud + 2));
                 return;
 
             case 0xe6:
                 PoserMatriceSiPresente(noeud, 5);
-                Winsys3dNatif.Fun_00a0e000(noeud[2], noeud[3], (short)noeud[4]);
+                ConstruireEtRejouer((uint*)noeud[2], noeud[3], (short)noeud[4]);
                 return;
 
             case 0xe7:
                 PoserMatriceSiPresente(noeud, 5);
-                Winsys3dNatif.Fun_00a133e0(noeud[2], noeud[3], (short)noeud[4]);
+                RejouerPaquetConstruit((uint*)noeud[2], noeud[3], (short)noeud[4]);
                 return;
 
             case 0xe8:
-                Winsys3dNatif.Fun_00a142a0(noeud + 2);
+                Winsys3dFondTuiles.DessinerFond((byte*)(noeud + 2));
                 return;
 
             case 0xf9:
                 PoserMatriceSiPresente(noeud, 8);
-                Winsys3dNatif.Fun_00a0e040(noeud + 2);
+                RejouerListe(noeud + 2);
                 return;
 
             // ---- la fin de paquet, et les deux opcodes de vue ----
@@ -472,10 +473,10 @@ internal static unsafe class Winsys3dCheminAffichage
     {
         switch (codeBrut & 3)
         {
-            case 0: Winsys3dNatif.Fun_00a107e0(noeud); break;
-            case 1: Winsys3dNatif.Fun_00a109c0(noeud); break;
-            case 2: Winsys3dNatif.Fun_00a13010(noeud); break;
-            default: Winsys3dNatif.Fun_00a13220(noeud); break;
+            case 0: Winsys3dPrimitives.Sprt((byte*)noeud); break;
+            case 1: Winsys3dPrimitives.SprtBrut((byte*)noeud); break;
+            case 2: Winsys3dPrimitives.SprtSemi((byte*)noeud); break;
+            default: Winsys3dPrimitives.SprtSemiBrut((byte*)noeud); break;
         }
     }
 
@@ -508,5 +509,166 @@ internal static unsafe class Winsys3dCheminAffichage
 
         ((delegate* unmanaged[Thiscall]<void*, float*, void>)
             Winsys3dData.DeviceVtable[0x6c / 4])(Winsys3dData.Device_011be760, m);
+    }
+
+    // ============================================================================================
+    // LE CONSOMMATEUR DU TAMPON DE COMMANDES — `FUN_00a0cdd0` et `FUN_00a0cd20`, portes le 2026-09-23
+    //
+    // C'est ici que le paquet ecrit par les producteurs devient des appels au device. Les deux
+    // corps sont verifies au desassembleur (0x00a0cd20, 0x9e octets ; 0x00a0cdd0, 0x24 octets).
+    //
+    // Le paquet : un en-tete de 8 octets, puis des enregistrements de QUATRE mots
+    // `[opcode][arg0][arg1][arg2]` a partir du mot 2. La marche s'arrete quand l'opcode SUIVANT
+    // vaut -1 — la sentinelle que chaque producteur pose sans avancer le curseur.
+    //
+    // --------------------------------------------------------------------------------------------
+    // CE QUE GHIDRA NE DONNE PAS
+    //
+    // **`FUN_00a27880` est un `__thiscall`, et son `this` est `DAT_012141d4`.** Le site d'appel
+    // de Ghidra montre quatre arguments et rien d'autre ; le binaire charge
+    // `mov ecx,[12141D4h]` juste avant le `call` (0x00a0cd6d), et le corps de l'appele lit
+    // `[ecx+eax*2+80h]` d'entree de jeu. Ghidra le sait d'ailleurs a la definition
+    // (`undefined4 __thiscall FUN_00a27880(int param_1, ...)`, cinq parametres) mais l'oublie a
+    // chacun des 30 sites d'appel. Le `ret 10h` confirme quatre arguments empiles.
+    //
+    // **L'opcode -3 ne recharge pas le paquet.** La table de sauts (0x00a0cdc0, quatre entrees
+    // pour `opcode + 5` dans 0..3) envoie -3 sur 0x00a0cdae, APRES le `mov eax,[11BE7ACh]` de la
+    // queue de boucle ; les trois autres cas passent par 0x00a0cda9 et relisent la globale. Sans
+    // consequence tant que rien n'ecrit le paquet courant pendant un appel au device — mais c'est
+    // ce que fait l'original, et c'est ce qui est transcrit.
+    // ============================================================================================
+
+    private const int Device_LierTexture = 0x64 / 4;
+    private const int Device_ShadeMode = 0x8c / 4;
+    private const int Device_DrawPrimitive = 0xbc / 4;
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a0cdd0 @ 0x00a0cdd0 — rejoue le paquet de commandes que designe un
+    /// nœud de l'OT. Appele par <see cref="RejouerNoeud"/> pour les opcodes 0xe3 et 0xe4, avec
+    /// <c>noeud + 2</c>.
+    ///
+    /// Le mot 2 de <paramref name="p"/> pointe sur un descripteur de deux mots : <c>[0]</c> le
+    /// paquet, <c>[1]</c> -1 quand il est pret. Autre chose que -1 et le paquet est d'abord
+    /// (re)construit par <c>FUN_00a0c4f0</c>, encore natif — avec <paramref name="p"/> lui-meme,
+    /// pas le descripteur (`push eax` a 0x00a0cdde, `eax` etant l'argument).
+    /// </summary>
+    internal static void RejouerPaquet(uint* p)
+    {
+        uint* descripteur = (uint*)p[2];
+        if ((int)descripteur[1] != -1) Winsys3dNatif.Fun_00a0c4f0(p);
+
+        Winsys3dData.PaquetCourant_011be7ac = (uint*)descripteur[0];
+        RejouerPaquetCourant();
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a0cd20 @ 0x00a0cd20 — le consommateur : deroule le paquet courant
+    /// (<c>DAT_011be7ac</c>) et fait un appel au device par enregistrement.
+    ///
+    /// <list type="table">
+    /// <item><c>-5</c> : <c>device[0x64](0)</c>, delie la texture</item>
+    /// <item><c>-4</c> : <c>FUN_00a27880(arg0, arg2, 0, 0)</c> sur l'objet <c>DAT_012141d4</c></item>
+    /// <item><c>-3</c> : rien — un trou laisse expres</item>
+    /// <item><c>-2</c> : <c>device[0x8c](arg0)</c>, SetRenderState(SHADEMODE)</item>
+    /// <item>sinon : <c>device[0xbc](opcode, arg0, arg1, arg2, 0)</c> — un <c>DrawPrimitive</c>
+    /// serialise, <c>[type][format de sommet][sommets][nombre]</c></item>
+    /// </list>
+    /// </summary>
+    internal static void RejouerPaquetCourant()
+    {
+        uint* paquet = Winsys3dData.PaquetCourant_011be7ac;
+        if ((int)paquet[2] == -1) return;
+
+        // `i` est le mot de arg0 ; l'opcode est le mot d'avant. Le binaire compte en octets a
+        // partir de 0xc, soit le mot 3.
+        int i = 3;
+        do
+        {
+            uint opcode = paquet[i - 1];
+            switch (opcode)
+            {
+            case 0xfffffffb:
+                ((delegate* unmanaged[Thiscall]<void*, void*, void>)
+                    Winsys3dData.DeviceVtable[Device_LierTexture])(Winsys3dData.Device_011be760, null);
+                paquet = Winsys3dData.PaquetCourant_011be7ac;
+                break;
+
+            case 0xfffffffc:
+                Winsys3dCacheTextures.LierTexture(Winsys3dData.Objet_012141d4, paquet[i], paquet[i + 2], 0, 0);
+                paquet = Winsys3dData.PaquetCourant_011be7ac;
+                break;
+
+            case 0xfffffffd:
+                break;
+
+            case 0xfffffffe:
+                ((delegate* unmanaged[Thiscall]<void*, uint, void>)
+                    Winsys3dData.DeviceVtable[Device_ShadeMode])(Winsys3dData.Device_011be760, paquet[i]);
+                paquet = Winsys3dData.PaquetCourant_011be7ac;
+                break;
+
+            default:
+                ((delegate* unmanaged[Thiscall]<void*, uint, uint, void*, uint, uint, void>)
+                    Winsys3dData.DeviceVtable[Device_DrawPrimitive])(
+                        Winsys3dData.Device_011be760, opcode, paquet[i], (void*)paquet[i + 1], paquet[i + 2], 0);
+                paquet = Winsys3dData.PaquetCourant_011be7ac;
+                break;
+            }
+
+            i += 4;
+        } while ((int)paquet[i - 1] != -1);
+    }
+
+    // ============================================================================================
+    // LES TROIS AUTRES REJEUX — `FUN_00a0e000`, `FUN_00a133e0`, `FUN_00a0e040`, portes le 2026-09-23
+    //
+    // Meme consommateur, autre forme de descripteur : un seul mot, dont le **bit 31 dit « paquet
+    // construit »** et les 31 autres portent l'adresse du paquet. C'est le constructeur
+    // `FUN_00a0dde0` (ordinal 752, encore natif) qui pose le bit en construisant. Verifies au
+    // desassembleur (`cmp dword [esi],0 ; jl` a 0x00a0e005 ; `and 7FFFFFFFh` des deux cotes).
+    // ============================================================================================
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a0e000 @ 0x00a0e000 — construit le paquet si le bit 31 du
+    /// descripteur est nul, puis le rejoue. Opcode 0xe6 du repartiteur, et chaque element de
+    /// <see cref="RejouerListe"/>. `ret 0Ch` : trois arguments, les deux derniers ne servent qu'au
+    /// constructeur.
+    /// </summary>
+    internal static void ConstruireEtRejouer(uint* descripteur, uint a, int b)
+    {
+        if ((int)*descripteur >= 0) Winsys3dNatif.Fun_00a0dde0(descripteur, a, b);
+
+        Winsys3dData.PaquetCourant_011be7ac = (uint*)(*descripteur & 0x7fffffff);
+        RejouerPaquetCourant();
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a133e0 @ 0x00a133e0 — rejoue le paquet sans jamais le construire.
+    /// Opcode 0xe7. **`ret 0Ch` : trois arguments empiles, un seul lu** — Ghidra n'en declare
+    /// qu'un, le repartiteur en passe trois, et c'est le repartiteur qui a raison sur la pile.
+    /// </summary>
+    internal static void RejouerPaquetConstruit(uint* descripteur, uint a, int b)
+    {
+        Winsys3dData.PaquetCourant_011be7ac = (uint*)(*descripteur & 0x7fffffff);
+        RejouerPaquetCourant();
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a0e040 @ 0x00a0e040 — rejoue une LISTE de paquets. Opcode 0xf9.
+    ///
+    /// <c>p[2]</c> pointe sur une table dont le mot 0 est le nombre d'elements et les suivants des
+    /// decalages ; chaque descripteur est a <c>table[i] + p[3]</c>, et part vers
+    /// <see cref="ConstruireEtRejouer"/> avec <c>p[4]</c> et les quatre bits bas de son octet 2. Le
+    /// nombre est lu **une fois** (`ebx`, 0x00a0e04f) ; la table, la base et <c>p[4]</c> sont
+    /// relus a chaque tour, comme le binaire.
+    /// </summary>
+    internal static void RejouerListe(uint* p)
+    {
+        int nombre = *(int*)p[2];
+        for (int i = 1; i <= nombre; i++)
+        {
+            byte* descripteur = (byte*)(((uint*)p[2])[i] + p[3]);
+            ConstruireEtRejouer((uint*)descripteur, p[4], descripteur[2] & 0xf);
+        }
     }
 }
