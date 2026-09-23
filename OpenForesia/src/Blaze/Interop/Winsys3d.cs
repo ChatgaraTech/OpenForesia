@@ -44,8 +44,9 @@ internal static unsafe class Winsys3d
 
     // winsys3d.dll ordinal 756, confirmed against winsys3d.c (decompiled DLL source): builds
     // gamma-correction / RGB translation tables from a float multiplier (default 1.0f = 0x3f800000).
-    [DllImport("winsys3d.dll")]
-    internal static extern void CreateTranslationTables(float gamma);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/ChargementTextures.cs`, a cote des convertisseurs
+    // qui relisent ces tables.
+    internal static void CreateTranslationTables(float gamma) => Libraries.Winsys3dChargementTextures.CreateTranslationTables(gamma);
 
     // The following winsys3d.dll entry points are exported by ordinal only (no name in the DLL's
     // own export table). Their RVAs were resolved against winsys3d.dll's export directory and

@@ -556,6 +556,16 @@ internal static unsafe class Winsys3dData
     /// <summary>&amp;DAT_00acd078 — la table de couleurs du genre 2 (format 4-4-4-4).</summary>
     internal static ushort* CouleursGenre2_00acd078 => (ushort*)At(0x00acd078);
 
+    /// <summary>
+    /// &amp;DAT_00add078 — la MOITIE HAUTE de la table du genre 2 (`0x00acd078 + 0x10000`) : les
+    /// couleurs PS au bit 15 pose. Aucun corps ne la nomme ; la conversion l'atteint en indexant
+    /// la table du genre 2 par un mot de 16 bits. `CreateTranslationTables` l'ecrit sous ce nom.
+    /// </summary>
+    internal static ushort* CouleursGenre2Haute_00add078 => (ushort*)At(0x00add078);
+
+    /// <summary>_DAT_00a2c228 — le dernier gamma passe a `CreateTranslationTables`, en `float`.</summary>
+    internal static ref float GammaCourant_00a2c228 => ref *(float*)At(0x00a2c228);
+
     /// <summary>&amp;DAT_00b2d080 — l'ADRESSE d'une table de 256 octets : composante 5 bits (x 8) -> composante 8 bits de la palette DIB.</summary>
     internal static byte* Composantes_00b2d080 => (byte*)At(0x00b2d080);
 

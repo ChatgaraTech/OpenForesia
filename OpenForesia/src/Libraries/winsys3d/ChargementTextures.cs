@@ -459,4 +459,67 @@ internal static unsafe class Winsys3dChargementTextures
     private static void* CreerTexture()
         => ((delegate* unmanaged[Thiscall]<void*, void*>)
             Winsys3dData.DeviceVtable[Device_CreerTexture])(Winsys3dData.Device_011be760);
+
+    // ============================================================================================
+    // LES TABLES DE COULEURS — ordinal 756, `CreateTranslationTables` (2026-09-23), transcrit sur
+    // le desassemblage (`Legacy/Raw/Winsys3d/CreateTranslationTables.disasm.txt`) : Ghidra reutilise
+    // le parametre `float` comme compteur d'octets de la boucle, et le rend illisible.
+    // ============================================================================================
+
+    /// <summary>
+    /// Ghidra: winsys3d.c CreateTranslationTables @ 0x00a02f50 (ordinal 756) — si le gamma a change,
+    /// recalcule les tables que les convertisseurs ci-dessus relisent. `ret 4`.
+    ///
+    /// D'abord les 256 composantes corrigees (`Gamma` de `wsyskern`, pour `0 .. 255`), puis, pour
+    /// chaque couleur PS `i` de 1 a 0xffff — R = bits 0-4, G = 5-9, B = 10-14, chacun lu dans la table
+    /// a l'indice `composante * 8` :
+    ///
+    ///     genre 1 (0x00a8d078)   A = 7 | ~i bit 15..12, puis R, G, B sur 4 bits
+    ///     genre 0 (0x00aad078)   1-5-5-5, bit 15 toujours pose
+    ///     genre 2 (0x00acd078)   A = 0xf, R, G, B sur 4 bits — pour i &lt;= 0x7fff seulement
+    ///     genre 2 haut (0x00add078)   ((R8 + G8 + B8) / 3 &amp; 0xf0) &lt;&lt; 8 + 1, sur les composantes BRUTES
+    ///                                 (avant gamma, `add ecx,edx ; add ecx,ebp`) : un noir dont l'alpha
+    ///                                 est la luminosite — la semi-transparence PS emulee
+    ///
+    /// **La comparaison est celle du 387** (`fcomp` puis le bit C3) : un NaN d'un cote ou de
+    /// l'autre compte pour « egal », et rien n'est recalcule. L'entree 0 des quatre tables est
+    /// remise a 0.
+    /// </summary>
+    internal static void CreateTranslationTables(float gamma)
+    {
+        float precedent = Winsys3dData.GammaCourant_00a2c228;
+        if (gamma == precedent || float.IsNaN(gamma) || float.IsNaN(precedent)) return;
+
+        Winsys3dData.GammaCourant_00a2c228 = gamma;
+        ushort* genre1 = Winsys3dData.CouleursGenre1_00a8d078;
+        ushort* genre0 = Winsys3dData.Couleurs555_00aad078;
+        ushort* genre2 = Winsys3dData.CouleursGenre2_00acd078;
+        ushort* genre2Haute = Winsys3dData.CouleursGenre2Haute_00add078;
+        genre1[0] = 0;
+        genre0[0] = 0;
+        genre2[0] = 0;
+        genre2Haute[0] = 0;
+
+        byte* composantes = Winsys3dData.Composantes_00b2d080;
+        for (int v = 0; v < 0x100; v++) composantes[v] = Blaze.Wsyskern.Gamma(v, gamma);
+
+        for (int i = 1, octet = 0; octet < 0x1fffe; i++, octet += 2)
+        {
+            int indiceG = i >> 2 & 0xf8;
+            int indiceB = i >> 7 & 0xf8;
+            int indiceR = (i & 0x1f) << 3;
+            int g = composantes[indiceG];
+            int b = composantes[indiceB];
+            int r = composantes[indiceR];
+
+            int gb4 = b >> 4 & 0xf | g & 0xf0;
+            genre1[i] = (ushort)((0x700 | r & 0xf0) << 4 | ~i & 0xf000 | gb4);
+            genre0[i] = (ushort)((g & 0xf8 | (0xff00 | r & 0xf8) << 5) << 2 | b >> 3 & 0x1f);
+            if (octet < 0xfffe)
+            {
+                genre2[i] = (ushort)((0xff00 | r & 0xf0) << 4 | gb4);
+                genre2Haute[i] = (ushort)((((indiceB + indiceG + indiceR) / 3 & 0xf0) << 8) + 1);
+            }
+        }
+    }
 }

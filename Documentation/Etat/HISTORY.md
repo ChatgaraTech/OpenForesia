@@ -6,6 +6,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **`CreateTranslationTables` (756) est en C#** — les tables de couleurs des textures, dans
+  `ChargementTextures.cs`. `winsys3d` passe à 233 corps, 5 points d'entrée. **Pas encore exercé**
+- doc : `0x00add078` est la moitié haute de la table du genre 2 — la semi-transparence PS émulée
+  par l'alpha
+- doc : les polices (lot 11) testées en jeu par Vincent
+
 - feat : **les polices de `winsys3d` sont en C#** — `FntLoad` (710), `FntOpen` (668) et
   `Krom2RawAdd` (57) dans `TexteEcran.cs`, avec `GetTimInfo`, `LoadTPage` et `LoadClut`.
   `winsys3d` passe à 232 corps, 6 points d'entrée. **Pas encore exercé**

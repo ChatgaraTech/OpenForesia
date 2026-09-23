@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 55 / 89 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 6 | 232 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 5 | 233 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -709,7 +709,21 @@ Lus au désassembleur :
 
 `winsys3d` passe à 232 corps, 6 points d'entrée. **Pas encore exercé** — `FntLoad`/`FntOpen`
 tournent une fois au démarrage, et `UiText.cs` passe par 57 pour chaque kanji affiché : une erreur
-se verrait sur le texte japonais, ou sur les fenêtres de texte de `DrawOTag`.
+se verrait sur le texte japonais, ou sur les fenêtres de texte de `DrawOTag`. Testé en jeu par
+Vincent le même jour.
+
+**Lot 12, `CreateTranslationTables` (756)** : dans `ChargementTextures.cs`, à côté des
+convertisseurs qui relisent ses tables. **Transcrit sur le désassemblage** — Ghidra réutilisait le
+paramètre `float` comme compteur d'octets de la boucle. Les 256 composantes corrigées par `Gamma`
+de `wsyskern`, puis quatre tables de couleurs PS → device. Deux choses apprises :
+
+- `0x00add078`, que rien ne nomme, est **la moitié haute de la table du genre 2** : la conversion
+  l'indexe par le mot de 16 bits entier. C'est la semi-transparence PS émulée — un noir dont
+  l'alpha vaut la luminosité moyenne, calculée sur les composantes **brutes**, avant gamma ;
+- la garde « gamma inchangé » est un `fcomp` du 387 : un NaN compte pour « égal ».
+
+`winsys3d` passe à 233 corps, 5 points d'entrée. **Pas encore exercé** — le réglage de gamma des
+options appelle 756 ; une erreur se verrait sur les couleurs de toutes les textures 16 bits.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

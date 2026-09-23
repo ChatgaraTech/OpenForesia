@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 89 | 4 011 | 1 926 | 6 % | 55 |
-| `winsys3d` | 604 | 27 092 | 6 | 247 | 13 423 | 1 181 | 50 % | 232 |
+| `winsys3d` | 604 | 27 092 | 5 | 247 | 13 423 | 1 181 | 50 % | 233 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -305,24 +305,23 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**6 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
+**5 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
 soit **14 604 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
 1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 423 lignes,
 50 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**230 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**231 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (6)
+### Les points d'entree employes (5)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
 | 337 | — | `0x00a1df00` | `FUN_00a1df00` | 62 | oui |
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | oui |
 | 750 | — | `0x00a01e30` | `FUN_00a01e30` | 12 | **non** |
-| 756 | `CreateTranslationTables` | `0x00a02f50` | `CreateTranslationTables` | 64 | **non** |
 | 789 | — | `0x00a06420` | `FUN_00a06420` | 186 | **non** |
 | 823 | `Setup3DDevice` | `0x00a01910` | `Setup3DDevice` | 118 | **non** |
 
@@ -396,7 +395,7 @@ directement par la reconstruction, et son nom est en gras.
 | `0x00a116e0` | **`FUN_00a116e0`** | 66 | 1 | oui |
 | `0x00a13220` | **`FUN_00a13220`** | 65 | 1 | oui |
 | `0x00a02e20` | **`FUN_00a02e20`** | 64 | 1 | oui |
-| `0x00a02f50` | **`CreateTranslationTables`** | 64 | 1 | **non** |
+| `0x00a02f50` | **`CreateTranslationTables`** | 64 | 1 | oui |
 | `0x00a0d3d0` | **`FUN_00a0d3d0`** | 64 | 1 | oui |
 | `0x00a0d990` | **`FUN_00a0d990`** | 64 | 1 | oui |
 | `0x00a0f570` | **`FUN_00a0f570`** | 64 | 2 | oui |
