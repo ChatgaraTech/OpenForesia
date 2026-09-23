@@ -6,6 +6,28 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **la VRAM PlayStation émulée est en C#** — `ClearImage`, `LoadImage`, `MoveImage`,
+  `StoreImage` (665, 674, 676, 684) et l'invalidation du cache qu'ils déclenchent
+  (`winsys3d/Vram.cs`, fichier neuf), plus `ReInitializeAllTextures` (785) et `ReleaseTexture`
+  (788) dans `CacheTextures.cs`. `winsys3d` passe à 191 corps, 33 points d'entrée. **Pas encore
+  exercé**
+- doc : **LB-044** — la couleur de `ClearImage` décale la composante bleue au lieu d'assembler
+  le pixel ; juste pour le noir, le seul cas du jeu. Le `TODO(REVERSE)` de l'ordinal 665 est levé
+- doc : `PutDispEnv` et les manettes (lot 2) testés en jeu par Vincent, combats compris
+
+- feat : **`PutDispEnv` (657) et la lecture des manettes sont en C#** — la fin d'image
+  (recentrage, attente du balayage, présentation) dans `ListeAffichage.cs` avec `GetDispEnv`
+  (656), le clavier et les joysticks vers les deux tampons de manette dans `winsys3d/Manettes.cs`
+  (fichier neuf). `winsys3d` passe à 181 corps, 39 points d'entrée. **Pas encore exercé**
+- doc : **LB-043** — la manette 2 ignore son joystick (test inversé) et hérite des boutons de la
+  manette 1 (registre jamais remis à zéro). Transcrit tel quel
+- doc : les décalages d'écran (lot 1) testés en jeu par Vincent, sans défaut vu
+
+- feat : **les décalages d'écran de `winsys3d` sont en C#** — `SetShift`, `SetAbsShift`,
+  `GetAbsShift`, `ShiftVertices` (`winsys3d/DecalageEcran.cs`, fichier neuf), premier lot hors du
+  chemin d'affichage. `winsys3d` passe à 178 corps portés, 40 points d'entrée restants. **Pas
+  encore exercé**
+
 - fix : **l'image n'était jamais effacée** — le `PutDrawEnv` porté (ordinal 660) rangeait le
   `DRAWENV` du jeu dans un tableau C# privé, alors que `DrawOTag` lit son octet `isbg` dans la
   mémoire de la DLL (`DAT_011be6f0`, +0x18 du bloc, sous un autre nom Ghidra). Tout ce que la scène

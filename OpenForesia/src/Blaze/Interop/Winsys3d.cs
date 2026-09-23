@@ -149,7 +149,8 @@ internal static unsafe class Winsys3d
 
     internal static uint Ordinal_72(int unused) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
 
-    [DllImport("winsys3d.dll", EntryPoint = "#684")] internal static extern uint Ordinal_684(short* rect, void* destination); // real: FUN_00a05f50, copie rectangulaire VRAM→mémoire (icône de sauvegarde) ; rect = {x,y,w,h}
+    // winsys3d 684, libgpu `StoreImage` : VRAM -> memoire (icone de sauvegarde). PORTE le 2026-09-23 — `Libraries/winsys3d/Vram.cs`.
+    internal static uint Ordinal_684(short* rect, void* destination) => (uint)Libraries.Winsys3dVram.StoreImage(rect, (byte*)destination);
 
     /// <summary>Porte : <c>Libraries/winsys3d/SectionCritique.cs</c>, winsys3d.c FUN_00a04fe0 @ 0x00a04fe0.</summary>
     internal static void Ordinal_41() => Libraries.Winsys3dSectionCritique.Sortir();
@@ -207,7 +208,8 @@ internal static unsafe class Winsys3d
     // FUN_00a27700, avec l'ordinal en commentaire. Le site d'appel de FUN_0050bf20 (0x0050ca48)
     // empile un seul argument (`push 18h`), et le thunk du jeu est en 0x00545ad6 — un
     // `jmp dword [608804h]`.
-    [DllImport("winsys3d.dll", EntryPoint = "#788")] internal static extern void ReleaseTexture(int handle); // real: winsys3d.c ReleaseTexture @ 0x00a27990
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/CacheTextures.cs` : vide la page de texture `handle & 0x1f`.
+    internal static void ReleaseTexture(int handle) => Libraries.Winsys3dCacheTextures.ReleaseTexture(handle);
 
     // libgte VectorNormal : divise un vecteur par sa longueur en 1.12 et rend cette longueur.
     // **La variante a trois `int` en sortie, pas la variante a trois `short`** — celle-la est
@@ -297,7 +299,8 @@ internal static unsafe class Winsys3d
     /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a06160 @ 0x00a06160 — ClearOTagR.</summary>
     internal static uint* Ordinal_688(uint* ot, int count) => Libraries.Winsys3dListeAffichage.ClearOTagR(ot, count);
 
-    [DllImport("winsys3d.dll", EntryPoint = "#657")] internal static extern int Ordinal_657(void* env);
+    /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c> — PutDispEnv, avec la lecture des manettes (<c>Manettes.cs</c>).</summary>
+    internal static int Ordinal_657(void* env) => Libraries.Winsys3dListeAffichage.PutDispEnv(env);
 
     /// <summary>Porte : <c>Libraries/winsys3d/ListeAffichage.cs</c>, winsys3d.c FUN_00a05b30 @ 0x00a05b30.</summary>
     internal static int Ordinal_660(void* env) => Libraries.Winsys3dListeAffichage.PutDrawEnv(env);
@@ -328,13 +331,13 @@ internal static unsafe class Winsys3d
     // libgpu MoveImage(RECT* src, int dstX, int dstY) â€” copies a rectangle inside the emulated
     // VRAM. Body confirmed at winsys3d.c:5348 (`/* 0x5df0  676 */`): it walks `src->h` rows of
     // `src->w` texels from the arena and writes them at (dstX, dstY).
-    [DllImport("winsys3d.dll", EntryPoint = "#676")] internal static extern void Ordinal_676(ushort* sourceRect, int destinationX, int destinationY);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Vram.cs`.
+    internal static void Ordinal_676(ushort* sourceRect, int destinationX, int destinationY) => _ = Libraries.Winsys3dVram.MoveImage((short*)sourceRect, destinationX, destinationY);
 
-    // real: winsys3d.c FUN_00a05e90 â€” libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
-    // RECT and floods VRAM), but its colour math decompiles as
-    // `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match ClearImage's plain (r,g,b).
-    // TODO(REVERSE): left un-renamed until that is explained rather than assumed.
-    [DllImport("winsys3d.dll", EntryPoint = "#665")] internal static extern int Ordinal_665(void* rect, byte r, byte g, uint b);
+    // winsys3d 665 : libgpu `ClearImage(RECT*, r, g, b)`. Sa couleur `((b & 0xff) << (g + 10)) << (r + 5)`
+    // est un defaut du binaire (LB-044), juste pour le noir, le seul cas employe. PORTE le 2026-09-23 —
+    // `Libraries/winsys3d/Vram.cs`.
+    internal static int Ordinal_665(void* rect, byte r, byte g, uint b) => Libraries.Winsys3dVram.ClearImage((short*)rect, r, g, b);
 
     internal static void Ordinal_667(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
@@ -343,7 +346,8 @@ internal static unsafe class Winsys3d
     // real: winsys3d.c FUN_00a05d50 â€” libgpu `LoadImage(RECT*, u_long* data)`: copies `data` row by
     // row into the VRAM rectangle. `rect` is a 4-short RECT {x,y,w,h}, and the body early-outs on
     // rect.y > 0x1ff, confirming a 1024x512 VRAM addressing scheme.
-    [DllImport("winsys3d.dll", EntryPoint = "#674")] internal static extern int Ordinal_674(void* rect, void* srcBuffer);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/Vram.cs`.
+    internal static int Ordinal_674(void* rect, void* srcBuffer) => Libraries.Winsys3dVram.LoadImage((short*)rect, (byte*)srcBuffer);
 
     // ------------------------------------------------------------------------------------------
     // LE LECTEUR DE CONTENEUR TIM — porté le 2026-09-22, `Libraries/winsys3d/Tim.cs`. C'était la
@@ -376,7 +380,8 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#789")] internal static extern int Ordinal_789(int a, int b); // real: winsys3d.c FUN_00a06420, device (re)init/teardown dispatcher; inert when a==0 besides storing b
 
-    [DllImport("winsys3d.dll", EntryPoint = "SetShift")] internal static extern void SetShift(int x, int y, int zoomLevel, int flag); // real, named export (ordinal 796): camera/view shift+zoom, winsys3d.c confirmed
+    // winsys3d SetShift (ordinal 796) : decalage de vue et zoom. PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void SetShift(int x, int y, int zoomLevel, int flag) => Libraries.Winsys3dDecalageEcran.SetShift(x, y, zoomLevel, flag);
 
     // winsys3d.dll ordinals used by FUN_00504460 (joystick/interrupt-style event-handler
     // (de)registration bookkeeping â€” see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
@@ -403,20 +408,23 @@ internal static unsafe class Winsys3d
     // winsys3d.c:4119). Zoom8BitTextures is an imported *data* symbol, same category as
     // TexFilterPossible/MainMem â€” resolved lazily via GetProcAddress, since P/Invoke has no
     // mechanism for imported data.
-    [DllImport("winsys3d.dll")] internal static extern void ReInitializeAllTextures();
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/CacheTextures.cs`.
+    internal static void ReInitializeAllTextures() => Libraries.Winsys3dCacheTextures.ReInitializeAllTextures();
 
     // winsys3d.dll named exports (ordinal 776 and its setter) â€” the viewport shift the options page
     // saves and restores around its own screen.
-    [DllImport("winsys3d.dll")] internal static extern void GetAbsShift(int* x, int* y);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void GetAbsShift(int* x, int* y) => Libraries.Winsys3dDecalageEcran.GetAbsShift(x, y);
 
-    [DllImport("winsys3d.dll")] internal static extern void SetAbsShift(int x, int y);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void SetAbsShift(int x, int y) => Libraries.Winsys3dDecalageEcran.SetAbsShift(x, y);
 
     // winsys3d, exports nommÃ©s. `ShiftVertices` (ordinal 824, winsys3d.c:4913) applique
     // `x = dÃ©calage + (Size + 9) * 32 / 320 * x` â€” le facteur documentÃ© dans la section
     // Â« Coordinate scaling Â». Le fond de page passe par lui ; les widgets, eux, par la mise Ã 
     // l'Ã©chelle que le jeu fait lui-mÃªme (FUN_00510110). Les deux coexistent, c'est voulu.
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    internal static extern void ShiftVertices(TlVertex* vertices, int count);
+    // PORTE le 2026-09-23 — `Libraries/winsys3d/DecalageEcran.cs`.
+    internal static void ShiftVertices(TlVertex* vertices, int count) => Libraries.Winsys3dDecalageEcran.ShiftVertices((float*)vertices, count);
 
     [DllImport("winsys3d.dll", ExactSpelling = true)]
     internal static extern void SetTextureFilterMode(int mode);

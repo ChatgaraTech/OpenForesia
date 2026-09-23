@@ -134,6 +134,9 @@ internal static unsafe class Win32
 
     [DllImport("winmm.dll")] internal static extern uint joyReleaseCapture(uint uJoyID);
 
+    // `JOYINFO` = quatre UINT : wXpos, wYpos, wZpos, wButtons. Rend 0 (JOYERR_NOERROR) si lu.
+    [DllImport("winmm.dll")] internal static extern uint joyGetPos(uint uJoyID, uint* pji);
+
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern byte* lstrcpyA(byte* lpString1, byte* lpString2);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int lstrcmpiA(byte* lpString1, byte* lpString2);

@@ -629,4 +629,100 @@ internal static unsafe class Winsys3dData
 
     /// <summary>DAT_011be7d8 — la primitive courante : `[olen][ilen][drapeaux][mode]` puis ses champs.</summary>
     internal static ref byte* TmdPrimitive_011be7d8 => ref *(byte**)At(0x011be7d8);
+
+    // ----------------------------------------------------------------------------------------
+    // Le decalage d'ecran — `DecalageEcran.cs`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// DAT_011be780, DAT_011be784 — le decalage ABSOLU que pose `SetAbsShift` (791), en unites
+    /// PlayStation, mis a l'echelle du zoom avant d'entrer dans <see cref="DecalEcranX_011be770"/>.
+    /// </summary>
+    internal static ref int DecalAbsX_011be780 => ref *(int*)At(0x011be780);
+
+    /// <summary>Voir <see cref="DecalAbsX_011be780"/>.</summary>
+    internal static ref int DecalAbsY_011be784 => ref *(int*)At(0x011be784);
+
+    /// <summary>DAT_00a2c49c — le mode d'affichage (2 dans `.data`), indice des deux tables d'origine.</summary>
+    internal static ref int ModeAffichage_00a2c49c => ref *(int*)At(0x00a2c49c);
+
+    /// <summary>
+    /// 0x00a2c4d8 — l'origine X de l'image a l'ecran, un entier par mode d'affichage. Relue dans
+    /// le binaire : -160, -64, 0, 80, 192, 0.
+    /// </summary>
+    internal static int* OrigineX_00a2c4d8 => (int*)At(0x00a2c4d8);
+
+    /// <summary>0x00a2c4f0 — l'origine Y, meme forme : -120, -48, 0, 60, 144, -1.</summary>
+    internal static int* OrigineY_00a2c4f0 => (int*)At(0x00a2c4f0);
+
+    /// <summary>
+    /// &amp;DAT_00a31138 — les tables d'echelle, une de 16 000 octets par niveau de zoom. `SetShift`
+    /// fait pointer <see cref="TableEcranX_00a2c4a0"/> ET <see cref="TableEcranY_00a2c4a4"/> sur la
+    /// meme.
+    /// </summary>
+    internal static byte* TablesEchelle_00a31138 => (byte*)At(0x00a31138);
+
+    /// <summary>_DAT_00a2a06c — **1/320** (0x3B4CCCCD dans `.rdata`), le facteur de `ShiftVertices`.</summary>
+    internal static float UnSur320_00a2a06c => *(float*)At(0x00a2a06c);
+
+    // ----------------------------------------------------------------------------------------
+    // L'environnement d'affichage — `PutDispEnv` (657), dans `ListeAffichage.cs`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// &amp;DAT_011be6b8 — le `DISPENV` courant, cinq mots que l'ordinal 657 range et que le 656
+    /// ressort : `disp` (x, y, w, h), `screen`, puis `isinter`, `isrgb24`.
+    /// </summary>
+    internal static uint* DispEnv_011be6b8 => (uint*)At(0x011be6b8);
+
+    /// <summary>DAT_011be6bc — la largeur `disp.w` du `DISPENV`, un `short` (`movsx`).</summary>
+    internal static ref short DispLargeur_011be6bc => ref *(short*)At(0x011be6bc);
+
+    /// <summary>_DAT_011be6be — la hauteur `disp.h`, un `short`.</summary>
+    internal static ref short DispHauteur_011be6be => ref *(short*)At(0x011be6be);
+
+    // ----------------------------------------------------------------------------------------
+    // Les manettes — `Manettes.cs`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// `TexFilterPossible` @ 0x00a2c504 — donnee exportee (ordinal 825), que F10 bascule.
+    /// `Engine/Audio.cs` la lit par `GetProcAddress` ; c'est la meme case.
+    /// </summary>
+    internal static ref int TexFilterPossible_00a2c504 => ref *(int*)At(0x00a2c504);
+
+    /// <summary>DAT_00dedc40 — non nul : les manettes sont lues meme quand le tampon est demande.</summary>
+    internal static ref int ManettesActives_00dedc40 => ref *(int*)At(0x00dedc40);
+
+    /// <summary>DAT_00dedc38 — le tampon de la manette 1 (octets 2 et 3 : les boutons, actifs a 0), ou nul.</summary>
+    internal static ref byte* TamponManette1_00dedc38 => ref *(byte**)At(0x00dedc38);
+
+    /// <summary>DAT_00dedc3c — le tampon de la manette 2, meme forme.</summary>
+    internal static ref byte* TamponManette2_00dedc3c => ref *(byte**)At(0x00dedc3c);
+
+    /// <summary>DAT_00b6dbcc — non nul : ni clavier ni joystick ne sont lus, tout est relache.</summary>
+    internal static ref int SaisieCoupee_00b6dbcc => ref *(int*)At(0x00b6dbcc);
+
+    /// <summary>
+    /// 0x00a2c258 — la table de touches de la manette 1, 38 mots : dix boutons de trois mots
+    /// (masque de bouton joystick, touche, touche de rechange), puis quatre directions de deux
+    /// touches (gauche, droite, haut, bas). Relue dans le binaire : pave numerique et chiffres,
+    /// fleches et S/D/E/X.
+    /// </summary>
+    internal static uint* TouchesManette1_00a2c258 => (uint*)At(0x00a2c258);
+
+    /// <summary>0x00a2c2f0 — la table de la manette 2, meme forme (0x98 octets plus loin).</summary>
+    internal static uint* TouchesManette2_00a2c2f0 => (uint*)At(0x00a2c2f0);
+
+    /// <summary>Une case de `.data` de la DLL par son adresse — pour les seuils de joystick, epars.</summary>
+    internal static ref uint Mot(nuint va) => ref *(uint*)At(va);
+
+    /// <summary>
+    /// &amp;DAT_00a34fb8 — la table de conversion X d'une surface affichee de plus de 320, que
+    /// `PutDispEnv` (657) pose a la place de celle du zoom.
+    /// </summary>
+    internal static float* TableGrandeSurfaceX_00a34fb8 => (float*)At(0x00a34fb8);
+
+    /// <summary>&amp;DAT_00a5c0b8 — sa jumelle en Y. Voir <see cref="TableGrandeSurfaceX_00a34fb8"/>.</summary>
+    internal static float* TableGrandeSurfaceY_00a5c0b8 => (float*)At(0x00a5c0b8);
 }

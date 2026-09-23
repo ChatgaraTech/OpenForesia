@@ -125,7 +125,7 @@ the reconstruction; see `REVERSE_STATUS.md` TODO #32.
 1024x512 VRAM addressing. **Caveat on 665**: it takes a `RECT` and floods VRAM
 like `ClearImage`, but its colour math decompiles as
 `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match libgpu's plain
-`(r, g, b)` parameters — left un-renamed in `Blaze.cs` until explained.
+`(r, g, b)` parameters — left un-renamed in `Blaze.cs` until explained. **Explained 2026-09-23** : c'est bien `ClearImage`, et la formule est un défaut du binaire (**LB-044**), juste pour le noir. 674/676/684 sont `LoadImage`/`MoveImage`/`StoreImage` ; les quatre sont portés dans `Libraries/winsys3d/Vram.cs`.
 
 ## Coordinate scaling: `Size`, the lookup tables, and the display-mode table — **CONFIRMED**
 

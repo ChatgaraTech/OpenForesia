@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 53 / 87 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 44 | 174 / 246 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
+| `winsys3d` | 33 | 191 / 247 | **en cours** ; sept lots faits, puis le chemin d'affichage par aliasing, **fini** — voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -578,6 +578,34 @@ GTE, l'initialisation du device (`Setup3DDevice`), `InitTrigTables`, les décala
 deux passerelles de tas de `wsyskern`, qui ne tomberont qu'avec le dernier corps de `winsys3d`.
 L'aliasing lève la règle 6 : une globale relue par du natif ne bloque plus rien, puisque C# et
 natif lisent la même mémoire.
+
+### Hors chemin d'affichage — lot 1, les décalages d'écran (2026-09-23)
+
+`winsys3d/DecalageEcran.cs` (fichier neuf, validé par Vincent) : `SetShift` (796), `SetAbsShift`
+(791), `GetAbsShift` (776), `ShiftVertices` (824). Quatre feuilles, vérifiées au désassembleur ;
+la façade renvoie, 15 sites d'appel inchangés. `winsys3d` passe à 178 corps, 40 points d'entrée.
+À retenir : `SetShift` fait pointer les deux tables de conversion X et Y sur **la même**, et
+`ShiftVertices` n'arrondit que son facteur — le produit et la somme restent en précision étendue.
+
+**Lot 2, `PutDispEnv` (657)** : dans `ListeAffichage.cs` avec son jumeau `GetDispEnv` (656), et la
+lecture des manettes `FUN_00a049c0` dans `winsys3d/Manettes.cs` (fichier neuf, validé par
+Vincent). `PutDispEnv` est **la fin d'image** : recentrage, attente du balayage (`+0xd8`),
+présentation (`+0xb8`), manettes. Deux défauts d'origine dans les manettes, reproduits : **LB-043**.
+`winsys3d` passe à 181 corps, 39 points d'entrée.
+
+**Lot 3, la VRAM** (le lot 2 testé en jeu par Vincent) : `winsys3d/Vram.cs` (fichier neuf, validé)
+pour `ClearImage` (665), `LoadImage` (674), `MoveImage` (676), `StoreImage` (684) et
+l'invalidation d'un rectangle dans le cache (`05c60`) ; trois `__thiscall` du cache (`27700`,
+`27730`, `27770`) et les exports `ReInitializeAllTextures` (785) et `ReleaseTexture` (788) dans
+`CacheTextures.cs`. Ghidra donnait `27700` sans argument et sans `this` ; `27770` avance sa borne au
+lieu de son indice (de l'éviction en trop, transcrite). **LB-044** : la couleur de `ClearImage`.
+`winsys3d` passe à 191 corps, 33 points d'entrée.
+
+**Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
+`DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL
+(`DAT_011be6f0`, +0x18 du bloc, sous un autre nom Ghidra) — l'image n'était jamais effacée. **La
+leçon** : compter les références d'un bloc par le nom Ghidra de son début ne voit pas les
+symboles posés au milieu. Chercher toute la plage d'adresses.
 
 Lire `Documentation/DLL/winsys3d.md` avant de commencer — 52 Ko déjà accumulés.
 

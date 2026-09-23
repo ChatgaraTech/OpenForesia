@@ -43,6 +43,8 @@
 // cibles a 0x00a26ca4) plutot que prise a Ghidra : les groupes de codes concordent exactement.
 // ============================================================================================
 
+using System;
+
 namespace OpenForesia.Libraries;
 
 internal static unsafe class Winsys3dCacheTextures
@@ -789,4 +791,67 @@ internal static unsafe class Winsys3dCacheTextures
 
     /// <summary>La page <paramref name="page"/> &amp; 0x1f du cache : son tableau d'emplacements.</summary>
     private static int* Page(void* cache, int page) => *(int**)((byte*)cache + (page & 0x1f) * 4);
+
+    // ---- l'invalidation : ce que la VRAM et le jeu appellent (`Vram.cs`, 785, 788) ------------
+    //
+    // Trois `__thiscall` sur le cache, relevees au desassembleur (`Legacy/Raw/Winsys3d/
+    // FUN_00a27700`, `27730`, `27770`) : Ghidra les donne sans `this`, `27700` meme sans argument.
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a27700 @ 0x00a27700 — **`__thiscall`** sur le cache, `ret 4` :
+    /// libere les 2 000 emplacements de la page <paramref name="page"/> &amp; 0x1f — chacun avec la
+    /// PAGE pour `this` (`mov ecx,edi`), pas le cache.
+    /// </summary>
+    internal static void ViderPage(void* cache, int page)
+    {
+        int* p = Page(cache, page);
+        for (int s = 0; s < 2000; s++) LibererEmplacement(p, s);
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a27730 @ 0x00a27730 — **`__thiscall`** sur le cache, `ret` : delie
+    /// la texture, vide les 32 pages, remet a zero la table des CLUT (0x8000 mots a `+0x80`) et a
+    /// -1 les 1 000 mots qui la suivent (`+0x20080`).
+    /// </summary>
+    internal static void Reinitialiser(void* cache)
+    {
+        DelierTexture();
+        for (int page = 0; page < 0x20; page++) ViderPage(cache, page);
+        new Span<uint>((byte*)cache + 0x80, 0x8000).Clear();
+        new Span<uint>((byte*)cache + 0x20080, 1000).Fill(0xffffffff);
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a27770 @ 0x00a27770 — **`__thiscall`** sur le cache, `ret 8` :
+    /// libere, dans chacune des 32 pages, l'emplacement que la table des CLUT (`short` a `+0x80`)
+    /// associe a chaque tranche a partir de <paramref name="debut"/>.
+    ///
+    /// **La boucle avance sa BORNE, pas son indice** (`inc eax` sur la fin, `debut` fixe, a
+    /// 0x00a277d0) : la condition `debut &lt; fin` reste vraie, et seule une entree nulle de la table
+    /// arrete la marche. Le corps libere donc tout ce qui suit jusqu'au premier trou, au-dela des
+    /// `taille >> 4` tranches demandees — de l'eviction en trop, invisible a l'ecran. Transcrit tel
+    /// quel.
+    /// </summary>
+    internal static void LibererParClut(void* cache, int debut, int taille)
+    {
+        DelierTexture();
+        int fin = (taille >> 4) + debut;
+        if (debut >= fin) return;
+
+        short* entree = (short*)((byte*)cache + 0x80) + debut;
+        do
+        {
+            int s = *entree;
+            if (s == 0) return;
+            for (int page = 0; page < 0x20; page++) LibererEmplacement(*(int**)((byte*)cache + page * 4), s);
+            entree++;
+            fin++;
+        } while (debut < fin);
+    }
+
+    /// <summary>Ghidra: winsys3d.c ReInitializeAllTextures @ 0x00a27980 (ordinal 785) — `Reinitialiser` sur l'objet cache.</summary>
+    internal static void ReInitializeAllTextures() => Reinitialiser(Winsys3dData.Objet_012141d4);
+
+    /// <summary>Ghidra: winsys3d.c ReleaseTexture @ 0x00a27990 (ordinal 788) — `ViderPage` sur l'objet cache.</summary>
+    internal static void ReleaseTexture(int page) => ViderPage(Winsys3dData.Objet_012141d4, page);
 }

@@ -140,6 +140,78 @@ internal static unsafe class Winsys3dListeAffichage
         for (int i = 0; i < MotsDrawEnv; i++) destination[i] = casier[i];
     }
 
+    // ============================================================================================
+    // L'ENVIRONNEMENT D'AFFICHAGE — `PutDispEnv` (657) et `GetDispEnv` (656), 2026-09-23
+    //
+    // Le jumeau de la paire 660/659 : un `DISPENV` de cinq mots, range a `0x011be6b8`. Mais 657
+    // ne se contente pas de ranger — c'est **la fin d'image** : il recentre l'image selon la
+    // largeur affichee, attend le balayage vertical (device `+0xd8`), PRESENTE l'image (`+0xb8`,
+    // le `Flip` ou le `BltFast` de `3dhelp`) et lit les manettes. Verifie au desassembleur :
+    // `Legacy/Raw/Winsys3d/FUN_00a05a00.disasm.txt`.
+    // ============================================================================================
+
+    private const int Device_AttendreBalayage = 0xd8 / 4;
+    private const int Device_Presenter = 0xb8 / 4;
+
+    /// <summary>Le `DISPENV` : cinq mots.</summary>
+    private const int MotsDispEnv = 5;
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a059e0 @ 0x00a059e0 (ordinal 656) — `GetDispEnv` : ressort les
+    /// cinq mots. **Pas importe par la reconstruction** ; ecrit pour la meme raison que 659.
+    /// </summary>
+    internal static void GetDispEnv(void* env)
+    {
+        uint* destination = (uint*)env;
+        uint* casier = Winsys3dData.DispEnv_011be6b8;
+        for (int i = 0; i < MotsDispEnv; i++) destination[i] = casier[i];
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a05a00 @ 0x00a05a00 (ordinal 657) — `PutDispEnv`, `ret 4`, rend
+    /// toujours 0. Une largeur affichee d'au plus 320 (comparee en `short` signe, `cmp word [eax+4],
+    /// 140h ; jg`) centre l'image par <see cref="Winsys3dDecalageEcran.SetAbsShift"/> ; au-dela,
+    /// zoom, decalages et decalage d'ecran reviennent a zero et les tables de conversion passent
+    /// aux deux tables de la grande surface (X `0x00a34fb8`, Y `0x00a5c0b8`). Puis, sauf image
+    /// sautee, attente du balayage et presentation ; enfin la lecture des manettes, tampons
+    /// compris.
+    /// </summary>
+    internal static int PutDispEnv(void* env)
+    {
+        uint* source = (uint*)env;
+        uint* casier = Winsys3dData.DispEnv_011be6b8;
+        for (int i = 0; i < MotsDispEnv; i++) casier[i] = source[i];
+
+        if (*(short*)((byte*)env + 4) <= 0x140)
+        {
+            // `movsx` des deux `short`, soustraction, `sar 1` : une division arrondie vers le bas.
+            Winsys3dDecalageEcran.SetAbsShift(
+                (0x140 - Winsys3dData.DispLargeur_011be6bc) >> 1,
+                (0xf0 - Winsys3dData.DispHauteur_011be6be) >> 1);
+        }
+        else
+        {
+            Winsys3dData.Zoom_00a2c498 = 0;
+            Winsys3dData.DecalX_011be778 = 0;
+            Winsys3dData.DecalY_011be77c = 0;
+            Winsys3dData.TableEcranX_00a2c4a0 = Winsys3dData.TableGrandeSurfaceX_00a34fb8;
+            Winsys3dData.TableEcranY_00a2c4a4 = Winsys3dData.TableGrandeSurfaceY_00a5c0b8;
+            Winsys3dData.DecalEcranX_011be770 = 0;
+            Winsys3dData.DecalEcranY_011be774 = 0;
+        }
+
+        if (Winsys3dData.Garde_00dedc44 == 0 && Winsys3dData.VSyncDelayed_011be67c == 0)
+        {
+            ((delegate* unmanaged[Thiscall]<void*, int, int, void>)
+                Winsys3dData.DeviceVtable[Device_AttendreBalayage])(Winsys3dData.Device_011be760, 1, 0);
+            ((delegate* unmanaged[Thiscall]<void*, void>)
+                Winsys3dData.DeviceVtable[Device_Presenter])(Winsys3dData.Device_011be760);
+        }
+
+        Winsys3dManettes.LireManettes(1);
+        return 0;
+    }
+
     /// <summary>
     /// Ghidra: winsys3d.c FUN_00a06160 @ 0x00a06160 (ordinal 688) — `ClearOTagR` : chaine la table
     /// d'ordonnancement a l'envers, chaque entree pointant sur la precedente, et rend sa tete.

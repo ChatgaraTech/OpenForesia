@@ -1,0 +1,65 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a05f50  section .text  offset fichier 0x5350  128 octets
+
+  00a05f50  53                    push      ebx
+  00a05f51  8b5c2408              mov       ebx,[esp+8]
+  00a05f55  8b15d0dbb600          mov       edx,[0B6DBD0h]
+  00a05f5b  55                    push      ebp
+  00a05f5c  0fbf4302              movsx     eax,word [ebx+2]
+  00a05f60  0fbf0b                movsx     ecx,word [ebx]
+  00a05f63  c1e00a                shl       eax,0Ah
+  00a05f66  03c1                  add       eax,ecx
+  00a05f68  56                    push      esi
+  00a05f69  57                    push      edi
+  00a05f6a  8d2c42                lea       ebp,[edx+eax*2]
+  00a05f6d  33c0                  xor       eax,eax
+  00a05f6f  66394306              cmp       [ebx+6],ax
+  00a05f73  7e32                  jle       short 00A05FA7h
+
+LAB_00a05f75:
+  00a05f75  0fbf5304              movsx     edx,word [ebx+4]
+  00a05f79  8bf8                  mov       edi,eax
+  00a05f7b  8bf5                  mov       esi,ebp
+  00a05f7d  0faffa                imul      edi,edx
+  00a05f80  8d0c12                lea       ecx,[edx+edx]
+  00a05f83  8b542418              mov       edx,[esp+18h]
+  00a05f87  81c500080000          add       ebp,800h
+  00a05f8d  8d3c7a                lea       edi,[edx+edi*2]
+  00a05f90  8bd1                  mov       edx,ecx
+  00a05f92  c1e902                shr       ecx,2
+  00a05f95  f3a5                  rep movsd
+  00a05f97  8bca                  mov       ecx,edx
+  00a05f99  83e103                and       ecx,3
+  00a05f9c  40                    inc       eax
+  00a05f9d  f3a4                  rep movsb
+  00a05f9f  0fbf4b06              movsx     ecx,word [ebx+6]
+  00a05fa3  3bc1                  cmp       eax,ecx
+  00a05fa5  7cce                  jl        short 00A05F75h
+
+LAB_00a05fa7:
+  00a05fa7  a154e71b01            mov       eax,[11BE754h]
+  00a05fac  85c0                  test      eax,eax
+  00a05fae  7402                  je        short 00A05FB2h
+  00a05fb0  ffd0                  call      eax
+
+LAB_00a05fb2:
+  00a05fb2  5f                    pop       edi
+  00a05fb3  5e                    pop       esi
+  00a05fb4  5d                    pop       ebp
+  00a05fb5  33c0                  xor       eax,eax
+  00a05fb7  5b                    pop       ebx
+  00a05fb8  c20800                ret       8
+  00a05fbb  90                    nop
+  00a05fbc  90                    nop
+  00a05fbd  90                    nop
+  00a05fbe  90                    nop
+  00a05fbf  90                    nop
+  00a05fc0  8b54240c              mov       edx,[esp+0Ch]
+  00a05fc4  8b442408              mov       eax,[esp+8]
+  00a05fc8  8bca                  mov       ecx,edx
+  00a05fca  56                    push      esi
+  00a05fcb  8b35d0dbb6            (bad)
+  (octet invalide - la plage demandee deborde probablement du code)

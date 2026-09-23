@@ -1981,3 +1981,60 @@ en clair) ; c'est à confirmer.
 
 **Reproduit tel quel** dans `src/Libraries/winsys3d/ConstructionPaquets.cs`
 (`QuotientMagique`), constante par constante. L'intention probable était `octet / 256.0f`.
+
+## LB-043 — La manette 2 ignore son joystick et hérite des boutons de la manette 1
+
+**Où** : `winsys3d.c`, `FUN_00a049c0` @ `0x00a049c0` (la lecture des manettes, appelée en fin
+d'image par `PutDispEnv`, ordinal 657). **Trouvé à la lecture** le 2026-09-23 — pas constaté en jeu.
+
+Deux défauts dans la même fonction, qui ne touchent que la seconde manette :
+
+```
+00a04a39  call joyGetPos(0, &joy)
+00a04a3d  je   00A04A56h            ; manette 1 : valeurs neutres si la lecture ÉCHOUE
+...
+00a04cf9  call joyGetPos(1, &joy)
+00a04cfd  jne  00A04D1Ah            ; manette 2 : valeurs neutres si la lecture RÉUSSIT
+```
+
+**Le test du joystick 2 est inversé.** Branché, il est remplacé par les valeurs neutres : ses
+axes et ses boutons ne comptent jamais. Absent, `joyGetPos` échoue sans remplir la structure,
+qui garde ce que le joystick 1 y a laissé — **la manette 2 recopie le premier joystick**.
+
+**Les bits ne sont pas remis à zéro entre les deux manettes.** Les deux s'accumulent dans `bx`
+(`or bh,80h` à 0x00a04d4f, sur le registre qui porte encore la manette 1) : chaque bouton pressé
+sur la manette 1 l'est aussi sur la manette 2.
+
+**Conséquence** : non observée. En jeu à un joueur, sans effet visible si la manette 2 n'est pas
+lue ; à deux, le second joueur ne pourrait jouer qu'au clavier, et ses personnages recevraient
+aussi les commandes du premier.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Manettes.cs`. Le correctif tiendrait en un
+`je` au lieu du `jne` et une remise à zéro de `bx` avant la seconde lecture.
+
+## LB-044 — `ClearImage` décale la composante bleue au lieu d'assembler la couleur
+
+**Où** : `winsys3d.c`, `FUN_00a05e90` @ `0x00a05e90` (ordinal 665, `ClearImage(RECT*, r, g, b)` de
+la `libgpu`). **Trouvé à la lecture** le 2026-09-23 — sans effet dans le jeu.
+
+La couleur de remplissage devrait être un pixel 15 bits, `(b >> 3) << 10 | (g >> 3) << 5 | r >> 3`.
+Le binaire calcule autre chose :
+
+```
+00a05e90  mov cl,[esp+0Ch]         ; g
+00a05e94  mov eax,[esp+10h]        ; b
+00a05e98  add ecx,0Ah
+00a05e9b  and eax,0FFh
+00a05ea0  shl eax,cl               ; b << (g + 10)
+00a05ea2  mov cl,[esp+8]           ; r
+00a05ea7  add ecx,5
+00a05eb0  shl eax,cl               ; ... << (r + 5)
+```
+
+Les deux autres composantes servent de **décalages** à la bleue (masqués à cinq bits par le
+processeur). Le résultat est ensuite doublé dans les deux moitiés d'un mot de 32 bits.
+
+**Conséquence** : aucune. Le seul appel du jeu (`FUN_00529eb0`, à l'initialisation de la vue)
+efface en `(0, 0, 0)`, et `0` décalé reste `0`. Toute autre couleur sortirait fausse.
+
+**Reproduit tel quel** dans `src/Libraries/winsys3d/Vram.cs` (`ClearImage`).

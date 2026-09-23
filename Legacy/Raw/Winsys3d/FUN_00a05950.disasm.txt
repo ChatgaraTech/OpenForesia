@@ -1,0 +1,56 @@
+Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\winsys3d.dll
+Image base  : 0x00A00000
+
+Legacy/Binaries/winsys3d.dll  base 0x00a00000
+0x00a05950  section .text  offset fichier 0x4d50  144 octets
+
+  00a05950  8b1598c4a200          mov       edx,[0A2C498h]
+  00a05956  8b442404              mov       eax,[esp+4]
+  00a0595a  56                    push      esi
+  00a0595b  a380e71b01            mov       [11BE780h],eax
+  00a05960  8d7209                lea       esi,[edx+9]
+  00a05963  8b4c240c              mov       ecx,[esp+0Ch]
+  00a05967  0fafc6                imul      eax,esi
+  00a0596a  c1e005                shl       eax,5
+  00a0596d  8bd0                  mov       edx,eax
+  00a0596f  b867666666            mov       eax,66666667h
+  00a05974  f7ea                  imul      edx
+  00a05976  c1fa07                sar       edx,7
+  00a05979  890d84e71b01          mov       [11BE784h],ecx
+  00a0597f  8bc2                  mov       eax,edx
+  00a05981  0fafce                imul      ecx,esi
+  00a05984  57                    push      edi
+  00a05985  8b3d9cc4a200          mov       edi,[0A2C49Ch]
+  00a0598b  c1e81f                shr       eax,1Fh
+  00a0598e  03d0                  add       edx,eax
+  00a05990  8b04bdd8c4a200        mov       eax,[edi*4+0A2C4D8h]
+  00a05997  03d0                  add       edx,eax
+  00a05999  a178e71b01            mov       eax,[11BE778h]
+  00a0599e  03d0                  add       edx,eax
+  00a059a0  b867666666            mov       eax,66666667h
+  00a059a5  c1e105                shl       ecx,5
+  00a059a8  891570e71b01          mov       [11BE770h],edx
+  00a059ae  f7e9                  imul      ecx
+  00a059b0  c1fa07                sar       edx,7
+  00a059b3  a17ce71b01            mov       eax,[11BE77Ch]
+  00a059b8  8bca                  mov       ecx,edx
+  00a059ba  c1e91f                shr       ecx,1Fh
+  00a059bd  03d1                  add       edx,ecx
+  00a059bf  8b0cbdf0c4a200        mov       ecx,[edi*4+0A2C4F0h]
+  00a059c6  03d1                  add       edx,ecx
+  00a059c8  5f                    pop       edi
+  00a059c9  03d0                  add       edx,eax
+  00a059cb  5e                    pop       esi
+  00a059cc  891574e71b01          mov       [11BE774h],edx
+  00a059d2  c20800                ret       8
+  00a059d5  90                    nop
+  00a059d6  90                    nop
+  00a059d7  90                    nop
+  00a059d8  90                    nop
+  00a059d9  90                    nop
+  00a059da  90                    nop
+  00a059db  90                    nop
+  00a059dc  90                    nop
+  00a059dd  90                    nop
+  00a059de  90                    nop
+  00a059df  90                    nop
