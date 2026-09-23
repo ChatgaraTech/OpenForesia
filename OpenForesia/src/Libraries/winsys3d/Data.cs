@@ -971,6 +971,19 @@ internal static unsafe class Winsys3dData
     /// </summary>
     internal static byte* Chaine(nuint va) => At(va);
 
+    // ----------------------------------------------------------------------------------------
+    // `InitTrigTables` (337) — `Trigonometrie.cs`.
+    // ----------------------------------------------------------------------------------------
+
+    /// <summary>&amp;DAT_011cb420 — la table de sinus de la DLL, 0x1400 `int` jusqu'a 0x011d0420.</summary>
+    internal static int* TableSinus_011cb420 => (int*)At(0x011cb420);
+
+    /// <summary>DAT_011f0ecc — la profondeur de la pile de matrices (29 places de 0x20 octets a 0x011f08b0), remise a 0 par 337.</summary>
+    internal static ref int ProfondeurPileMatrices_011f0ecc => ref *(int*)At(0x011f0ecc);
+
+    /// <summary>&amp;DAT_00a2c600 — la matrice unite du GTE (`0x1000` sur la diagonale), que 337 copie dans le registre.</summary>
+    internal static uint* MatriceUnite_00a2c600 => (uint*)At(0x00a2c600);
+
     /// <summary>DAT_011be6d4 — la TIM de la police 8 x 16, une ressource de la DLL (`LockResource` a l'initialisation). `FntLoad` la lit a +4.</summary>
     internal static ref byte* PoliceTim_011be6d4 => ref *(byte**)At(0x011be6d4);
 

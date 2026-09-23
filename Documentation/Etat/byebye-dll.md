@@ -14,7 +14,7 @@ sur 135 623 lignes de décompilation, le devis réel est de ~15 000.
 | DLL | points d'entrée restants | corps portés / clôture | reste |
 |---|---:|---:|---|
 | `wsyskern` | **2** (`Malloc`, `Free`) | 58 / 92 | les 2 sont des passerelles de tas, voir ci-dessous |
-| `winsys3d` | 2 (337, 701 — déjà portés) | **247 / 247** | **toute la clôture est en C#** ; restent les deux imports, voir la fin |
+| `winsys3d` | 1 (701, gardé pour la comparaison) | **247 / 247** | **toute la clôture est en C#** ; 701 est un choix, voir la fin |
 | `3dhelp` | 0 | — | 1 seul export, déjà remplacé par `Host/SyntheticDevice.cs` |
 | `gldhelp` | 0 | — | Glide/3Dfx, inatteignable ; à faire pour la complétude seulement |
 | `playst` | 0 | — | **morte** : aucun binaire ne la nomme. Rien à faire |
@@ -745,7 +745,7 @@ désassemblage** :
   trouvée en cherchant l'adresse dans les octets du binaire, Ghidra ne la relie à rien. La
   correction vaut aussi pour `ZeroMatrix`, dont le lot 7 disait « que rien n'écrit » ;
 - restent natifs et passés par adresse : le rappel du minuteur (`LAB_00a06360`) et la procédure
-  de fenêtre (`LAB_00a02ee0`) ; 337 (`InitTrigTables`) est appelé par son export.
+  de fenêtre (`LAB_00a02ee0`) .
 
 `winsys3d` passe à 242 corps, 3 points d'entrée — 823 (`Setup3DDevice`), et 337 et 701 déjà
 portés. **Pas encore exercé** — c'est le démarrage du device : une erreur se verrait dès l'écran
@@ -782,6 +782,20 @@ Deux imports, dont les corps sont déjà en C# :
 
 Ensuite `winsys3d.dll` ne sert plus qu'à porter sa mémoire (`Data.cs`) et les codes natifs passés
 par adresse (rappels, procédures de fenêtre et de dialogue).
+
+**Lot 15, `InitTrigTables` (337)** — le 14 testé en jeu par Vincent le même jour. Dans
+`Trigonometrie.cs`, qui en portait la première boucle. **Les deux boucles dont Ghidra avait perdu
+les arguments sont les tables de racines carrées de `SquareRoot0`** (442, porté au lot 4) :
+`ftol(sqrt(i))`, `sqrt(i·0x100)`, `sqrt(i·0x10000)` et `sqrt(i·0x1000000)` pour `i < 256` — la
+dernière chargée en 64 bits non signés (`fild qword`). Exactes au bit près : `fsqrt` et
+`Math.Sqrt` sont correctement arrondis sur un entier exact. Le corps écrit aussi le registre de
+rotation (zéro, puis la matrice unité de `0x00a2c600`) et vide la pile de matrices. Il écrit tout
+**dans la mémoire de la DLL** ; la copie C# de la table de sinus reste pour `rsin`/`rcos` (règle 6,
+fonction pure). 789 l'appelle désormais directement.
+
+`winsys3d` : **un seul import restant, 701**, et c'est un choix — voir plus haut. **Pas encore
+exercé** : une table de racines fausse fausserait `VectorNormal` et donc l'éclairage, et une
+matrice initiale fausse le premier modèle dessiné.
 
 **Un défaut trouvé en jeu le même jour, corrigé** : le `PutDrawEnv` porté (660) rangeait le
 `DRAWENV` dans un tableau C# privé, alors que `DrawOTag` lit son `isbg` dans la DLL

@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-23
 
+- feat : **`InitTrigTables` (337) est en C#** — la table de sinus et, ce que Ghidra cachait, les
+  quatre tables de racines carrées de `SquareRoot0`. `winsys3d` n'a plus qu'un import, 701, gardé
+  pour `OPENFORESIA_LEGACY_DRAWOTAG`. **Pas encore exercé**
+- doc : `Setup3DDevice` (lot 14) testé en jeu par Vincent
+
 - feat : **toute la clôture de `winsys3d` est en C# — 247 corps sur 247** : `Setup3DDevice` (823),
   le lanceur et sa liste de pilotes, dans `Device.cs`. Restent deux imports, 337 et 701, aux corps
   déjà portés. **Pas encore exercé**

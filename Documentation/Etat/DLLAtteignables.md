@@ -42,7 +42,7 @@ d'abord, le gros morceau ensuite, les deux devices en dernier — voir `Document
 | DLL | fonctions | lignes | employes | cloture | lignes | dont CRT | part | portees |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `wsyskern` | 1 386 | 62 159 | 2 | 92 | 4 088 | 1 926 | 7 % | 58 |
-| `winsys3d` | 604 | 27 092 | 2 | 247 | 13 423 | 1 181 | 50 % | 247 |
+| `winsys3d` | 604 | 27 092 | 1 | 247 | 13 423 | 1 181 | 50 % | 247 |
 | `3dhelp` | 97 | 3 518 | — | — | — | — | — | — |
 | `gldhelp` | 54 | 1 141 | — | — | — | — | — | — |
 | `playst` | 1 977 | 41 713 | — | — | — | — | — | — |
@@ -308,21 +308,20 @@ Le portage sur Win32 de la BIBLIOTHEQUE PSY-Q de la PlayStation : libgpu (liste 
 libgte (le coprocesseur geometrique), le son, la carte memoire, le clavier. C'est le vrai sujet du
 chantier.
 
-**2 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
+**1 points d'entree employes**, dont la cloture d'appels couvre **272 fonctions**,
 soit **14 604 lignes de Ghidra sur 27 092**. Retranchee la CRT liee statiquement — 25 fonctions,
 1 181 lignes, qui se rebranchent au lieu de se transcrire —, le devis est de **13 423 lignes,
 50 % de la DLL**. Le reste n'est atteint par rien de ce que la reconstruction importe
 aujourd'hui.
 
-**245 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
+**246 corps entrent dans la cloture par la reconstruction et non par un `[DllImport]`** :
 ils sont deja transcrits, donc leur import a disparu. Ils restent comptes — c'est ce qui
 empeche le devis de retrecir a mesure qu'on avance.
 
-### Les points d'entree employes (2)
+### Les points d'entree employes (1)
 
 | ordinal | nom d'export | adresse | fonction | lignes | implemente |
 |---:|---|---|---|---:|---|
-| 337 | — | `0x00a1df00` | `FUN_00a1df00` | 62 | oui |
 | 701 | — | `0x00a061b0` | `FUN_00a061b0` | 59 | oui |
 
 ### La cloture — ce qu'il faut transcrire (247 fonctions, 13 423 lignes)

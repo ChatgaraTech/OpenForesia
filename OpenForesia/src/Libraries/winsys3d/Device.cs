@@ -265,7 +265,7 @@ internal static unsafe class Winsys3dDevice
         }
 
         // La fin commune (0x00a067c2) — l'echec y retombe aussi, apres un `ExitProcess` qui ne rend pas.
-        OpenForesia.Blaze.Winsys3d.InitTrigTables();     // FUN_00a1df00, reste natif (ordinal 337)
+        Winsys3dTrigonometrie.InitTrigTables();           // FUN_00a1df00 (ordinal 337)
         Winsys3dData.DispLargeur_011be6bc = 0x140;
         Winsys3dData.DispHauteur_011be6be = 0xf0;
         Winsys3dData.DispEntrelace_011be6c8 = 0;

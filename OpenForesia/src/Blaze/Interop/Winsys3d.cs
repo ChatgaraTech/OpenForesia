@@ -65,7 +65,7 @@ internal static unsafe class Winsys3d
     //     hook. TODO(REVERSE): the callback passed at the RunApplication call site
     //     (Ghidra: &LAB_00512ef0) has no decompiled function body in Blaze.c (Ghidra only saw it
     //     addressed-of, never as a call target), so it cannot be reconstructed yet.
-    [DllImport("winsys3d.dll", EntryPoint = "#337")] internal static extern void InitTrigTables();
+    internal static void InitTrigTables() => Libraries.Winsys3dTrigonometrie.InitTrigTables(); // PORTE 2026-09-23 — Libraries/winsys3d/Trigonometrie.cs, avec les quatre tables de racines de SquareRoot0
 
     // libgte rcos/rsin. Bodies: winsys3d.c FUN_00a25c20 / FUN_00a25c40 â€” both plain lookups into the
     // same 0x1000-entry table at DAT_011cb420, rcos being rsin shifted a quarter turn

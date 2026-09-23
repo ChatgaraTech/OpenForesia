@@ -24,14 +24,16 @@
 // laquelle ce lot est passe par le desassembleur plutot que par `winsys3d.c` seul.
 //
 // ============================================================================================
-// POURQUOI L'ORDINAL 337 RESTE NATIF, ET POURQUOI CE N'EST PAS UNE MOITIE DE PORTAGE
+// L'ORDINAL 337 — PORTE LE 2026-09-23, AU DERNIER LOT DE `winsys3d`
 //
-// `InitTrigTables` (337, `FUN_00a1df00`) remplit la table a `DAT_011cb420` — **et quatre autres**,
-// que vingt et un endroits encore natifs de `winsys3d.c` relisent. Le porter mettrait la table C#
-// a jour et laisserait la table de la DLL a zero : tout le chemin d'affichage natif lirait des
-// zeros. Il reste donc appele en natif, et le restera jusqu'a ce que ses consommateurs le soient.
+// `InitTrigTables` (337, `FUN_00a1df00`) remplit la table a `DAT_011cb420` — **et quatre autres**.
+// Il est reste natif tant que ses lecteurs l'etaient : le porter avec des tables C# aurait laisse
+// celles de la DLL a zero. **L'aliasing a leve l'obstacle** : le corps porte ecrit dans la memoire
+// de la DLL (`Data.cs`), la ou tout le monde lit. Voir `InitTrigTables` en fin de
+// fichier : les « quatre autres » sont les tables de racines carrees de `SquareRoot0`.
 //
-// **Les deux tables coexistent, et c'est sans danger**, parce que cette table n'est pas de l'etat
+// **La copie C# de la table de sinus reste**, pour `rsin`/`rcos`, et c'est sans danger :
+// **les deux tables coexistent** parce que cette table n'est pas de l'etat
 // partage mutable : elle est une FONCTION PURE de deux constantes, ecrite une fois et jamais
 // modifiee. Les deux copies portent les memes valeurs par construction. La regle du LISEZMOI —
 // « ne pas couper une representation en deux » — vise ce qu'on ECRIT a deux endroits ; une table
@@ -49,7 +51,7 @@ using System;
 
 namespace OpenForesia.Libraries;
 
-internal static class Winsys3dTrigonometrie
+internal static unsafe class Winsys3dTrigonometrie
 {
     /// <summary>Le pas : un tour vaut 0x1000. `0x00a2a0d8`.</summary>
     private const double Pas = 2.0 * Math.PI / 4096.0;
@@ -74,9 +76,9 @@ internal static class Winsys3dTrigonometrie
 
     private static int[] ConstruireTable()
     {
-        // Ghidra: winsys3d.c FUN_00a1df00 @ 0x00a1df00, premiere boucle — la seule des trois que
-        // ce fichier reprend. Les deux suivantes remplissent quatre tables que seul du code natif
-        // relit, et leurs quatre `__ftol()` ont perdu leurs arguments dans la decompilation.
+        // La premiere boucle de `InitTrigTables` (plus bas), reprise pour la copie C# que lisent
+        // `rsin` et `rcos`. Meme formule, meme borne : les deux copies sont identiques par
+        // construction (voir le pave de tete).
         int[] table = new int[(0x011d0420 - 0x011cb420) / 4];
         for (int i = 0; i < table.Length; i++)
             table[i] = (int)(Math.Sin(i * Pas) * Echelle);   // `__ftol` tronque vers zero
@@ -108,4 +110,48 @@ internal static class Winsys3dTrigonometrie
     /// Le resultat est en pas de tour, pas en radians : 4096 pour un tour complet.
     /// </summary>
     internal static int Ratan2(int y, int x) => (int)(Math.Atan2(y, x) * EchelleAngle);
+
+    /// <summary>
+    /// Ghidra: winsys3d.c FUN_00a1df00 @ 0x00a1df00 (ordinal 337) — `InitTrigTables`, sans argument,
+    /// transcrit sur le desassemblage (`Legacy/Raw/Winsys3d/FUN_00a1df00.disasm.txt`). Ecrit dans la
+    /// memoire de la DLL :
+    ///
+    /// <list type="number">
+    /// <item>le registre de rotation du GTE a zero (huit mots), la pile de matrices vide ;</item>
+    /// <item>la table de sinus, 0x1400 entrees : `ftol(sin(i . 2pi/4096) . 4096)` ;</item>
+    /// <item>**les quatre tables de racines de <c>SquareRoot0</c>** (442), 256 `short` chacune :
+    /// `ftol(sqrt(i))`, `sqrt(i . 0x100)`, `sqrt(i . 0x10000)` et `sqrt(i . 0x1000000)` — la
+    /// derniere chargee en 64 bits non signes (`fild qword` sur `[i &lt;&lt; 24 : 0]`). Ce sont ces
+    /// quatre `__ftol()` dont Ghidra avait perdu les `fsqrt` ;</item>
+    /// <item>la matrice unite (`0x00a2c600`) dans le registre de rotation.</item>
+    /// </list>
+    ///
+    /// Les racines sont exactes au bit pres (`fsqrt` et `Math.Sqrt` sont correctement arrondis,
+    /// l'argument est un entier exact). Le sinus porte l'ecart assume du pave de tete.
+    /// </summary>
+    internal static void InitTrigTables()
+    {
+        uint* registre = (uint*)Winsys3dData.RegistreRotation_011d0870;
+        for (int i = 0; i < 8; i++) registre[i] = 0;
+        Winsys3dData.ProfondeurPileMatrices_011f0ecc = 0;
+
+        int* sinus = Winsys3dData.TableSinus_011cb420;
+        for (int i = 0; i < (0x011d0420 - 0x011cb420) / 4; i++)
+            sinus[i] = (int)(Math.Sin(i * Pas) * Echelle);
+
+        ushort* petites = Winsys3dData.RacinesPetites_011d0620;
+        ushort* r8 = Winsys3dData.Racines8_011d0420;
+        ushort* r16 = Winsys3dData.Racines16_011f0c90;
+        ushort* r24 = Winsys3dData.Racines24_011cb210;
+        for (int i = 0; i < 0x100; i++)
+        {
+            petites[i] = (ushort)(int)Math.Sqrt(i);
+            r8[i] = (ushort)(int)Math.Sqrt(i * 0x100);
+            r16[i] = (ushort)(int)Math.Sqrt(i * 0x10000);
+            r24[i] = (ushort)(int)Math.Sqrt((double)((ulong)(uint)(i << 24)));
+        }
+
+        uint* unite = Winsys3dData.MatriceUnite_00a2c600;
+        for (int i = 0; i < 8; i++) registre[i] = unite[i];
+    }
 }
