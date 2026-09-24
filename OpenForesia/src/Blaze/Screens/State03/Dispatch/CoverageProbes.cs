@@ -71,7 +71,7 @@ public static unsafe partial class Blaze
     private static SortedSet<string> s_ProbeAll;
 
     /// <summary>Le chemin du releve, deduit de l'emplacement de l'executable : quatre crans
-    /// au-dessus de <c>bin/Debug/net9.0</c> ramenent a la racine du depot.</summary>
+    /// au-dessus de <c>bin/Debug/net10.0</c> ramenent a la racine du depot.</summary>
     private static string ProbePath => System.IO.Path.GetFullPath(System.IO.Path.Combine(
         AppContext.BaseDirectory, "..", "..", "..", "..",
         "Documentation", "Etat", "handlers-exerces.tsv"));

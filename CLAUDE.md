@@ -31,7 +31,7 @@ commiter lui-même.
 
 **Whether the `dotnet` on PATH carries an SDK is machine-dependent — check before assuming.** On
 the current machine, `C:\Program Files (x86)\dotnet` is on PATH and already ships an x86 SDK
-(9.0.317), so a plain `dotnet build OpenForesia.sln` / `dotnet run --project OpenForesia` works
+(9.0.317 and 10.0.401; the projects target `net10.0` since 2026-09-24), so a plain `dotnet build OpenForesia.sln` / `dotnet run --project OpenForesia` works
 with no `DOTNET_ROOT` juggling. An earlier machine used for this project had only an x64
 *runtime* on PATH, with the actual SDK installed separately under the user profile; on a machine
 like that, every `dotnet` invocation needs to point at the real SDK first:
@@ -61,7 +61,7 @@ fix yet (fixing changes behaviour); the header of `MemoryLayoutTests.cs` says wh
 
 `dotnet run --project OpenForesia` can fail from the shell on machines where the SDK on PATH only
 carries an x64 runtime while the game is x86 — in that case launch
-`OpenForesia/bin/Debug/net9.0/OpenForesia.exe` directly, or use `playtest.ps1` below, which handles
+`OpenForesia/bin/Debug/net10.0/OpenForesia.exe` directly, or use `playtest.ps1` below, which handles
 it either way.
 
 **Neither the SDK nor `node` is on the agent's PATH**, even when both are installed — same trap,

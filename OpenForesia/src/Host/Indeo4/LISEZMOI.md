@@ -38,7 +38,7 @@ Contre `ir41_32.ax` lui-même, **à l'octet près**, sur les plans YVU9 (le code
 quand on lui demande `IF09` ; son RGB24 est tramé et ne sert pas de référence) :
 
 ```powershell
-OpenForesia.Tools\bin\Debug\net9.0-windows\OpenForesia.Tools.exe indeo E:\French\ending.avi
+OpenForesia.Tools\bin\Debug\net10.0-windows\OpenForesia.Tools.exe indeo E:\French\ending.avi
 ```
 
 **Résultat au 2026-09-24 : IDENTIQUE sur les quatre films, 8 849 images sur 8 849**, plans Y, V et U.

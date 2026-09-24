@@ -5,7 +5,7 @@
         <!-- `-windows` et UseWindowsForms : le verbe `montee` ouvre une fenetre (le simulateur de
              montee de niveau, MonteeDeNiveau/). OutputType reste Exe et non WinExe pour que les
              cinq autres verbes gardent leur console. -->
-        <TargetFramework>net9.0-windows</TargetFramework>
+        <TargetFramework>net10.0-windows</TargetFramework>
         <UseWindowsForms>true</UseWindowsForms>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>

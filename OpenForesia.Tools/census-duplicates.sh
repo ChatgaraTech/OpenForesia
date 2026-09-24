@@ -30,7 +30,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-EXE=OpenForesia.Tools/bin/Debug/net9.0/OpenForesia.Tools.exe
+EXE=OpenForesia.Tools/bin/Debug/net10.0-windows/OpenForesia.Tools.exe
 BIN=Legacy/Binaries/Blaze.exe
 ROADMAP=Documentation/Etat/GestionnairesEntites.md
 TMP=${TMP_DUP:-/tmp/census-duplicates}

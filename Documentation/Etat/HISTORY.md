@@ -6,6 +6,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-24
 
+- feat : **les trois projets passent en .NET 10** (`net10.0`, `net10.0-windows` pour les outils) sur
+  le runtime x86 10.0.12 — build 0 erreur, `OpenForesia.Tools` tourne ; chemins `bin\Debug\net9.0`
+  mis à jour dans `playtest.ps1`, les deux `census-*.sh`, le `.bat` du simulateur et la doc
+
 - feat : **les cinématiques se décodent en C#, `ir41_32.ax` n'est plus livré** — `MoviePlayback` lit
   par `Host/Indeo4/`, la couleur passe par `Host/Yvu9Rgb.cs` (BT.601, chrominance répétée comme
   Intel, sans son tramage : écart ≤ 5 mesuré par `indeo --rgb`) ; `Platform/IndeoCodec.cs` et

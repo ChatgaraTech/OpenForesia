@@ -170,7 +170,7 @@ mesure plutôt que de supposer, si un doute revient.
 
 Attention : **`OpenForesia/` ne contient pas de `.cfg`**, donc avec `-WorkingDir OpenForesia` ce sont
 les liaisons **par défaut** (`s_KeyBindingDefaults_00564ab8`) qui s'appliquent, pas le
-`bin/Debug/net9.0/OpenForesia.cfg`. Les deux tables se trouvent être identiques ici, mais la
+`bin/Debug/net10.0/OpenForesia.cfg`. Les deux tables se trouvent être identiques ici, mais la
 distinction compte dès que l'une des deux change.
 
 ### Taper du texte : `TYPE:` et `KBENTER`
@@ -227,7 +227,7 @@ exemple. Un personnage = un fichier ; deux personnages qui diffèrent par n'impo
 `OpenForesia/save/` (à côté du `.csproj`, avec un `.gitkeep` pour rester suivi par git) existe donc
 dans le dépôt pour cette raison. **C'est l'endroit qui compte** : Rider « Run » et `dotnet run`
 lancent tous deux le process avec ce dossier comme répertoire de travail par défaut — pas
-`bin/Debug/net9.0/`, où se trouve l'exe compilé mais où `playtest.ps1` pointe par défaut. Pour
+`bin/Debug/net10.0/`, où se trouve l'exe compilé mais où `playtest.ps1` pointe par défaut. Pour
 tester le chemin d'écriture dans les mêmes conditions que Rider, passer
 `-WorkingDir OpenForesia` :
 
@@ -287,8 +287,8 @@ processus**, pas l'emplacement de l'exe ni celui du `.csproj` :
 | lancement | le fichier apparaît dans |
 |---|---|
 | Rider « Run », `dotnet run` | `OpenForesia\save\` |
-| double-clic sur l'exe, `bin\Debug\net9.0\OpenForesia.exe` | `OpenForesia\bin\Debug\net9.0\save\` |
-| `playtest.ps1` sans `-WorkingDir` | `OpenForesia\bin\Debug\net9.0\save\` |
+| double-clic sur l'exe, `bin\Debug\net10.0\OpenForesia.exe` | `OpenForesia\bin\Debug\net10.0\save\` |
+| `playtest.ps1` sans `-WorkingDir` | `OpenForesia\bin\Debug\net10.0\save\` |
 | `playtest.ps1 -WorkingDir OpenForesia` | `OpenForesia\save\` |
 
 « La sauvegarde ne crée plus de fichier » est presque toujours ce décalage-là : regarder les deux
@@ -467,7 +467,7 @@ ajouté au groupe.
 
 - **Le comportement de `dotnet run --project OpenForesia` dépend de la machine.** Vérifier
   `dotnet --list-sdks` : s'il liste un SDK, le `dotnet` du PATH suffit tel quel (cas de la machine
-  actuelle — SDK x86 9.0.317 directement sur le PATH). S'il est vide, le PATH ne porte qu'un
+  actuelle — SDKs x86 9.0.317 et 10.0.401 directement sur le PATH, projets en `net10.0`). S'il est vide, le PATH ne porte qu'un
   runtime et il faut pointer `DOTNET_ROOT` vers le vrai SDK avant de construire, puis **le retirer
   aussitôt après** : un processus **x86** qui hérite d'un `DOTNET_ROOT` x64 meurt avant d'ouvrir sa
   fenêtre, sur `Failed to load hostfxr.dll … 0x800700C1`. `playtest.ps1 -Build` fait cette
@@ -598,7 +598,7 @@ s'arrête sur l'exception nommée du prochain corps manquant. Relancer suffit.
 Symptôme classique : « Invertaire » et « Enchère » semblent ne mener nulle part. Ils rebondissent
 en fait vers l'écran racine parce que le `save\` du répertoire de travail est vide — c'est le
 comportement de l'original quand il n'y a aucune sauvegarde. Le `.cfg`, lui, suit le chemin de
-l'**exe**. Les deux ne coïncident que si l'on lance depuis `bin\Debug\net9.0\`.
+l'**exe**. Les deux ne coïncident que si l'on lance depuis `bin\Debug\net10.0\`.
 
 ---
 
@@ -751,7 +751,7 @@ mesure le taux avant de conclure.** Le lancement direct suffit et va plus vite q
 (pas d'attente de menu) :
 
 ```powershell
-$exe = "bin\Debug\net9.0\OpenForesia.exe"; $lost = 0; $n = 16
+$exe = "bin\Debug\net10.0\OpenForesia.exe"; $lost = 0; $n = 16
 for ($i = 1; $i -le $n; $i++) {
     $o = "$env:TEMP\of_o.txt"; $e = "$env:TEMP\of_e.txt"
     Start-Process $exe -WorkingDirectory (Get-Location) -RedirectStandardOutput $o -RedirectStandardError $e | Out-Null
@@ -1625,7 +1625,7 @@ Deux pieges de PowerShell 5.1 rencontres en ecrivant le script, et payes tous le
 ### Un plantage de construction qui n'en est pas un : le jeu est encore ouvert
 
 `MSB3027` / `MSB3021` — « Le fichier est verrouillé par : OpenForesia (13384) » — signifie qu'une
-instance du jeu tourne encore et tient `bin\Debug\net9.0\OpenForesia.exe`. `playtest.ps1 -Build`
+instance du jeu tourne encore et tient `bin\Debug\net10.0\OpenForesia.exe`. `playtest.ps1 -Build`
 s'arrete alors net.
 
 **Avant de tuer quoi que ce soit, regarder a qui appartient cette instance :**
@@ -1925,7 +1925,7 @@ geste qui fait naître le plus d'entités neuves d'un coup (l'éclat d'impact `0
 plus la réaction de la bête touchée). Sans le filet la première lacune tue le jeu et n'en nomme
 qu'une ; avec, la partie continue et **toutes** se journalisent.
 
-Il lance depuis `OpenForesia\` — donc le `save\` du dépôt, pas celui de `bin\Debug\net9.0\` — écrit
+Il lance depuis `OpenForesia\` — donc le `save\` du dépôt, pas celui de `bin\Debug\net10.0\` — écrit
 `scratchpad\filet-<horodatage>.log`, et réaffiche les lignes `[LACUNE]` à la fermeture.
 
 **Fermer la fenêtre normalement** : le récapitulatif trié par nombre d'appels est branché sur

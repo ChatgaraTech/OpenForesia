@@ -19,7 +19,7 @@ setlocal
 
 cd /d "%~dp0..\OpenForesia.Tools"
 
-set "EXE=bin\Debug\net9.0-windows\OpenForesia.Tools.exe"
+set "EXE=bin\Debug\net10.0-windows\OpenForesia.Tools.exe"
 
 if not exist "%EXE%" (
     echo L'outil n'est pas construit.

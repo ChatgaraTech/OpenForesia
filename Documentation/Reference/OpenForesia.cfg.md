@@ -18,7 +18,7 @@ Le chemin est construit à partir du chemin de l'exécutable, extension remplac�
 
 | lancement | fichier lu |
 |---|---|
-| `bin\Debug\net9.0\OpenForesia.exe` | `bin\Debug\net9.0\OpenForesia.cfg` |
+| `bin\Debug\net10.0\OpenForesia.exe` | `bin\Debug\net10.0\OpenForesia.cfg` |
 | Rider « Run », `dotnet run` | idem — c'est le chemin de l'**exe**, pas le répertoire de travail |
 
 À la différence du dossier `save\`, qui suit lui le répertoire de travail (voir `test-protocol.md`).

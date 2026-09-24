@@ -83,7 +83,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path (Split-Path $PSCommandPath -Parent) -Parent
-$exe  = Join-Path $repo 'OpenForesia\bin\Debug\net9.0\OpenForesia.exe'
+$exe  = Join-Path $repo 'OpenForesia\bin\Debug\net10.0\OpenForesia.exe'
 $runs = Join-Path $repo 'scratchpad'          # ignore par git
 if (-not (Test-Path $runs)) { New-Item -ItemType Directory $runs | Out-Null }
 
