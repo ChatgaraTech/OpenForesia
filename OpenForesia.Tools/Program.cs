@@ -74,6 +74,36 @@ if (args[0] is "bestiaire")
     return;
 }
 
+// L'oracle du decodeur Indeo 4 en C# : chaque image d'un film du CD decodee par ir41_32.ax (sortie
+// IF09) et par Host/Indeo4/, comparee a l'octet pres. Voir Indeo/ComparaisonIndeo.cs.
+if (args[0] is "indeo")
+{
+    if (args.Length < 2) { PrintUsage(); return; }
+
+    var codec = OpenForesia.Tools.Indeo.ComparaisonIndeo.CodecParDefaut;
+    var images = -1;
+    string? outDir = null;
+    bool referenceOnly = false, keepGoing = false, rgb = false;
+    for (var i = 2; i < args.Length; i++)
+    {
+        if (args[i] is "--images" && i + 1 < args.Length && int.TryParse(args[i + 1], out var n)) { images = n; i++; }
+        else if (args[i] is "--codec" && i + 1 < args.Length) { codec = args[i + 1]; i++; }
+        else if (args[i] is "--sortie" && i + 1 < args.Length) { outDir = args[i + 1]; i++; }
+        else if (args[i] is "--reference-seule") { referenceOnly = true; }
+        else if (args[i] is "--continuer") { keepGoing = true; }
+        else if (args[i] is "--rgb") { rgb = true; }
+        else { Console.WriteLine($"Option inconnue : {args[i]}"); PrintUsage(); return; }
+    }
+
+    if (rgb)
+    {
+        Environment.ExitCode = OpenForesia.Tools.Indeo.ComparaisonIndeo.RunRgb(args[1], codec, images, outDir);
+        return;
+    }
+    Environment.ExitCode =OpenForesia.Tools.Indeo.ComparaisonIndeo.Run(args[1], codec, images, outDir, referenceOnly, keepGoing);
+    return;
+}
+
 // Le simulateur de montee de niveau : le seul verbe qui ouvre une fenetre. Il ne lit ni le binaire
 // ni le CD — il rejoue FUN_005391f0 sur un personnage qu'on compose a l'ecran. Voir
 // MonteeDeNiveau/Simulateur.cs et Documentation/Reference/MonteeDeNiveau.md.
@@ -295,6 +325,9 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools bestiaire <cd> [--zone N] [--sortie <dir>]");
     Console.WriteLine("                                               especes, fiches, formations et butin, lus sur le CD");
     Console.WriteLine("  OpenForesia.Tools montee                     simulateur de montee de niveau (fenetre)");
+    Console.WriteLine("  OpenForesia.Tools indeo <film.avi> [--images N] [--codec <ax>] [--sortie <dir>]");
+    Console.WriteLine("                          [--reference-seule] [--continuer] [--rgb]");
+    Console.WriteLine("                                               decodeur Indeo 4 C# contre ir41_32.ax, a l'octet pres");
     Console.WriteLine();
     Console.WriteLine("Exemples:");
     Console.WriteLine("  OpenForesia.Tools Legacy/Binaries/winsys3d.dll");

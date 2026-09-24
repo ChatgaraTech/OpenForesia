@@ -4,7 +4,7 @@
 // L'original ne démultiplexe rien lui-même : il passe le chemin du fichier à DirectShow, qui
 // s'occupe du conteneur comme du codec. DirectShow ne sait plus décoder l'Indeo 4 des films du CD
 // (voir Documentation/Reference/cinematiques.md), donc on reprend les deux moitiés : le conteneur
-// ici, le codec par `Platform/IndeoCodec.cs`.
+// ici, le codec dans `Host/Indeo4/`.
 //
 // **Le fichier est lu en flux, jamais chargé entier.** `opening.avi` pèse 463 Mo sur le CD alors
 // que son `RIFF` n'en déclare que 28 : le reste est du bourrage de pressage. Le charger en mémoire

@@ -22,4 +22,13 @@
     <ItemGroup>
       <PackageReference Include="Iced" Version="1.21.0" />
     </ItemGroup>
+
+    <!-- Le verbe `indeo` compare le decodeur Indeo 4 du jeu au codec d'Intel : il compile les memes
+         sources que le jeu plutot que d'en garder une copie, pour que ce soit bien CE decodeur qui
+         soit verifie. -->
+    <ItemGroup>
+      <Compile Include="..\OpenForesia\src\Host\AviReader.cs" Link="Indeo\Jeu\AviReader.cs" />
+      <Compile Include="..\OpenForesia\src\Host\Yvu9Rgb.cs" Link="Indeo\Jeu\Yvu9Rgb.cs" />
+      <Compile Include="..\OpenForesia\src\Host\Indeo4\**\*.cs" Link="Indeo\Jeu\Indeo4\%(RecursiveDir)%(Filename)%(Extension)" />
+    </ItemGroup>
 </Project>

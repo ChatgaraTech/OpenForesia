@@ -51,6 +51,12 @@ pas se bâtir, lève, et l'exception est rattrapée : la séquence passe à la s
 
 Ce n'est pas un défaut du jeu, et ce n'est pas réparable dans le jeu.
 
+> **Depuis le 2026-09-24, le jeu n'emploie plus aucun code de 1998 pour ses films.** Le décodeur
+> Indeo 4 de FFmpeg, porté en C# (`Host/Indeo4/`), est identique à `ir41_32.ax` à l'octet près sur
+> les 8 849 images des quatre films. Les sections qui suivent racontent comment le codec d'Intel a
+> été trouvé et appelé : il sert encore, mais seulement d'**oracle** (`OpenForesia.Tools indeo`),
+> depuis `Legacy/Binaries/`. Il n'est plus livré.
+
 ## Le décodeur est sur le CD du jeu
 
 `E:\DXMedia\DXMEDIA.exe` (DirectX Media, 28/09/1998) est un auto-extractible qui contient **douze
@@ -106,7 +112,8 @@ cadence lue dans l'en-tête du film, et une touche les passe.
 | pièce | où | état |
 |---|---|---|
 | démultiplexage AVI | `Host/AviReader.cs` | **en flux**, jamais le fichier entier en mémoire |
-| décodage Indeo 4 | `Platform/IndeoCodec.cs` | la DLL du CD, ni installée ni enregistrée |
+| décodage Indeo 4 | `Host/Indeo4/` | le décodeur de FFmpeg porté en C# (LGPL 2.1+), **identique à l'octet près** au codec d'Intel — jusqu'au 2026-09-24 c'était `ir41_32.ax` lui-même (`Platform/IndeoCodec.cs`, retiré) |
+| couleur | `Host/Yvu9Rgb.cs` | YVU9 → BGR24 comme Intel (BT.601, chrominance répétée), **sans son tramage** : écart ≤ 5 (`indeo --rgb`) |
 | cadence, affichage, abandon | `Host/MoviePlayback.cs` | horloge du film, `StretchDIBits` en 640×480 |
 | branchement | `Engine/Video.cs`, `TrySetupMovieStream` | remplace le graphe DirectShow introuvable |
 | son MS-ADPCM | `Host/MsAdpcm.cs`, `Host/WaveOut.cs` | décodé et joué, **validé contre le décodeur de Windows** |
@@ -185,6 +192,21 @@ comparé à une référence n'est pas vérifié.** Pour tous les formats d'époq
 une.
 
 ## Et si on voulait écrire le codec à la main ?
+
+> **Mise à jour du 2026-09-24 — la voie choisie n'est pas celle décrite ci-dessous.** On ne
+> rétro-ingénie pas `ir41_32.ax` : on porte en C# le décodeur Indeo 4 de **FFmpeg**
+> (`libavcodec/indeo4.c`, LGPL 2.1+), celui qui permet à VLC de lire ces films. Il sera dans
+> `Host/Indeo4/`. Le codec d'Intel reste l'oracle, appelé en sortie `IF09` (YVU9 natif, son RGB24
+> étant tramé) par `OpenForesia.Tools indeo <film.avi>`, qui compare les deux à l'octet près.
+> Voir `Documentation/DLL/ir41_32.md`.
+>
+> **Le portage est fait, vérifié et branché** : identique à l'octet près sur les 8 849 images des
+> quatre films (`OpenForesia/src/Host/Indeo4/LISEZMOI.md`), et `MoviePlayback` le lit depuis le
+> 2026-09-24. `ir41_32.ax` n'est plus livré.
+>
+> Le relevé des genres d'image ci-dessous, fait sur douze images, était incomplet. Sur les quatre
+> films entiers (8 849 images) : `INTRA` 199, `INTRA1` 393, `INTER` 4 128, `INTER_NOREF` 4 129 —
+> et **rien d'autre** : ni image bidirectionnelle, ni image vide. C'est le périmètre du portage.
 
 C'est possible, et le projet a déjà tout ce qu'il faut pour : `ir41_32.ax` est un binaire x86 de
 857 Ko, exactement le genre d'artefact que `OpenForesia.Tools disasm` sait ouvrir. Le format

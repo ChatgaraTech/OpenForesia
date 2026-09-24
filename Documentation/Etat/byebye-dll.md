@@ -905,6 +905,11 @@ gardé par décision de Vincent ; le remplacer demanderait un décodeur Indeo en
 part. Les `.dll` restants du dossier de sortie sont ceux de .NET (`OpenForesia.dll`, `Silk.NET.*`,
 `Microsoft.*`).
 
+> **Mise à jour du 2026-09-24 : ce chantier-là est fait aussi.** Le décodeur Indeo 4 de FFmpeg,
+> porté en C# (`OpenForesia/src/Host/Indeo4/`, LGPL 2.1+), est identique à `ir41_32.ax` à l'octet
+> près sur les 8 849 images des quatre films, et le jeu le lit à sa place. **Plus aucun binaire de
+> 1998 n'est livré.** Voir `Documentation/DLL/ir41_32.md`.
+
 ### Ce qui reste, après le lot 18
 
 Aucune des cinq DLL de 1998 n'est plus chargée comme code. `winsys3d.dll` est lue comme un fichier

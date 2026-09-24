@@ -4,6 +4,29 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-24
+
+- feat : **les cinématiques se décodent en C#, `ir41_32.ax` n'est plus livré** — `MoviePlayback` lit
+  par `Host/Indeo4/`, la couleur passe par `Host/Yvu9Rgb.cs` (BT.601, chrominance répétée comme
+  Intel, sans son tramage : écart ≤ 5 mesuré par `indeo --rgb`) ; `Platform/IndeoCodec.cs` et
+  `src/DLL/` retirés. Plus aucun binaire de 1998 dans le dossier de sortie. Vérifié en jeu : les
+  films passent
+
+- feat : **le décodeur Indeo 4 en C# (`Host/Indeo4/`), identique à `ir41_32.ax` à l'octet près sur
+  les 8 849 images des quatre films** — portage du décodeur de FFmpeg (LGPL 2.1+), tables générées
+  depuis ses sources par `gen-indeo4-tables.js` ; pas encore branché dans le jeu
+
+- feat : **`OpenForesia.Tools indeo <film.avi>`, l'oracle du futur décodeur Indeo 4 en C#** — chaque
+  image décodée par `ir41_32.ax` (IF09) et par `Host/Indeo4/Indeo4Decoder.cs` (encore vide, lève
+  `NotImplementedException`), comparée à l'octet près ; `--reference-seule` prouve le codec d'Intel
+  déterministe sur les quatre films (8 849 images)
+- doc : les films n'emploient que quatre genres d'image — `INTRA`, `INTRA1`, `INTER`,
+  `INTER_NOREF` — : c'est le périmètre du portage de FFmpeg
+
+- doc : **`ir41_32.ax` rend sa sortie native en `IF09`** (YVU9 + plan d'indicateurs), ce qui en fait
+  l'oracle à l'octet près pour un décodeur Indeo 4 en C# porté de FFmpeg — `YVU9` seul est refusé,
+  et son RGB24 est **tramé** (motif 4×4), inutilisable comme référence exacte
+
 ## 2026-09-23
 
 - feat : **les données de 1998 extraites des DLL sont du C# lisible** — `ConstantesRdata.cs`,

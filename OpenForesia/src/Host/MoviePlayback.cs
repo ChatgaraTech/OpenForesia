@@ -2,9 +2,14 @@
 // La lecture d'une cinématique, de bout en bout — notre échafaudage.
 //
 // L'original confiait tout à DirectShow : conteneur, codec, cadence, son, et la présentation dans
-// une surface DirectDraw. Tout est repris ici — `AviReader` pour le conteneur, `IndeoCodec` pour
-// l'image, `MsAdpcm` et `WaveOut` pour le son — sauf la présentation, qui passe par la surface GDI
-// de démarrage comme le reste de l'écran-titre, la chaîne Direct3D n'existant pas encore.
+// une surface DirectDraw. Tout est repris ici — `AviReader` pour le conteneur, `Indeo4Decoder`
+// (`Host/Indeo4/`, le décodeur de FFmpeg porté en C#) pour l'image et `Yvu9Rgb` pour sa couleur,
+// `MsAdpcm` et `WaveOut` pour le son — sauf la présentation, qui passe par la surface GDI de
+// démarrage comme le reste de l'écran-titre, la chaîne Direct3D n'existant pas encore.
+//
+// Aucun binaire de 1998 n'intervient plus : jusqu'au 2026-09-24, l'image passait par
+// `ir41_32.ax`, le codec d'Intel tiré du CD. Le décodeur C# lui est identique à l'octet près sur
+// les quatre films (`OpenForesia.Tools indeo`).
 //
 // **L'horloge est le chronomètre du programme.** La position de lecture du périphérique audio est
 // plus juste sur le papier — elle ne dérive pas — mais elle se **fige** quand la sortie se vide, et
@@ -31,9 +36,11 @@ internal static unsafe class MoviePlayback
     private const int VideoQueueLimit = 30;
 
     private static AviReader? s_Reader;
-    private static IndeoCodec.Stream? s_Stream;
+    private static Indeo4Decoder? s_Decoder;
+    private static Yvu9Image? s_Image;
     private static byte[] s_Compressed = new byte[64 * 1024];
     private static byte[] s_Frame = [];
+    private static int s_Stride;
     private static readonly byte[] s_BitmapInfo = new byte[40];
     private static Stopwatch? s_Clock;
     private static long s_FrameIndex;
@@ -73,9 +80,9 @@ internal static unsafe class MoviePlayback
     }
 
     /// <summary>
-    /// Ouvre un film et affiche sa première image. Rend faux si le fichier est absent, si son codec
-    /// n'est pas celui qu'on sait décoder, ou si le décodeur n'est pas là — trois cas que la
-    /// séquence d'introduction de l'original traite déjà comme « ce film ne se joue pas ».
+    /// Ouvre un film et affiche sa première image. Rend faux si le fichier est absent ou si son
+    /// codec n'est pas celui qu'on sait décoder — deux cas que la séquence d'introduction de
+    /// l'original traite déjà comme « ce film ne se joue pas ».
     /// </summary>
     internal static bool Start(string path, IntPtr window)
     {
@@ -96,21 +103,17 @@ internal static unsafe class MoviePlayback
             return false;
         }
 
-        IndeoCodec.Stream? stream = IndeoCodec.OpenStream(reader.Width, reader.Height);
-        if (stream == null)
-        {
-            reader.Dispose();
-            return false;
-        }
-
         s_Reader = reader;
-        s_Stream = stream;
+        s_Decoder = new Indeo4Decoder(reader.Width, reader.Height);
+        s_Image = new Yvu9Image(reader.Width, reader.Height);
         s_Window = window;
         s_FrameIndex = 0;
-        s_Frame = new byte[stream.Stride * reader.Height];
+        // Les lignes d'une DIB sont alignées sur quatre octets.
+        s_Stride = (reader.Width * 3 + 3) & ~3;
+        s_Frame = new byte[s_Stride * reader.Height];
 
         // Le `BITMAPINFOHEADER` que `StretchDIBits` relit à chaque image. Hauteur positive : la
-        // DIB que le codec écrit est rangée du bas vers le haut, ce que GDI attend par défaut.
+        // DIB que `Yvu9Rgb` écrit est rangée du bas vers le haut, ce que GDI attend par défaut.
         fixed (byte* info = s_BitmapInfo)
         {
             *(uint*)(info + 0) = 40;
@@ -119,7 +122,7 @@ internal static unsafe class MoviePlayback
             *(ushort*)(info + 12) = 1;
             *(ushort*)(info + 14) = 24;
             *(uint*)(info + 16) = 0;   // BI_RGB
-            *(uint*)(info + 20) = (uint)(stream.Stride * reader.Height);
+            *(uint*)(info + 20) = (uint)(s_Stride * reader.Height);
         }
 
         // Le son. MS-ADPCM seulement : c'est ce que portent les quatre films du jeu, et écrire un
@@ -167,7 +170,7 @@ internal static unsafe class MoviePlayback
     /// </summary>
     internal static bool Step()
     {
-        if (s_Reader == null || s_Stream == null || s_Clock == null) return false;
+        if (s_Reader == null || s_Decoder == null || s_Image == null || s_Clock == null) return false;
         if (s_Aborted) { Stop(); return false; }
 
         // **L'horloge est le chronomètre, pas la position du périphérique audio.** La première
@@ -189,17 +192,17 @@ internal static unsafe class MoviePlayback
             byte[]? frame = TakeVideoFrame();
             if (frame == null) { Stop(); return false; }
 
-            fixed (byte* source = frame)
-            fixed (byte* destination = s_Frame)
+            // Le décodeur tient lui-même ses images de référence : chaque image dit dans son
+            // en-tête si elle est clé, il n'y a rien à lui annoncer.
+            try
             {
-                // Seule la première image est annoncée comme image clé. Marquer à tort une image
-                // clé « pas clé » est sans effet — elle ne référence rien — alors que l'inverse
-                // ferait décoder une différence sur un fond inexistant.
-                if (!IndeoCodec.Decode(s_Stream, source, frame.Length, s_FrameIndex == 0, destination))
-                {
-                    Stop();
-                    return false;
-                }
+                s_Decoder.Decode(frame, s_Image);
+            }
+            catch (InvalidDataException e)
+            {
+                Console.Error.WriteLine($"[FILM] image {s_FrameIndex} : {e.Message}");
+                Stop();
+                return false;
             }
 
             s_FrameIndex++;
@@ -322,10 +325,14 @@ internal static unsafe class MoviePlayback
 
     private static void Present()
     {
-        if (s_Reader == null || s_Stream == null) return;
+        if (s_Reader == null || s_Image == null) return;
 
         IntPtr dc = StartupSurface.EnsureDc(PresentWidth, PresentHeight);
         if (dc == IntPtr.Zero) return;
+
+        // La conversion de couleur n'est faite que pour l'image affichée : celles qu'on décode
+        // pour rattraper un retard n'en ont pas besoin.
+        Yvu9Rgb.ToBottomUpBgr(s_Image, s_Frame, s_Stride);
 
         fixed (byte* bits = s_Frame)
         fixed (byte* info = s_BitmapInfo)
@@ -364,8 +371,8 @@ internal static unsafe class MoviePlayback
 
         s_Sound?.Dispose();
         s_Sound = null;
-        s_Stream?.Dispose();
-        s_Stream = null;
+        s_Decoder = null;
+        s_Image = null;
         s_Reader?.Dispose();
         s_Reader = null;
         s_Clock = null;

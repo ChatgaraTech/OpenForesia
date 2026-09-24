@@ -153,9 +153,9 @@ tracabilite, pas un comportement. C'est la meme lecture que `implemente` dans
 `GestionnairesEntites.md` : le corps existe, rien de plus.
 
 **Il ne compte pas `ir41_32.ax`.** Ce n'est pas une DLL du jeu mais le codec Indeo 4.1 d'Intel,
-livre avec, et il n'en existe aucune decompilation dans le depot. S'en passer, ce n'est pas
-transcrire du code : c'est implementer un codec video. Le chantier est reel, mais il est autre —
-voir `Documentation/DLL/ir41_32.md`.
+et il n'en existe aucune decompilation dans le depot. Il n'est plus livre depuis le 2026-09-24 :
+le decodeur de FFmpeg, porte en C# dans `OpenForesia/src/Host/Indeo4/`, le remplace, identique a
+l'octet pres — voir `Documentation/DLL/ir41_32.md`.
 
 **Une fonction se transcrit ENTIERE.** Ne transcrire d'une DLL que ce qu'on en atteint est un choix
 delibere et ce document le sert. Ne transcrire d'une FONCTION que la branche deja vue en jeu n'en

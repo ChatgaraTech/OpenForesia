@@ -988,8 +988,9 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
     /// travers la vtable d'un objet dont Ghidra n'a jamais vu les corps (TODO(REVERSE) #13) -- et
     /// ce graphe ne se batirait de toute facon plus, puisque Windows n'a plus de decodeur Indeo 4.
     /// La reconstruction fait donc le meme travail par un autre chemin : notre demultiplexeur AVI,
-    /// le codec d'origine du CD (`Platform/IndeoCodec.cs`), et la surface GDI de demarrage. Rien
-    /// n'est invente du corps introuvable. Voir Documentation/Reference/cinematiques.md.
+    /// notre decodeur Indeo 4 (`Host/Indeo4/`, porte de FFmpeg, identique a l'octet pres au codec
+    /// d'origine du CD), et la surface GDI de demarrage. Rien n'est invente du corps introuvable.
+    /// Voir Documentation/Reference/cinematiques.md.
     /// <para>
     /// Le minuteur de 100 ms de l'original n'est pas arme : la cadence vient de l'en-tete du film
     /// (15 im/s, soit 66,7 ms), et le pas-a-pas est fait par la boucle de lecture ci-dessous. Un
