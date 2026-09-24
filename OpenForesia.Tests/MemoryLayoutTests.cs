@@ -17,19 +17,22 @@ namespace OpenForesia.Tests;
 /// qui relève d'un changement séparé. <b>Un test qui passerait tout de suite ne prouverait rien.</b>
 /// </para>
 /// <para>
-/// <b>État au 2026-08-22 : trois verts, trois rouges.</b> L'analyseur a été rendu plus juste ce
-/// jour-là (déclarations sur plusieurs lignes, vues posées sur d'autres vues, nom déclaré distingué
-/// d'une simple mention, surcharge <c>Alloc(compte, taille)</c>), ce qui a rendu visibles des
-/// défauts qu'il ne voyait pas — aucun n'est nouveau dans le code :
+/// <b>État au 2026-09-24 : quatre verts, deux rouges.</b> Le 2026-08-22, l'analyseur a été rendu
+/// plus juste (déclarations sur plusieurs lignes, vues posées sur d'autres vues, nom déclaré
+/// distingué d'une simple mention, surcharge <c>Alloc(compte, taille)</c>), ce qui a rendu visibles
+/// des défauts qu'il ne voyait pas — aucun n'était nouveau dans le code. Il en reste deux :
 /// </para>
 /// <list type="bullet">
-/// <item>test 2 : <c>s_EntityStatBlocks_005ea560</c> s'alloue 0x2400 octets dans <c>GameArena</c> ;</item>
 /// <item>test 3 : <c>s_UiLabelWidths_00589758</c> couvre 0x400 octets et déborde sur
 /// <c>s_UiFrameInfo_00589840</c> — sa déclaration dit que le recouvrement est voulu, donc c'est le
 /// modèle qu'il faut trancher, pas forcément le code ;</item>
-/// <item>test 5 : <b>42</b> champs de valeur simple doublent une arène. C'est le manque nommé dans
-/// <c>REVERSE_STATUS.md</c> depuis le 2026-08-19, et il est maintenant chiffré.</item>
+/// <item>test 5 : <b>39</b> champs de valeur simple doublent une arène (42 au 2026-08-22). C'est le
+/// manque nommé dans <c>REVERSE_STATUS.md</c> depuis le 2026-08-19.</item>
 /// </list>
+/// <para>
+/// Le test 2 (<c>s_EntityStatBlocks_005ea560</c>, 0x2400 octets alloués dans <c>GameArena</c>),
+/// rouge le 2026-08-22, est vert depuis.
+/// </para>
 /// <para>
 /// Voir <c>REVERSE_STATUS.md</c>, section du 2026-08-19, et <c>ARCHITECTURE.md</c> pour la règle
 /// d'état.

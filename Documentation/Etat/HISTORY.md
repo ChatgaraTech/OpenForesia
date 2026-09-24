@@ -9,6 +9,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 - feat : **les trois projets passent en .NET 10** (`net10.0`, `net10.0-windows` pour les outils) sur
   le runtime x86 10.0.12 — build 0 erreur, `OpenForesia.Tools` tourne ; chemins `bin\Debug\net9.0`
   mis à jour dans `playtest.ps1`, les deux `census-*.sh`, le `.bat` du simulateur et la doc
+- doc : l'en-tête de `MemoryLayoutTests.cs` disait « trois rouges » — il en reste deux (tests 3 et
+  5, ce dernier à 39 champs au lieu de 42) ; le test 2 est vert
 
 - feat : **les cinématiques se décodent en C#, `ir41_32.ax` n'est plus livré** — `MoviePlayback` lit
   par `Host/Indeo4/`, la couleur passe par `Host/Yvu9Rgb.cs` (BT.601, chrominance répétée comme
