@@ -25,9 +25,33 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   restent, et le contrôle vérifie qu'aucun nom illisible ne passe
 - feat : éditeur de sauvegarde allégé à la demande — plus de provenance dans le catalogue, plus de
   sous-titres techniques ni de carte « États » dans l'onglet Personnage
+- fix : le film de fin s'affichait en blanc, le son seul — joué après la bascule en Direct3D, il
+  dessinait encore en GDI sur une fenêtre que la chaîne d'échange possède. `MoviePlayback` passe
+  désormais, une fois le régime GDI clos, par `D3D11Backend.PresentImage` (nouveau : une image
+  entière présentée au cadrage de la scène)
+- feat : **l'état de jeu 7, la fin** (`FUN_00531b40`, `Screens/State07/Ending.cs`) — à la mort de
+  Belzébuth : device 3D suspendu (`Ordinal_680(-1)`, ajouté à la façade), film `ENDING.AVI`, device
+  rouvert comme au démarrage, retour au menu principal. Première partie menée jusqu'au bout
+- fix : le traîneau de la grotte scellée (`0x00471150`, grande descente `0x00471f80`) sortait de
+  ses rails — le premier virage de la descente passe la piste à la route 5
+  (`mov dword [571930h],5`), écriture que `TrackTurn` avait avalée ; route bloquée à 4, freinages
+  et chute finale manqués, et le compte des virages remis à zéro au virage `0x46`. Seule écriture
+  perdue parmi les appels de virage des trois corps (vérifié au désassemblage)
+- fix : **écart déclaré**, LB-050 — le jeu se figeait au Labyrinthe des morts : une Ombre qui
+  s'éveille pendant que le seul membre du groupe est en transfert de sous-zone tirait sans fin une
+  proie disponible (`FUN_004a1020`, boucle sans borne dans le binaire). Faute de candidat, le
+  monstre garde désormais sa cible ; diagnostiqué à chaud (`dotnet-stack`, image mémoire)
+- fix : les poussées du terrain (vent de la vieille tour, sable du désert, plateformes glissantes)
+  partaient de travers — `PartyMemberStep.cs` lisait la matière de la face à l'adresse de la
+  globale `DAT_005fa508` au lieu de la déréférencer : c'est un pointeur vers la table des matières
+  (`Blaze.c` 63402), et la poussée venait de l'arène voisine. Seul lecteur fautif sur les quatre
+- feat : `FUN_005335e0` transcrite (`GroundSlopeAngle_005335E0`, `Physics/MotionAndContact.cs`) —
+  l'angle de l'arête de terrain que franchit la sonde d'un membre qui suit le meneur ; le groupe
+  plantait quand un membre butait contre un bord
 - doc : LB-049 — la ligne PLAYER du menu de mise au point agrandit le groupe sans créer la fiche des
   membres ajoutés (0 PV max) ; la jauge de vie divise alors par zéro, dans le port comme en 1998
-  (`Blaze.c` 64570). Observé au Labyrinthe des morts ; `mode-debug.md` corrigé en conséquence
+  (`Blaze.c` 64570). Observé au Labyrinthe des morts, confirmé sur le jeu officiel ; `mode-debug.md`
+  corrigé en conséquence
 - feat : éditeur de sauvegarde — **toutes les vignettes du CD** : le catalogue d'objets de chaque
   sous-zone porte l'icône juste après la fiche ; le verbe `bestiaire` l'écrit désormais dans
   `Bestiaire/vignettes.csv` (2 370 lignes, les autres CSV inchangés), et les 397 objets du

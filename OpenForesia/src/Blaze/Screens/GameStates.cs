@@ -135,7 +135,8 @@ public static unsafe partial class Blaze
                 RunItemMenuState();     // Ghidra: FUN_00524180
                 break;
             case 7:
-                throw new NotImplementedException("FUN_00531b40 (game state 7) not yet reconstructed");
+                RunEndingState_00531B40();   // Ghidra: FUN_00531b40 — Screens/State07/Ending.cs
+                break;
             case 8:
                 throw new NotImplementedException("FUN_005315d0 (game state 8) not yet reconstructed");
             case 9:

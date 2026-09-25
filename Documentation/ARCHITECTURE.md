@@ -207,6 +207,7 @@ src/
         ├─ State03/  WorldMap.cs 1 173  (+ 11 sous-repertoires, voir ci-dessous)
         ├─ State04/  SaveSlots.cs 2 109 · CharacterCreation.cs 1 539 · CharacterSelect.cs 581
         ├─ State06/  Inventory.cs 2 937 · ItemMenu.cs 493
+        ├─ State07/  Ending.cs 50   (la fin : le film ENDING.AVI, puis le menu principal)
         └─ State10/  RebootScreen.cs 120   (atteint seulement par la ligne REBOOT du menu de mise au point)
 ```
 

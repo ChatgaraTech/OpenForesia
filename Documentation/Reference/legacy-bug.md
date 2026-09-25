@@ -2169,7 +2169,10 @@ de pile d'un seul `stackalloc`, aux mêmes décalages, pour que le débordement 
 **Où** : `FUN_0051aa30` @ `0x0051aa30`, cas 2 (PLAYER) — `RebuildDebugParty` dans
 `Screens/State03/WorldMapDebugMenu.cs` — puis le panneau des membres, `0x005185f0`..`0x00518e60`
 (`DrawPartyPanels`, `WorldMapHud.cs`). **Observé** le 2026-09-25 : Labyrinthe des morts, groupe
-porté à 4 par le menu de mise au point (F1 puis F2), plantage immédiat.
+porté à 4 par le menu de mise au point (F1 puis F2), plantage immédiat ; **reproduit** le même jour
+avec un personnage tout juste créé, à l'auberge, jamais passé par l'éditeur de sauvegarde — la
+modification de la sauvegarde n'y est pour rien. **Confirmé sur le jeu officiel** par Vincent : même
+plantage avec un personnage chargé depuis une sauvegarde, aucun avec le groupe de mise au point.
 
 PLAYER change la taille du groupe, et fabrique les membres 2 à 4 en **recopiant le seul
 emplacement de jeu du meneur** : l'enregistrement de `0x9c` octets en `0x005e93c0` et sa ligne de
@@ -2195,3 +2198,36 @@ personne n'y avait accès dans le jeu vendu sans « Gurkha ».
 
 **Reproduit tel quel** : `GaugeColour` (`WorldMapHud.cs`) divise sans garde. Un correctif porterait
 sur `RebuildDebugParty` — recopier aussi la fiche du meneur — plutôt que sur la jauge.
+
+## LB-050 — Un monstre qui cherche sa proie parmi un groupe indisponible tourne sans fin
+
+**Où** : `FUN_004a1020` @ `0x004a1020` et ses copies par zone (dont `FUN_004bde40`, l'Ombre du
+Labyrinthe) — `PickChasedPartyMember_004A1020`, `Ai/Forest/Varan.cs`, partagée par 38 appels.
+**Observé** le 2026-09-25 : Labyrinthe des morts, seconde partie, joueur seul qui ressortait aussitôt
+par la porte d'une salle (course avec Maj), à plusieurs reprises ; le jeu s'est figé. Pile relevée
+à chaud (`dotnet-stack`), puis image mémoire.
+
+Six fois sur dix, la fonction remplace le mode demandé par `0xffff`, « n'importe qui » : elle tire
+alors un membre au hasard **jusqu'à en trouver un** présent (`0x80000000`) et disponible (ni
+`0x40000000`, mort, ni `0x10000000`), sans borne :
+
+```c
+do {
+  uVar9 = rand() % 4;
+  if ((slot[uVar9] & 0x80000000) != 0 && (slot[uVar9] & 0x50000000) == 0) { bVar4 = true; ... }
+} while (!bVar4);
+```
+
+Si aucun membre n'est éligible, la boucle ne finit jamais. L'image mémoire montre ce cas : un seul
+membre, mot d'état `0x91822f00`, compteur `+0x12` à `0x14` — le personnage était **en plein
+transfert de sous-zone**, l'état que la sortie marchée pose (`Blaze.c` 57354) et que le rechargement
+efface (`Blaze.c` 63541). Une Ombre qui s'éveille dans cette fenêtre, pendant le fondu de sortie,
+n'a personne à poursuivre.
+
+**Non confirmé sur le jeu officiel** : la condition est fugace (il a fallu plusieurs allers-retours
+rapides par la porte), et il reste possible que le jeu de 1998 gèle les entités de scène pendant la
+sortie d'une façon que le port ne reproduit pas. Si c'était le cas, le défaut serait dans le port.
+
+**Neutralisé — écart déclaré** (demande de Vincent, 2026-09-25) : faute de candidat, le monstre
+garde sa cible précédente, comme les modes 3 à 7 quand personne ne correspond. Quand un candidat
+existe, le tirage reste celui du binaire. Le commentaire `ECART DECLARE` dans `Varan.cs` le signale.

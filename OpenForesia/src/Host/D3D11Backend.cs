@@ -815,7 +815,54 @@ internal static unsafe class D3D11Backend
     /// Présente la cible hors écran dans la fenêtre : mise à l'échelle, rapport d'aspect préservé,
     /// image centrée, bandes restantes en noir uni.
     /// </summary>
-    internal static void Present()
+    internal static void Present() => PresentView(s_SceneSrv, s_SceneWidth, s_SceneHeight);
+
+    // La texture d'une image entiere venue du processeur — l'image d'un film joue apres la bascule
+    // en Direct3D, quand le regime GDI de demarrage est clos (StartupSurface.Retired). Recreee
+    // seulement quand les dimensions changent.
+    private static ComPtr<ID3D11Texture2D> s_ImageTexture;
+    private static ComPtr<ID3D11ShaderResourceView> s_ImageSrv;
+    private static int s_ImageWidth, s_ImageHeight;
+
+    /// <summary>
+    /// Presente une image entiere, BGRA 32 bits de haut en bas, avec le meme cadrage que la scene :
+    /// le plus grand rectangle a son rapport d'aspect, centre, bandes noires. C'est le chemin des
+    /// films joues en pleine partie — le film de fin — : la chaine d'echange possede la fenetre,
+    /// et un `StretchDIBits` sur celle-ci ne se verrait pas (ecran blanc, le son seul).
+    /// </summary>
+    internal static void PresentImage(uint[] bgra, int width, int height)
+    {
+        if (!Ready || width <= 0 || height <= 0 || bgra.Length < width * height) return;
+
+        if (s_ImageSrv.Handle == null || s_ImageWidth != width || s_ImageHeight != height)
+        {
+            s_ImageSrv.Dispose(); s_ImageSrv = default;
+            s_ImageTexture.Dispose(); s_ImageTexture = default;
+
+            var desc = new Texture2DDesc
+            {
+                Width = (uint)width, Height = (uint)height, MipLevels = 1, ArraySize = 1,
+                Format = Format.FormatB8G8R8A8Unorm,
+                SampleDesc = new SampleDesc(1, 0),
+                Usage = Usage.Default,
+                BindFlags = (uint)BindFlag.ShaderResource,
+            };
+            SilkMarshal.ThrowHResult(s_Device.CreateTexture2D(in desc, null, ref s_ImageTexture));
+            SilkMarshal.ThrowHResult(s_Device.CreateShaderResourceView(
+                s_ImageTexture, (ShaderResourceViewDesc*)null, ref s_ImageSrv));
+            s_ImageWidth = width;
+            s_ImageHeight = height;
+        }
+
+        fixed (uint* pixels = bgra)
+        {
+            s_Context.UpdateSubresource(s_ImageTexture, 0, (Box*)null, pixels, (uint)(width * 4), 0);
+        }
+
+        PresentView(s_ImageSrv, width, height);
+    }
+
+    private static void PresentView(ComPtr<ID3D11ShaderResourceView> source, int sourceWidth, int sourceHeight)
     {
         if (D3D11Window.TakeResize()) HandleResize();
 
@@ -828,10 +875,10 @@ internal static unsafe class D3D11Backend
         // Rectangle de destination : le plus grand rectangle au rapport d'aspect de la scène qui
         // tienne dans la zone cliente, centré. Les bandes restantes gardent le noir de l'effacement.
         float scale = MathF.Min(
-            (float)s_BackBufferWidth / s_SceneWidth,
-            (float)s_BackBufferHeight / s_SceneHeight);
-        float drawW = s_SceneWidth * scale;
-        float drawH = s_SceneHeight * scale;
+            (float)s_BackBufferWidth / sourceWidth,
+            (float)s_BackBufferHeight / sourceHeight);
+        float drawW = sourceWidth * scale;
+        float drawH = sourceHeight * scale;
         float originX = (s_BackBufferWidth - drawW) * 0.5f;
         float originY = (s_BackBufferHeight - drawH) * 0.5f;
 
@@ -853,7 +900,7 @@ internal static unsafe class D3D11Backend
             Vertex(originX,         originY + drawH, 0, 1),
         ];
 
-        DrawTriangles(quad, s_SceneSrv);
+        DrawTriangles(quad, source);
 
         // Intervalle de synchronisation **1**, pas 0 — c'est la cadence du jeu, pas un réglage de
         // confort.
@@ -1233,6 +1280,8 @@ internal static unsafe class D3D11Backend
         s_SceneSrv.Dispose();
         s_SceneView.Dispose();
         s_SceneTexture.Dispose();
+        s_ImageSrv.Dispose();
+        s_ImageTexture.Dispose();
         s_BackBufferView.Dispose();
         s_SwapChain.Dispose();
         s_Context.Dispose();

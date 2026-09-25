@@ -595,11 +595,72 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_005335e0 @ 0x005335e0 (78 l.) — l'angle de la pente sous une
-    /// position.</summary>
+    /// <summary>
+    /// Ghidra: FUN_005335e0 @ 0x005335e0 — <b>l'angle de l'arete que la sonde franchit</b>, sur la
+    /// face de terrain ou se tient l'entite (<c>+0x7c</c>). Zero si aucune ne l'est.
+    ///
+    /// <para>
+    /// La face est un triangle, ou un quadrilatere quand le bit 0x1 de son quatrieme mot est leve ;
+    /// ses sommets sont des indices dans <c>DAT_005f7cc0</c> (x en <c>+0</c>, z en <c>+4</c>),
+    /// les deux premiers dans le mot 0, les deux suivants dans le mot 1. Les coordonnees sont
+    /// ramenees a l'unite de terrain par <c>&gt;&gt; 0xc</c>. Les aretes sont essayees dans
+    /// l'ordre v0→v1, v1→v2, puis v2→v0 pour un triangle, ou v2→v3 et v3→v0 pour un
+    /// quadrilatere : la premiere qui convient rend son angle (<c>Ordinal_457</c>, ratan2).
+    /// </para>
+    /// <para>
+    /// Appelee par la sonde des membres qui suivent le meneur (<see cref="ProbeGroundAhead"/>),
+    /// quand un membre bute contre un bord : l'angle sert a recaler son cap le long du mur.
+    /// </para>
+    /// </summary>
     private static int GroundSlopeAngle_005335E0(uint* entity, int* position)
-        => throw new NotImplementedException(
-            "FUN_005335e0 (0x005335e0) : non transcrite. 78 lignes dans Blaze.c — l'angle de la " +
-            "face du terrain sous une position, dont la sonde se sert pour recaler le cap contre " +
-            "un mur.");
+    {
+        byte* e = (byte*)entity;
+        uint* face = *(uint**)(e + 0x7c);
+        byte* vertices = *(byte**)Mem.Entity(0x005f7cc0);
+
+        int ex = *(int*)(e + 0x1c) >> 0xc;
+        int ez = *(int*)(e + 0x24) >> 0xc;
+        int px = position[0] >> 0xc;
+        int pz = position[2] >> 0xc;
+
+        short* v0 = (short*)(vertices + (face[0] & 0xffff) * 8);
+        short* v1 = (short*)(vertices + (face[0] >> 0x10) * 8);
+        short* v2 = (short*)(vertices + (face[1] & 0xffff) * 8);
+
+        if (CrossedEdge(v0, v1, ex, ez, px, pz, out int angle)) return angle;
+        if (CrossedEdge(v1, v2, ex, ez, px, pz, out angle)) return angle;
+
+        if ((face[3] & 1) == 0)
+        {
+            if (CrossedEdge(v2, v0, ex, ez, px, pz, out angle)) return angle;
+        }
+        else
+        {
+            short* v3 = (short*)(vertices + (face[1] >> 0x10) * 8);
+            if (CrossedEdge(v2, v3, ex, ez, px, pz, out angle)) return angle;
+            if (CrossedEdge(v3, v0, ex, ez, px, pz, out angle)) return angle;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Un des cinq blocs identiques de <see cref="GroundSlopeAngle_005335E0"/>, pour l'arete
+    /// <paramref name="a"/>→<paramref name="b"/>. Trois produits vectoriels, dans l'ordre du
+    /// binaire : l'entite est du cote exterieur de l'arete (<c>&lt; 0</c>), et le point sonde voit
+    /// <c>a</c> d'un cote (<c>&lt; 1</c>) et <c>b</c> de l'autre (<c>&gt;= 0</c>). L'angle rendu est
+    /// <c>ratan2(b.z - a.z, a.x - b.x)</c>.
+    /// </summary>
+    private static bool CrossedEdge(short* a, short* b, int ex, int ez, int px, int pz, out int angle)
+    {
+        int ax = a[0], az = a[2], bx = b[0], bz = b[2];
+        angle = 0;
+
+        if ((ez - az) * (bx - ax) - (ex - ax) * (bz - az) >= 0) return false;
+        if ((az - pz) * (ex - px) - (ax - px) * (ez - pz) >= 1) return false;
+        if ((bz - pz) * (ex - px) - (bx - px) * (ez - pz) < 0) return false;
+
+        angle = Winsys3d.Ordinal_457(bz - az, ax - bx);
+        return true;
+    }
 }

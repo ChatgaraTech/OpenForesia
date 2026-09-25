@@ -373,6 +373,8 @@ internal static unsafe class Winsys3d
     // fait exactement cinq mots, c'est ce que la DLL ecrit, et c'est le cast qui le dit.
     internal static void ReadTim(Resources.TimImage* image) => Libraries.Winsys3dTim.ReadTim((uint*)image);
 
+    // real: winsys3d.c FUN_00a069b0 (ordinal 680) — l'ordinal 789 avec le mode 2 ; -1 suspend le device.
+    internal static void Ordinal_680(int a) => Libraries.Winsys3dDevice.Unknown_00a069b0(a); // PORTE 2026-09-23 — Libraries/winsys3d/Device.cs
     internal static void Ordinal_681(int a) => _ = Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op (FUN_00a02e20)
 
     internal static void Ordinal_710(int width, int height) => Libraries.Winsys3dTexteEcran.FntLoad(width, height); // PORTE 2026-09-23 — Libraries/winsys3d/TexteEcran.cs, libgpu FntLoad(tx, ty) : les deux arguments sont la position VRAM de la police, pas une taille

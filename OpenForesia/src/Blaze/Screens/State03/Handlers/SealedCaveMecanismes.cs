@@ -1885,7 +1885,18 @@ public static unsafe partial class Blaze
         int* route = Mem.EntityState(0x00571930);                   // Ghidra: DAT_00571930
         uint* gate = (uint*)Mem.EntityState(0x00571978);            // Ghidra: DAT_00571978
 
-        TrackTurn(e, 0x166c, 0x1770, -1, 0xdac);
+        // Le premier virage de la grande descente FAIT PASSER LA PISTE A LA ROUTE 5 —
+        // `mov dword [571930h],5` en 0x00471fbc, dans la fenetre, juste apres l'appel. Cette
+        // ecriture manquait (2026-09-25) : la route restait a 4, les freinages et la chute finale
+        // reserves a la route 5 ne se produisaient pas, et le test `route != 5 && virage == 0x46`
+        // remettait le compte des virages a zero en pleine course — le traineau sortait des rails.
+        if ((uint)*travelled >= 0x166c && (uint)*travelled <= 0x1770
+            && *Mem.EntityState(0x0057193c) == 1)
+        {
+            SteerSled_0046A3F0(e, -1, 0xdac, SubArea1Bank, 0x32);    // Ghidra: FUN_00471dd0
+            *route = 5;
+        }
+
         TrackTurn(e, 0x1e14, 0x1edc, -1, -0xdac);
         TrackTurn(e, 0x2418, 0x24b8, -1, 0x6a4);
         TrackTurn(e, 0x2af8, 0x2bc0, 1, -0x5dc);

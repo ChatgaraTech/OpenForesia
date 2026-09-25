@@ -327,6 +327,17 @@ internal static unsafe class MoviePlayback
     {
         if (s_Reader == null || s_Image == null) return;
 
+        // Apres la bascule en Direct3D — le film de fin, joue en pleine partie —, le regime GDI est
+        // clos et la chaine d'echange possede la fenetre : un StretchDIBits n'y laisserait qu'un
+        // ecran blanc. L'image passe alors par Direct3D, qui l'etire au meme cadrage.
+        if (StartupSurface.Retired)
+        {
+            if (!D3D11Backend.Ready) return;
+            Yvu9Rgb.ToBottomUpBgr(s_Image, s_Frame, s_Stride);
+            PresentThroughDirect3D();
+            return;
+        }
+
         IntPtr dc = StartupSurface.EnsureDc(PresentWidth, PresentHeight);
         if (dc == IntPtr.Zero) return;
 
@@ -348,6 +359,32 @@ internal static unsafe class MoviePlayback
             (int width, int height) = D3D11Window.ClientSize();
             if (width > 0 && height > 0) StartupSurface.PresentTo(s_Window, width, height);
         }
+    }
+
+    private static uint[] s_Bgra = [];
+
+    /// <summary>
+    /// Recopie l'image decodee (BGR 24 bits, de bas en haut, pas <c>s_Stride</c>) en BGRA 32 bits
+    /// de haut en bas, et la presente par <see cref="D3D11Backend.PresentImage"/> — qui l'etire
+    /// comme la scene, a son rapport d'aspect.
+    /// </summary>
+    private static void PresentThroughDirect3D()
+    {
+        int width = s_Reader!.Width, height = s_Reader.Height;
+        if (s_Bgra.Length != width * height) s_Bgra = new uint[width * height];
+
+        for (int y = 0; y < height; y++)
+        {
+            int source = (height - 1 - y) * s_Stride;
+            int target = y * width;
+            for (int x = 0; x < width; x++, source += 3)
+            {
+                s_Bgra[target + x] = 0xff000000u
+                    | (uint)s_Frame[source + 2] << 16 | (uint)s_Frame[source + 1] << 8 | s_Frame[source];
+            }
+        }
+
+        D3D11Backend.PresentImage(s_Bgra, width, height);
     }
 
     /// <summary>Ferme le film en cours, s'il y en a un. Sans effet sinon.</summary>

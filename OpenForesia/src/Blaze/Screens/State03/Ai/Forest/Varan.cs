@@ -444,6 +444,26 @@ public static unsafe partial class Blaze
                 // ------------------------------------------------ 0xffff : n'importe qui
                 case 0xffff:
                 {
+                    // ECART DECLARE (2026-09-25, demande de Vincent) — legacy-bug.md LB-050.
+                    // Le binaire tire au hasard SANS BORNE jusqu'a trouver un membre vivant et
+                    // disponible. Si aucun ne l'est — un joueur seul en plein transfert de
+                    // sous-zone, que le jeu marque 0x10000000 —, la boucle ne finit jamais et le
+                    // jeu se fige. Ici, faute de candidat, la cible reste celle d'avant, comme
+                    // dans les modes 3 a 7 quand personne ne correspond. Quand un candidat existe,
+                    // le tirage est celui du binaire, tirage pour tirage.
+                    bool anyone = false;
+                    for (int k = 0; k < 4; k++)
+                    {
+                        uint word = *(uint*)(slots + k * 0x9c);
+                        if ((word & 0x80000000) != 0 && (word & 0x50000000) == 0) anyone = true;
+                    }
+
+                    if (!anyone)
+                    {
+                        best = (ushort)keep;
+                        break;
+                    }
+
                     bool found = false;
                     do
                     {

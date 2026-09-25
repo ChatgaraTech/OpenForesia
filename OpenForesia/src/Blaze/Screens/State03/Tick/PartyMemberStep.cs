@@ -1274,7 +1274,12 @@ public static unsafe partial class Blaze
         {
             // Pose au sol : la matiere de la face devient celle des pas, et le contact peut
             // declencher un son et une pose.
-            byte* material = Mem.Entity(0x005fa508) + *(ushort*)(*(byte**)(s + 0x7c) + 8) * 8;
+            //
+            // DAT_005fa508 est un POINTEUR vers la table des matieres (Blaze.c 63402 : il recoit
+            // `*(chunk + 0x24)` au chargement de la sous-zone) — il faut le dereferencer. Lire
+            // a l'adresse de la globale elle-meme donnait des poussees prises au hasard dans
+            // l'arene : vent, sable et plateformes glissantes poussaient de travers (2026-09-25).
+            byte* material = *(byte**)Mem.Entity(0x005fa508) + *(ushort*)(*(byte**)(s + 0x7c) + 8) * 8;
             *(uint*)(entry + 0x44) = *(uint*)material;
             *(uint*)(entry + 0x48) = *(uint*)(material + 4);
 
