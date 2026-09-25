@@ -44,6 +44,7 @@ SEL_VA=$((0x00566d98))            # la premiere des sept tables de pointeurs
 SEL_COUNT=176                     # 11 zones x 16 sous-zones
 FATAL=0056B3C8                    # bloc d'arret : la sous-zone n'existe pas
 EMPTY=00401FA0                    # la souche a corps vide
+EMPTY2=0040A600                   # un second corps vide (un seul `ret`, c3) : rien a exercer, rien a tester
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -99,7 +100,7 @@ for st in 00551C30 00551F30 00552230; do
     dwords $(( 0x$st )) 192 | awk -v t="$st" '{ printf "%s\t%s\t-1\t-1\n", $0, t }' >> "$TMP/use"
 done
 
-sort -u "$TMP/use" | awk -F'\t' -v empty="$EMPTY" '$1 != empty' > "$TMP/use.s"
+sort -u "$TMP/use" | awk -F'\t' -v empty="$EMPTY" -v empty2="$EMPTY2" '$1 != empty && $1 != empty2' > "$TMP/use.s"
 
 # =============================================================================================
 # 3. Ce que la reconstruction branche, et ce qu'une partie a exerce
@@ -129,7 +130,7 @@ cut -f1 "$TMP/seen" | sort -u > "$TMP/seen.any"
 # =============================================================================================
 # 4. Le rapport
 # =============================================================================================
-awk -F'\t' -v empty="$EMPTY" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v anyf="$TMP/seen.any" '
+awk -F'\t' -v empty="$EMPTY" -v empty2="$EMPTY2" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v anyf="$TMP/seen.any" '
     function nom(z) {
         if (z ==  0) return "L\47auberge"
         if (z ==  1) return "La mine abandonnee"
@@ -240,7 +241,8 @@ awk -F'\t' -v empty="$EMPTY" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v anyf
         printf "| a transcrire | **%d** |\n", nbAbsent
         print ""
         print "La souche a corps vide `0x" empty "` est exclue : elle occupe la majorite des creneaux"
-        print "et n\47est pas un comportement."
+        print "et n\47est pas un comportement. Meme chose pour `0x" empty2 "`, un second corps reduit a"
+        print "un seul `ret` : aucune sonde ne peut le voir tourner, il resterait « non teste » a vie."
         print ""
         print "---"
         print ""

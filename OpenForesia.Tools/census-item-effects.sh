@@ -36,6 +36,7 @@ ITEMS=Documentation/Reference/Bestiaire/objets.csv
 TICK_DIR=OpenForesia/src/Blaze/Screens/State03
 PROBE=Documentation/Etat/handlers-exerces.tsv        # la sonde des gestionnaires
 IPROBE=Documentation/Etat/objets-exerces.tsv         # la sonde des objets
+SPROBE=Documentation/Etat/sorts-exerces.tsv         # la sonde des sorts (les herbes du Chasseur)
 
 DATA_DELTA=$((0x401A00))          # .data : VA - offset fichier
 SEL_VA=$((0x00566d98))            # la premiere des sept tables de pointeurs
@@ -179,7 +180,7 @@ awk -F',' '
         # vont dans sa reserve et partent par la posture d herboriste, comme des sorts de l ecole 3.
         # La sonde des objets ne les voit jamais ; c est celle des sorts.
         fam = u16(hex, 134)
-        if (fam >= 13001 && fam <= 13007) print "IHERBE\t" cle
+        if (fam >= 13001 && fam <= 13007) print "IHERBE\t" cle "\t" (fam - 13001)
         walk(hex, u16(hex, 128), zone, sz)
         walk(hex, u16(hex, 130), zone, sz)
     }
@@ -188,7 +189,7 @@ awk -F',' '
 # ---------------------------------------------------------------------------------------------
 # 4. Le rapport
 # ---------------------------------------------------------------------------------------------
-awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seenif="$TMP/seenitems" -v empty="$EMPTY" '
+awk -v sortsf="$SPROBE" -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seenif="$TMP/seenitems" -v empty="$EMPTY" '
     # Decode une cle hexa en texte, au mieux : les octets hors ASCII imprimable deviennent un
     # point. Sert uniquement aux cles orphelines, pour lesquelles aucune fiche ne porte le vrai
     # libelle. Le pictogramme de tete est saute, comme cote jeu.
@@ -221,6 +222,8 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seen
         while ((getline a < wiredf) > 0) wired[a] = 1
         while ((getline a < seenf) > 0) seen[a] = 1
         while ((getline a < seenif) > 0) vus[a] = 1
+        # les herbes partent comme des sorts de l ecole 3 : famille 3, indice = famille +0x86 - 13001
+        while ((getline a < sortsf) > 0) { if (a ~ /^#/) continue; split(a, g, "\t"); if (g[1] == "3") herbevue[g[2] + 0] = 1 }
     }
     {
         split($0, p, " ")
@@ -248,7 +251,7 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seen
         # --- les quatre releves par OBJET -------------------------------------------------
         if (f[1] == "INOM")  { objets[f[2]] = 1; libelle[f[2]] = f[3]; next }
         if (f[1] == "IVU")   { objets[f[2]] = 1; next }
-        if (f[1] == "IHERBE") { herbe[f[2]] = 1; next }
+        if (f[1] == "IHERBE") { herbe[f[2]] = f[3] + 0; next }
         if (f[1] == "IOP14") { objets[f[2]] = 1; op14[f[2]] = 1; next }
         if (f[1] == "IOBJ") {
             nom = f[2]; st = f[3] + 0
@@ -414,8 +417,9 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seen
             else if (o in op14)    impl = "?"
             else                 { impl = "oui"; oktot++ }
 
-            vu = (o in vus) ? "oui" : ((o in herbe) ? "herbe, sonde des sorts" : "**non**")
-            if (o in vus) vustot++
+            herbeok = (o in herbe) && ((herbe[o]) in herbevue)
+            vu = (o in vus) ? "oui" : (herbeok ? "oui (herbe, sonde des sorts)" : ((o in herbe) ? "**non** (herbe)" : "**non**"))
+            if ((o in vus) || herbeok) vustot++
 
             printf "| %s | %s | %s | %s |\n", libelle[o], requis, impl, vu
         }

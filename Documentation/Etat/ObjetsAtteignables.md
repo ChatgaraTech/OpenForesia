@@ -234,7 +234,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Balle maléfique | — | ? | oui |
 | Balle sacrée | — | ? | oui |
 | Bannière de chevalier | — | oui | oui |
-| Belladone | — | oui | herbe, sonde des sorts |
+| Belladone | — | oui | oui (herbe, sonde des sorts) |
 | Black Jack | `0x00447170` | oui | oui |
 | Bonbon aux plantes | `0x00475CC0` | oui | oui |
 | Bottes ailées | — | oui | oui |
@@ -376,7 +376,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Extrait de sang | `0x00445F60` | oui | oui |
 | Fabnihl | `0x00446F30` | oui | oui |
 | Faux de la mort | `0x00404920` | oui | oui |
-| Fenouil | — | oui | herbe, sonde des sorts |
+| Fenouil | — | oui | oui (herbe, sonde des sorts) |
 | Fenril | — | oui | oui |
 | Fine rapière | — | oui | oui |
 | Flacon d'énergie | `0x004753D0`, `0x00446790`, `0x00446200` | oui | oui |
@@ -426,7 +426,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Horloge du bonheur | `0x004753D0` | ? | oui |
 | Huile de sang | `0x00445CF0` | oui | oui |
 | Huile du pouvoir | `0x00445CF0` | oui | oui |
-| Hysopius | — | oui | herbe, sonde des sorts |
+| Hysopius | — | oui | oui (herbe, sonde des sorts) |
 | Insigne de brigand | — | oui | oui |
 | Joyau de feu | `0x004753D0` | ? | oui |
 | Joyau de glace | `0x004753D0` | ? | oui |
@@ -439,7 +439,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Lame du soleil | — | oui | oui |
 | Lampe sacrée | `0x004753D0` | ? | oui |
 | Large épée | — | oui | oui |
-| Lavande | — | oui | herbe, sonde des sorts |
+| Lavande | — | oui | oui (herbe, sonde des sorts) |
 | Livre de la technique | — | oui | oui |
 | Long marteau | — | oui | oui |
 | Longue épée | — | oui | oui |
@@ -457,7 +457,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Masque de chevalier | — | oui | oui |
 | Masque de la mort | — | oui | oui |
 | Masse d'armes | — | oui | oui |
-| Mercuriale | — | oui | herbe, sonde des sorts |
+| Mercuriale | — | oui | oui (herbe, sonde des sorts) |
 | Minegosh | — | oui | oui |
 | Miroir d'eau | — | oui | oui |
 | Miroir de la porte | — | oui | oui |
@@ -529,7 +529,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Réflector | — | oui | oui |
 | Sabre de la terre | — | oui | oui |
 | Saphir | `0x00446900` | oui | oui |
-| Sauge | — | oui | herbe, sonde des sorts |
+| Sauge | — | oui | oui (herbe, sonde des sorts) |
 | Sauvagerie | `0x004753D0`, `0x00446410` | oui | oui |
 | Sceptre de bataille | — | oui | oui |
 | Sceptre de la mort | — | oui | oui |
@@ -545,7 +545,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Talisman médicinal | — | oui | oui |
 | Tiare de la terre | `0x00446DD0` | oui | oui |
 | Tiare des étoiles | `0x00446DD0` | oui | oui |
-| Verveine | — | oui | herbe, sonde des sorts |
+| Verveine | — | oui | oui (herbe, sonde des sorts) |
 | Voile de beauté | — | oui | oui |
 | Voile des ombres | `0x00446900` | oui | oui |
 | Voile mystique | — | oui | oui |
@@ -729,7 +729,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | oui | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | oui | **non** |
 
-**607 objets distincts**, dont **536** pleinement implementes et **389** deja employes
+**607 objets distincts**, dont **536** pleinement implementes et **396** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue

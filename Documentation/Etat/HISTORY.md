@@ -6,6 +6,25 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-25
 
+- feat : première tournée complète — 77 sous-zones sur 78 (1:7 jamais atteinte), 47 gestionnaires
+  de plus testés : 1 125 sur 1 429, 304 restants, dont 6 IA seulement
+- fix : le banc donnait 0 aux paramètres de placement (`+0x18`) — il reprend ceux d'un vrai placement
+  de l'espèce ; le Durahan de 5:4 y lit ce qu'il fait naître, et avec 0 lâchait une graine de Balle
+  de feu sans lanceur (LEVEE `0x47ADD0`, artefact du banc, pas du jeu)
+- feat : `tests\tournee-auto.bat` — la tournée automatique du banc : téléportation de sous-zone en
+  sous-zone (78 à ce jour, celles qui portent un gestionnaire non testé), peuplement par les
+  vraies espèces (sans greffe), 40 s chacune, avancement repris dans `tournee-faite.txt` ; la liste vient de
+  `OpenForesia.Tools/tournee-auto.sh`
+- fix : le transfert du banc (`AI_BENCH=z:s`) plantait en `PlaceWorldMapParty` — il imitait
+  l'opcode 17 sans remettre à `0xff` les mémoires de zone chargée ; il rejoue désormais la séquence
+  du menu de débogage — vérifié : premier essai posé dans l'auberge
+- fix : la tournée rejouait sans fin l'étape qui plantait — `tournee-faite.txt` note le départ
+  (`en-cours`), une étape restée ouverte est marquée `plante` et sautée ; la greffe, qui avait fait
+  tomber `DrawAnimatedModel` dans l'auberge, est coupée dans la tournée
+- fix : le rapport des objets compte les herbes du Chasseur comme testées quand la sonde des sorts
+  les a vues (famille 3) — 396 objets employés
+- fix : `census-entity-handlers.sh` exclut `0x0040A600`, un second corps réduit à `ret` — 1 429
+  gestionnaires, 351 restants
 - fix : entrer dans les ruines anciennes plantait au chargement de sous-zone — l'appel
   `(*PTR_FUN_0056afc8)()` de `FUN_00516350` supposait l'entrée 0 toujours vide et passait par
   `Res.CallEntityHandler`, qui ne connaît que la souche ; le bloc `0x0055a3a8` y met `0x00541C90`

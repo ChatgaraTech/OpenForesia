@@ -1901,7 +1901,67 @@ par l'agent**, et c'était le seul moyen dont il disposait pour mettre des monst
 sans conduire le personnage. Un relevé de comportements passe donc par `banc.bat` conduit à la
 main, ou par `AI_BENCH=1` sur une sauvegarde déjà posée dans un donjon.
 
+### Le transfert est réparé : il passe par la séquence du menu de débogage (2026-09-25)
+
+La cause du `0xC0000005` ci-dessus : le banc imitait l'opcode 17, qui n'écrit que les globales de
+**destination**. Le menu de débogage (QUEST puis `CommitDebugWarp`), qui marche en jeu, écrit en
+plus `0xff` dans `0x00566c84` et `0x00566c88` — les mémoires de zone et de sous-zone **chargées**.
+Sans elles le chargeur croit la zone déjà en place, saute son chargement, et `PlaceWorldMapParty`
+lit le point d'entrée à travers le répertoire de l'ancienne zone : d'où le « 1 primitive par image »
+avant la levée. `BenchWarp` (dans `AiBench.cs`) rejoue désormais la séquence du menu, donc la zone
+est toujours rechargée entière, même pour un changement de sous-zone dans la même zone.
+
+**Vérifié le 2026-09-25** : le premier passage de `tournee-auto.bat` a bien posé le groupe dans
+l'auberge (zone 0, sous-zone 0), et la zone s'est chargée.
+
+### `tests\tournee-auto.bat` — exercer les gestionnaires non testés sans jouer (2026-09-25)
+
+Le banc, promené de lui-même. Double-clic, charger **une fois** un groupe solide (un personnage de
+test à 9000 PV, ou le groupe du mode débogage), puis ne plus toucher à rien : dès que le groupe est
+sur la carte, le jeu se téléporte dans chaque sous-zone de la liste, y fait naître toutes les bêtes
+que ses espèces portent vraiment, attend, puis passe à la suivante.
+
+| appel | effet |
+|---|---|
+| `tournee-auto.bat` | 40 secondes d'horloge par sous-zone |
+| `tournee-auto.bat 60` | 60 secondes par sous-zone |
+| `tournee-auto.bat neuf` | oublier l'avancement et repartir du début |
+
+- **La liste** sort de `OpenForesia.Tools/tournee-auto.sh`, qui lit `GestionnairesEntites.md` :
+  les sous-zones qui portent encore au moins un gestionnaire « testé = non » (`--detail` en donne
+  le compte, dont les IA). Régénérer la feuille de route après une tournée la raccourcit d'autant.
+- **L'avancement** est écrit, sous-zone par sous-zone, dans `tournee-faite.txt` à côté de
+  l'exécutable, **au moment où l'étape finit** : fermer le jeu à n'importe quel moment ne perd rien,
+  et le lancement suivant reprend où on en était.
+- **Pas de greffe dans la tournée** (`AI_BENCH_ORPHANS=0`). Premier essai, auberge : le
+  sous-type 1 (`0x487260`) greffé sur l'espèce 0 a demandé un geste que ce modèle n'a pas, et
+  `DrawAnimatedModel` est tombé sur un pointeur nul — deux fois de suite, puisque l'étape n'était
+  jamais finie. C'est la limite de la greffe décrite plus haut, pas un défaut du gestionnaire ; la
+  tournée passant par toutes les sous-zones, les vraies espèces suffisent.
+- **Une étape qui fait tomber le jeu est sautée ensuite.** `tournee-faite.txt` est un journal :
+  `z:s en-cours` au départ, `z:s` à la fin, `z:s interrompue` si le jeu est fermé normalement
+  (`ProcessExit`). Une étape restée « en-cours » à la relecture est donc un plantage : elle est notée
+  `z:s plante` et sautée, la pile restant dans `tournee.log`. `neuf` efface tout et retente.
+- **Les paramètres de placement sont réels.** Le banc fabrique la liste de formation, mais ses deux
+  derniers mots (`+0x18`, `+0x1c`) sont repris du premier vrai placement de l'espèce dans le lieu
+  (`répertoire + 0x34`). Certaines bêtes y lisent ce qu'elles font naître : le Durahan de 5:4 y porte
+  `0x36`, et avec le 0 d'avant il lâchait une graine de Balle de feu sans lanceur.
+- **Une étape jamais atteinte** en 60 secondes (un script d'arrivée qui renvoie ailleurs) est
+  abandonnée et sera retentée au prochain lancement.
+- **Le filet** (`OPENFORESIA_AI_STUB=1`) est posé : un gestionnaire manquant ne tue pas le jeu.
+- **Le journal** va dans `OpenForesia\bin\Debug\net10.0\tournee.log` (en ajout). À la fermeture le
+  raccourci réaffiche les lignes de tournée, les levées et les lacunes.
+- **Variables** : `OPENFORESIA_AI_BENCH_TOUR=z:s,z:s,…` (implique le banc),
+  `OPENFORESIA_AI_BENCH_DWELL=<secondes>`.
+
+**Ce que la tournée atteint, et ce qu'elle n'atteint pas.** Les IA (`0x0056AD48`) : toutes, par le
+banc. Le décor et les crochets de zone : ceux qui sont posés près du point d'entrée 0 ou qui
+tournent au chargement. Les effets : ceux que le combat du banc fait naître. Ce qui ne se réveille
+qu'au bout d'un couloir, sur un levier ou dans une scène reste pour un passage guidé.
+
 ### `tests\banc.bat` — le raccourci
+
+*Retiré de `tests/` depuis ; `tournee-auto.bat` en reprend l'usage.*
 
 Un double-clic sur `tests\banc.bat` fait tout ce qui précède : il pose les deux variables, lance le
 jeu depuis `OpenForesia\` (donc avec le bon `save\`), redirige la sortie d'erreur vers

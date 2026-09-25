@@ -42,7 +42,27 @@ public static unsafe partial class Blaze
     private static readonly string s_AiBenchSpec =
         Environment.GetEnvironmentVariable("OPENFORESIA_AI_BENCH") ?? "";
 
-    private static readonly bool s_AiBench = s_AiBenchSpec.Length != 0 && s_AiBenchSpec != "0";
+    /// <summary>
+    /// <c>OPENFORESIA_AI_BENCH_TOUR=3:6,3:7,5:0,…</c> — <b>la tournée</b> : le banc visite ces
+    /// sous-zones l'une après l'autre, peuple chacune, y reste
+    /// <see cref="s_BenchTourDwellMs"/>, puis passe à la suivante. Une sous-zone finie est
+    /// ajoutée à <c>tournee-faite.txt</c> à côté de l'exécutable, et sautée au lancement suivant :
+    /// une tournée interrompue reprend où elle s'était arrêtée. La liste est calculée par
+    /// <c>OpenForesia.Tools/tournee-auto.sh</c> depuis <c>GestionnairesEntites.md</c>.
+    /// La tournée implique le banc : <c>OPENFORESIA_AI_BENCH</c> n'a pas besoin d'être posé.
+    /// </summary>
+    private static readonly string s_AiBenchTourSpec =
+        Environment.GetEnvironmentVariable("OPENFORESIA_AI_BENCH_TOUR") ?? "";
+
+    /// <summary><c>OPENFORESIA_AI_BENCH_DWELL</c> — le séjour par sous-zone de la tournée, en
+    /// secondes d'horloge (40 par défaut). En horloge et non en images : la cadence du jeu varie
+    /// d'une machine à l'autre, et le temps que Vincent attend, lui, ne varie pas.</summary>
+    private static readonly long s_BenchTourDwellMs =
+        (int.TryParse(Environment.GetEnvironmentVariable("OPENFORESIA_AI_BENCH_DWELL"), out int dwell)
+            && dwell > 0 ? dwell : 40) * 1000L;
+
+    private static readonly bool s_AiBench =
+        s_AiBenchSpec.Length != 0 && s_AiBenchSpec != "0" || s_AiBenchTourSpec.Length != 0;
 
     /// <summary>
     /// <c>OPENFORESIA_AI_BENCH_ORPHANS=1</c> — <b>greffer</b> les sous-types installés qu'aucune
@@ -97,6 +117,22 @@ public static unsafe partial class Blaze
 
     private static readonly List<BenchRow> s_BenchRows = [];
 
+    /// <summary>Les étapes de la tournée qui restent, déjà privées de celles de
+    /// <c>tournee-faite.txt</c>.</summary>
+    private static readonly List<(int Zone, int SubArea)> s_BenchTour = [];
+
+    private static int s_BenchTourIndex = -1;         // -1 = pas encore partie
+    private static long s_BenchTourIssuedMs;          // quand le dernier transfert est parti
+    private static long s_BenchTourArrivedMs = -1;    // quand l'étape courante a été atteinte
+    private static bool s_BenchTourOver;
+
+    /// <summary>Une étape jamais atteinte au bout de ce délai est abandonnée : un script d'arrivée
+    /// qui renvoie ailleurs, ou une sous-zone qui ne se charge pas, ne doit pas figer la tournée.</summary>
+    private const long BenchTourGiveUpMs = 60_000;
+
+    private static string BenchTourDonePath =>
+        System.IO.Path.Combine(AppContext.BaseDirectory, "tournee-faite.txt");
+
     /// <summary>Appels et levées par gestionnaire, tous balayeurs confondus.</summary>
     private static readonly Dictionary<uint, int> s_BenchCalls = [];
     private static readonly Dictionary<uint, int> s_BenchThrows = [];
@@ -139,8 +175,12 @@ public static unsafe partial class Blaze
         int zone = Res.s_Unknown_005de528 & 0xff;
         int subArea = s_Unknown_005de52c;
 
-        // ---- 1. le transfert, une seule fois ----------------------------------------------------
-        if (s_BenchZone >= 0 && !s_BenchTransferIssued
+        // ---- 1. la tournée, ou le transfert unique ----------------------------------------------
+        if (s_BenchTour.Count != 0)
+        {
+            if (TickBenchTour()) return;
+        }
+        else if (s_BenchZone >= 0 && !s_BenchTransferIssued
             && (zone != s_BenchZone || subArea != s_BenchSubArea))
         {
             TransferForBench();
@@ -185,6 +225,12 @@ public static unsafe partial class Blaze
     /// sur place.</summary>
     private static void ParseBenchSpec()
     {
+        if (s_AiBenchTourSpec.Length != 0)
+        {
+            ParseBenchTour();
+            return;
+        }
+
         string[] parts = s_AiBenchSpec.Split(':');
 
         if (parts.Length < 2)
@@ -207,33 +253,237 @@ public static unsafe partial class Blaze
         if (parts.Length >= 3 && byte.TryParse(parts[2], out byte entry)) s_BenchEntryPoint = entry;
     }
 
-    /// <summary>
-    /// Le transfert de salle, <b>par le chemin du jeu</b> : les quatre globales de destination que
-    /// <see cref="ScriptOpTransferArea"/> (opcode 17) écrit, le pas de boucle à 2 — c'est lui qui
-    /// fait reposer le groupe au point d'entrée — et le bit 2 des drapeaux de monde, la seule
-    /// sortie de la boucle par image. La boucle externe de <see cref="RunWorldMapState"/> recharge
-    /// alors la zone désignée.
-    ///
-    /// <para>Rien n'est inventé ici : c'est la séquence exacte d'une porte scriptée, déclenchée
-    /// depuis le banc au lieu de l'être depuis un script de zone.</para>
-    /// </summary>
+    /// <summary>Le transfert unique de la forme <c>zone:sous-zone[:entrée]</c>.</summary>
     private static void TransferForBench()
     {
-        byte* leader = Mem.Arena(0x005e93c0) + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c;
-
-        Res.s_Unknown_005de528 =
-            (int)((uint)Res.s_Unknown_005de528 & 0xffffff00 | (uint)(s_BenchZone & 0xff));
-        s_Unknown_005de52c = (byte)s_BenchSubArea;
-        s_Unknown_005de530 = s_BenchEntryPoint;
-        s_Unknown_005de53c = leader[8];
-        s_WorldMapStep_005645f8 = 2;
-        Mem.s_WorldFlags_005de02c |= 2;
-
+        BenchWarp(s_BenchZone, s_BenchSubArea, s_BenchEntryPoint);
         s_BenchTransferIssued = true;
+    }
+
+    /// <summary>
+    /// Le transfert de salle, <b>par la séquence du menu de débogage</b> — la ligne QUEST de
+    /// <c>WorldMapDebugMenu.cs</c> suivie de <see cref="CommitDebugWarp"/>, celle que Vincent
+    /// emploie en jeu et qui marche.
+    ///
+    /// <para>
+    /// Jusqu'au 2026-09-25 le banc imitait l'opcode 17 (<see cref="ScriptOpTransferArea"/>) et
+    /// mourait en <see cref="PlaceWorldMapParty"/> dès qu'une partie était chargée (voir
+    /// test-protocol.md, 2026-08-29). Ce qui manquait est ce que le menu écrit en plus : les
+    /// deux <c>0xff</c> dans <c>0x00566c84</c> et <c>0x00566c88</c>, les mémoires de zone et de
+    /// sous-zone chargées. Sans eux le chargeur croit la zone déjà en place, saute son
+    /// chargement, et pose le groupe à travers le répertoire de l'ANCIENNE zone — exactement le
+    /// « 1 primitive par image » relevé ce jour-là. La zone est donc toujours rechargée entière,
+    /// même pour changer de sous-zone dans la même zone, comme QUEST le fait.
+    /// </para>
+    /// </summary>
+    private static void BenchWarp(int zone, int subArea, byte entryPoint)
+    {
+        Res.s_Unknown_005de528 =
+            (int)((uint)Res.s_Unknown_005de528 & 0xffffff00 | (uint)(zone & 0xff));
+        s_Unknown_00566c84 = 0xff;
+        s_Unknown_005de52c = (byte)subArea;
+
+        // CommitDebugWarp, puis le point d'entree : le menu pose 0, le banc peut en demander un autre.
+        CommitDebugWarp();
+        s_Unknown_005de530 = entryPoint;
+
+        // Le rechargement vide la table d'entites : meme revenu au meme lieu, il faut repeupler.
+        s_BenchLastZone = -1;
+        s_BenchLastSubArea = -1;
 
         Console.Error.WriteLine(
-            $"[BANC] transfert vers zone {s_BenchZone} sous-zone {s_BenchSubArea} " +
-            $"point d'entree {s_BenchEntryPoint}");
+            $"[BANC] transfert vers zone {zone} sous-zone {subArea} point d'entree {entryPoint}");
+    }
+
+    // =============================================================================================
+    // La tournée
+    // =============================================================================================
+
+    /// <summary>
+    /// <c>z:s,z:s,…</c>, moins ce que <c>tournee-faite.txt</c> porte déjà.
+    ///
+    /// <para>
+    /// Le fichier est un journal, une ligne par évènement : <c>z:s en-cours</c> au départ vers une
+    /// étape, <c>z:s</c> quand elle est finie, <c>z:s interrompue</c> quand le jeu est fermé
+    /// normalement pendant l'étape, <c>z:s plante</c> quand elle a fait tomber le jeu. Une étape
+    /// restée « en-cours » à la relecture est donc une étape pendant laquelle le processus est
+    /// mort : elle est notée <c>plante</c> et sautée, sans quoi la tournée rejouerait le même
+    /// plantage à chaque lancement — ce qui s'est produit au premier essai, dans l'auberge.
+    /// </para>
+    /// </summary>
+    private static void ParseBenchTour()
+    {
+        var state = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        try
+        {
+            if (System.IO.File.Exists(BenchTourDonePath))
+            {
+                foreach (string raw in System.IO.File.ReadAllLines(BenchTourDonePath))
+                {
+                    string[] words = raw.Trim().Split(' ', 2);
+                    if (words[0].Length == 0) continue;
+
+                    string what = words.Length > 1 ? words[1].Trim() : "faite";
+
+                    // Une etape finie ou plantee le reste ; « interrompue » annule « en-cours ».
+                    state.TryGetValue(words[0], out string before);
+                    if (before == "faite" || before == "plante") continue;
+
+                    if (what == "interrompue") state.Remove(words[0]);
+                    else state[words[0]] = what;
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[BANC] tournee-faite.txt illisible ({error.Message}) — on repart de zero");
+        }
+
+        foreach (KeyValuePair<string, string> entry in new List<KeyValuePair<string, string>>(state))
+        {
+            if (entry.Value != "en-cours") continue;
+
+            state[entry.Key] = "plante";
+            BenchTourAppend($"{entry.Key} plante");
+            Console.Error.WriteLine(
+                $"[BANC] tournee : {entry.Key} a fait tomber le jeu au passage precedent — sautee " +
+                "(la pile est dans le journal ; « neuf » pour la retenter)");
+        }
+
+        int total = 0;
+        var crashed = new List<string>();
+
+        foreach (string step in s_AiBenchTourSpec.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] parts = step.Trim().Split(':');
+
+            if (parts.Length != 2 || !int.TryParse(parts[0], out int zone) || !int.TryParse(parts[1], out int sub))
+            {
+                Console.Error.WriteLine($"[BANC] etape illisible « {step} » — ignoree");
+                continue;
+            }
+
+            total++;
+
+            if (state.TryGetValue($"{zone}:{sub}", out string known))
+            {
+                if (known == "plante") crashed.Add($"{zone}:{sub}");
+                continue;
+            }
+
+            s_BenchTour.Add((zone, sub));
+        }
+
+        Console.Error.WriteLine(
+            $"[BANC] tournee : {s_BenchTour.Count} sous-zone(s) a visiter sur {total}, " +
+            $"{s_BenchTourDwellMs / 1000} s chacune");
+
+        if (crashed.Count != 0)
+        {
+            Console.Error.WriteLine($"[BANC] tournee : sautees pour plantage : {string.Join(" ", crashed)}");
+        }
+
+        if (s_BenchTour.Count == 0)
+        {
+            Console.Error.WriteLine(
+                "[BANC] tournee deja faite en entier — effacer tournee-faite.txt pour la refaire");
+            return;
+        }
+
+        // Une fermeture normale pendant une etape ne doit pas la faire passer pour un plantage. Un
+        // plantage, lui, ne passe pas par ProcessExit : l'etape reste « en-cours ».
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            if (s_BenchTourOver || s_BenchTourIndex < 0 || s_BenchTourIndex >= s_BenchTour.Count) return;
+
+            (int z, int s) = s_BenchTour[s_BenchTourIndex];
+            BenchTourAppend($"{z}:{s} interrompue");
+        };
+    }
+
+    /// <summary>
+    /// Un pas de tournée. Rend <c>true</c> quand un transfert vient de partir : le reste du tour
+    /// de banc n'a alors plus de sens, la sous-zone courante est sur le point d'être déchargée.
+    /// </summary>
+    private static bool TickBenchTour()
+    {
+        if (s_BenchTourOver) return false;
+
+        int zone = s_Unknown_00566c84;
+        int subArea = s_Unknown_00566c88;
+
+        // Un chargement est en cours : on ne transfère jamais par-dessus.
+        if (zone == 0xff || subArea == 0xff) return false;
+
+        long now = Environment.TickCount64;
+
+        if (s_BenchTourIndex < 0)
+        {
+            // Le depart : laisser la partie chargee s'installer avant le premier transfert.
+            if (s_BenchFrame < BenchGraceFrames) return false;
+
+            return BenchTourGoTo(0, now);
+        }
+
+        (int tz, int ts) = s_BenchTour[s_BenchTourIndex];
+
+        if (zone == tz && subArea == ts)
+        {
+            if (s_BenchTourArrivedMs < 0) s_BenchTourArrivedMs = now;
+            if (now - s_BenchTourArrivedMs < s_BenchTourDwellMs) return false;
+
+            PrintBenchReport();
+            BenchTourMarkDone(tz, ts);
+            return BenchTourGoTo(s_BenchTourIndex + 1, now);
+        }
+
+        if (now - s_BenchTourIssuedMs > BenchTourGiveUpMs)
+        {
+            Console.Error.WriteLine(
+                $"[BANC] tournee : zone {tz} sous-zone {ts} jamais atteinte (on est en {zone}:{subArea})" +
+                " — etape abandonnee, elle sera retentee au prochain lancement");
+            return BenchTourGoTo(s_BenchTourIndex + 1, now);
+        }
+
+        return false;
+    }
+
+    private static bool BenchTourGoTo(int index, long now)
+    {
+        s_BenchTourIndex = index;
+        s_BenchTourArrivedMs = -1;
+
+        if (index >= s_BenchTour.Count)
+        {
+            s_BenchTourOver = true;
+            Console.Error.WriteLine(
+                "[BANC] TOURNEE TERMINEE — fermer le jeu, puis tests\\update-GestionnaireEntite.bat");
+            return false;
+        }
+
+        (int zone, int sub) = s_BenchTour[index];
+        Console.Error.WriteLine($"[BANC] tournee : etape {index + 1}/{s_BenchTour.Count}");
+
+        s_BenchTourIssuedMs = now;
+        BenchTourAppend($"{zone}:{sub} en-cours");
+        BenchWarp(zone, sub, 0);
+        return true;
+    }
+
+    private static void BenchTourMarkDone(int zone, int subArea) => BenchTourAppend($"{zone}:{subArea}");
+
+    /// <summary>Écrit tout de suite, comme les sondes : un jeu tué ne perd pas l'avancement.</summary>
+    private static void BenchTourAppend(string line)
+    {
+        try
+        {
+            System.IO.File.AppendAllText(BenchTourDonePath, line + Environment.NewLine);
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[BANC] tournee-faite.txt non ecrit ({error.Message})");
+        }
     }
 
     // =============================================================================================
@@ -374,8 +624,44 @@ public static unsafe partial class Blaze
         record[3] = facing;
         record[4] = -1;
         record[5] = -1;
-        record[6] = 0;
-        record[7] = 0;
+
+        // Les deux derniers mots viennent d'un VRAI placement de l'espece dans ce lieu : +0x18 est
+        // recopie en +0x14/+0x16 de l'entite, et certaines betes y lisent ce qu'elles font naitre.
+        // Le Durahan de 5:4 y porte 0x36 ; le banc lui donnait 0, et son second coup faisait
+        // naitre le sous-type 0 — la graine de Balle de feu, sans lanceur en +0x74 (tournee du
+        // 2026-09-25, LEVEE 0x47ADD0). Faute de placement, zero, comme avant.
+        int* real = BenchRealPlacement(s_Unknown_005e97cc, species);
+        record[6] = real != null ? real[6] : 0;
+        record[7] = real != null ? real[7] : 0;
+    }
+
+    /// <summary>
+    /// Le premier enregistrement de formation du lieu qui fait naitre cette espece : la table
+    /// <c>repertoire + 0x34</c>, celle que <see cref="ScriptOpSpawnFormation"/> indexe, est une
+    /// liste de pointeurs vers des listes d'enregistrements de huit entiers terminees par
+    /// <c>-1</c>. Seul l'octet bas du premier mot designe l'espece (voir <c>Bestiaire.cs</c>).
+    /// </summary>
+    private static int* BenchRealPlacement(byte* dir, int species)
+    {
+        if (dir == null) return null;
+
+        byte* table = *(byte**)(dir + 0x34);
+        if (table == null) return null;
+
+        byte* tableEnd = BenchRegionEnd(dir, table);
+
+        for (byte* p = table; p + 4 <= tableEnd; p += 4)
+        {
+            int* list = *(int**)p;
+            if ((nuint)list < 0x10000) continue;       // nul ou pas un pointeur : sans placement
+
+            for (int r = 0; r < 64 && list[r * 8] != -1; r++)
+            {
+                if ((list[r * 8] & 0xff) == species) return list + r * 8;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
