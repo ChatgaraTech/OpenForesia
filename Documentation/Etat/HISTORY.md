@@ -29,6 +29,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   sort confiés aux lanceurs, qui connaissent tous leurs sorts ; consignes par événement précisées
   (17 à 19 : subir un sort ou une altération — Varan et Trent, forêt, sous-zones 6 à 8) ; jumeaux
   signalés ; modèles gardés dans `save-tests\modeles\`
+- doc : `ObjetsAtteignables.md` régénéré après les lots de test — **387 objets français employés en
+  jeu sur 396** : restent les 7 herbes (sonde des sorts) et 2 accessoires (Pendentif vaporeux,
+  Chaussures à plumes) ; 18 des 21 gestionnaires que les objets font naître sont exercés
+- feat : personnages de test à 9000 PV, départ au **Labyrinthe, sous-zone 5** — 12 Momies en
+  variante 0 (effet de piège, jet A : événements 17 et 18) et 18 Sanglantes en variante 2 (état 9,
+  jet B : 17 et 19), chacune appliquant son effet sur un coup sur vingt
+- feat : `formations.csv` gagne `param_0x14` / `param_0x16`, le mot que la bête reçoit en
+  `+0x14` / `+0x16` — sa variante ; il montre que le Crotale est placé partout en variante 0 et
+  n'empoisonne donc jamais (d'où l'échec du lot précédent)
+- doc : l'événement 14 d'un objet porté est la **parade** — Guerrier ou Nain en garde, face au
+  monstre qui frappe (`SceneEntityAiCommon.cs`)
 - feat : personnages de test — départ en forêt, **sous-zone 2**, la seule où le CD place des Crotales
   (sept placements, `formations.csv`) ; lieu réglable par `--depart zone/sous-zone`
 - doc : les altérations qu'un objet porté peut attendre, par chemin — toute application d'état

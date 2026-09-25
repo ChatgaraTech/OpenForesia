@@ -36,10 +36,11 @@ const args = process.argv.slice(2);
 const opt = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
 const gameDir = opt('--jeu', join(root, 'OpenForesia', 'bin', 'Debug', 'net10.0'));
 const perLot = Number(opt('--par-lot', 24));
-// Le lieu de depart, « zone/sous-zone » : par defaut la foret, sous-zone 2 — la seule ou le CD place
-// des Crotales (Bestiaire/formations.csv, sept placements), dont la morsure sert aux evenements 17
-// et 18. Point d entree 0.
-const [startZone, startSub] = opt("--depart", "3/2").split("/").map(Number);
+// Le lieu de depart, « zone/sous-zone » : par defaut le Labyrinthe des morts, sous-zone 5 — 12 Momies
+// (variante 0 : effet de piege, jet A) et 18 Sanglantes (variante 2 : effet d etat 9, jet B), lues
+// dans Bestiaire/formations.csv (param_0x16). Le Crotale (foret, sous-zone 2) y est en variante 0 et
+// n empoisonne donc jamais. Point d entree 0.
+const [startZone, startSub] = opt("--depart", "5/5").split("/").map(Number);
 const saveDir = join(gameDir, 'save');
 const outDir = join(gameDir, 'save-tests');
 
@@ -63,11 +64,11 @@ const EVENTS = {
   8: "lancer un sort d'etat sur un monstre (il tente d'y resister)",
   9: "lancer un sort d'etat sur un monstre (il tente d'y resister)",
   10: "se faire frapper", 12: "se faire frapper", 13: "se faire frapper",
-  17: "se faire mordre par un Crotale (foret, sous-zone 2 : le depart ; 3 prises sur 10 tentent d empoisonner)",
-  18: "se faire mordre par un Crotale (foret, sous-zone 2 : le depart ; 3 prises sur 10 tentent d empoisonner)",
-  19: "subir l etat d une Momie (Labyrinthe des morts, sous-zones 5 a 8 : menu de mise au point, QUEST 5 puis MAP 5)",
+  17: "se laisser frapper par les Momies et Sanglantes du depart (1 coup sur 20 applique un etat)",
+  18: "se laisser frapper par une Momie du depart (1 coup sur 20 : effet de piege)",
+  19: "se laisser frapper par une Sanglante du depart (1 coup sur 20 : etat de momie)",
   5: "lancer un sort", 6: "lancer un sort",
-  14: "etre vise par un monstre qui choisit sa proie",
+  14: "parer : se mettre en garde face au monstre au moment ou il frappe (Guerrier ou Nain)",
   21: "tomber a 0 PV (se faire tuer)",
 };
 
@@ -195,8 +196,8 @@ characters.forEach((ch, n) => {
     for (let i = 0; i < (SPELL_COUNT[school] ?? 0); i++) b[0x160 + school * 8 + (i >> 3)] |= 1 << (i & 7);
   }
 
-  // 100 PV et 100 PM, pleins.
-  for (const o of [0x148, 0x14a, 0x14c, 0x14e]) Core.w16(b, o, 100);
+  // 9000 PV et 200 PM, pleins — ceux du groupe de mise au point : se laisser frapper sans mourir.
+  Core.w16(b, 0x148, 9000); Core.w16(b, 0x14c, 9000); Core.w16(b, 0x14a, 200); Core.w16(b, 0x14e, 200);
 
   // L'inventaire de depart part ; les cinq equipements, puis les consommables, prennent sa place.
   for (let i = 0; i < Core.SLOTS; i++) b[Core.slotOff(i)] = 0;
@@ -226,7 +227,7 @@ lots.forEach((chars, l) => {
   const dir = join(outDir, `lot-${String(l + 1).padStart(2, '0')}`);
   mkdirSync(dir, { recursive: true });
   const out = [`LOT ${l + 1} - ${chars.length} personnages, depart en zone ${startZone}, sous-zone ${startSub}`, '',
-    'Crotale : autour du point de depart (foret, sous-zone 2). Momie : menu de mise au point, ligne QUEST sur 5, puis MAP sur 5. Les groupes qui en ont besoin sont a la fin.'];
+    'Depart au milieu des Momies et des Sanglantes. Laisse-les frapper : 9000 PV. Si le depart est mal place : menu de mise au point, QUEST sur 5 puis MAP sur 5.'];
   if (l === 0 && herbs.length) out.push('', `Hors de ce lot : les ${herbs.length} herbes du Chasseur (${herbs.join(', ')}) — elles partent par sa posture d'herboriste, comme des sorts ; c'est la sonde des sorts qui les voit.`);
   chars.forEach((ch, i) => {
     writeFileSync(join(dir, ch.fileName), ch.bytes);

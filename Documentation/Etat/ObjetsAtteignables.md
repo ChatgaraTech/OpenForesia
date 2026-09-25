@@ -170,7 +170,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Anneau de l'hermite | — | oui | oui |
 | Anneau des philosophes | `0x00446900` | oui | oui |
 | Anneau des éléments | — | oui | oui |
-| Anneau du roi Salomon | — | oui | **non** |
+| Anneau du roi Salomon | — | oui | oui |
 | Answerer | — | oui | oui |
 | Aquachâle | `0x00446DD0` | oui | oui |
 | Arc classique | — | oui | oui |
@@ -178,7 +178,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Arc de chasseur | — | oui | oui |
 | Arc des elfes | — | oui | oui |
 | Arc en croix | — | oui | oui |
-| Arc gris | — | oui | **non** |
+| Arc gris | — | oui | oui |
 | Arc noble | — | oui | oui |
 | Armure | — | oui | oui |
 | Armure anti-sortilège | — | oui | oui |
@@ -195,7 +195,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Bague au joyau | — | oui | oui |
 | Bague de protection | — | oui | oui |
 | Bague de résistance | — | oui | oui |
-| Bague réflectrice | — | oui | **non** |
+| Bague réflectrice | — | oui | oui |
 | Bague sacrée | — | oui | oui |
 | Baguette aux joyaux | — | oui | oui |
 | Baguette d'Ishtar | — | oui | oui |
@@ -237,7 +237,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Belladone | — | oui | herbe, sonde des sorts |
 | Black Jack | `0x00447170` | oui | oui |
 | Bonbon aux plantes | `0x00475CC0` | oui | oui |
-| Bottes ailées | — | oui | **non** |
+| Bottes ailées | — | oui | oui |
 | Bottes d'elfes | — | oui | oui |
 | Bottes de cuir | — | oui | oui |
 | Bottes de fer | — | oui | oui |
@@ -246,18 +246,18 @@ fiche —, la meme des deux cotes de la sonde.
 | Boucle de la chance | — | oui | oui |
 | Bouclier d'argent | — | oui | oui |
 | Bouclier de Bartschas | `0x00446DD0` | oui | oui |
-| Bouclier de Lucifer | — | ? | **non** |
+| Bouclier de Lucifer | — | ? | oui |
 | Bouclier de Séraphin | — | oui | oui |
 | Bouclier de brigand | — | oui | oui |
-| Bouclier de glace | `0x00446900` | oui | **non** |
-| Bouclier de l'air | `0x00446900` | oui | **non** |
+| Bouclier de glace | `0x00446900` | oui | oui |
+| Bouclier de l'air | `0x00446900` | oui | oui |
 | Bouclier de l'ombre | — | oui | oui |
 | Bouclier de la terre | `0x00446900` | oui | oui |
 | Bouclier de vie | — | oui | oui |
 | Bouclier des elfes | — | oui | oui |
 | Bouclier des runes | — | oui | oui |
 | Bouclier des élémentaux | `0x00446DD0` | oui | oui |
-| Bouclier du feu | `0x00446900` | oui | **non** |
+| Bouclier du feu | `0x00446900` | oui | oui |
 | Bouclier du gardien | — | oui | oui |
 | Bouclier lunaire | — | oui | oui |
 | Bouclier rond | — | oui | oui |
@@ -279,19 +279,19 @@ fiche —, la meme des deux cotes de la sonde.
 | Bâton lunaire | — | oui | oui |
 | Bâton stellaire | — | ? | oui |
 | Béquille | `0x00446F30` | oui | oui |
-| Cape d'automne | — | oui | **non** |
-| Cape d'hiver | — | oui | **non** |
-| Cape d'été | — | oui | **non** |
+| Cape d'automne | — | oui | oui |
+| Cape d'hiver | — | oui | oui |
+| Cape d'été | — | oui | oui |
 | Cape des runes | — | oui | oui |
-| Cape du printemps | — | oui | **non** |
+| Cape du printemps | — | oui | oui |
 | Carte de la peur | `0x00446F30`, `0x00446170` | oui | oui |
 | Carte de tarot | — | ? | oui |
 | Casque ailé | — | oui | oui |
-| Casque d'argent | — | oui | **non** |
+| Casque d'argent | — | oui | oui |
 | Casque de cuir | — | oui | oui |
 | Casque de fer | — | oui | oui |
 | Casque splendide | — | oui | oui |
-| Casquette de chasseur | — | oui | **non** |
+| Casquette de chasseur | — | oui | oui |
 | Casse-tête | — | oui | oui |
 | Casse-tête à chaîne | — | oui | oui |
 | Cendre blanche | `0x00445F60` | oui | oui |
@@ -300,9 +300,9 @@ fiche —, la meme des deux cotes de la sonde.
 | Cendre noire | `0x00445F60` | oui | oui |
 | Cendre rouge | `0x00445F60` | oui | oui |
 | Cendre verte | `0x00445F60` | oui | oui |
-| Chapeau d'elfe | — | oui | **non** |
-| Chapeau de sorcière | — | oui | **non** |
-| Chaussures à plumes | — | oui | **non** |
+| Chapeau d'elfe | — | oui | oui |
+| Chapeau de sorcière | — | oui | oui |
+| Chaussures à plumes | — | oui | oui |
 | Chaussuresvol | `0x004753D0` | oui | oui |
 | Chaîne de l'air | — | oui | oui |
 | Chaîne de l'eau | — | oui | oui |
@@ -353,7 +353,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Durandal | `0x00447630` | oui | oui |
 | Délicieux drop | `0x00446900` | oui | oui |
 | Eau bénite | — | ? | oui |
-| Ecailles de Belzébuth | — | oui | **non** |
+| Ecailles de Belzébuth | — | oui | oui |
 | Ecailles de dragon | — | oui | oui |
 | Ecu du destin | `0x00445F60` | oui | oui |
 | Elixir de magicien | `0x00446790` | oui | oui |
@@ -475,8 +475,8 @@ fiche —, la meme des deux cotes de la sonde.
 | Parfum de guérison | `0x00445E70` | oui | oui |
 | Pavois de chevalier | — | oui | oui |
 | Pavois fin | — | oui | oui |
-| Pendentif de princesse | — | oui | **non** |
-| Pendentif vaporeux | — | oui | **non** |
+| Pendentif de princesse | — | oui | oui |
+| Pendentif vaporeux | — | oui | oui |
 | Pentacle de prince | — | oui | oui |
 | Pentacle magique | — | oui | oui |
 | Petite potion | `0x00446790` | oui | oui |
@@ -538,7 +538,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Stylet de bague | — | oui | oui |
 | Symbole de force | — | oui | oui |
 | Symbole des ténébres | — | oui | oui |
-| Table de vision | — | oui | **non** |
+| Table de vision | — | oui | oui |
 | Table des anciens | — | oui | oui |
 | Tablier de cuir | — | oui | oui |
 | Talisman | — | oui | oui |
@@ -729,7 +729,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | oui | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | oui | **non** |
 
-**607 objets distincts**, dont **536** pleinement implementes et **368** deja employes
+**607 objets distincts**, dont **536** pleinement implementes et **389** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue

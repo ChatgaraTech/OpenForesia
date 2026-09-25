@@ -277,7 +277,11 @@ internal static class Bestiaire
         var modelCsv = new StringBuilder(
             "zone,sous_zone,modele,nom,rang_0x10,pv_0x14,pm_0x16,champ_0x12,champ_0x18,champ_0x1a,"
             + "butin_0x22,c0,c1,c2,c3,c4,c5,c6,c7,octets\n");
-        var formationCsv = new StringBuilder("zone,sous_zone,formation,rang,espece,x,y,z,orientation\n");
+        // param_0x14 / param_0x16 : le sixieme dword de l'enregistrement (+0x18), que
+        // ScriptOpSpawnFormation recopie en +0x14 / +0x16 de l'entite (WorldMapScript.cs). Beaucoup
+        // de betes y lisent leur VARIANTE — la Momie choisit ainsi son effet d'etat, le Crotale s'il
+        // peut empoisonner.
+        var formationCsv = new StringBuilder("zone,sous_zone,formation,rang,espece,x,y,z,orientation,param_0x14,param_0x16\n");
         var lootCsv = new StringBuilder("zone,sous_zone,classe,rang,objet_id,objet,pourcent_plage_100\n");
         var itemCsv = new StringBuilder(
             "zone,sous_zone,objet_id,nom,description,att_0x30,def_0x32,elements_0x12,"
@@ -754,7 +758,8 @@ internal static class Bestiaire
                     rows.Add($"| {f} | {r} | {species} | {a.I16(ro + 4)} | {a.I16(ro + 6)} | {a.I16(ro + 8)} "
                              + $"| {a.I16(ro + 0x0c)} | 0x{kind:x8} |");
                     formationCsv.AppendLine(
-                        $"{z},{s},{f},{r},{species},{a.I16(ro + 4)},{a.I16(ro + 6)},{a.I16(ro + 8)},{a.I16(ro + 0x0c)}");
+                        $"{z},{s},{f},{r},{species},{a.I16(ro + 4)},{a.I16(ro + 6)},{a.I16(ro + 8)},{a.I16(ro + 0x0c)},"
+                        + $"{a.I16(ro + 0x18)},{a.I16(ro + 0x1a)}");
                 }
             }
 

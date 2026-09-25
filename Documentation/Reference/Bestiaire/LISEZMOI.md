@@ -398,7 +398,7 @@ et reste donc une vraie lettre. Une lecture naïve colle les trois premiers deva
 | `bestiaire.md` | le rapport lisible, zone par zone |
 | `modeles.csv` | une ligne par fiche : nom, rang, PV, PM, seuil, huit caractéristiques, et les 0x60 octets bruts |
 | `especes.csv` | l'aiguillage : IA, modèle, classe de butin, drapeaux |
-| `formations.csv` | un placement de monstre par ligne : formation, espèce, X/Y/Z, orientation |
+| `formations.csv` | un placement de monstre par ligne : formation, espèce, X/Y/Z, orientation, et `param_0x14` / `param_0x16` — le mot que la bête reçoit en `+0x14` / `+0x16`, où beaucoup lisent leur **variante** (la Momie son effet d’état, le Crotale s’il empoisonne) |
 | `butin.csv` | une ligne par rang : classe, rang, identifiant d'objet, nom, probabilité |
 | `objets.csv` | le catalogue par sous-zone : identifiant, nom, **description**, **bonus**, et les 0x140 octets bruts |
 | `vignettes.csv` | la **vignette** de chaque objet, par sous-zone et identifiant : les 0x140 octets qui suivent la fiche dans le catalogue (palette de seize couleurs, image 24×24 en 4 bits) — ceux que le jeu recopie dans l’inventaire. À part d’`objets.csv`, dont `census-item-effects.sh` lit `octets` comme dernier champ |
