@@ -26,7 +26,7 @@ const root = join(here, '..', '..');
 const args = process.argv.slice(2);
 const pngAt = args.indexOf('--png');
 const pngDir = pngAt >= 0 ? args[pngAt + 1] : null;
-const saveDir = args.find((a, i) => !a.startsWith('--') && i !== pngAt + 1) || join(root, 'OpenForesia', 'save');
+const saveDir = args.find((a, i) => !a.startsWith('--') && (pngAt < 0 || i !== pngAt + 1)) || join(root, 'OpenForesia', 'save');
 
 const html = readFileSync(join(here, 'editeur-sauvegarde.html'), 'utf8');
 let failures = 0;

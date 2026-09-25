@@ -54,19 +54,19 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | `0x00446DD0` | 189 | 0x3e | oui | oui | 0,1,3,4,5,6,9,10 |
 | `0x00445F60` | 166 | 0x44 | oui | oui | 0,1,3,4,5,6,7,8,9,10 |
 | `0x004462B0` | 162 | 0x43 | oui | oui | 0,1,2,3,4,5,6,7,9,10 |
-| `0x00446900` | 110 | 0x41 | oui | **non** | 0,1,2,3,4,5,6,9,10 |
-| `0x00446F30` | 95 | 0x3d | oui | **non** | 0,1,2,3,4,5,6,10 |
-| `0x00476500` | 75 | 0x5b | oui | **non** | 0,1,3,4,5,6,7,10 |
-| `0x00446200` | 36 | 0x45 | oui | **non** | 0,1,3,4,5,6,10 |
-| `0x00446410` | 25 | 0x42 | oui | **non** | 0,1,3,4,5,6,10 |
+| `0x00446900` | 110 | 0x41 | oui | oui | 0,1,2,3,4,5,6,9,10 |
+| `0x00446F30` | 95 | 0x3d | oui | oui | 0,1,2,3,4,5,6,10 |
+| `0x00476500` | 75 | 0x5b | oui | oui | 0,1,3,4,5,6,7,10 |
+| `0x00446200` | 36 | 0x45 | oui | oui | 0,1,3,4,5,6,10 |
+| `0x00446410` | 25 | 0x42 | oui | oui | 0,1,3,4,5,6,10 |
 | `0x00476350` | 17 | 0x5a | oui | oui | 0,1,4,5,7,10 |
 | `0x00445E70` | 17 | 0x48 | oui | oui | 0,3,4,6 |
-| `0x00445CF0` | 15 | 0x4c | oui | **non** | 0,1,3,5,6,10 |
+| `0x00445CF0` | 15 | 0x4c | oui | oui | 0,1,3,5,6,10 |
 | `0x00447630` | 14 | 0x3b | oui | **non** | 0,1,3,4,5,10 |
 | `0x0047A100` | 10 | 0x49 | oui | oui | 0,4,6 |
-| `0x00446170` | 10 | 0x4d | oui | **non** | 0,1,4,10 |
-| `0x00404920` | 10 | 0x55 | oui | **non** | 0,6,10 |
-| `0x00475CC0` | 8 | 0x4e | oui | **non** | 0,1,10 |
+| `0x00446170` | 10 | 0x4d | oui | oui | 0,1,4,10 |
+| `0x00404920` | 10 | 0x55 | oui | oui | 0,6,10 |
+| `0x00475CC0` | 8 | 0x4e | oui | oui | 0,1,10 |
 | `0x00446A90` | 4 | 0x3f | oui | **non** | 0,5,10 |
 | `0x004477D0` | 2 | 0x4b | oui | oui | 0,2 |
 | `0x00447170` | 1 | 0x3c | oui | **non** | 1 |
@@ -80,7 +80,7 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | gestionnaires distincts atteignables par un objet | **21** |
 | deja ecrits | **21** |
 | a transcrire | **0** |
-| exerces en jeu (sonde des gestionnaires) | **9** |
+| exerces en jeu (sonde des gestionnaires) | **18** |
 | naissances resolues par la table STATIQUE | **1440** |
 | naissances resolues par une table de SOUS-ZONE | **0** |
 
@@ -155,402 +155,402 @@ fiche —, la meme des deux cotes de la sonde.
 | à§Ã²Ý | — | ? | **non** |
 | ò·¬Ýî¨ | `0x00475CC0` | oui | **non** |
 | ÷Ø­Ä | `0x004753D0` | ? | **non** |
-| Aiguille médicinale | `0x004753D0`, `0x00446900` | oui | **non** |
-| Aiguille médicinale | `0x004753D0`, `0x00446900` | oui | **non** |
-| Aile de Lucifer | `0x00446F30`, `0x00446170` | oui | **non** |
-| Aile de Séraphin | `0x00446900`, `0x00446200` | oui | **non** |
-| Aile de fée | `0x004753D0` | ? | **non** |
-| Almader | — | oui | **non** |
-| Ambrosia | `0x00476500` | oui | **non** |
-| Amulette de la lumière | `0x00446DD0` | oui | **non** |
-| Amulette des runes | — | oui | **non** |
-| Amulette du dragon | — | oui | **non** |
-| Anneau de Merlin | — | oui | **non** |
-| Anneau de Satan | `0x004753D0`, `0x00446F30` | oui | **non** |
-| Anneau de l'hermite | — | oui | **non** |
-| Anneau des philosophes | `0x00446900` | oui | **non** |
-| Anneau des éléments | — | oui | **non** |
+| Aiguille médicinale | `0x004753D0`, `0x00446900` | oui | oui |
+| Aiguille médicinale | `0x004753D0`, `0x00446900` | oui | oui |
+| Aile de Lucifer | `0x00446F30`, `0x00446170` | oui | oui |
+| Aile de Séraphin | `0x00446900`, `0x00446200` | oui | oui |
+| Aile de fée | `0x004753D0` | ? | oui |
+| Almader | — | oui | oui |
+| Ambrosia | `0x00476500` | oui | oui |
+| Amulette de la lumière | `0x00446DD0` | oui | oui |
+| Amulette des runes | — | oui | oui |
+| Amulette du dragon | — | oui | oui |
+| Anneau de Merlin | — | oui | oui |
+| Anneau de Satan | `0x004753D0`, `0x00446F30` | oui | oui |
+| Anneau de l'hermite | — | oui | oui |
+| Anneau des philosophes | `0x00446900` | oui | oui |
+| Anneau des éléments | — | oui | oui |
 | Anneau du roi Salomon | — | oui | **non** |
-| Answerer | — | oui | **non** |
-| Aquachâle | `0x00446DD0` | oui | **non** |
-| Arc classique | — | oui | **non** |
-| Arc de bois | — | oui | **non** |
-| Arc de chasseur | — | oui | **non** |
-| Arc des elfes | — | oui | **non** |
-| Arc en croix | — | oui | **non** |
+| Answerer | — | oui | oui |
+| Aquachâle | `0x00446DD0` | oui | oui |
+| Arc classique | — | oui | oui |
+| Arc de bois | — | oui | oui |
+| Arc de chasseur | — | oui | oui |
+| Arc des elfes | — | oui | oui |
+| Arc en croix | — | oui | oui |
 | Arc gris | — | oui | **non** |
-| Arc noble | — | oui | **non** |
-| Armure | — | oui | **non** |
-| Armure anti-sortilège | — | oui | **non** |
-| Armure d'argent | — | oui | **non** |
+| Arc noble | — | oui | oui |
+| Armure | — | oui | oui |
+| Armure anti-sortilège | — | oui | oui |
+| Armure d'argent | — | oui | oui |
 | Armure de Pawas | `0x00446DD0` | oui | oui |
-| Armure de Satan | — | oui | **non** |
-| Armure de chevalier | — | oui | **non** |
-| Armure du dragon | — | oui | **non** |
-| Armure du gardien | — | oui | **non** |
-| Armure mirage | — | oui | **non** |
-| Armure noire | — | oui | **non** |
-| Armure sacrée | `0x00446DD0` | oui | **non** |
-| Artémis | — | oui | **non** |
-| Bague au joyau | — | oui | **non** |
-| Bague de protection | — | oui | **non** |
-| Bague de résistance | — | oui | **non** |
+| Armure de Satan | — | oui | oui |
+| Armure de chevalier | — | oui | oui |
+| Armure du dragon | — | oui | oui |
+| Armure du gardien | — | oui | oui |
+| Armure mirage | — | oui | oui |
+| Armure noire | — | oui | oui |
+| Armure sacrée | `0x00446DD0` | oui | oui |
+| Artémis | — | oui | oui |
+| Bague au joyau | — | oui | oui |
+| Bague de protection | — | oui | oui |
+| Bague de résistance | — | oui | oui |
 | Bague réflectrice | — | oui | **non** |
-| Bague sacrée | — | oui | **non** |
-| Baguette aux joyaux | — | oui | **non** |
-| Baguette d'Ishtar | — | oui | **non** |
-| Baguette d'argent | — | oui | **non** |
-| Baguette de cristal | — | oui | **non** |
-| Baguette de l'air | — | oui | **non** |
-| Baguette de l'alchimiste | — | oui | **non** |
-| Baguette de l'arc-en-ciel | — | oui | **non** |
-| Baguette de l'eau | — | oui | **non** |
-| Baguette de la féerie | — | oui | **non** |
-| Baguette de la licorne | — | oui | **non** |
-| Baguette de la terre | — | oui | **non** |
-| Baguette des anges | — | oui | **non** |
-| Baguette des runes | — | oui | **non** |
-| Baguette du feu | — | oui | **non** |
-| Baguette du mal | — | oui | **non** |
-| Baguette guérisseuse | — | oui | **non** |
-| Baguette magique | — | oui | **non** |
-| Baguette spatiale | — | oui | **non** |
-| Baguette stellaire | — | oui | **non** |
-| Baguette-Misuril | — | oui | **non** |
-| Baguette-vampire | — | oui | **non** |
-| Bahamut | `0x004477D0` | oui | **non** |
-| Bahil | — | oui | **non** |
+| Bague sacrée | — | oui | oui |
+| Baguette aux joyaux | — | oui | oui |
+| Baguette d'Ishtar | — | oui | oui |
+| Baguette d'argent | — | oui | oui |
+| Baguette de cristal | — | oui | oui |
+| Baguette de l'air | — | oui | oui |
+| Baguette de l'alchimiste | — | oui | oui |
+| Baguette de l'arc-en-ciel | — | oui | oui |
+| Baguette de l'eau | — | oui | oui |
+| Baguette de la féerie | — | oui | oui |
+| Baguette de la licorne | — | oui | oui |
+| Baguette de la terre | — | oui | oui |
+| Baguette des anges | — | oui | oui |
+| Baguette des runes | — | oui | oui |
+| Baguette du feu | — | oui | oui |
+| Baguette du mal | — | oui | oui |
+| Baguette guérisseuse | — | oui | oui |
+| Baguette magique | — | oui | oui |
+| Baguette spatiale | — | oui | oui |
+| Baguette stellaire | — | oui | oui |
+| Baguette-Misuril | — | oui | oui |
+| Baguette-vampire | — | oui | oui |
+| Bahamut | `0x004477D0` | oui | oui |
+| Bahil | — | oui | oui |
 | Balance des juges | `0x004753D0` | ? | oui |
 | Balle de cristal | `0x00446790` | oui | oui |
-| Balle de feu | — | ? | **non** |
-| Balle de gel | — | ? | **non** |
-| Balle de l'arc-en-ciel | — | ? | **non** |
+| Balle de feu | — | ? | oui |
+| Balle de gel | — | ? | oui |
+| Balle de l'arc-en-ciel | — | ? | oui |
 | Balle de l'illusion | `0x004753D0` | ? | oui |
-| Balle de lumière | — | ? | **non** |
+| Balle de lumière | — | ? | oui |
 | Balle de terre | — | ? | oui |
-| Balle des ténèbres | — | ? | **non** |
-| Balle des éléments | — | ? | **non** |
-| Balle du tonnerre | — | ? | **non** |
+| Balle des ténèbres | — | ? | oui |
+| Balle des éléments | — | ? | oui |
+| Balle du tonnerre | — | ? | oui |
 | Balle maléfique | — | ? | oui |
-| Balle sacrée | — | ? | **non** |
-| Bannière de chevalier | — | oui | **non** |
-| Belladone | — | oui | **non** |
-| Black Jack | `0x00447170` | oui | **non** |
-| Bonbon aux plantes | `0x00475CC0` | oui | **non** |
+| Balle sacrée | — | ? | oui |
+| Bannière de chevalier | — | oui | oui |
+| Belladone | — | oui | herbe, sonde des sorts |
+| Black Jack | `0x00447170` | oui | oui |
+| Bonbon aux plantes | `0x00475CC0` | oui | oui |
 | Bottes ailées | — | oui | **non** |
-| Bottes d'elfes | — | oui | **non** |
-| Bottes de cuir | — | oui | **non** |
-| Bottes de fer | — | oui | **non** |
-| Bottes de sept lieux | — | oui | **non** |
-| Boucle de cristal | — | oui | **non** |
-| Boucle de la chance | — | oui | **non** |
-| Bouclier d'argent | — | oui | **non** |
-| Bouclier de Bartschas | `0x00446DD0` | oui | **non** |
+| Bottes d'elfes | — | oui | oui |
+| Bottes de cuir | — | oui | oui |
+| Bottes de fer | — | oui | oui |
+| Bottes de sept lieux | — | oui | oui |
+| Boucle de cristal | — | oui | oui |
+| Boucle de la chance | — | oui | oui |
+| Bouclier d'argent | — | oui | oui |
+| Bouclier de Bartschas | `0x00446DD0` | oui | oui |
 | Bouclier de Lucifer | — | ? | **non** |
-| Bouclier de Séraphin | — | oui | **non** |
-| Bouclier de brigand | — | oui | **non** |
+| Bouclier de Séraphin | — | oui | oui |
+| Bouclier de brigand | — | oui | oui |
 | Bouclier de glace | `0x00446900` | oui | **non** |
 | Bouclier de l'air | `0x00446900` | oui | **non** |
-| Bouclier de l'ombre | — | oui | **non** |
-| Bouclier de la terre | `0x00446900` | oui | **non** |
-| Bouclier de vie | — | oui | **non** |
-| Bouclier des elfes | — | oui | **non** |
-| Bouclier des runes | — | oui | **non** |
-| Bouclier des élémentaux | `0x00446DD0` | oui | **non** |
+| Bouclier de l'ombre | — | oui | oui |
+| Bouclier de la terre | `0x00446900` | oui | oui |
+| Bouclier de vie | — | oui | oui |
+| Bouclier des elfes | — | oui | oui |
+| Bouclier des runes | — | oui | oui |
+| Bouclier des élémentaux | `0x00446DD0` | oui | oui |
 | Bouclier du feu | `0x00446900` | oui | **non** |
-| Bouclier du gardien | — | oui | **non** |
-| Bouclier lunaire | — | oui | **non** |
-| Bouclier rond | — | oui | **non** |
-| Bouclier réflecteur | — | oui | **non** |
-| Bouclier sacré | `0x00446DD0` | oui | **non** |
-| Bouclier solaire | — | oui | **non** |
-| Boîte de Pandore | `0x00446170`, `0x00475CC0` | oui | **non** |
-| Boîte du silence | `0x004753D0` | ? | **non** |
-| Boîte à bijoux | `0x00445F60` | oui | **non** |
-| Bracelet d'argent | — | oui | **non** |
-| Bracelet de reine | — | oui | **non** |
-| Broche au joyau | — | oui | **non** |
-| Broche d'argent | — | oui | **non** |
+| Bouclier du gardien | — | oui | oui |
+| Bouclier lunaire | — | oui | oui |
+| Bouclier rond | — | oui | oui |
+| Bouclier réflecteur | — | oui | oui |
+| Bouclier sacré | `0x00446DD0` | oui | oui |
+| Bouclier solaire | — | oui | oui |
+| Boîte de Pandore | `0x00446170`, `0x00475CC0` | oui | oui |
+| Boîte du silence | `0x004753D0` | ? | oui |
+| Boîte à bijoux | `0x00445F60` | oui | oui |
+| Bracelet d'argent | — | oui | oui |
+| Bracelet de reine | — | oui | oui |
+| Broche au joyau | — | oui | oui |
+| Broche d'argent | — | oui | oui |
 | Bâton d'Apollon | — | oui | oui |
-| Bâton de cristal | — | oui | **non** |
-| Bâton de fer | — | oui | **non** |
-| Bâton des sages | — | oui | **non** |
-| Bâton divin | — | ? | **non** |
-| Bâton lunaire | — | oui | **non** |
-| Bâton stellaire | — | ? | **non** |
-| Béquille | `0x00446F30` | oui | **non** |
+| Bâton de cristal | — | oui | oui |
+| Bâton de fer | — | oui | oui |
+| Bâton des sages | — | oui | oui |
+| Bâton divin | — | ? | oui |
+| Bâton lunaire | — | oui | oui |
+| Bâton stellaire | — | ? | oui |
+| Béquille | `0x00446F30` | oui | oui |
 | Cape d'automne | — | oui | **non** |
 | Cape d'hiver | — | oui | **non** |
 | Cape d'été | — | oui | **non** |
-| Cape des runes | — | oui | **non** |
+| Cape des runes | — | oui | oui |
 | Cape du printemps | — | oui | **non** |
-| Carte de la peur | `0x00446F30`, `0x00446170` | oui | **non** |
-| Carte de tarot | — | ? | **non** |
-| Casque ailé | — | oui | **non** |
+| Carte de la peur | `0x00446F30`, `0x00446170` | oui | oui |
+| Carte de tarot | — | ? | oui |
+| Casque ailé | — | oui | oui |
 | Casque d'argent | — | oui | **non** |
-| Casque de cuir | — | oui | **non** |
-| Casque de fer | — | oui | **non** |
-| Casque splendide | — | oui | **non** |
+| Casque de cuir | — | oui | oui |
+| Casque de fer | — | oui | oui |
+| Casque splendide | — | oui | oui |
 | Casquette de chasseur | — | oui | **non** |
-| Casse-tête | — | oui | **non** |
-| Casse-tête à chaîne | — | oui | **non** |
-| Cendre blanche | `0x00445F60` | oui | **non** |
+| Casse-tête | — | oui | oui |
+| Casse-tête à chaîne | — | oui | oui |
+| Cendre blanche | `0x00445F60` | oui | oui |
 | Cendre bleue | `0x00445F60` | oui | oui |
-| Cendre grise | `0x00445F60` | oui | **non** |
-| Cendre noire | `0x00445F60` | oui | **non** |
-| Cendre rouge | `0x00445F60` | oui | **non** |
-| Cendre verte | `0x00445F60` | oui | **non** |
+| Cendre grise | `0x00445F60` | oui | oui |
+| Cendre noire | `0x00445F60` | oui | oui |
+| Cendre rouge | `0x00445F60` | oui | oui |
+| Cendre verte | `0x00445F60` | oui | oui |
 | Chapeau d'elfe | — | oui | **non** |
 | Chapeau de sorcière | — | oui | **non** |
 | Chaussures à plumes | — | oui | **non** |
-| Chaussuresvol | `0x004753D0` | oui | **non** |
-| Chaîne de l'air | — | oui | **non** |
-| Chaîne de l'eau | — | oui | **non** |
-| Chaîne de la lumière | — | oui | **non** |
-| Chaîne de la terre | — | oui | **non** |
-| Chaîne des ténèbres | — | oui | **non** |
-| Chaîne du feu | — | oui | **non** |
-| Chaîne du mal | — | oui | **non** |
-| Chaîne du souffle | — | oui | **non** |
-| Chaîne sacrée | — | oui | **non** |
-| Chaînette d'argent | — | oui | **non** |
-| Chaînette de plumes | — | oui | **non** |
-| Châle précieux | — | oui | **non** |
-| Corde du retour | — | ? | **non** |
-| Corne du Minotaure | `0x00447630` | oui | **non** |
-| Corne du diable | — | oui | **non** |
-| Corne du dragon | — | oui | **non** |
-| Cotte de maille | — | oui | **non** |
-| Couronne de la lune | — | oui | **non** |
-| Couronne du soleil | — | oui | **non** |
-| Craimore | — | oui | **non** |
-| Cristal d'air | `0x004462B0` | oui | **non** |
-| Cristal d'eau | `0x004462B0` | oui | **non** |
-| Cristal d'ombre | `0x004462B0` | oui | **non** |
+| Chaussuresvol | `0x004753D0` | oui | oui |
+| Chaîne de l'air | — | oui | oui |
+| Chaîne de l'eau | — | oui | oui |
+| Chaîne de la lumière | — | oui | oui |
+| Chaîne de la terre | — | oui | oui |
+| Chaîne des ténèbres | — | oui | oui |
+| Chaîne du feu | — | oui | oui |
+| Chaîne du mal | — | oui | oui |
+| Chaîne du souffle | — | oui | oui |
+| Chaîne sacrée | — | oui | oui |
+| Chaînette d'argent | — | oui | oui |
+| Chaînette de plumes | — | oui | oui |
+| Châle précieux | — | oui | oui |
+| Corde du retour | — | ? | oui |
+| Corne du Minotaure | `0x00447630` | oui | oui |
+| Corne du diable | — | oui | oui |
+| Corne du dragon | — | oui | oui |
+| Cotte de maille | — | oui | oui |
+| Couronne de la lune | — | oui | oui |
+| Couronne du soleil | — | oui | oui |
+| Craimore | — | oui | oui |
+| Cristal d'air | `0x004462B0` | oui | oui |
+| Cristal d'eau | `0x004462B0` | oui | oui |
+| Cristal d'ombre | `0x004462B0` | oui | oui |
 | Cristal d'énergie | `0x004753D0` | ? | oui |
-| Cristal de feu | `0x004462B0` | oui | **non** |
-| Cristal de lumière | `0x004462B0` | oui | **non** |
+| Cristal de feu | `0x004462B0` | oui | oui |
+| Cristal de lumière | `0x004462B0` | oui | oui |
 | Cristal de magie | `0x004462B0` | oui | oui |
-| Cristal de terre | `0x004462B0` | oui | **non** |
-| Cristal du mal | `0x004462B0` | oui | **non** |
-| Cristal saint | `0x004462B0` | oui | **non** |
+| Cristal de terre | `0x004462B0` | oui | oui |
+| Cristal du mal | `0x004462B0` | oui | oui |
+| Cristal saint | `0x004462B0` | oui | oui |
 | Croix | — | oui | oui |
-| Crosse d'ambre | — | oui | **non** |
-| Crosse de Séraphin | — | oui | **non** |
-| Crosse de voeux | — | oui | **non** |
-| Crosse des anciens | — | oui | **non** |
-| Crosse du diable | — | oui | **non** |
-| Crosse du jugement | — | oui | **non** |
-| Crosse sacrée | — | oui | **non** |
-| Cuir fin | — | oui | **non** |
-| Cuirasse au miroir | — | oui | **non** |
-| Cuirasse de bronze | — | oui | **non** |
-| Cuirasse de maître | — | oui | **non** |
-| Daak | — | oui | **non** |
+| Crosse d'ambre | — | oui | oui |
+| Crosse de Séraphin | — | oui | oui |
+| Crosse de voeux | — | oui | oui |
+| Crosse des anciens | — | oui | oui |
+| Crosse du diable | — | oui | oui |
+| Crosse du jugement | — | oui | oui |
+| Crosse sacrée | — | oui | oui |
+| Cuir fin | — | oui | oui |
+| Cuirasse au miroir | — | oui | oui |
+| Cuirasse de bronze | — | oui | oui |
+| Cuirasse de maître | — | oui | oui |
+| Daak | — | oui | oui |
 | Debacle | — | oui | oui |
-| Dominique | — | oui | **non** |
-| Dropneal | — | oui | **non** |
-| Durandal | `0x00447630` | oui | **non** |
-| Délicieux drop | `0x00446900` | oui | **non** |
+| Dominique | — | oui | oui |
+| Dropneal | — | oui | oui |
+| Durandal | `0x00447630` | oui | oui |
+| Délicieux drop | `0x00446900` | oui | oui |
 | Eau bénite | — | ? | oui |
 | Ecailles de Belzébuth | — | oui | **non** |
-| Ecailles de dragon | — | oui | **non** |
+| Ecailles de dragon | — | oui | oui |
 | Ecu du destin | `0x00445F60` | oui | oui |
-| Elixir de magicien | `0x00446790` | oui | **non** |
-| Elixir de vie | `0x00446790` | oui | **non** |
-| Elixir des esprits | `0x00446790` | oui | **non** |
-| Epice rouge | `0x00446F30` | oui | **non** |
-| Epée d'argent | — | oui | **non** |
-| Epée de Damas | — | oui | **non** |
-| Epée de feu | — | oui | **non** |
-| Epée de glace | — | oui | **non** |
-| Epée de la fatalité | `0x00446F30` | oui | **non** |
-| Epée de sang | — | oui | **non** |
-| Epée du bâtard | — | oui | **non** |
-| Epée du gardien | — | oui | **non** |
-| Epée du tonnerre | — | oui | **non** |
-| Epée gauloise | `0x00446A90` | oui | **non** |
-| Epée noire | — | oui | **non** |
-| Excalibur | — | oui | **non** |
-| Extrait d'esprits | `0x00445F60` | oui | **non** |
+| Elixir de magicien | `0x00446790` | oui | oui |
+| Elixir de vie | `0x00446790` | oui | oui |
+| Elixir des esprits | `0x00446790` | oui | oui |
+| Epice rouge | `0x00446F30` | oui | oui |
+| Epée d'argent | — | oui | oui |
+| Epée de Damas | — | oui | oui |
+| Epée de feu | — | oui | oui |
+| Epée de glace | — | oui | oui |
+| Epée de la fatalité | `0x00446F30` | oui | oui |
+| Epée de sang | — | oui | oui |
+| Epée du bâtard | — | oui | oui |
+| Epée du gardien | — | oui | oui |
+| Epée du tonnerre | — | oui | oui |
+| Epée gauloise | `0x00446A90` | oui | oui |
+| Epée noire | — | oui | oui |
+| Excalibur | — | oui | oui |
+| Extrait d'esprits | `0x00445F60` | oui | oui |
 | Extrait de sang | `0x00445F60` | oui | oui |
-| Fabnihl | `0x00446F30` | oui | **non** |
-| Faux de la mort | `0x00404920` | oui | **non** |
-| Fenouil | — | oui | **non** |
-| Fenril | — | oui | **non** |
-| Fine rapière | — | oui | **non** |
-| Flacon d'énergie | `0x004753D0`, `0x00446790`, `0x00446200` | oui | **non** |
-| Flèche de Persée | — | oui | **non** |
-| Flèche de faucon | `0x0047A100` | oui | **non** |
-| Flèche de l'ombre | — | oui | **non** |
-| Flèche de lumière | — | ? | **non** |
-| Flèche des Gouivres | `0x00446F30` | oui | **non** |
-| Flèche du vent | — | oui | **non** |
-| Flûte des moutons | `0x004753D0` | ? | **non** |
-| Forgée de glace | — | oui | **non** |
-| Franberg | — | oui | **non** |
-| Féline | `0x00446F30` | oui | **non** |
-| Gabriel | — | oui | **non** |
-| Gantelet de force | — | oui | **non** |
-| Gantelets | — | oui | **non** |
-| Gantelets ailés | — | oui | **non** |
-| Gantelets d'argent | — | oui | **non** |
-| Gantelets de chevaliers | — | oui | **non** |
-| Gants ailés | — | oui | **non** |
-| Gants de cuir | — | oui | **non** |
+| Fabnihl | `0x00446F30` | oui | oui |
+| Faux de la mort | `0x00404920` | oui | oui |
+| Fenouil | — | oui | herbe, sonde des sorts |
+| Fenril | — | oui | oui |
+| Fine rapière | — | oui | oui |
+| Flacon d'énergie | `0x004753D0`, `0x00446790`, `0x00446200` | oui | oui |
+| Flèche de Persée | — | oui | oui |
+| Flèche de faucon | `0x0047A100` | oui | oui |
+| Flèche de l'ombre | — | oui | oui |
+| Flèche de lumière | — | ? | oui |
+| Flèche des Gouivres | `0x00446F30` | oui | oui |
+| Flèche du vent | — | oui | oui |
+| Flûte des moutons | `0x004753D0` | ? | oui |
+| Forgée de glace | — | oui | oui |
+| Franberg | — | oui | oui |
+| Féline | `0x00446F30` | oui | oui |
+| Gabriel | — | oui | oui |
+| Gantelet de force | — | oui | oui |
+| Gantelets | — | oui | oui |
+| Gantelets ailés | — | oui | oui |
+| Gantelets d'argent | — | oui | oui |
+| Gantelets de chevaliers | — | oui | oui |
+| Gants ailés | — | oui | oui |
+| Gants de cuir | — | oui | oui |
 | Gants de force | — | oui | oui |
-| Gants des runes | — | oui | **non** |
-| Gants sacrés | — | oui | **non** |
-| Genocide | `0x00404920` | oui | **non** |
-| Glaive | — | oui | **non** |
+| Gants des runes | — | oui | oui |
+| Gants sacrés | — | oui | oui |
+| Genocide | `0x00404920` | oui | oui |
+| Glaive | — | oui | oui |
 | Grand arc | — | oui | oui |
-| Grande hache | — | oui | **non** |
-| Gulwick | `0x00446F30` | oui | **non** |
-| Hache d'Ouga | — | oui | **non** |
-| Hache d'argent | — | oui | **non** |
-| Hache de Mars | — | oui | **non** |
-| Hache de Viking | — | oui | **non** |
-| Hache de boucher | — | oui | **non** |
-| Hache de guerre | — | oui | **non** |
-| Hache de la sauvagerie | `0x004753D0`, `0x00447630`, `0x00446410` | oui | **non** |
-| Hache du diable | `0x004753D0`, `0x00446A90` | oui | **non** |
-| Hache du feu | — | oui | **non** |
-| Hache du gel | — | oui | **non** |
-| Hache empoisonnée | `0x00446F30` | oui | **non** |
-| Hache en demi-lune | — | oui | **non** |
-| Hache fine | — | oui | **non** |
-| Hachette | — | oui | **non** |
-| Hallebarde | — | oui | **non** |
-| Harpe d'or | — | oui | **non** |
-| Horloge des mystères | `0x004753D0` | ? | **non** |
-| Horloge du bonheur | `0x004753D0` | ? | **non** |
-| Huile de sang | `0x00445CF0` | oui | **non** |
-| Huile du pouvoir | `0x00445CF0` | oui | **non** |
-| Hysopius | — | oui | **non** |
-| Insigne de brigand | — | oui | **non** |
-| Joyau de feu | `0x004753D0` | ? | **non** |
-| Joyau de glace | `0x004753D0` | ? | **non** |
-| Joyau de terre | `0x004753D0` | ? | **non** |
-| Joyau de vent | `0x004753D0` | ? | **non** |
-| La dévoreuse | — | oui | **non** |
-| La massacreuse | `0x00404920` | oui | **non** |
-| Lame de Calvin | — | oui | **non** |
-| Lame de la terre | — | oui | **non** |
-| Lame du soleil | — | oui | **non** |
-| Lampe sacrée | `0x004753D0` | ? | **non** |
+| Grande hache | — | oui | oui |
+| Gulwick | `0x00446F30` | oui | oui |
+| Hache d'Ouga | — | oui | oui |
+| Hache d'argent | — | oui | oui |
+| Hache de Mars | — | oui | oui |
+| Hache de Viking | — | oui | oui |
+| Hache de boucher | — | oui | oui |
+| Hache de guerre | — | oui | oui |
+| Hache de la sauvagerie | `0x004753D0`, `0x00447630`, `0x00446410` | oui | oui |
+| Hache du diable | `0x004753D0`, `0x00446A90` | oui | oui |
+| Hache du feu | — | oui | oui |
+| Hache du gel | — | oui | oui |
+| Hache empoisonnée | `0x00446F30` | oui | oui |
+| Hache en demi-lune | — | oui | oui |
+| Hache fine | — | oui | oui |
+| Hachette | — | oui | oui |
+| Hallebarde | — | oui | oui |
+| Harpe d'or | — | oui | oui |
+| Horloge des mystères | `0x004753D0` | ? | oui |
+| Horloge du bonheur | `0x004753D0` | ? | oui |
+| Huile de sang | `0x00445CF0` | oui | oui |
+| Huile du pouvoir | `0x00445CF0` | oui | oui |
+| Hysopius | — | oui | herbe, sonde des sorts |
+| Insigne de brigand | — | oui | oui |
+| Joyau de feu | `0x004753D0` | ? | oui |
+| Joyau de glace | `0x004753D0` | ? | oui |
+| Joyau de terre | `0x004753D0` | ? | oui |
+| Joyau de vent | `0x004753D0` | ? | oui |
+| La dévoreuse | — | oui | oui |
+| La massacreuse | `0x00404920` | oui | oui |
+| Lame de Calvin | — | oui | oui |
+| Lame de la terre | — | oui | oui |
+| Lame du soleil | — | oui | oui |
+| Lampe sacrée | `0x004753D0` | ? | oui |
 | Large épée | — | oui | oui |
-| Lavande | — | oui | **non** |
-| Livre de la technique | — | oui | **non** |
-| Long marteau | — | oui | **non** |
-| Longue épée | — | oui | **non** |
-| Manteau | — | oui | **non** |
-| Manteau d'elfe | — | oui | **non** |
-| Manteau de brigand | — | oui | **non** |
-| Manteau de croisé | — | oui | **non** |
-| Manteau de cuir | — | oui | **non** |
-| Manteau de résistance | — | oui | **non** |
-| Manteau des esprits | `0x00446DD0` | oui | **non** |
-| Manteau à plumes | — | oui | **non** |
-| Marteau de Thor | — | oui | **non** |
-| Marteau de guerre | — | oui | **non** |
-| Marteau de prêtre | — | oui | **non** |
-| Masque de chevalier | — | oui | **non** |
-| Masque de la mort | — | oui | **non** |
-| Masse d'armes | — | oui | **non** |
-| Mercuriale | — | oui | **non** |
-| Minegosh | — | oui | **non** |
-| Miroir d'eau | — | oui | **non** |
-| Miroir de la porte | — | oui | **non** |
-| Mistortain | — | oui | **non** |
-| Médaillon d'argent | — | oui | **non** |
-| Médaillon d'or | — | oui | **non** |
-| Médaillon de bronze | — | oui | **non** |
-| Nobles bottes | — | oui | **non** |
-| Nobles chaussures | — | oui | **non** |
-| Os de guerrier sauvage | `0x004753D0`, `0x00446410` | oui | **non** |
+| Lavande | — | oui | herbe, sonde des sorts |
+| Livre de la technique | — | oui | oui |
+| Long marteau | — | oui | oui |
+| Longue épée | — | oui | oui |
+| Manteau | — | oui | oui |
+| Manteau d'elfe | — | oui | oui |
+| Manteau de brigand | — | oui | oui |
+| Manteau de croisé | — | oui | oui |
+| Manteau de cuir | — | oui | oui |
+| Manteau de résistance | — | oui | oui |
+| Manteau des esprits | `0x00446DD0` | oui | oui |
+| Manteau à plumes | — | oui | oui |
+| Marteau de Thor | — | oui | oui |
+| Marteau de guerre | — | oui | oui |
+| Marteau de prêtre | — | oui | oui |
+| Masque de chevalier | — | oui | oui |
+| Masque de la mort | — | oui | oui |
+| Masse d'armes | — | oui | oui |
+| Mercuriale | — | oui | herbe, sonde des sorts |
+| Minegosh | — | oui | oui |
+| Miroir d'eau | — | oui | oui |
+| Miroir de la porte | — | oui | oui |
+| Mistortain | — | oui | oui |
+| Médaillon d'argent | — | oui | oui |
+| Médaillon d'or | — | oui | oui |
+| Médaillon de bronze | — | oui | oui |
+| Nobles bottes | — | oui | oui |
+| Nobles chaussures | — | oui | oui |
+| Os de guerrier sauvage | `0x004753D0`, `0x00446410` | oui | oui |
 | Panoramix | `0x00446790`, `0x00476350` | oui | oui |
-| Parfum d'impératrice | `0x00446790`, `0x00445E70` | oui | **non** |
+| Parfum d'impératrice | `0x00446790`, `0x00445E70` | oui | oui |
 | Parfum de convalescence | `0x00445E70` | oui | oui |
-| Parfum de feu | — | ? | **non** |
-| Parfum de guérison | `0x00445E70` | oui | **non** |
-| Pavois de chevalier | — | oui | **non** |
-| Pavois fin | — | oui | **non** |
+| Parfum de feu | — | ? | oui |
+| Parfum de guérison | `0x00445E70` | oui | oui |
+| Pavois de chevalier | — | oui | oui |
+| Pavois fin | — | oui | oui |
 | Pendentif de princesse | — | oui | **non** |
 | Pendentif vaporeux | — | oui | **non** |
-| Pentacle de prince | — | oui | **non** |
-| Pentacle magique | — | oui | **non** |
+| Pentacle de prince | — | oui | oui |
+| Pentacle magique | — | oui | oui |
 | Petite potion | `0x00446790` | oui | oui |
-| Pierre magique | `0x004753D0`, `0x00446790` | oui | **non** |
-| Pierre médicinale | `0x004753D0`, `0x00446790` | oui | **non** |
-| Pique | — | oui | **non** |
-| Plastron | — | oui | **non** |
+| Pierre magique | `0x004753D0`, `0x00446790` | oui | oui |
+| Pierre médicinale | `0x004753D0`, `0x00446790` | oui | oui |
+| Pique | — | oui | oui |
+| Plastron | — | oui | oui |
 | Plume | `0x00445F60` | oui | oui |
-| Plume dominicale | `0x004753D0`, `0x00476500` | oui | **non** |
-| Poignard d'Orihalcon | — | oui | **non** |
-| Poignard d'argent | — | oui | **non** |
-| Poignard de brigand | — | oui | **non** |
-| Poignard de sang | — | oui | **non** |
-| Poignard des brouillards | — | oui | **non** |
+| Plume dominicale | `0x004753D0`, `0x00476500` | oui | oui |
+| Poignard d'Orihalcon | — | oui | oui |
+| Poignard d'argent | — | oui | oui |
+| Poignard de brigand | — | oui | oui |
+| Poignard de sang | — | oui | oui |
+| Poignard des brouillards | — | oui | oui |
 | Pointe de sang | `0x00445F60` | oui | oui |
-| Porte-bonheur | — | oui | **non** |
-| Potion med | `0x00446790` | oui | **non** |
-| Potion olympique | `0x00446790`, `0x00446200` | oui | **non** |
-| Poudre de fées | — | ? | **non** |
-| Poudre de zombie | `0x004753D0`, `0x00476500` | oui | **non** |
-| Poupée Dummy | `0x004753D0`, `0x00476500` | oui | **non** |
-| Poupée dansante | `0x004753D0`, `0x00446790` | oui | **non** |
-| Queue de dragon | — | oui | **non** |
-| Rapière | — | oui | **non** |
-| Rapière Misuril | — | oui | **non** |
-| Rapière aux éclairs | — | oui | **non** |
-| Rapière d'argent | — | oui | **non** |
-| Rapière de Zeus | — | oui | **non** |
-| Rapière du chaos | `0x00446F30` | oui | **non** |
-| Rapière à poison | `0x00446F30` | oui | **non** |
-| Renegeton | — | oui | **non** |
-| Revatin | — | ? | **non** |
-| Robe de Saulus | `0x00446DD0` | oui | **non** |
-| Robe de fantôme | — | oui | **non** |
-| Robe de l'ombre | — | oui | **non** |
-| Robe de la terre | — | oui | **non** |
-| Robe de reine | — | oui | **non** |
-| Robe des anciens | — | oui | **non** |
+| Porte-bonheur | — | oui | oui |
+| Potion med | `0x00446790` | oui | oui |
+| Potion olympique | `0x00446790`, `0x00446200` | oui | oui |
+| Poudre de fées | — | ? | oui |
+| Poudre de zombie | `0x004753D0`, `0x00476500` | oui | oui |
+| Poupée Dummy | `0x004753D0`, `0x00476500` | oui | oui |
+| Poupée dansante | `0x004753D0`, `0x00446790` | oui | oui |
+| Queue de dragon | — | oui | oui |
+| Rapière | — | oui | oui |
+| Rapière Misuril | — | oui | oui |
+| Rapière aux éclairs | — | oui | oui |
+| Rapière d'argent | — | oui | oui |
+| Rapière de Zeus | — | oui | oui |
+| Rapière du chaos | `0x00446F30` | oui | oui |
+| Rapière à poison | `0x00446F30` | oui | oui |
+| Renegeton | — | oui | oui |
+| Revatin | — | ? | oui |
+| Robe de Saulus | `0x00446DD0` | oui | oui |
+| Robe de fantôme | — | oui | oui |
+| Robe de l'ombre | — | oui | oui |
+| Robe de la terre | — | oui | oui |
+| Robe de reine | — | oui | oui |
+| Robe des anciens | — | oui | oui |
 | Robe des esprits | — | oui | oui |
-| Robe des runes | — | oui | **non** |
-| Robe du démon | — | oui | **non** |
-| Robe du gardien | `0x00446DD0` | oui | **non** |
-| Robe fine | — | oui | **non** |
+| Robe des runes | — | oui | oui |
+| Robe du démon | — | oui | oui |
+| Robe du gardien | `0x00446DD0` | oui | oui |
+| Robe fine | — | oui | oui |
 | Robe magique | — | oui | oui |
-| Robe médicinale | — | oui | **non** |
-| Robe sacrée | — | oui | **non** |
-| Robe épiscopale | — | oui | **non** |
-| Ruban de force | — | oui | **non** |
-| Rubis | `0x00446900` | oui | **non** |
-| Réflector | — | oui | **non** |
-| Sabre de la terre | — | oui | **non** |
-| Saphir | `0x00446900` | oui | **non** |
-| Sauge | — | oui | **non** |
-| Sauvagerie | `0x004753D0`, `0x00446410` | oui | **non** |
-| Sceptre de bataille | — | oui | **non** |
-| Sceptre de la mort | — | oui | **non** |
-| Simple bâton | — | oui | **non** |
-| Solitaire | — | oui | **non** |
-| Stylet de bague | — | oui | **non** |
-| Symbole de force | — | oui | **non** |
-| Symbole des ténébres | — | oui | **non** |
+| Robe médicinale | — | oui | oui |
+| Robe sacrée | — | oui | oui |
+| Robe épiscopale | — | oui | oui |
+| Ruban de force | — | oui | oui |
+| Rubis | `0x00446900` | oui | oui |
+| Réflector | — | oui | oui |
+| Sabre de la terre | — | oui | oui |
+| Saphir | `0x00446900` | oui | oui |
+| Sauge | — | oui | herbe, sonde des sorts |
+| Sauvagerie | `0x004753D0`, `0x00446410` | oui | oui |
+| Sceptre de bataille | — | oui | oui |
+| Sceptre de la mort | — | oui | oui |
+| Simple bâton | — | oui | oui |
+| Solitaire | — | oui | oui |
+| Stylet de bague | — | oui | oui |
+| Symbole de force | — | oui | oui |
+| Symbole des ténébres | — | oui | oui |
 | Table de vision | — | oui | **non** |
-| Table des anciens | — | oui | **non** |
-| Tablier de cuir | — | oui | **non** |
-| Talisman | — | oui | **non** |
-| Talisman médicinal | — | oui | **non** |
-| Tiare de la terre | `0x00446DD0` | oui | **non** |
-| Tiare des étoiles | `0x00446DD0` | oui | **non** |
-| Verveine | — | oui | **non** |
-| Voile de beauté | — | oui | **non** |
-| Voile des ombres | `0x00446900` | oui | **non** |
-| Voile mystique | — | oui | **non** |
-| Walkyrie | — | oui | **non** |
-| Walmunk | — | oui | **non** |
+| Table des anciens | — | oui | oui |
+| Tablier de cuir | — | oui | oui |
+| Talisman | — | oui | oui |
+| Talisman médicinal | — | oui | oui |
+| Tiare de la terre | `0x00446DD0` | oui | oui |
+| Tiare des étoiles | `0x00446DD0` | oui | oui |
+| Verveine | — | oui | herbe, sonde des sorts |
+| Voile de beauté | — | oui | oui |
+| Voile des ombres | `0x00446900` | oui | oui |
+| Voile mystique | — | oui | oui |
+| Walkyrie | — | oui | oui |
+| Walmunk | — | oui | oui |
 | ýòÂ | — | oui | **non** |
 | ±²½¼Ùï | `0x00446900` | oui | **non** |
 | ±²½ç­´Ù | `0x004753D0` | ? | **non** |
@@ -729,7 +729,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | oui | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | oui | **non** |
 
-**607 objets distincts**, dont **536** pleinement implementes et **25** deja employes
+**607 objets distincts**, dont **536** pleinement implementes et **368** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue
@@ -747,17 +747,17 @@ le vrai libelle.
 
 | cle | nom probable |
 |---|---|
-| `6d53696d706c65206172630000000000` | Simple arc |
-| `6d426f75636c69657263756972000000` | Boucliercuir |
-| `6d506f69676e61726400000000000000` | Poignard |
-| `6d4261746f6e20646520626f69730000` | Baton de bois |
-| `7741726d757265206375697200000000` | Armure cuir |
-| `77426167756574746500000000000000` | Baguette |
-| `77526f62650000000000000000000000` | Robe |
-| `77436f75727465206570656500000000` | Courte epee |
-| `7745706565206e6f726d616c65000000` | Epee normale |
 | `6d546f6d616861776b00000000000000` | Tomahawk |
 | `6d4d6173737565000000000000000000` | Massue |
+| `77526f62650000000000000000000000` | Robe |
+| `7745706565206e6f726d616c65000000` | Epee normale |
+| `6d4261746f6e20646520626f69730000` | Baton de bois |
+| `77426167756574746500000000000000` | Baguette |
+| `6d506f69676e61726400000000000000` | Poignard |
+| `77436f75727465206570656500000000` | Courte epee |
+| `6d426f75636c69657263756972000000` | Boucliercuir |
+| `6d53696d706c65206172630000000000` | Simple arc |
+| `7741726d757265206375697200000000` | Armure cuir |
 
 ---
 

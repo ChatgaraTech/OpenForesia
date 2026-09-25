@@ -25,6 +25,28 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   restent, et le contrôle vérifie qu'aucun nom illisible ne passe
 - feat : éditeur de sauvegarde allégé à la demande — plus de provenance dans le catalogue, plus de
   sous-titres techniques ni de carte « États » dans l'onglet Personnage
+- feat : dernier lot de personnages de test (15, les 49 objets restants) — objets déclenchés par un
+  sort confiés aux lanceurs, qui connaissent tous leurs sorts ; consignes par événement précisées
+  (17 à 19 : subir un sort ou une altération — Varan et Trent, forêt, sous-zones 6 à 8) ; jumeaux
+  signalés ; modèles gardés dans `save-tests\modeles\`
+- feat : personnages de test — départ en forêt, **sous-zone 2**, la seule où le CD place des Crotales
+  (sept placements, `formations.csv`) ; lieu réglable par `--depart zone/sous-zone`
+- doc : les altérations qu'un objet porté peut attendre, par chemin — toute application d'état
+  ouvre `PrepareCombatPair` (événement 17) ; le jet A (18) sert aux pièges, poisons et états
+  `0x0053B3C0` — le Crotale de la forêt, sous-zones 0 à 4, en fait trois fois sur dix ; le jet B
+  (19) aux effets 8 à 10 de la table, et parmi les bêtes à la seule Momie du Labyrinthe ; consignes
+  des personnages de test réécrites en conséquence
+- doc : l'événement `0x15` du script déclenché d'un objet porté part à la **mort** du porteur
+  (`0x40000000`), pas quand il est « porté » — d'où la Poupée Dummy et la Plume dominicale
+- doc : `ObjetsAtteignables.md` — les 7 herbes du Chasseur marquées « herbe, sonde des sorts » :
+  elles partent par la posture d'herboriste, la sonde des objets ne peut pas les voir
+- doc : bilan des lots de test — 340 objets français sur 396 employés en jeu
+- feat : **les personnages de test** — `OpenForesia.Tools/generer-personnages-test.mjs` clone les
+  huit modèles (un par classe) en 132 personnages à 100 PV, chacun avec jusqu'à cinq équipements
+  jamais essayés (classe et type d'emplacement respectés) et cinq consommables, départ dans la
+  forêt ; six lots de 24 (l'écran du groupe n'en liste que 32) avec leur `FICHE.txt` — le geste à
+  faire pour chaque objet, lu dans l'événement `+0x84` ; `tests\lot-suivant.bat` les fait passer
+- fix : `check-editeur-sauvegarde.mjs` ignorait le dossier passé en argument quand `--png` manquait
 - fix : le film de fin s'affichait en blanc, le son seul — joué après la bascule en Direct3D, il
   dessinait encore en GDI sur une fenêtre que la chaîne d'échange possède. `MoviePlayback` passe
   désormais, une fois le régime GDI clos, par `D3D11Backend.PresentImage` (nouveau : une image

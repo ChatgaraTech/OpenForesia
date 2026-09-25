@@ -175,6 +175,11 @@ awk -F',' '
         nomcourt = cle
         print "INOM\t" cle "\t" nom
         print "IVU\t" cle "\t" zone
+        # Les HERBES du Chasseur, famille +0x86 de 0x32c9 a 0x32cf (13001 a 13007) : ramassees, elles
+        # vont dans sa reserve et partent par la posture d herboriste, comme des sorts de l ecole 3.
+        # La sonde des objets ne les voit jamais ; c est celle des sorts.
+        fam = u16(hex, 134)
+        if (fam >= 13001 && fam <= 13007) print "IHERBE\t" cle
         walk(hex, u16(hex, 128), zone, sz)
         walk(hex, u16(hex, 130), zone, sz)
     }
@@ -243,6 +248,7 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seen
         # --- les quatre releves par OBJET -------------------------------------------------
         if (f[1] == "INOM")  { objets[f[2]] = 1; libelle[f[2]] = f[3]; next }
         if (f[1] == "IVU")   { objets[f[2]] = 1; next }
+        if (f[1] == "IHERBE") { herbe[f[2]] = 1; next }
         if (f[1] == "IOP14") { objets[f[2]] = 1; op14[f[2]] = 1; next }
         if (f[1] == "IOBJ") {
             nom = f[2]; st = f[3] + 0
@@ -408,7 +414,7 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seen
             else if (o in op14)    impl = "?"
             else                 { impl = "oui"; oktot++ }
 
-            vu = (o in vus) ? "oui" : "**non**"
+            vu = (o in vus) ? "oui" : ((o in herbe) ? "herbe, sonde des sorts" : "**non**")
             if (o in vus) vustot++
 
             printf "| %s | %s | %s | %s |\n", libelle[o], requis, impl, vu
