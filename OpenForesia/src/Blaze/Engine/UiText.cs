@@ -535,7 +535,7 @@ internal sealed unsafe class UiText
     /// reelle chaine de dialogue — c'est bien la table de libelles de la zone. La racine 4 a une
     /// table nulle tant que le menu objets n'est pas charge, exactement comme l'original.</para>
     /// </summary>
-    private byte* ResourceRoot(uint slot, string caller) => slot switch
+    internal byte* ResourceRoot(uint slot, string caller) => slot switch
     {
         0 => mem.s_MainResourceBuffer_005e97c0,   // le tampon principal
         1 => mem.s_MainResourceDirectory_005e97c4,// son repertoire

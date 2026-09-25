@@ -484,7 +484,13 @@ public static unsafe partial class Blaze
     private static byte* ScriptOpEnterSubArea(byte* s, uint* result)
     {
         byte area = s[2];
-        byte* record = *(byte**)(*(byte**)(((byte**)Mem.Arena(0x005e97c0))[s[1]] + 0x74) + area * 4);
+
+        // Ghidra: `(&DAT_005e97c0)[s[1]]` — les racines de ressources voisines, que la
+        // reconstruction tient en cinq champs distincts. Les lire par Mem.Arena(0x005e97c0)
+        // tombait sur une cellule que personne n'ecrit : pointeur nul, plantage a la premiere
+        // entree de sous-zone scriptee (ruines anciennes). Voir UiText.ResourceRoot.
+        byte* root = Ui.ResourceRoot(s[1], "FUN_00515610");
+        byte* record = *(byte**)(*(byte**)(root + 0x74) + area * 4);
 
         *result = ApplyScriptOp(record + s[3], s[4], s[5]) ? 1u : 0u;
 

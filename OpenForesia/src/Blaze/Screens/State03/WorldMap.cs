@@ -762,9 +762,13 @@ public static unsafe partial class Blaze
         // La sentinelle 3 : sept tables de sauts d'entites installees d'un coup.
         Res.LoadResourceEntry(*(int**)(*(byte**)(areaDir + 0x6c)), (byte*)Res.s_OverrideDestC_00600904);
 
-        // Ghidra: `(*(code *)PTR_FUN_0056afc8)()` — l'entree **0** de la table 0056afc8, qui vaut
-        // FUN_00401FA0 pour l'index 0 : un no-op verifie, pas une supposition.
-        Res.CallEntityHandler(Res.s_Vt_0056afc8, 0, "PTR_FUN_0056afc8");
+        // Ghidra: `(*(code *)PTR_FUN_0056afc8)()` — l'entree **0** de la table 0056afc8, tout juste
+        // installee par la ligne precedente. Elle vaut FUN_00401FA0 dans la plupart des blocs, mais
+        // PAS dans les ruines anciennes : le bloc 0x0055a3a8 y met 0x00541C90, la fabrique des
+        // Sosies. Donc on passe par le repartiteur, pas par la souche seule. L'appel ne pousse
+        // AUCUN argument — 0x00541C90 ne lit pas [esp+4] (Legacy/Raw/Blaze/UndergroundRuins/
+        // FUN_00541C90.asm) — d'ou l'enregistrement nul : un corps qui le lirait planterait fort.
+        DispatchEntityHandler(Res.s_Vt_0056afc8[0], null, "PTR_FUN_0056afc8[0] (chargement de sous-zone)");
 
         int slotCount = 0;
         int* textures = *(int**)(areaDir + 0x10);

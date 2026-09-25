@@ -157,7 +157,11 @@ internal static class Bestiaire
     /// de butin contient.
     /// </para>
     /// </summary>
-    internal readonly record struct Item(string Name, string Description, string Hex);
+    /// <param name="Icon">Les <c>0x140</c> octets qui suivent la fiche : la palette (<c>+0x140</c>,
+    /// seize couleurs) et la vignette 24x24 en 4 bits (<c>+0x160</c>) — exactement ce que
+    /// <c>StoreItemInInventory_005312D0</c> recapture de la VRAM dans l'emplacement d'inventaire.
+    /// Vide si le morceau s'arrete avant.</param>
+    internal readonly record struct Item(string Name, string Description, string Hex, string Icon = "");
 
     private static List<Item> ItemCatalog(byte[] archive, Blob areaDir)
     {
@@ -190,7 +194,10 @@ internal static class Bestiaire
                 items.Add(new Item(
                     ItemDisplayName(blob, chunk),
                     ItemDescription(blob, chunk),
-                    string.Join("", Enumerable.Range(0, 0x140).Select(b => blob.U8(chunk + b).ToString("x2")))));
+                    string.Join("", Enumerable.Range(0, 0x140).Select(b => blob.U8(chunk + b).ToString("x2"))),
+                    blob.In(chunk + 0x140, 0x140)
+                        ? string.Join("", Enumerable.Range(0x140, 0x140).Select(b => blob.U8(chunk + b).ToString("x2")))
+                        : ""));
             }
         }
         return items;
@@ -275,6 +282,8 @@ internal static class Bestiaire
         var itemCsv = new StringBuilder(
             "zone,sous_zone,objet_id,nom,description,att_0x30,def_0x32,elements_0x12,"
             + "bonus_0x20,bonus_0x18,bonus_0x8a,octets\n");
+        // Les vignettes a part : census-item-effects.sh lit `octets` comme DERNIER champ d'objets.csv.
+        var iconCsv = new StringBuilder("zone,sous_zone,objet_id,vignette\n");
         var dropCsv = new StringBuilder(
             "objet,zone,sous_zone,monstre,classe,rang,pourcent_plage_100,seuil_0x22,placements\n");
         var placeCsv = new StringBuilder("zone,sous_zone,nom\n");
@@ -298,7 +307,7 @@ internal static class Bestiaire
             {
                 var areaDir = LoadEntry(archive, zoneBlob, subs[s]);
                 if (areaDir.Len == 0) continue;
-                DumpSubArea(z, s, areaDir, archive, regions, report, speciesCsv, modelCsv, formationCsv, lootCsv, itemCsv, dropCsv, placeCsv, chestCsv);
+                DumpSubArea(z, s, areaDir, archive, regions, report, speciesCsv, modelCsv, formationCsv, lootCsv, itemCsv, dropCsv, placeCsv, chestCsv, iconCsv);
             }
         }
 
@@ -317,10 +326,11 @@ internal static class Bestiaire
             File.WriteAllText(Path.Combine(outDir, "lieux.csv"), placeCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "coffres.csv"), chestCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "sorts.csv"), spellCsv.ToString());
+            File.WriteAllText(Path.Combine(outDir, "vignettes.csv"), iconCsv.ToString());
             Console.WriteLine();
             Console.WriteLine($"Ecrit dans {outDir} : bestiaire.md, especes.csv, modeles.csv, "
                               + "formations.csv, butin.csv, objets.csv, butin_par_objet.csv, lieux.csv, "
-                              + "coffres.csv, sorts.csv");
+                              + "coffres.csv, sorts.csv, vignettes.csv");
         }
     }
 
@@ -579,7 +589,7 @@ internal static class Bestiaire
         int z, int s, Blob a, byte[] archive, bool regions,
         StringBuilder report, StringBuilder speciesCsv, StringBuilder modelCsv,
         StringBuilder formationCsv, StringBuilder lootCsv, StringBuilder itemCsv, StringBuilder dropCsv,
-        StringBuilder placeCsv, StringBuilder chestCsv)
+        StringBuilder placeCsv, StringBuilder chestCsv, StringBuilder iconCsv)
     {
         // Le catalogue d'objets de la sous-zone, resolu avant tout le reste : c'est lui qui donne
         // un nom aux valeurs de la table de butin.
@@ -614,6 +624,7 @@ internal static class Bestiaire
             itemCsv.AppendLine(
                 $"{z},{s},{i},\"{items[i].Name}\",\"{items[i].Description.Replace("\"", "\"\"")}\","
                 + $"{att},{def},0x{elements:x4},\"{bonus16}\",\"{bonus8}\",{bonus8a},{hex}");
+            if (items[i].Icon.Length > 0) iconCsv.AppendLine($"{z},{s},{i},{items[i].Icon}");
         }
 
         int speciesTable = a.In(0x4c, 4) ? a.I32(0x4c) : 0;

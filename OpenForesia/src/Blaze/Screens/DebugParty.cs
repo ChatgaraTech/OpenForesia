@@ -464,10 +464,12 @@ public static unsafe partial class Blaze
         Res.LoadResourceEntry(entry, scratch);                             // Ghidra: FUN_00529b50
         Mem.CopyDwords((uint*)scratch, (uint*)(record + 0x300), 0x640);    // Ghidra: FUN_005352e0
 
-        // L'équipement de départ du mode de mise au point : trois emplacements à 0xff (contre 1 et
-        // trois zéros dans le jeu normal) et sept objets 0x0b, 0x16, 0x21, 0x2c, 0x37, 0x42, 0x4d —
-        // une progression régulière de 0xb, donc un objet sur onze de la table, pas un choix
-        // d'équilibrage.
+        // Les sorts et les herbes du mode de mise au point — pas de l'équipement (relu le
+        // 2026-09-25, Documentation/Reference/Sorts.md) : +0x160, +0x168 et +0x170 sont les masques
+        // de sorts connus des écoles 0, 1 et 2, huit octets chacun ; leurs quatre premiers octets à
+        // 0xff font connaître les 32 premiers sorts de chaque école, là où le jeu normal ne pose que
+        // le bit 0. +0x178..+0x17e sont les sept compteurs d'herbes du Chasseur (école 3, que
+        // StoreItemInInventory_005312D0 incrémente), remplis de 11, 22, 33… jusqu'à 77.
         record[0x160] = 0xff; record[0x161] = 0xff; record[0x162] = 0xff; record[0x163] = 0xff;
         record[0x168] = 0xff; record[0x169] = 0xff; record[0x16a] = 0xff; record[0x16b] = 0xff;
         record[0x170] = 0xff; record[0x171] = 0xff; record[0x172] = 0xff; record[0x173] = 0xff;

@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<!--
+  Editeur de sauvegarde de Blaze & Blade — le MODELE.
+
+  Ce fichier est la source. La page qu'on ouvre, editeur-sauvegarde.html, en est GENEREE par
+  build-editeur-sauvegarde.ps1, qui injecte le catalogue d'objets et de sorts du CD a la place du
+  marqueur /*__DATA__*/. Ne pas editer editeur-sauvegarde.html a la main.
+
+  Le format du fichier est documente dans Documentation/Reference/FormatSauvegarde.md. Le noyau
+  (entre /*__CORE_BEGIN__*/ et /*__CORE_END__*/) ne touche qu'a des Uint8Array et ne connait pas le
+  DOM : check-editeur-sauvegarde.mjs l'execute sous node contre les vraies sauvegardes.
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeur de sauvegarde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --bg: #101219;
+    --bg-2: #151823;
+    --panel: #1b1f2c;
+    --panel-2: #222739;
+    --line: #2e3448;
+    --line-soft: #252a3b;
+    --ink: #ece6d6;
+    --muted: #a39d8c;
+    --faint: #6f6b61;
+    --gold: #d8a84e;
+    --gold-soft: rgba(216, 168, 78, .14);
+    --ember: #e2663c;
+    --ok: #74c07a;
+    --ok-soft: rgba(116, 192, 122, .13);
+    --bad: #e25d5d;
+    --bad-soft: rgba(226, 93, 93, .13);
+    --hp: #d9624a;
+    --mp: #5d8fd6;
+    --changed: rgba(226, 102, 60, .28);
+    --radius: 10px;
+    --serif: "Cinzel", Georgia, serif;
+    --sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 20% -10%, #1f2438 0%, transparent 60%), var(--bg);
+    color: var(--ink); font: 14px/1.45 var(--sans);
+  }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: var(--gold); }
+  .mono { font-family: var(--mono); }
+  .muted { color: var(--muted); }
+  .faint { color: var(--faint); }
+
+  /* ------------------------------------------------------------------ l'ossature */
+  .app { display: grid; grid-template-columns: 290px 1fr; grid-template-rows: auto 1fr auto; min-height: 100vh; }
+  header.top {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 14px 22px;
+    border-bottom: 1px solid var(--line); background: rgba(16, 18, 25, .85); backdrop-filter: blur(6px);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+  .brand svg { width: 34px; height: 34px; }
+  .brand h1 { font: 700 19px/1.1 var(--serif); letter-spacing: .06em; margin: 0; color: var(--gold); }
+  .brand small { display: block; font: 500 11px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  aside { border-right: 1px solid var(--line); padding: 16px; background: rgba(21, 24, 35, .6); overflow: auto; }
+  main { padding: 20px 26px 30px; overflow: auto; min-width: 0; }
+  footer.bar {
+    grid-column: 1 / -1; position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px;
+    padding: 10px 22px; border-top: 1px solid var(--line); background: rgba(16, 18, 25, .92); backdrop-filter: blur(6px);
+  }
+  footer.bar .grow { flex: 1; min-width: 0; }
+
+  /* ------------------------------------------------------------------ les boutons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; white-space: nowrap;
+    transition: border-color .12s, background .12s;
+  }
+  .btn:hover { border-color: var(--gold); }
+  .btn:disabled { opacity: .45; cursor: default; border-color: var(--line); }
+  .btn.primary { background: linear-gradient(180deg, #e2b25a, #b9863a); color: #1a1408; border-color: #e7bf6f; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.07); }
+  .btn.danger { border-color: rgba(226, 93, 93, .5); color: #f0a3a3; }
+  .btn.small { padding: 4px 9px; font-size: 12.5px; }
+  .btn.ghost { background: transparent; }
+
+  /* ------------------------------------------------------------------ la liste des sauvegardes */
+  .side-title { font: 600 11px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 4px 2px 10px; }
+  .save-card {
+    display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; padding: 10px;
+    border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--panel); margin-bottom: 8px; cursor: pointer;
+  }
+  .save-card:hover { border-color: var(--line); }
+  .save-card.active { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-soft) inset; }
+  .save-card canvas { width: 32px; height: 32px; image-rendering: pixelated; border-radius: 4px; background: #0c0e14; }
+  .save-card .nm { font-weight: 600; }
+  .save-card .sub { font-size: 12px; color: var(--muted); }
+  .save-card .file { font: 11px var(--mono); color: var(--faint); word-break: break-all; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.mod { background: var(--gold-soft); color: var(--gold); }
+  .empty-side { color: var(--faint); font-size: 13px; padding: 6px 2px; }
+
+  /* ------------------------------------------------------------------ l'accueil */
+  .welcome { max-width: 760px; margin: 40px auto; text-align: center; }
+  .welcome h2 { font: 700 30px var(--serif); color: var(--gold); letter-spacing: .04em; margin: 8px 0 6px; }
+  .drop {
+    margin: 26px 0; padding: 34px; border: 1.5px dashed var(--line); border-radius: 14px; background: var(--bg-2);
+  }
+  .drop.over { border-color: var(--gold); background: var(--gold-soft); }
+  .welcome ol { text-align: left; color: var(--muted); max-width: 560px; margin: 0 auto; }
+
+  /* ------------------------------------------------------------------ l'en-tete du personnage */
+  .hero { display: flex; gap: 18px; align-items: center; margin-bottom: 16px; }
+  .hero canvas { width: 64px; height: 64px; image-rendering: pixelated; border-radius: 8px; border: 1px solid var(--line); background: #0c0e14; }
+  .hero h2 { font: 700 26px var(--serif); margin: 0; letter-spacing: .04em; }
+  .hero .meta { color: var(--muted); }
+  .gauges { display: flex; gap: 14px; margin-left: auto; }
+  .gauge { width: 170px; }
+  .gauge .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .gauge .track { height: 7px; border-radius: 9px; background: var(--line-soft); overflow: hidden; margin-top: 3px; }
+  .gauge .fill { height: 100%; border-radius: 9px; }
+
+  /* ------------------------------------------------------------------ les onglets */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; flex-wrap: wrap; }
+  .tab { padding: 9px 14px; border: 0; background: none; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* ------------------------------------------------------------------ les panneaux */
+  .grid { display: grid; gap: 14px; }
+  .grid.two { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .grid.three { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 15px 16px; min-width: 0; }
+  .card h3 { font: 600 13px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px; }
+  .card p.note, .note { color: var(--muted); font-size: 12.5px; margin: 6px 0 0; }
+  .warn { border-left: 3px solid var(--ember); background: rgba(226, 102, 60, .08); padding: 9px 12px; border-radius: 6px; color: #f1c3ae; font-size: 13px; margin: 0 0 14px; }
+
+  .field { display: grid; grid-template-columns: 1fr 130px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+  .field:last-child { border-bottom: 0; }
+  .field.wide { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+  .field label { color: var(--ink); }
+  .field label small { display: block; color: var(--faint); font: 11px var(--mono); }
+  input[type=number], input[type=text], select, input[type=search] {
+    width: 100%; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg-2);
+  }
+  input:focus, select:focus { outline: none; border-color: var(--gold); }
+  input.changed, select.changed { border-color: var(--ember); background: rgba(226, 102, 60, .08); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font: 600 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  td.num, th.num { text-align: right; font-family: var(--mono); }
+  td input[type=number] { width: 90px; }
+
+  /* ------------------------------------------------------------------ triches rapides */
+  .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .qa { display: flex; flex-direction: column; gap: 8px; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px; }
+  .qa b { font-weight: 600; }
+  .qa .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: auto; }
+  .qa .row input[type=number] { width: 100px; }
+  .qa .row label { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+
+  /* ------------------------------------------------------------------ l'inventaire */
+  .inv { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+  .slot { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 10px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line-soft); min-height: 84px; }
+  .slot.emptyslot { place-items: center; grid-template-columns: 1fr; color: var(--faint); border-style: dashed; }
+  .slot canvas { width: 48px; height: 48px; image-rendering: pixelated; border-radius: 6px; background: #0c0e14; }
+  .slot .nm { font-weight: 600; }
+  .slot .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0 6px; }
+  .tag { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line-soft); }
+  .tag.eq { color: var(--gold); border-color: rgba(216, 168, 78, .4); }
+  .tag.no { color: var(--bad); border-color: rgba(226, 93, 93, .35); }
+  .slot .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .slot .acts input { width: 64px; }
+  .noicon.small { width: 24px; height: 24px; }
+  .catalog td.ic { width: 40px; }
+  .catalog td.ic canvas { width: 24px; height: 24px; image-rendering: pixelated; display: block; }
+  tr.changed td { background: rgba(226, 102, 60, .08); }
+  .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; }
+  .check { display: flex; gap: 9px; align-items: center; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+  .check:hover { background: var(--panel-2); }
+  .check.changed { background: rgba(226, 102, 60, .10); }
+  .check input { flex: none; width: 16px; height: 16px; accent-color: var(--gold); }
+  .noicon { width: 48px; height: 48px; border-radius: 6px; border: 1px dashed var(--line); display: grid; place-items: center; color: var(--faint); font-size: 10px; text-align: center; }
+
+  .catalog-tools { display: grid; grid-template-columns: minmax(0, 1fr) 165px 170px; gap: 8px; margin-bottom: 10px; }
+  .catalog { max-height: 520px; overflow: auto; border: 1px solid var(--line-soft); border-radius: var(--radius); }
+  .catalog table td { font-size: 13px; }
+  .catalog tr:hover td { background: var(--panel-2); }
+  .catalog .desc { color: var(--muted); font-size: 12px; }
+
+
+  .toast { position: fixed; right: 22px; bottom: 70px; background: var(--panel-2); border: 1px solid var(--gold); padding: 10px 14px; border-radius: 9px; box-shadow: 0 8px 30px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none; max-width: 460px; z-index: 20; }
+  .toast.show { opacity: 1; transform: none; }
+  .toast.err { border-color: var(--bad); }
+
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    .hero { flex-wrap: wrap; }
+    .gauges { margin-left: 0; }
+    .catalog-tools { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0c56d"/><stop offset="1" stop-color="#b3782f"/></linearGradient></defs>
+        <path d="M20 2 L35 8 V19 C35 28 28.5 34.5 20 38 C11.5 34.5 5 28 5 19 V8 Z" fill="none" stroke="url(#g)" stroke-width="2.2"/>
+        <path d="M20 10 C24 15 26 18 24 23 C23 26 21 27 20 29 C19 27 16 26 15.5 23 C14.5 19 17 17 18 14 C18.8 16.5 20 17 21 17 C21.5 15 21 12.5 20 10 Z" fill="url(#g)"/>
+      </svg>
+      <div><h1>Éditeur de sauvegarde</h1><small>Blaze &amp; Blade · OpenForesia</small></div>
+    </div>
+    <button class="btn" id="btnDir" title="Ouvre le dossier OpenForesia\save : les fichiers sont réécrits en place, avec une copie de sécurité">📂 Ouvrir le dossier save</button>
+    <button class="btn" id="btnFiles">Ouvrir des fichiers…</button>
+    <input type="file" id="fileInput" multiple hidden>
+  </header>
+
+  <aside>
+    <div class="side-title">Sauvegardes</div>
+    <div id="saveList"><div class="empty-side">Aucune sauvegarde ouverte.</div></div>
+  </aside>
+
+  <main id="main"></main>
+
+  <footer class="bar">
+    <div class="grow" id="status"><span class="muted">Ouvre une sauvegarde pour commencer.</span></div>
+    <button class="btn ghost" id="btnRevert" disabled>Annuler les modifications</button>
+    <button class="btn" id="btnDownload" disabled>Télécharger</button>
+    <button class="btn primary" id="btnSave" disabled>Enregistrer</button>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/*__CORE_BEGIN__*/
+// =====================================================================================================
+// LE NOYAU — le format du fichier, et rien d'autre. Voir Documentation/Reference/FormatSauvegarde.md.
+//
+//   0x0000..0x1fff  la fiche du personnage (0x2000 octets), dont les 0x100 premiers portent l'en-tete
+//                   « carte memoire » (titre, palette et icone) ; somme de controle en 0x1ffc
+//   0x2000..0x3eff  le depot de l'auberge : douze emplacements d'objet de 0x280 octets
+//   0x3f00..0x3fff  la COPIE de 0x1f00..0x1fff de la fiche — le depot compare la somme qui s'y trouve
+//   0x4000..0x5fff  la table des vignettes (seize octets par entree)
+// =====================================================================================================
+const Core = (() => {
+  const SIZE = 0x6000;
+  const SUM = 0x1ffc;
+
+  const u8 = (b, o) => b[o];
+  const i8 = (b, o) => (b[o] << 24) >> 24;
+  const u16 = (b, o) => b[o] | (b[o + 1] << 8);
+  const s16 = (b, o) => (u16(b, o) << 16) >> 16;
+  const u32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+  const w8 = (b, o, v) => { b[o] = v & 0xff; };
+  const w16 = (b, o, v) => { b[o] = v & 0xff; b[o + 1] = (v >> 8) & 0xff; };
+  const w32 = (b, o, v) => { b[o] = v & 0xff; b[o + 1] = (v >>> 8) & 0xff; b[o + 2] = (v >>> 16) & 0xff; b[o + 3] = (v >>> 24) & 0xff; };
+
+  // La somme de WriteCardSaveFile / WriteDepotSaveFile : les 0x1ffc premiers octets, SIGNES.
+  function checksum(b) {
+    let s = 0;
+    for (let i = 0; i < SUM; i++) s = (s + ((b[i] << 24) >> 24)) | 0;
+    return s;
+  }
+
+  function mirrorOk(b) {
+    for (let i = 0; i < 0x100; i++) if (b[0x3f00 + i] !== b[0x1f00 + i]) return false;
+    return true;
+  }
+
+  function verify(b) {
+    const problems = [];
+    if (b.length !== SIZE) problems.push(`taille ${b.length} octets au lieu de ${SIZE}`);
+    if (b.length < SIZE) return { ok: false, problems, stored: 0, computed: 0, sumOk: false, mirror: false };
+    if (b[0] !== 0x53 || b[1] !== 0x43) problems.push('en-tête « SC » absent');
+    const stored = u32(b, SUM) | 0;
+    const computed = checksum(b);
+    const sumOk = stored === computed;
+    const mirror = mirrorOk(b);
+    if (!sumOk) problems.push('somme de contrôle fausse');
+    if (!mirror) problems.push('copie de fin de fiche (0x3f00) divergente');
+    return { ok: problems.length === 0, problems, stored, computed, sumOk, mirror };
+  }
+
+  // Ce que le jeu fait avant d'ecrire : la somme, puis la copie de 0x1f00..0x1fff en 0x3f00.
+  function finalize(b) {
+    w32(b, SUM, checksum(b));
+    b.copyWithin(0x3f00, 0x1f00, 0x2000);
+  }
+
+  // ---------------------------------------------------------------- le texte (Latin-1)
+  function cstr(b, o, n) {
+    let s = '';
+    for (let i = 0; i < n; i++) { const c = b[o + i]; if (c === 0) break; s += String.fromCharCode(c); }
+    return s;
+  }
+
+  // NameEncodeChar (Engine/SaveData.cs) pour les caracteres qu'on sait coder : chiffres, lettres,
+  // espace. Le reste passe par des tables d'accents qu'on ne recopie pas ici — l'espace pleine
+  // largeur, comme le repli de l'original.
+  function sjis(ch) {
+    const c = ch.charCodeAt(0);
+    if (c >= 0x30 && c <= 0x39) return [0x82, 0x4f + c - 0x30];
+    if (c >= 0x41 && c <= 0x5a) return [0x82, 0x60 + c - 0x41];
+    if (c >= 0x61 && c <= 0x7a) return [0x82, 0x81 + c - 0x61];
+    return [0x81, 0x40];
+  }
+  const encodeName = (s) => [...s].flatMap(sjis);
+
+  function name(b) { return cstr(b, 0x100, 16); }
+
+  function indexOfSeq(hay, needle, from, to) {
+    outer: for (let i = from; i + needle.length <= to; i++) {
+      for (let k = 0; k < needle.length; k++) if (hay[i + k] !== needle[k]) continue outer;
+      return i;
+    }
+    return -1;
+  }
+
+  // Le nom vit en +0x100 (seize octets) ; le titre de la carte memoire, en +4, en porte une copie
+  // codee. On remplace la copie la ou on la trouve, et on laisse le titre intact sinon.
+  function setName(b, value) {
+    const clean = [...value].map(ch => ch.charCodeAt(0) < 0x20 || ch.charCodeAt(0) > 0xff ? '?' : ch).join('').slice(0, 15);
+    const old = name(b);
+    const encOld = encodeName(old);
+    const at = encOld.length ? indexOfSeq(b, encOld, 4, 0x44) : -1;
+    if (at >= 0) {
+      let end = at + encOld.length;
+      while (end < 0x44 && b[end] !== 0) end++;
+      const tail = Array.from(b.slice(at + encOld.length, end));
+      const head = Array.from(b.slice(4, at));
+      const next = [...head, ...encodeName(clean), ...tail].slice(0, 0x40);
+      for (let i = 0; i < 0x40; i++) b[4 + i] = i < next.length ? next[i] : 0;
+    }
+    for (let i = 0; i < 16; i++) b[0x100 + i] = i < clean.length ? clean.charCodeAt(i) : 0;
+  }
+
+  // ---------------------------------------------------------------- les objets
+  const SLOT0 = 0x300, SLOT = 0x280, SLOTS = 10;
+  const DEPOT0 = 0x2000, DEPOTS = 12;
+  const slotOff = (i) => SLOT0 + i * SLOT;
+  const depotOff = (i) => DEPOT0 + i * SLOT;
+  const used = (b, off) => b[off] !== 0;
+
+  // ItemDisplayName / ItemDescription d'OpenForesia.Tools/Bestiaire.cs, a l'identique.
+  function itemName(b, off) {
+    let s = '';
+    for (let i = 0; i < 0x40; i++) {
+      const c = b[off + 0x41 + i];
+      if (c === 0x2f) return s.trim();
+      s += c >= 0x20 ? String.fromCharCode(c) : ' ';
+    }
+    const start = b[off] > 0x5f && b[off + 1] < 0x60 ? 1 : 0;
+    s = '';
+    for (let i = start; i < 0x10; i++) { const c = b[off + i]; if (c === 0) break; s += String.fromCharCode(c); }
+    return s.trim();
+  }
+  function itemDesc(b, off) {
+    let slash = -1;
+    for (let i = 0; i < 0x40; i++) {
+      const c = b[off + 0x41 + i];
+      if (c === 0) break;
+      if (c === 0x2f) { slash = i; break; }
+    }
+    let s = '';
+    for (let k = off + 0x41 + slash + 1; k < off + 0x140; k++) {
+      const c = b[k];
+      if (c === 0) break;
+      s += c >= 0x20 ? String.fromCharCode(c) : ' ';
+    }
+    return s.trim();
+  }
+  function itemKey(b, off) {
+    let h = '';
+    for (let i = 0; i < 16; i++) h += b[off + i].toString(16).padStart(2, '0');
+    return h;
+  }
+  // Le mot +0x12 : l'octet bas dit les classes, l'octet haut les emplacements (FUN_0052bxxx, onglet
+  // Equipement) — 0x100 arme, 0x200 armure, 0x400 bouclier, 0x800 accessoire.
+  function itemKind(flags) {
+    if (flags & 0x100) return 'Arme';
+    if (flags & 0x200) return 'Armure';
+    if (flags & 0x400) return 'Bouclier';
+    if (flags & 0x800) return 'Accessoire';
+    return 'Objet';
+  }
+  const stackable = (b, off) => (b[off + 0x13] & 0x30) !== 0;
+
+  // StoreItemInInventory_005312D0 : la fiche (0x140 octets) recouvre l'emplacement, puis le compteur
+  // de +0x10 est remis. L'icone vit en +0x140 (palette) et +0x160 (image) ; sans elle, le jeu
+  // televerse des zeros et l'objet s'affiche sans vignette.
+  function putItem(b, off, sheet, count, icon) {
+    b.set(sheet.subarray(0, 0x140), off);
+    w16(b, off + 0x10, count);
+    if (icon) b.set(icon.subarray(0, 0x140), off + 0x140);
+    else b.fill(0, off + 0x140, off + 0x280);
+  }
+  function clearSlot(b, off) { b.fill(0, off, off + SLOT); }
+
+  // Retirer un objet comme le jeu le jette (WorldMapMenu.cs, onglet Inventaire ; ItemScript.cs) :
+  // seul le premier octet passe a zero, le reste de l'emplacement garde ses residus. Le jeu refuse
+  // de jeter un objet porte ; l'editeur, lui, le permet, donc il le retire aussi de l'equipement.
+  function removeItem(b, i) {
+    b[slotOff(i)] = 0;
+    for (let k = 0; k < 5; k++) if (b[0x2b0 + k] === i) b[0x2b0 + k] = 0xff;
+  }
+
+  // ---------------------------------------------------------------- les images (PlayStation 4 bpp)
+  function ps1Color(c) {
+    if (c === 0) return [0, 0, 0, 0];
+    return [(c & 31) * 255 / 31 | 0, ((c >> 5) & 31) * 255 / 31 | 0, ((c >> 10) & 31) * 255 / 31 | 0, 255];
+  }
+  function decodeIcon(b, clutOff, imgOff, w, h) {
+    const pal = [];
+    for (let i = 0; i < 16; i++) pal.push(ps1Color(u16(b, clutOff + i * 2)));
+    const out = new Uint8ClampedArray(w * h * 4);
+    const stride = w / 2;
+    let opaque = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const byte = b[imgOff + y * stride + (x >> 1)];
+        const idx = x & 1 ? byte >> 4 : byte & 15;
+        const p = pal[idx], o = (y * w + x) * 4;
+        out[o] = p[0]; out[o + 1] = p[1]; out[o + 2] = p[2]; out[o + 3] = p[3];
+        if (p[3]) opaque++;
+      }
+    }
+    return { rgba: out, opaque };
+  }
+  const cardIcon = (b) => decodeIcon(b, 0x60, 0x80, 16, 16);
+  const itemIcon = (b, off) => decodeIcon(b, off + 0x140, off + 0x160, 24, 24);
+  function hasIcon(b, off) {
+    for (let i = off + 0x140; i < off + 0x280; i++) if (b[i]) return true;
+    return false;
+  }
+
+  function hexToBytes(h) {
+    const out = new Uint8Array(h.length / 2);
+    for (let i = 0; i < out.length; i++) out[i] = parseInt(h.substr(i * 2, 2), 16);
+    return out;
+  }
+
+  return {
+    SIZE, SUM, SLOTS, DEPOTS, u8, i8, u16, s16, u32, w8, w16, w32, checksum, verify, finalize, mirrorOk,
+    cstr, name, setName, encodeName, slotOff, depotOff, used, itemName, itemDesc, itemKey, itemKind,
+    stackable, putItem, clearSlot, removeItem, decodeIcon, cardIcon, itemIcon, hasIcon, hexToBytes,
+  };
+})();
+/*__CORE_END__*/
+
+// =====================================================================================================
+// LES DONNEES DU CD — injectees par build-editeur-sauvegarde.ps1.
+//   items  : { n nom, d description, h fiche (0x140 octets en hexa), i vignette (0x140 octets) }
+//   spells : les fiches de sort, par ecole (0 a 3)
+// =====================================================================================================
+const PAYLOAD = /*__DATA__*/{ items: [], spells: [[], [], [], []], generated: '' };
+
+// =====================================================================================================
+// LE VOCABULAIRE — tout vient de Documentation/ (FormatSauvegarde.md, MonteeDeNiveau.md, Sorts.md).
+// L'interface s'adresse a un joueur : aucun decalage, aucun octet a l'ecran. Les renvois
+// techniques restent dans ces commentaires.
+// =====================================================================================================
+const CLASSES = ['Guerrier', 'Prêtre', 'Voleur', 'Sorcier', 'Chasseur', 'Elfe', 'Nain', 'Fée'];
+const ELEMENTS = ['Feu', 'Eau', 'Terre', 'Air', 'Lumière', 'Nuit', 'Divin', 'Maléfique'];
+// +0x280 (actuelles) et +0x2a0 (de depart), dans cet ordre.
+const STATS = ['Force', 'Intelligence', 'Volonté', 'Agilité', 'Constitution', 'Puissance magique', 'Chance'];
+// L'ecole de +0x2b5 n'a de sens que pour les classes qui incantent (Sorts.md) : Pretre, Sorcier,
+// Elfe, Fee. Le Chasseur a l'ecole 3, qui est une reserve d'herbes et non des sorts.
+const CASTERS = { 1: 'Magie du Prêtre', 3: 'Magie du Sorcier', 5: 'Magie du Sorcier', 7: 'Magie de la Fée' };
+const HUNTER = 4;
+// +0x2b0..+0x2b4, et le bit du mot +0x12 de l'objet que chaque emplacement exige.
+const EQUIP = [['Arme', 0x100], ['Armure', 0x200], ['Bouclier', 0x400], ['Accessoire 1', 0x800], ['Accessoire 2', 0x800]];
+// L'octet 30 de la progression (+0x2fe), bit par bit — Destination.cs, navMask. L'auberge et la
+// foret sont toujours ouvertes ; la grotte scellee ne se choisit pas sur la carte.
+const DESTINATIONS = ['La mine abandonnée', 'La montagne du dragon de feu', 'La vieille tour',
+  'Le Labyrinthe des morts', "Le château de l'immortel", 'Les ruines souterraines',
+  "La vallée d'argent", 'Les ruines dans le lac'];
+
+const isCaster = (b) => (b[0x150] & 7) in CASTERS;
+const isHunter = (b) => (b[0x150] & 7) === HUNTER;
+
+// =====================================================================================================
+// L'ETAT DE LA PAGE
+// =====================================================================================================
+const saves = [];          // { fileName, bytes, orig, handle?, dir? }
+let current = -1;
+let tab = 'resume';
+let dirHandle = null;
+let catalogFilter = { q: '', kind: '', usable: true };
+
+const catalog = PAYLOAD.items.map((it, i) => {
+  const sheet = Core.hexToBytes(it.h);
+  return {
+    id: i, name: it.n, desc: it.d, sheet, icon: it.i ? Core.hexToBytes(it.i) : null,
+    flags: Core.u16(sheet, 0x12), kind: Core.itemKind(Core.u16(sheet, 0x12)), key: Core.itemKey(sheet, 0),
+    att: Core.s16(sheet, 0x30), def: Core.s16(sheet, 0x32), stack: Core.stackable(sheet, 0),
+  };
+});
+// Deux fiches qui ne different que par des octets invisibles (les deux « Aiguille medicinale ») ne
+// font qu'une ligne ; deux fiches de meme nom mais de caracteristiques differentes (les deux « Robe
+// magique ») en gardent deux.
+{
+  const shown = new Set();
+  for (let i = catalog.length - 1; i >= 0; i--) {
+    const c = catalog[i];
+    const look = [c.name, c.desc, c.kind, c.att, c.def, c.stack].join('|');
+    if (shown.has(look)) catalog.splice(i, 1); else shown.add(look);
+  }
+}
+const catalogByKey = new Map();
+for (const c of catalog) if (!catalogByKey.has(c.key)) catalogByKey.set(c.key, c);
+
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k === 'html') e.innerHTML = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+};
+
+function toast(msg, err = false) {
+  const t = $('#toast');
+  t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 3200);
+}
+
+function canvasFor(icon, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').putImageData(new ImageData(icon.rgba, w, h), 0, 0);
+  return c;
+}
+
+// =====================================================================================================
+// OUVRIR
+// =====================================================================================================
+function addSave(fileName, buffer, handle, dir) {
+  const bytes = new Uint8Array(buffer);
+  const existing = saves.findIndex(s => s.fileName === fileName);
+  const entry = { fileName, bytes: bytes.slice(), orig: bytes.slice(), handle, dir };
+  if (existing >= 0) saves[existing] = entry; else saves.push(entry);
+  return existing >= 0 ? existing : saves.length - 1;
+}
+
+async function openDirectory() {
+  if (!window.showDirectoryPicker) {
+    toast("Ce navigateur ne sait pas ouvrir un dossier (Chrome ou Edge le savent). Utilise « Ouvrir des fichiers… ».", true);
+    return;
+  }
+  try {
+    const dir = await window.showDirectoryPicker({ id: 'openforesia-save', mode: 'readwrite' });
+    let n = 0;
+    for await (const [nm, h] of dir.entries()) {
+      if (h.kind !== 'file' || !nm.startsWith('Blaze-Saving')) continue;
+      const f = await h.getFile();
+      addSave(nm, await f.arrayBuffer(), h, dir);
+      n++;
+    }
+    dirHandle = dir;
+    if (!n) toast('Aucune sauvegarde dans ce dossier. Le bon est OpenForesia\\save.', true);
+    else { toast(`${n} sauvegarde(s) ouverte(s).`); if (current < 0) current = 0; }
+    renderAll();
+  } catch (e) { if (e.name !== 'AbortError') toast('Ouverture impossible : ' + e.message, true); }
+}
+
+async function openFiles(files) {
+  let last = -1;
+  for (const f of files) last = addSave(f.name, await f.arrayBuffer(), null, null);
+  if (last >= 0) { current = last; renderAll(); }
+}
+
+// =====================================================================================================
+// ENREGISTRER
+// =====================================================================================================
+function cur() { return saves[current]; }
+function dirty(s = cur()) {
+  if (!s) return false;
+  if (s.bytes.length !== s.orig.length) return true;
+  for (let i = 0; i < s.bytes.length; i++) if (s.bytes[i] !== s.orig[i]) return true;
+  return false;
+}
+
+async function save() {
+  const s = cur();
+  if (!s) return;
+  Core.finalize(s.bytes);
+  if (!s.handle) { download(); return; }
+  try {
+    // La copie de securite part dans un sous-dossier : un fichier « Blaze-Saving… » pose a cote des
+    // autres serait pris par le jeu pour une sauvegarde de plus.
+    const backups = await s.dir.getDirectoryHandle('copies-editeur', { create: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const bk = await backups.getFileHandle(`${s.fileName}.${stamp}`, { create: true });
+    let w = await bk.createWritable(); await w.write(s.orig); await w.close();
+    w = await s.handle.createWritable(); await w.write(s.bytes); await w.close();
+    s.orig = s.bytes.slice();
+    toast(`Enregistré. L'original est gardé dans save\\copies-editeur\\.`);
+    renderAll();
+  } catch (e) { toast('Écriture impossible : ' + e.message, true); }
+}
+
+function download() {
+  const s = cur();
+  if (!s) return;
+  Core.finalize(s.bytes);
+  // Le type est explicite : sans lui, Chrome et Edge ajoutent « .txt » a un nom sans extension.
+  const a = el('a', { href: URL.createObjectURL(new Blob([s.bytes], { type: 'application/octet-stream' })), download: s.fileName });
+  document.body.append(a); a.click(); a.remove();
+  toast(`Téléchargé sous « ${s.fileName} » — à recopier dans OpenForesia\\save\\, jeu fermé.`);
+  renderAll();
+}
+
+function revert() {
+  const s = cur();
+  if (!s) return;
+  s.bytes = s.orig.slice();
+  renderAll();
+  toast('Modifications annulées.');
+}
+
+// =====================================================================================================
+// LES MODIFICATIONS — toutes passent par edit(), qui recalcule la somme de controle et redessine.
+// =====================================================================================================
+function edit(fn) {
+  const s = cur();
+  if (!s) return;
+  fn(s.bytes);
+  Core.finalize(s.bytes);
+  renderAll();
+}
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v) | 0));
+
+// =====================================================================================================
+// LE RENDU
+// =====================================================================================================
+function renderAll() {
+  renderList();
+  renderMain();
+  renderStatus();
+}
+
+function renderList() {
+  const box = $('#saveList');
+  box.innerHTML = '';
+  if (!saves.length) { box.append(el('div', { class: 'empty-side' }, 'Aucune sauvegarde ouverte.')); return; }
+  saves.forEach((s, i) => {
+    const b = s.bytes;
+    const v = Core.verify(b);
+    const card = el('div', { class: 'save-card' + (i === current ? ' active' : ''), onclick: () => { current = i; renderAll(); } },
+      canvasFor(Core.cardIcon(b), 16, 16),
+      el('div', {},
+        el('div', { class: 'nm' }, Core.name(b) || '(sans nom)', ' ',
+          dirty(s) ? el('span', { class: 'pill mod' }, 'modifiée') : (v.ok ? '' : el('span', { class: 'pill bad' }, 'abîmée'))),
+        el('div', { class: 'sub' }, `${CLASSES[b[0x150] & 7]} · niveau ${Core.u16(b, 0x144)}`)));
+    box.append(card);
+  });
+}
+
+function renderStatus() {
+  const s = cur();
+  const st = $('#status');
+  const d = !!s && dirty(s);
+  $('#btnRevert').disabled = !d;
+  $('#btnDownload').disabled = !s;
+  $('#btnSave').disabled = !d;
+  if (!s) { st.innerHTML = '<span class="muted">Ouvre une sauvegarde pour commencer.</span>'; return; }
+  st.innerHTML = d
+    ? '<span class="pill mod">modifications non enregistrées</span>'
+    : '<span class="muted">Aucune modification.</span>';
+  if (!s.handle) st.innerHTML += ' &nbsp; <span class="faint">« Enregistrer » télécharge le fichier, à recopier dans OpenForesia\\save.</span>';
+}
+
+function tabsFor(b) {
+  const tabs = [['resume', 'Triches rapides'], ['perso', 'Personnage'], ['carac', 'Caractéristiques'], ['inv', 'Inventaire & équipement']];
+  if (isCaster(b)) tabs.push(['sorts', 'Sorts']);
+  if (isHunter(b)) tabs.push(['sorts', 'Herbes']);
+  tabs.push(['prog', 'Progression'], ['depot', 'Dépôt']);
+  return tabs;
+}
+
+function renderMain() {
+  const m = $('#main');
+  m.innerHTML = '';
+  const s = cur();
+  if (!s) { m.append(welcome()); return; }
+  const v = Core.verify(s.orig);
+  if (!v.ok && s.orig.length !== Core.SIZE) {
+    m.append(el('div', { class: 'warn' }, `« ${s.fileName} » n'est pas une sauvegarde de Blaze & Blade.`));
+    return;
+  }
+  if (!v.ok) m.append(el('div', { class: 'warn' }, 'Cette sauvegarde était abîmée ; elle sera réparée à l\'enregistrement.'));
+  m.append(hero(s.bytes));
+  const tabs = tabsFor(s.bytes);
+  if (!tabs.some(([id]) => id === tab)) tab = 'resume';
+  m.append(el('div', { class: 'tabs' }, tabs.map(([id, lbl]) =>
+    el('button', { class: 'tab' + (tab === id ? ' active' : ''), onclick: () => { tab = id; renderMain(); } }, lbl))));
+  const view = { resume: viewQuick, perso: viewCharacter, carac: viewStats, inv: viewInventory, sorts: viewSpells, prog: viewProgress, depot: viewDepot }[tab];
+  m.append(view(s.bytes, s.orig));
+}
+
+function welcome() {
+  const drop = el('div', { class: 'drop' },
+    el('p', {}, el('b', {}, 'Glisse une sauvegarde ici'), el('br'), el('span', { class: 'muted' }, 'ou utilise les boutons en haut')),
+    el('div', { style: 'display:flex;gap:10px;justify-content:center;margin-top:12px' },
+      el('button', { class: 'btn primary', onclick: openDirectory }, '📂 Ouvrir le dossier save'),
+      el('button', { class: 'btn', onclick: () => $('#fileInput').click() }, 'Ouvrir des fichiers…')));
+  wireDrop(drop);
+  return el('div', { class: 'welcome' },
+    el('h2', {}, 'Éditeur de sauvegarde'),
+    el('p', { class: 'muted' }, 'Modifie un personnage de Blaze & Blade : caractéristiques, niveau, inventaire, sorts, progression.'),
+    drop,
+    el('ol', {},
+      el('li', {}, el('b', {}, 'Ferme le jeu'), ' avant d\'enregistrer.'),
+      el('li', {}, 'Avec Chrome ou Edge, ouvre le dossier ', el('span', { class: 'mono' }, 'OpenForesia\\save'), ' : les sauvegardes sont modifiées directement, et l\'original est gardé dans ', el('span', { class: 'mono' }, 'save\\copies-editeur'), '.'),
+      el('li', {}, 'Sinon, l\'éditeur télécharge le fichier modifié : recopie-le dans ', el('span', { class: 'mono' }, 'save'), ' sous le même nom.')));
+}
+
+function wireDrop(node) {
+  node.addEventListener('dragover', e => { e.preventDefault(); node.classList.add('over'); });
+  node.addEventListener('dragleave', () => node.classList.remove('over'));
+  node.addEventListener('drop', e => { e.preventDefault(); node.classList.remove('over'); openFiles([...e.dataTransfer.files]); });
+}
+
+function hero(b) {
+  const id = b[0x150];
+  const hp = Core.s16(b, 0x14c), hpMax = Core.s16(b, 0x148), mp = Core.s16(b, 0x14e), mpMax = Core.s16(b, 0x14a);
+  const gauge = (lbl, v, max, color) => el('div', { class: 'gauge' },
+    el('div', { class: 'lbl' }, el('span', {}, lbl), el('span', { class: 'mono' }, `${v} / ${max}`)),
+    el('div', { class: 'track' }, el('div', { class: 'fill', style: `width:${max > 0 ? clamp(v * 100 / max, 0, 100) : 0}%;background:${color}` })));
+  return el('div', { class: 'hero' },
+    canvasFor(Core.cardIcon(b), 16, 16),
+    el('div', {},
+      el('h2', {}, Core.name(b) || '(sans nom)'),
+      el('div', { class: 'meta' }, `${CLASSES[id & 7]} · ${id & 8 ? 'femme' : 'homme'} · ${ELEMENTS[b[0x151] & 7]} · niveau ${Core.u16(b, 0x144)} · ${Core.u32(b, 0x26c).toLocaleString('fr-FR')} pièces d'or`)),
+    el('div', { class: 'gauges' }, gauge('PV', hp, hpMax, 'var(--hp)'), gauge('PM', mp, mpMax, 'var(--mp)')));
+}
+
+// ------------------------------------------------------------------ un champ numerique
+function numField(label, off, size, lo, hi, orig) {
+  const b = cur().bytes;
+  const read = (x) => size === 4 ? Core.u32(x, off) : size === 2 ? Core.u16(x, off) : x[off];
+  const input = el('input', { type: 'number', min: lo, max: hi, value: read(b) });
+  if (read(b) !== read(orig)) input.classList.add('changed');
+  input.addEventListener('change', () => {
+    const v = clamp(input.value, lo, hi);
+    edit(x => size === 4 ? Core.w32(x, off, v) : size === 2 ? Core.w16(x, off, v) : Core.w8(x, off, v));
+  });
+  return el('div', { class: 'field' }, el('label', {}, label), input);
+}
+
+function check(label, on, changed, onchange) {
+  const cb = el('input', { type: 'checkbox', checked: on ? '' : null });
+  cb.addEventListener('change', onchange);
+  return el('label', { class: 'check' + (changed ? ' changed' : '') }, cb, el('span', {}, label));
+}
+
+// =====================================================================================================
+// TRICHES RAPIDES
+// =====================================================================================================
+function viewQuick(b) {
+  const qa = (title, ...controls) => el('div', { class: 'qa' }, el('b', {}, title), el('div', { class: 'row' }, ...controls));
+  const num = (v, lo, hi) => el('input', { type: 'number', value: v, min: lo, max: hi });
+
+  const statVal = num(99, 1, 999);
+  const statBase = el('input', { type: 'checkbox' });
+  const lvl = num(Math.max(Core.u16(b, 0x144), 50), 1, 999);
+  const hpVal = num(999, 1, 9999);
+  const gold = num(999999, 0, 99999999);
+
+  const cards = [
+    qa('Soin complet',
+      el('button', { class: 'btn primary', onclick: () => edit(x => { Core.w16(x, 0x14c, Core.u16(x, 0x148)); Core.w16(x, 0x14e, Core.u16(x, 0x14a)); Core.w32(x, 0x140, 0); x.fill(0, 0x180, 0x200); toast('Soigné.'); }) }, 'Soigner')),
+    qa('Toutes les caractéristiques',
+      statVal,
+      // +0x2a0, la valeur de depart, dimensionne les gains de chaque montee de niveau.
+      el('label', { class: 'muted', title: 'Les montées de niveau suivantes rapporteront davantage' }, statBase, ' meilleure progression'),
+      el('button', { class: 'btn', onclick: () => edit(x => { const v = clamp(statVal.value, 1, 999); for (let i = 0; i < 7; i++) { Core.w16(x, 0x280 + i * 2, v); if (statBase.checked) Core.w16(x, 0x2a0 + i * 2, v); } toast('Caractéristiques à ' + v + '.'); }) }, 'Appliquer')),
+    qa('Niveau',
+      lvl, el('button', { class: 'btn', onclick: () => edit(x => { const v = clamp(lvl.value, 1, 999); Core.w16(x, 0x144, v); Core.w16(x, 0x146, v); Core.w32(x, 0x158, 0); toast('Niveau ' + v + '.'); }) }, 'Appliquer')),
+    qa('PV et PM maximum',
+      hpVal, el('button', { class: 'btn', onclick: () => edit(x => { const v = clamp(hpVal.value, 1, 9999); for (const o of [0x148, 0x14a, 0x14c, 0x14e]) Core.w16(x, o, v); toast('PV et PM à ' + v + '.'); }) }, 'Appliquer')),
+    qa('Or',
+      gold, el('button', { class: 'btn', onclick: () => edit(x => { Core.w32(x, 0x26c, clamp(gold.value, 0, 99999999)); toast('Or modifié.'); }) }, 'Appliquer')),
+  ];
+  if (isCaster(b)) {
+    const school = b[0x2b5];
+    cards.push(qa('Tous les sorts',
+      el('button', { class: 'btn', onclick: () => edit(x => { const n = (PAYLOAD.spells[school] || []).length; for (let i = 0; i < n; i++) x[0x160 + school * 8 + (i >> 3)] |= 1 << (i & 7); toast('Tous les sorts appris.'); }) }, 'Tout apprendre')));
+  }
+  if (isHunter(b)) {
+    cards.push(qa('Herbes',
+      el('button', { class: 'btn', onclick: () => edit(x => { for (let i = 0; i < 7; i++) x[0x178 + i] = 99; toast('99 de chaque herbe.'); }) }, '99 de chaque')));
+  }
+  cards.push(
+    qa('Toutes les destinations',
+      el('button', { class: 'btn', onclick: () => edit(x => { x[0x2e0 + 30] = 0xff; toast('Toute la carte est ouverte.'); }) }, 'Tout ouvrir')),
+    qa('Tous les cristaux',
+      el('button', { class: 'btn', onclick: () => edit(x => { x[0x2e0] = 0xff; x[0x2e1] |= 0x13; toast('Les neuf cristaux sont posés.'); }) }, 'Tout poser')),
+    qa('Objets empilables',
+      el('button', { class: 'btn', onclick: () => edit(x => { let n = 0; for (let i = 0; i < Core.SLOTS; i++) { const o = Core.slotOff(i); if (Core.used(x, o) && Core.stackable(x, o)) { Core.w16(x, o + 0x10, 99); n++; } } toast(n ? `${n} objet(s) à 99.` : 'Aucun objet empilable.'); }) }, '99 exemplaires')));
+
+  return el('div', {},
+    el('div', { class: 'warn' }, 'Ferme le jeu avant d\'enregistrer.'),
+    el('div', { class: 'quick' }, cards));
+}
+
+// =====================================================================================================
+// PERSONNAGE
+// =====================================================================================================
+function viewCharacter(b, orig) {
+  const nameIn = el('input', { type: 'text', maxlength: 15, value: Core.name(b) });
+  if (Core.name(b) !== Core.name(orig)) nameIn.classList.add('changed');
+  nameIn.addEventListener('change', () => edit(x => Core.setName(x, nameIn.value)));
+
+  const elem = el('select', {}, ELEMENTS.map((e, i) => el('option', { value: i, selected: (b[0x151] & 7) === i ? '' : null }, e)));
+  if (b[0x151] !== orig[0x151]) elem.classList.add('changed');
+  elem.addEventListener('change', () => edit(x => {
+    const v = Number(elem.value);
+    // +0x114 porte le bit de l'element : 1 << element | 0x800 a la creation (FinalizeCharacterStats).
+    const m = Core.u32(x, 0x114) & ~(1 << (x[0x151] & 0x1f));
+    x[0x151] = v;
+    Core.w32(x, 0x114, (m | (1 << v)) >>> 0);
+  }));
+
+  const row = (label, control) => el('div', { class: 'field wide' }, el('label', {}, label), control);
+  const cls = b[0x150] & 7;
+  return el('div', { class: 'grid two' },
+    el('div', { class: 'card' }, el('h3', {}, 'Identité'),
+      row('Nom', nameIn),
+      row('Classe', el('span', {}, CLASSES[cls])),
+      row('Sexe', el('span', {}, b[0x150] & 8 ? 'Femme' : 'Homme')),
+      row('Élément', elem),
+      isCaster(b) ? row('Magie', el('span', {}, CASTERS[cls])) : null),
+    el('div', { class: 'card' }, el('h3', {}, 'Niveau et ressources'),
+      levelField(orig),
+      numField('Expérience', 0x158, 4, 0, 9999, orig),
+      numField('PV maximum', 0x148, 2, 1, 9999, orig),
+      numField('PV', 0x14c, 2, 0, 9999, orig),
+      numField('PM maximum', 0x14a, 2, 0, 9999, orig),
+      numField('PM', 0x14e, 2, 0, 9999, orig),
+      numField('Or', 0x26c, 4, 0, 99999999, orig)));
+}
+
+// Le niveau affiche (+0x144, le « plancher ») et le niveau courant (+0x146, qui fixe le palier
+// d'experience) vont ensemble : un seul champ a l'ecran, qui ecrit les deux. MonteeDeNiveau.md.
+function levelField(orig) {
+  const b = cur().bytes;
+  const input = el('input', { type: 'number', min: 1, max: 999, value: Core.u16(b, 0x144) });
+  if (Core.u16(b, 0x144) !== Core.u16(orig, 0x144)) input.classList.add('changed');
+  input.addEventListener('change', () => edit(x => { const v = clamp(input.value, 1, 999); Core.w16(x, 0x144, v); Core.w16(x, 0x146, v); }));
+  return el('div', { class: 'field' }, el('label', {}, 'Niveau'), input);
+}
+
+// =====================================================================================================
+// CARACTERISTIQUES
+// =====================================================================================================
+function viewStats(b, orig) {
+  const rows = STATS.map((name, i) => {
+    const cell = (base) => {
+      const off = base + i * 2;
+      const input = el('input', { type: 'number', min: 0, max: 999, value: Core.u16(b, off) });
+      if (Core.u16(b, off) !== Core.u16(orig, off)) input.classList.add('changed');
+      input.addEventListener('change', () => edit(x => Core.w16(x, off, clamp(input.value, 0, 999))));
+      return el('td', {}, input);
+    };
+    return el('tr', {}, el('td', {}, el('b', {}, name)), cell(0x280), cell(0x2a0));
+  });
+  return el('div', { class: 'card', style: 'max-width:640px' }, el('h3', {}, 'Caractéristiques'),
+    el('table', {},
+      el('thead', {}, el('tr', {}, el('th', {}, ''), el('th', {}, 'Valeur'), el('th', {}, 'Valeur de départ'))),
+      el('tbody', {}, rows)),
+    el('p', { class: 'note' }, 'Plus la valeur de départ est haute, plus chaque montée de niveau rapporte.'));
+}
+
+// =====================================================================================================
+// INVENTAIRE & EQUIPEMENT
+// =====================================================================================================
+function describeSlot(b, off) {
+  const known = catalogByKey.get(Core.itemKey(b, off));
+  const flags = Core.u16(b, off + 0x12);
+  return {
+    name: Core.itemName(b, off) || (known && known.name) || '(objet)',
+    desc: Core.itemDesc(b, off) || (known && known.desc) || '',
+    flags, kind: Core.itemKind(flags), count: Core.u16(b, off + 0x10), stack: Core.stackable(b, off),
+  };
+}
+
+// La vignette d'un objet du catalogue : celle du CD (vignettes.csv), sinon celle d'un meme objet
+// deja range dans une sauvegarde ouverte.
+function iconFor(it) {
+  if (it.icon) return it.icon;
+  for (const s of saves) {
+    for (let i = 0; i < Core.SLOTS + Core.DEPOTS; i++) {
+      const off = i < Core.SLOTS ? Core.slotOff(i) : Core.depotOff(i - Core.SLOTS);
+      if (Core.used(s.bytes, off) && Core.itemKey(s.bytes, off) === it.key && Core.hasIcon(s.bytes, off))
+        return s.bytes.slice(off + 0x140, off + 0x280);
+    }
+  }
+  return null;
+}
+
+function slotIcon(b, off) {
+  return Core.hasIcon(b, off) ? canvasFor(Core.itemIcon(b, off), 24, 24) : el('div', { class: 'noicon' });
+}
+function catalogIcon(it) {
+  const ic = iconFor(it);
+  if (!ic) return el('div', { class: 'noicon small' });
+  const buf = new Uint8Array(0x280); buf.set(ic, 0x140);
+  return canvasFor(Core.itemIcon(buf, 0), 24, 24);
+}
+
+function viewInventory(b) {
+  const cls = b[0x150] & 7;
+  const equipped = new Map();
+  for (let k = 0; k < 5; k++) if (b[0x2b0 + k] !== 0xff) equipped.set(b[0x2b0 + k], EQUIP[k][0]);
+
+  const slots = [];
+  for (let i = 0; i < Core.SLOTS; i++) {
+    const off = Core.slotOff(i);
+    if (!Core.used(b, off)) { slots.push(el('div', { class: 'slot emptyslot' }, 'Libre')); continue; }
+    const d = describeSlot(b, off);
+    const usable = (d.flags & (1 << cls)) !== 0;
+    const count = el('input', { type: 'number', min: 0, max: 99, value: d.count, title: 'Nombre' });
+    count.addEventListener('change', () => edit(x => Core.w16(x, off + 0x10, clamp(count.value, 0, 99))));
+    slots.push(el('div', { class: 'slot' },
+      slotIcon(b, off),
+      el('div', {},
+        el('div', { class: 'nm' }, d.name),
+        el('div', { class: 'tags' },
+          el('span', { class: 'tag' }, d.kind),
+          equipped.has(i) ? el('span', { class: 'tag eq' }, 'équipé') : null,
+          d.kind !== 'Objet' && !usable ? el('span', { class: 'tag no' }, `pas pour ${CLASSES[cls]}`) : null),
+        el('div', { class: 'acts' },
+          d.stack ? [el('span', { class: 'faint' }, '×'), count] : null,
+          el('button', { class: 'btn small danger', onclick: () => edit(x => Core.removeItem(x, i)) }, 'Retirer')))));
+  }
+
+  const equipRows = EQUIP.map(([lbl, bit], k) => {
+    const sel = el('select', {}, el('option', { value: 255 }, '— rien —'));
+    for (let i = 0; i < Core.SLOTS; i++) {
+      const off = Core.slotOff(i);
+      if (!Core.used(b, off)) continue;
+      const d = describeSlot(b, off);
+      if (!(d.flags & bit)) continue;
+      sel.append(el('option', { value: i, selected: b[0x2b0 + k] === i ? '' : null }, d.name + ((d.flags & (1 << cls)) ? '' : ` (pas pour ${CLASSES[cls]})`)));
+    }
+    sel.addEventListener('change', () => edit(x => { x[0x2b0 + k] = Number(sel.value); }));
+    return el('div', { class: 'field wide' }, el('label', {}, lbl), sel);
+  });
+
+  return el('div', { class: 'grid' },
+    el('div', { class: 'card' }, el('h3', {}, 'Inventaire'), el('div', { class: 'inv' }, slots)),
+    el('div', { class: 'grid two' },
+      el('div', { class: 'card' }, el('h3', {}, 'Équipement'), equipRows),
+      catalogCard(b, cls)));
+}
+
+function catalogCard(b, cls) {
+  const q = el('input', { type: 'search', placeholder: 'Chercher un objet…', value: catalogFilter.q });
+  const kind = el('select', {}, ['', 'Arme', 'Armure', 'Bouclier', 'Accessoire', 'Objet'].map(k => el('option', { value: k, selected: catalogFilter.kind === k ? '' : null }, k || 'Toutes catégories')));
+  const usable = el('select', {},
+    el('option', { value: '1', selected: catalogFilter.usable ? '' : null }, `Pour : ${CLASSES[cls]}`),
+    el('option', { value: '0', selected: catalogFilter.usable ? null : '' }, 'Toutes les classes'));
+  const body = el('tbody');
+  const box = el('div', { class: 'catalog' }, el('table', {},
+    el('thead', {}, el('tr', {}, el('th', {}, ''), el('th', {}, 'Objet'), el('th', { class: 'num' }, 'ATT'), el('th', { class: 'num' }, 'DEF'), el('th', {}, ''))), body));
+
+  const fill = () => {
+    catalogFilter = { q: q.value, kind: kind.value, usable: usable.value === '1' };
+    const needle = q.value.trim().toLowerCase();
+    body.innerHTML = '';
+    let shown = 0;
+    for (const it of catalog) {
+      if (catalogFilter.kind && it.kind !== catalogFilter.kind) continue;
+      if (catalogFilter.usable && it.kind !== 'Objet' && !(it.flags & (1 << cls))) continue;
+      if (needle && !(it.name.toLowerCase().includes(needle) || it.desc.toLowerCase().includes(needle))) continue;
+      if (++shown > 150) break;
+      body.append(el('tr', {},
+        el('td', { class: 'ic' }, catalogIcon(it)),
+        el('td', {}, el('b', {}, it.name), ' ', el('span', { class: 'tag' }, it.kind),
+          el('div', { class: 'desc' }, it.desc)),
+        el('td', { class: 'num' }, it.att || ''), el('td', { class: 'num' }, it.def || ''),
+        el('td', {}, el('button', { class: 'btn small', onclick: () => addItem(it) }, 'Ajouter'))));
+    }
+    if (!shown) body.append(el('tr', {}, el('td', { colspan: 5, class: 'muted' }, 'Aucun objet ne correspond.')));
+    else if (shown > 150) body.append(el('tr', {}, el('td', { colspan: 5, class: 'faint' }, 'Plus de 150 résultats — affine la recherche.')));
+  };
+  q.addEventListener('input', fill); kind.addEventListener('change', fill); usable.addEventListener('change', fill);
+  fill();
+  return el('div', { class: 'card' }, el('h3', {}, 'Ajouter un objet'),
+    el('div', { class: 'catalog-tools' }, q, kind, usable), box);
+}
+
+function addItem(it) {
+  const b = cur().bytes;
+  // Un objet empilable deja present : on ajoute a la pile, comme le coffre (GrantChestContents).
+  if (it.stack) {
+    for (let i = 0; i < Core.SLOTS; i++) {
+      const off = Core.slotOff(i);
+      if (Core.used(b, off) && Core.itemKey(b, off) === it.key) {
+        edit(x => Core.w16(x, off + 0x10, Math.min(99, Core.u16(x, off + 0x10) + 1)));
+        toast(`${it.name} : un de plus.`);
+        return;
+      }
+    }
+  }
+  let free = -1;
+  for (let i = 0; i < Core.SLOTS; i++) if (!Core.used(b, Core.slotOff(i))) { free = i; break; }
+  if (free < 0) { toast('Inventaire plein — retire d\'abord un objet.', true); return; }
+  edit(x => Core.putItem(x, Core.slotOff(free), it.sheet, 1, iconFor(it)));
+  toast(`${it.name} ajouté.`);
+}
+
+// =====================================================================================================
+// SORTS (ou HERBES pour le Chasseur)
+// =====================================================================================================
+function viewSpells(b, orig) {
+  const cls = b[0x150] & 7;
+  const school = b[0x2b5];
+  const list = PAYLOAD.spells[school] || [];
+  if (cls === HUNTER) {
+    // +0x178..+0x17e : la reserve d'herbes, que ramasser une herbe incremente.
+    const rows = list.slice(0, 7).map((sp, i) => {
+      const input = el('input', { type: 'number', min: 0, max: 99, value: b[0x178 + i] });
+      if (b[0x178 + i] !== orig[0x178 + i]) input.classList.add('changed');
+      input.addEventListener('change', () => edit(x => { x[0x178 + i] = clamp(input.value, 0, 99); }));
+      return el('tr', {}, el('td', {}, el('b', {}, sp.n)), el('td', {}, input));
+    });
+    return el('div', { class: 'card', style: 'max-width:520px' }, el('h3', {}, 'Herbes'),
+      el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Herbe'), el('th', {}, 'Nombre'))), el('tbody', {}, rows)));
+  }
+  // +0x160 + ecole * 8 : un bit par sort connu.
+  const base = 0x160 + school * 8;
+  const rows = list.map((sp, i) => {
+    const off = base + (i >> 3), bit = 1 << (i & 7);
+    const on = (b[off] & bit) !== 0, was = (orig[off] & bit) !== 0;
+    const cb = el('input', { type: 'checkbox', checked: on ? '' : null });
+    cb.addEventListener('change', () => edit(x => { x[off] ^= bit; }));
+    return el('tr', { class: on !== was ? 'changed' : null },
+      el('td', {}, cb), el('td', {}, el('b', {}, sp.n)),
+      el('td', { class: 'num' }, sp.pm), el('td', { class: 'mono muted' }, sp.c || '—'));
+  });
+  return el('div', { class: 'card' }, el('h3', {}, CASTERS[cls]),
+    el('div', { style: 'display:flex;gap:8px;margin-bottom:10px' },
+      el('button', { class: 'btn small', onclick: () => edit(x => { for (let i = 0; i < list.length; i++) x[base + (i >> 3)] |= 1 << (i & 7); }) }, 'Tout apprendre'),
+      el('button', { class: 'btn small', onclick: () => edit(x => { x.fill(0, base, base + 8); x[base] = 1; }) }, 'Tout oublier')),
+    el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'Connu'), el('th', {}, 'Sort'), el('th', { class: 'num' }, 'PM'), el('th', {}, 'Combinaison'))), el('tbody', {}, rows)),
+    el('p', { class: 'note' }, 'Combinaison : O rond · T triangle · C carré · X croix. « Tout oublier » garde le premier sort, que tout personnage connaît.'));
+}
+
+// =====================================================================================================
+// PROGRESSION — la memoire de toute la partie, rangee dans chaque personnage (+0x2e0, 32 octets).
+//   octet 30        les destinations de la mappemonde (DESTINATIONS, un bit chacune)
+//   octets 0 et 1   les cristaux : bits 0 a 8 les neuf cristaux, bit 9 la dalle, bit 12 la page
+//                   « Cristaux » du menu (WorldMapMenu.cs, DrawCrystalSlab)
+// =====================================================================================================
+function viewProgress(b, orig) {
+  const P = 0x2e0;
+  const bitOf = (x, n) => (x[P + (n >> 3)] >> (n & 7)) & 1;
+  const flip = (n) => edit(x => { x[P + (n >> 3)] ^= 1 << (n & 7); });
+
+  const dest = DESTINATIONS.map((name, k) => {
+    const on = (b[P + 30] >> k) & 1, was = (orig[P + 30] >> k) & 1;
+    return check(name, on, on !== was, () => edit(x => { x[P + 30] ^= 1 << k; }));
+  });
+
+  const crystals = [];
+  for (let n = 0; n < 9; n++) crystals.push(check(`Cristal ${n + 1}`, bitOf(b, n), bitOf(b, n) !== bitOf(orig, n), () => flip(n)));
+  // La page « Cristaux » n'apparait dans le menu qu'avec le bit 12 ; la dalle est le bit 9.
+  crystals.push(check('Afficher la dalle aux cristaux dans le menu', bitOf(b, 12) && bitOf(b, 9),
+    (bitOf(b, 12) !== bitOf(orig, 12)) || (bitOf(b, 9) !== bitOf(orig, 9)),
+    () => edit(x => { const on = bitOf(x, 12) && bitOf(x, 9); if (on) { x[P + 1] &= ~0x12; } else { x[P + 1] |= 0x12; } })));
+
+  return el('div', { class: 'grid two' },
+    el('div', { class: 'card' }, el('h3', {}, 'Destinations de la carte'),
+      el('div', { class: 'checks' }, dest),
+      el('p', { class: 'note' }, 'L\'auberge et la forêt sont toujours accessibles.')),
+    el('div', { class: 'card' }, el('h3', {}, 'Cristaux'), el('div', { class: 'checks' }, crystals)));
+}
+
+// =====================================================================================================
+// DEPOT — douze places de 0x280 octets en 0x2000 du fichier, en lecture seule (WorldMapDepot.cs).
+// =====================================================================================================
+function viewDepot(b) {
+  const slots = [];
+  for (let i = 0; i < Core.DEPOTS; i++) {
+    const off = Core.depotOff(i);
+    if (!Core.used(b, off)) { slots.push(el('div', { class: 'slot emptyslot' }, 'Libre')); continue; }
+    const d = describeSlot(b, off);
+    slots.push(el('div', { class: 'slot' }, slotIcon(b, off), el('div', {}, el('div', { class: 'nm' }, d.name),
+      el('div', { class: 'tags' }, el('span', { class: 'tag' }, d.kind), d.stack ? el('span', { class: 'tag' }, '× ' + d.count) : null),
+      el('div', { class: 'muted', style: 'font-size:12px' }, d.desc))));
+  }
+  return el('div', { class: 'card' }, el('h3', {}, 'Le dépôt de l\'auberge — 12 places'), el('div', { class: 'inv' }, slots));
+}
+
+// =====================================================================================================
+// LES BRANCHEMENTS
+// =====================================================================================================
+$('#btnDir').addEventListener('click', openDirectory);
+$('#btnFiles').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', e => { openFiles([...e.target.files]); e.target.value = ''; });
+$('#btnSave').addEventListener('click', save);
+$('#btnDownload').addEventListener('click', download);
+$('#btnRevert').addEventListener('click', revert);
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files.length) openFiles([...e.dataTransfer.files]); });
+window.addEventListener('beforeunload', e => { if (saves.some(s => dirty(s))) { e.preventDefault(); e.returnValue = ''; } });
+renderAll();
+</script>
+</body>
+</html>

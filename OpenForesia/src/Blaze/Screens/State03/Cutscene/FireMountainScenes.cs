@@ -145,7 +145,7 @@ public static unsafe partial class Blaze
     /// <list type="table">
     ///   <item><term>la cible</term><description>l'entite de scene dont <c>+0x0c</c> vaut
     ///     <b>0</b> — l'espece 0 de la sous-zone, le Dragon rouge (<c>especes.csv</c>). Elle prend la
-    ///     pose <b>1</b>, le bit <c>0x100000</c>, et son clip est lu au <c>+4</c> de la table
+    ///     pose <b>1</b>, le bit <c>0x1000</c>, et son clip est lu au <c>+4</c> de la table
     ///     d'animation (la ou ses cousines lisent <c>+8</c>). Sa position n'est PAS recopiee dans
     ///     l'entite pendant le balayage.</description></item>
     ///   <item><term>la premiere image</term><description>les trois shorts <c>0x005e92b8</c> dans
@@ -195,7 +195,7 @@ public static unsafe partial class Blaze
             *(short*)(scene + 0x18) = 1;
             target = scene;
             clip = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4) + 4);
-            *(uint*)scene |= 0x100000;
+            *(uint*)scene |= 0x1000;                   // Ghidra: `or dh,10h` — 0x1000, pas 0x100000
         }
 
         // ------------------------------------------------- la premiere image

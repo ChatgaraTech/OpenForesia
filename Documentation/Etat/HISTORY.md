@@ -4,6 +4,57 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-25
+
+- fix : entrer dans les ruines anciennes plantait au chargement de sous-zone — l'appel
+  `(*PTR_FUN_0056afc8)()` de `FUN_00516350` supposait l'entrée 0 toujours vide et passait par
+  `Res.CallEntityHandler`, qui ne connaît que la souche ; le bloc `0x0055a3a8` y met `0x00541C90`
+  (la fabrique des Sosies, déjà transcrite). L'appel passe désormais par `DispatchEntityHandler`,
+  sans enregistrement (le corps ne lit pas d'argument)
+- fix : l'opcode de script 8 (`FUN_00515610`, entrée de sous-zone) lisait la racine
+  `(&DAT_005e97c0)[s[1]]` par `Mem.Arena(0x005e97c0)`, une cellule jamais écrite — les cinq
+  racines vivent dans des champs distincts ; pointeur nul peu après l'arrivée dans les ruines.
+  Il passe désormais par `UiText.ResourceRoot`, rendu `internal`
+- fix : l'envol du Dragon rouge (`0x0040E3A0`) posait le bit `0x100000` sur le dragon au lieu de
+  `0x1000` (`or dh,10h` mal lu) — le rendu le prenait pour une particule et dessinait un rectangle
+  arc-en-ciel à sa place ; toutes les scènes cousines portaient déjà `0x1000`
+- fix : éditeur de sauvegarde — « Enregistrer » sans accès au dossier téléchargeait un
+  `Blaze-Saving….txt` (Blob sans type) ; le fichier sort désormais sans extension, prêt à recopier
+- fix : éditeur de sauvegarde — le catalogue montrait 213 noms illisibles : des fiches **japonaises**
+  jamais traduites, toutes en zone 0 (Shift-JIS lu en Latin-1) ; écartées au build, 397 fiches
+  restent, et le contrôle vérifie qu'aucun nom illisible ne passe
+- feat : éditeur de sauvegarde allégé à la demande — plus de provenance dans le catalogue, plus de
+  sous-titres techniques ni de carte « États » dans l'onglet Personnage
+- doc : LB-049 — la ligne PLAYER du menu de mise au point agrandit le groupe sans créer la fiche des
+  membres ajoutés (0 PV max) ; la jauge de vie divise alors par zéro, dans le port comme en 1998
+  (`Blaze.c` 64570). Observé au Labyrinthe des morts ; `mode-debug.md` corrigé en conséquence
+- feat : éditeur de sauvegarde — **toutes les vignettes du CD** : le catalogue d'objets de chaque
+  sous-zone porte l'icône juste après la fiche ; le verbe `bestiaire` l'écrit désormais dans
+  `Bestiaire/vignettes.csv` (2 370 lignes, les autres CSV inchangés), et les 397 objets du
+  catalogue ont la leur — identique octet pour octet à celle que le jeu met dans une sauvegarde
+- feat : éditeur de sauvegarde repensé pour un joueur — plus aucun décalage ni octet à l'écran (le
+  contrôle échoue s'il en trouve), triches rapides réduites à leur titre, onglet Sorts seulement
+  pour les classes qui incantent (Herbes pour le Chasseur), Progression en cases à cocher
+  (« La mine abandonnée », « Cristal 1 »…) ; onglets Banques d'état et Hexa supprimés
+- doc : `FormatSauvegarde.md` — les huit bits de destination de `+0x2fe` (bit 0 la mine … bit 7 les
+  ruines du lac), lus dans `navMask` de `Destination.cs`
+- doc : l'envol du Dragon rouge (`0x0040E3A0`) validé en jeu après le correctif `0x1000`
+- feat : **l'éditeur de sauvegarde**, premier outil HTML (`OpenForesia.Tools/Html/`) — une page
+  autonome qui ouvre les `Blaze-Saving…`, modifie caractéristiques, niveau, PV/PM, or, inventaire
+  (397 fiches du CD, icônes décodées), équipement, sorts, progression, banques d'état, lieu de
+  reprise, avec triches rapides et vue hexa annotée ; somme et copie de `0x3f00` recalculées,
+  réécriture en place avec copie dans `save\copies-editeur\` ; `check-editeur-sauvegarde.mjs`
+  l'exécute sur les quatre sauvegardes réelles (vert) ; raccourci `tests\editeur-sauvegarde.bat`
+- doc : `Reference/FormatSauvegarde.md` — le fichier de sauvegarde octet par octet : quatre blocs,
+  la somme signée et sa copie de `0x3f00` (dont dépend le dépôt), la carte de la fiche, le format
+  d'un emplacement d'objet, et le jeu qui jette un objet en ne mettant que son premier octet à zéro
+- doc : `DebugParty.cs` — `+0x160..+0x17e` du groupe de mise au point n'est pas « un équipement de
+  sept objets » : ce sont les masques de sorts des écoles 0 à 2 (32 sorts connus chacune) et les
+  sept compteurs d'herbes du Chasseur
+- doc : `Documentation/mode-debug.md` — le mode « Gurkha » : l'activer, les touches, les treize
+  lignes du menu de mise au point, et ce que le mode change hors du menu (soin à volonté, sorts,
+  bandeau de combat, MONITOR)
+
 ## 2026-09-24
 
 - feat : **les trois projets passent en .NET 10** (`net10.0`, `net10.0-windows` pour les outils) sur

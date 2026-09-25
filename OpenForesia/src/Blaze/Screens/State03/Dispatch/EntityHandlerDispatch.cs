@@ -2799,6 +2799,9 @@ public static unsafe partial class Blaze
     /// messages de lacune.</summary>
     private static string DumpRecordHead(byte* record)
     {
+        // L'entree 0 appelee au chargement de sous-zone ne recoit aucun enregistrement.
+        if (record == null) return "sans enregistrement";
+
         var text = new System.Text.StringBuilder(48);
         for (int i = 0; i < 16; i++)
         {

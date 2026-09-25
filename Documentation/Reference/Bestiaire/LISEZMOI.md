@@ -401,6 +401,7 @@ et reste donc une vraie lettre. Une lecture naïve colle les trois premiers deva
 | `formations.csv` | un placement de monstre par ligne : formation, espèce, X/Y/Z, orientation |
 | `butin.csv` | une ligne par rang : classe, rang, identifiant d'objet, nom, probabilité |
 | `objets.csv` | le catalogue par sous-zone : identifiant, nom, **description**, **bonus**, et les 0x140 octets bruts |
+| `vignettes.csv` | la **vignette** de chaque objet, par sous-zone et identifiant : les 0x140 octets qui suivent la fiche dans le catalogue (palette de seize couleurs, image 24×24 en 4 bits) — ceux que le jeu recopie dans l’inventaire. À part d’`objets.csv`, dont `census-item-effects.sh` lit `octets` comme dernier champ |
 | `butin_par_objet.csv` | **l'index inverse** : un objet, et tout ce qui le lâche — zone, monstre, rang, chance, nombre de placements |
 | `lieux.csv` | les **noms de lieu** relevés dans les textes de chaque sous-zone |
 | `coffres.csv` | **un coffre par ligne et par rang** : zone, numéro, rôle, gestionnaire résolu, position, rangée de butin, objet et chance |

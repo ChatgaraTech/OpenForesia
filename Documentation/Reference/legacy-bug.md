@@ -2163,3 +2163,35 @@ pilote DirectDraw que le rappel d'énumération range — sont courts. Il faudra
 
 **Reproduit tel quel** dans `src/Libraries/winsys3d/Device.cs` : les deux corps prennent leur cadre
 de pile d'un seul `stackalloc`, aux mêmes décalages, pour que le débordement tombe au même endroit.
+
+## LB-049 — La ligne PLAYER du menu de mise au point crée des membres sans fiche
+
+**Où** : `FUN_0051aa30` @ `0x0051aa30`, cas 2 (PLAYER) — `RebuildDebugParty` dans
+`Screens/State03/WorldMapDebugMenu.cs` — puis le panneau des membres, `0x005185f0`..`0x00518e60`
+(`DrawPartyPanels`, `WorldMapHud.cs`). **Observé** le 2026-09-25 : Labyrinthe des morts, groupe
+porté à 4 par le menu de mise au point (F1 puis F2), plantage immédiat.
+
+PLAYER change la taille du groupe, et fabrique les membres 2 à 4 en **recopiant le seul
+emplacement de jeu du meneur** : l'enregistrement de `0x9c` octets en `0x005e93c0` et sa ligne de
+manette. La **fiche du personnage**, elle — les `0x2000` octets de `MainMem + 0xf0000 + i * 0x2000`,
+statistiques, PV, inventaire — n'est ni recopiée ni initialisée. Un membre qui n'a jamais été
+chargé garde donc une fiche vide, avec **0 PV maximum**.
+
+Le panneau suivant calcule la couleur de la jauge de vie par `PV × 255 / PV max`, sans garde
+(`Blaze.c` ligne 64570) :
+
+```c
+iVar13 = (*(short *)(iVar12 + 0x14c) * 0xff) / (int)*(short *)(iVar12 + 0x148);
+```
+
+Avec un maximum nul, c'est une **division entière par zéro** : `idiv` lève `#DE` dans le jeu de
+1998, `DivideByZeroException` dans le port.
+
+**Conséquence** : la ligne n'est utilisable qu'avec un groupe dont les quatre fiches existent — le
+groupe de mise au point (Gurkha + F1 maintenu), qui les initialise toutes à 9000 PV, ou quatre
+personnages réellement chargés. Avec moins de personnages chargés, passer à un groupe plus grand
+plante dès l'image suivante. C'est un outil de développeur pensé pour le groupe de mise au point ;
+personne n'y avait accès dans le jeu vendu sans « Gurkha ».
+
+**Reproduit tel quel** : `GaugeColour` (`WorldMapHud.cs`) divise sans garde. Un correctif porterait
+sur `RebuildDebugParty` — recopier aussi la fiche du meneur — plutôt que sur la jauge.
