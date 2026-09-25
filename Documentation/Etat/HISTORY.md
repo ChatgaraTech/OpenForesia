@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-25
 
+- doc : passe guidée — 1 137 gestionnaires testés sur 1 429 (292 restants) ; 13 des 42 pistes restantes sont
+  la « poussière du pas » (`0x005413E0`, effet `0xFE`), qui ne naît que sur une face de sol portant
+  l'attribut `0x200` : le mécanisme marche (8 zones l'ont vu), il manque la carte de ces sols
 - doc : se téléporter par le menu de débogage pendant une scénette (le wagonnet) laisse le curseur de
   scène dans les données de l'ancienne zone — « verbe 32 », qui n'existe pas ; mis en garde dans
   `mode-debug.md`, non corrigé
