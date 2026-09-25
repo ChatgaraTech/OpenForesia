@@ -56,6 +56,16 @@ Sur la carte, **F1 bascule l'affichage du menu** (bit 1 de `DAT_005de02c`). ↑/
 | 11 | **MONITOR** | → allume, ← éteint l'affichage de mise au point du combat (voir plus bas). |
 | 12 | **FONT** | → / ← bascule `DAT_00566be0`, que **rien ne lit** dans `Blaze.c`. Sans effet connu. |
 
+**Ne pas se téléporter (QUEST / MAP) pendant une scénette** — le wagonnet de la grotte scellée, une
+caméra qui suit un boss, une porte qui s'ouvre. Le curseur de la scène (`DAT_005719b4`) n'est remis
+à zéro qu'à la fin de la scène (verbe 0) ou par `FUN_005035c0` ; aucun chargement de zone n'y
+touche. Après la téléportation il pointe donc dans les données de l'**ancienne** zone, que le
+chargement a remplacées, et lit n'importe quoi : le 2026-09-25, sur le wagonnet, un « verbe 32 »,
+qui n'existe pas (la table `0x0055eb68` en a 32, de 0 à 31 ; sa 33ᵉ case, `0x00504c80`, est un
+doublon de l'entrée de l'état de jeu 5, pas un verbe). La reconstruction lève
+`NotImplementedException` ; le jeu d'origine, d'après le binaire, sauterait dans ce code — **non
+vérifié** sur le jeu d'origine. Attendre la fin de la scène avant de se téléporter.
+
 Les quatre noms FLAG, WORK, TEMP, ITEM sont ceux du développeur : ce sont les banques que les
 opcodes de script 4 à 7 manipulent, et quatre des huit banques de 64 octets que la sauvegarde
 recopie. **Attention** : Croix efface la banque entière sans confirmation, et lever des bits au

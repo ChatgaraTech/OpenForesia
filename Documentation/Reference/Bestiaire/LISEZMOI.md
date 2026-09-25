@@ -405,6 +405,7 @@ et reste donc une vraie lettre. Une lecture naïve colle les trois premiers deva
 | `butin_par_objet.csv` | **l'index inverse** : un objet, et tout ce qui le lâche — zone, monstre, rang, chance, nombre de placements |
 | `lieux.csv` | les **noms de lieu** relevés dans les textes de chaque sous-zone |
 | `coffres.csv` | **un coffre par ligne et par rang** : zone, numéro, rôle, gestionnaire résolu, position, rangée de butin, objet et chance |
+| `decor.csv` | **tout ce que la table `+0x30` pose**, un enregistrement par ligne : zone, sous-zone, liste, sous-type, gestionnaire résolu par les sept tables mises bout à bout (un sous-type `>= 0x40` déborde sur la table suivante), position. Les coffres en sont une famille. C'est la source du guide des essais : la table d'entités de décor `0x005fa5e0` n'est remplie que depuis ces listes, donc un gestionnaire de décor absent de ce fichier ne tourne pas dans le jeu d'origine (vérifié : 296 des 297 déjà vus y sont) |
 
 ### Les noms de zone
 

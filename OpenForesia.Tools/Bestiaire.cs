@@ -329,6 +329,7 @@ internal static class Bestiaire
             File.WriteAllText(Path.Combine(outDir, "butin_par_objet.csv"), dropCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "lieux.csv"), placeCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "coffres.csv"), chestCsv.ToString());
+            File.WriteAllText(Path.Combine(outDir, "decor.csv"), s_decorCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "sorts.csv"), spellCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "vignettes.csv"), iconCsv.ToString());
             Console.WriteLine();
@@ -432,6 +433,46 @@ internal static class Bestiaire
         s_vtCache[index] = table;
         return table;
     }
+
+    /// <summary>Les sept sélecteurs contigus (<c>0x00566d98</c>, 176 pointeurs chacun), un par table
+    /// installée — 0x0056ad48 (0x20 entrées) puis 0x0056adc8 .. 0x0056b2c8 (0x40 chacune).</summary>
+    private const uint VtSelectors_00566D98 = 0x00566d98;
+    private const uint FatalBlock_0056B3C8 = 0x0056b3c8;
+
+    private static readonly Dictionary<int, uint[]?> s_allVtCache = [];
+
+    /// <summary>
+    /// Les sept tables de la sous-zone <b>mises bout à bout</b>, dans l'ordre où elles se suivent en
+    /// mémoire : <c>0x20 + 6 * 0x40</c> entrées. Un sous-type de décor indexe à partir de
+    /// <c>0x0056adc8</c>, soit l'entrée <c>0x20 + sous-type</c> ici ; au-delà de 0x3f il tombe dans
+    /// la table suivante, comme dans le jeu. Même relevé que <c>census-entity-handlers.sh</c>.
+    /// </summary>
+    private static uint[]? SubAreaAllHandlers(int zone, int sub)
+    {
+        int index = zone == 0 ? 0 : zone * 0x10 + sub;   // meme regle que SubAreaEntityHandlers
+        if (s_allVtCache.TryGetValue(index, out uint[]? cached)) return cached;
+
+        uint[]? all = null;
+        if (LoadBlazeExe() && sub <= 0xf && index >= 0 && index < 176)
+        {
+            all = new uint[0x20 + 6 * 0x40];
+            int at = 0;
+            for (int col = 0; col < 7 && all is not null; col++)
+            {
+                int size = col == 0 ? 0x20 : 0x40;
+                uint block = ExeU32(VtSelectors_00566D98 + (uint)(col * 176 + index) * 4);
+                if (block == 0 || block == FatalBlock_0056B3C8) { all = null; break; }
+                for (int i = 0; i < size; i++) all[at + i] = ExeU32(block + (uint)i * 4);
+                at += size;
+            }
+        }
+
+        s_allVtCache[index] = all;
+        return all;
+    }
+
+    private static readonly StringBuilder s_decorCsv =
+        new("zone,sous_zone,liste,index,sous_type,gestionnaire,x,y,z\n");
 
     private static readonly int[] LootThresholds = [0x18, 0x29, 0x38, 0x45, 0x50, 0x59, 0x5f];
 
@@ -920,6 +961,38 @@ internal static class Bestiaire
                 report.AppendLine("|---|---:|---:|---|---|---|");
                 foreach (string r in rows) report.AppendLine(r);
                 report.AppendLine();
+            }
+        }
+
+        // ---- le decor : TOUT ce que la table `+0x30` pose ------------------------------------
+        // Les coffres ci-dessus n'en sont qu'une famille. Ici chaque enregistrement, quel que soit
+        // son gestionnaire, avec sa position : c'est ce qui dit OU se trouve un gestionnaire de decor
+        // (`OpenForesia.Tools/Html/guide-gestionnaires.html`). Le sous-type indexe la table
+        // 0x0056adc8, et un sous-type >= 0x40 deborde sur les tables suivantes, qui la suivent en
+        // memoire : d'ou la resolution par les sept blocs mis bout a bout.
+        uint[]? allHandlers = SubAreaAllHandlers(z, s);
+        if (chestLists != 0 && a.In(chestLists, 4) && allHandlers is not null)
+        {
+            int listEnd = RegionEnd(a, chestLists);
+            for (int lp = chestLists; lp + 4 <= listEnd; lp += 4)
+            {
+                int rec = a.I32(lp);
+                if (rec == 0 || !a.In(rec, 0x20)) continue;
+
+                int recEnd = RegionEnd(a, rec);
+                for (int r = 0; r < 128; r++)
+                {
+                    int ro = rec + r * 0x20;
+                    if (!a.In(ro, 0x20) || ro + 0x20 > recEnd) break;
+                    if (a.I32(ro) == -1) break;
+
+                    int subtype = a.U8(ro + 0x1d);
+                    int slot = 0x20 + subtype;
+                    uint handler = slot < allHandlers.Length ? allHandlers[slot] : 0;
+                    s_decorCsv.AppendLine(
+                        $"{z},{s},{(lp - chestLists) / 4},{r},{subtype},0x{handler:x8},"
+                        + $"{a.I16(ro + 4)},{a.I16(ro + 6)},{a.I16(ro + 8)}");
+                }
             }
         }
 

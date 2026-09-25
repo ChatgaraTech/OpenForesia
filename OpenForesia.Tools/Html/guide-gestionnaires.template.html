@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide des essais</title>
+<!--
+  Guide des essais — ou aller, dans le jeu, pour voir tourner ce qui n'a encore jamais tourne.
+
+  MODELE. La page publiee est guide-gestionnaires.html, fabriquee par
+  build-guide-gestionnaires.mjs qui remplace le marqueur /*__DATA__*/. Ne pas editer la page
+  generee a la main.
+
+  Tout ce qu'elle affiche vient de guide-gestionnaires.analyse.mjs, qui dit d'ou il le tient :
+  Blaze.exe (les tables de chaque sous-zone), Bestiaire/*.csv (ce qui est pose, les especes, les
+  coffres), handlers-exerces.tsv (ce qui a deja tourne) et les naissances ecrites dans le C#.
+
+  L'interface parle a un JOUEUR : aucune adresse, aucun decalage, aucun nom de fonction (voir
+  LISEZMOI.md). Le noyau, entre /*__CORE_BEGIN__*/ et /*__CORE_END__*/, fabrique les textes et
+  le plan sans toucher au DOM, pour que check-guide-gestionnaires.mjs l'execute sous node.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #101219; --panel: #1b1f2c; --panel-2: #222739; --line: #2e3448; --line-soft: #252a3b;
+    --ink: #ece6d6; --muted: #a39d8c; --faint: #6f6b61; --gold: #d8a84e; --gold-soft: rgba(216,168,78,.14);
+    --ember: #e2663c; --ok: #74c07a; --ok-soft: rgba(116,192,122,.13); --bad: #e25d5d; --blue: #6c9be0;
+    --radius: 10px; --serif: "Cinzel", Georgia, serif;
+    --sans: "Inter", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 20% -10%, #1f2438 0%, transparent 60%), var(--bg);
+    color: var(--ink); font: 14px/1.5 var(--sans); min-height: 100vh;
+  }
+  button, input { font: inherit; color: inherit; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+
+  header.top {
+    position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
+    padding: 14px 22px; border-bottom: 1px solid var(--line); background: rgba(16,18,25,.9); backdrop-filter: blur(6px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+  .brand svg { width: 32px; height: 32px; }
+  .brand h1 { font: 700 19px/1.1 var(--serif); letter-spacing: .06em; margin: 0; color: var(--gold); }
+  .brand small { display: block; font: 500 11px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 13px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2);
+    cursor: pointer; display: inline-flex; gap: 8px; align-items: center;
+  }
+  .tab:hover { border-color: var(--gold); }
+  .tab.active { border-color: var(--gold); background: var(--gold-soft); color: var(--gold); }
+  .tab b { font-weight: 600; }
+  .pill { font-size: 12px; padding: 1px 7px; border-radius: 999px; background: rgba(255,255,255,.07); color: var(--muted); }
+  .tab.active .pill { background: rgba(216,168,78,.22); color: var(--gold); }
+
+  .layout { display: grid; grid-template-columns: 250px 1fr; min-height: calc(100vh - 64px); }
+  aside { border-right: 1px solid var(--line); padding: 16px; background: rgba(21,24,35,.6); }
+  main { padding: 20px 26px 40px; min-width: 0; }
+  .side-title { font: 600 11px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 4px 2px 10px; }
+  .zone-btn {
+    display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 8px; text-align: left;
+    padding: 8px 10px; margin-bottom: 4px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer;
+  }
+  .zone-btn:hover { border-color: var(--line); background: var(--panel); }
+  .zone-btn.active { border-color: var(--gold); background: var(--gold-soft); }
+  .zone-btn .pill.done { background: var(--ok-soft); color: var(--ok); }
+  .opt { display: flex; gap: 8px; align-items: center; margin: 14px 2px 0; color: var(--muted); cursor: pointer; font-size: 13px; }
+
+  .intro { max-width: 820px; color: var(--muted); margin: 0 0 18px; }
+  .intro strong { color: var(--ink); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 16px; }
+  .card { border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+  .card.done { opacity: .55; }
+  .card-head { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px 10px; border-bottom: 1px solid var(--line-soft); }
+  .card-head h3 { margin: 0; font: 600 16px/1.25 var(--serif); letter-spacing: .03em; }
+  .card-head .where { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .card-head .where b { color: var(--ink); font-weight: 600; }
+  .check { margin-left: auto; display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .check input { accent-color: var(--ok); width: 16px; height: 16px; }
+  .card-body { display: grid; grid-template-columns: 1fr 190px; gap: 14px; padding: 12px 16px 16px; }
+  .card-body.noplan { grid-template-columns: 1fr; }
+  ol.todo { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+  ol.todo li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; }
+  .num {
+    width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  }
+  .num.star { background: var(--ember); border-color: var(--ember); color: #1a0f08; }
+  .kind { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); font-weight: 600; }
+  .hint { margin-top: 1px; }
+  .also { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .plan { width: 190px; }
+  .plan svg { width: 190px; height: 190px; display: block; background: #141722; border: 1px solid var(--line-soft); border-radius: 8px; }
+  .legend { display: grid; gap: 3px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  table.list { border-collapse: collapse; width: 100%; max-width: 820px; }
+  table.list th, table.list td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); }
+  table.list th { font: 600 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  table.list td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); padding: 30px 0; }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    .grid { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+  }
+  @media (max-width: 520px) {
+    .card-body { grid-template-columns: 1fr; }
+    .plan, .plan svg { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#d8a84e" stroke-width="2"/><path d="M16 6 L19 16 L16 26 L13 16 Z" fill="#e2663c"/><circle cx="16" cy="16" r="2.4" fill="#ece6d6"/></svg>
+    <div><h1>Guide des essais</h1><small>Ce qui n'a encore jamais tourné</small></div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<div class="layout">
+  <aside>
+    <div class="side-title">Zones</div>
+    <div id="zones"></div>
+    <label class="opt"><input type="checkbox" id="hideDone"> Masquer les lieux faits</label>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<script>
+/*__CORE_BEGIN__*/
+// Le noyau : textes et plan, sans DOM. Execute tel quel par check-guide-gestionnaires.mjs.
+const CORE = (() => {
+  const KIND = {
+    effet: 'Effet visuel', mecanisme: 'Mécanisme', monstre: 'Monstre', scene: 'Scène',
+    objet: 'Objet', sort: 'Sort', combat: 'Coup', autre: 'Élément',
+  };
+  const MAX_MARKS = 6;
+  const kindLabel = cat => KIND[cat] ?? KIND.autre;
+
+  const list = names => {
+    const n = [...new Set(names)];
+    if (n.length <= 1) return n[0] ?? '';
+    return n.slice(0, -1).join(', ') + ' ou ' + n.at(-1);
+  };
+
+  const FROM = {
+    mecanisme: 'Apparaît avec un mécanisme de ce lieu : actionne tout ce qui peut l’être.',
+    effet: 'Apparaît dans la suite d’un autre effet de ce lieu : lance les combats, actionne les mécanismes.',
+    scene: 'Apparaît pendant une scène de ce lieu.',
+    objet: 'Apparaît quand on utilise un objet ici.',
+    sort: 'Apparaît quand un sort est lancé ici.',
+    combat: 'Apparaît pendant les combats de ce lieu : frappe et laisse-toi frapper.',
+    monstre: 'Apparaît pendant un combat de ce lieu.',
+    autre: 'Apparaît avec l’activité du lieu : explore, combats, actionne.',
+  };
+
+  /** La consigne d'un element, en mots de joueur. `star` : son numero sur le plan, ou null. */
+  function hint(it, star) {
+    const mark = star ? ` Repère ${star} sur le plan.` : '';
+    const many = n => n > MAX_MARKS;
+    if (it.how === 'pose' && it.spots && many(it.spots.length)) return `Posé à ${it.spots.length} endroits de ce lieu : parcours-le en entier et active ce que tu croises.`;
+    if (it.how === 'pose') return `Posé dans ce lieu : approche-toi et active-le.${mark}`;
+    if (it.how === 'monstre') {
+      return it.names.length ? `Le comportement de ${list(it.names)} : laisse-le venir et combats-le.`
+                             : 'Un comportement de monstre de ce lieu : combats tout ce qui bouge.';
+    }
+    const s = it.seed;
+    if (s.spells && s.spells.length) return `Apparaît quand ${list(s.spells)} est lancé ici.${mark}`;
+    if (s.names && s.names.length) return `Apparaît quand ${list(s.names)} agit : laisse-le attaquer, combats-le.`;
+    if (s.kind === 'pose' && s.spots && many(s.spots.length)) return `Apparaît autour d’un élément du décor présent à ${s.spots.length} endroits de ce lieu : parcours-le en entier.`;
+    if (s.kind === 'pose') return `Apparaît autour d’un élément du décor : approche-toi, active-le.${mark}`;
+    return (FROM[s.cat] ?? FROM.autre) + mark;
+  }
+
+  /** Les points du plan, ramenes dans un carre de `size` avec une marge. Rend null sans point. */
+  function plan(card, size = 190, pad = 14) {
+    const stars = [];
+    card.items.forEach((it, i) => {
+      const spots = it.spots ?? it.seed?.spots ?? null;
+      // Au-dela de MAX_MARKS reperes, le plan se couvre de numeros qui ne designent plus rien :
+      // la consigne dit alors de parcourir le lieu.
+      if (spots && spots.length <= MAX_MARKS) for (const s of spots) stars.push({ x: s.x, z: s.z, n: i + 1 });
+    });
+    const all = [...card.chests, ...card.monsters, ...card.decor, ...stars];
+    if (!stars.length || !all.length) return null;
+    const xs = all.map(p => p.x), zs = all.map(p => p.z);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+    const span = Math.max(maxX - minX, maxZ - minZ, 1);
+    const k = (size - 2 * pad) / span;
+    const ox = pad + (size - 2 * pad - (maxX - minX) * k) / 2;
+    const oz = pad + (size - 2 * pad - (maxZ - minZ) * k) / 2;
+    const P = p => ({ ...p, px: +(ox + (p.x - minX) * k).toFixed(1), pz: +(oz + (maxZ - p.z) * k).toFixed(1) });
+    return { chests: card.chests.map(P), monsters: card.monsters.map(P), decor: card.decor.map(P), stars: stars.map(P) };
+  }
+
+  /** Les compteurs d'une zone. */
+  function zoneCounts(data, zone) {
+    const cards = data.cards.filter(c => c.zone === zone);
+    return {
+      find: cards.reduce((n, c) => n + c.items.length, 0),
+      places: cards.length,
+      impossible: data.impossible.find(i => i.zone === zone)?.total ?? 0,
+      unknown: data.unknown.find(u => u.zone === zone)?.total ?? 0,
+    };
+  }
+
+  return { kindLabel, hint, plan, zoneCounts, list };
+})();
+/*__CORE_END__*/
+
+const DATA = /*__DATA__*/{ generated: '', zones: [], cards: [], impossible: [], unknown: [], counts: { total: 0, find: 0, impossible: 0, unknown: 0 }, control: { seen: 0, wrong: 0 } };
+
+// ------------------------------------------------------------------ l'etat de la vue
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('guide-essais:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('guide-essais:' + k, JSON.stringify(v)); } catch { /* sans stockage */ } },
+};
+const state = { tab: store.get('tab', 'find'), zone: store.get('zone', -1), done: new Set(store.get('done', [])), hideDone: store.get('hideDone', false) };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const zoneName = z => DATA.zones.find(x => x.zone === z)?.name ?? `Zone ${z}`;
+const placeKey = c => `${c.zone}:${c.sub}`;
+
+function renderTabs() {
+  const tabs = [
+    ['find', 'À aller chercher', DATA.counts.find],
+    ['impossible', 'Impossibles', DATA.counts.impossible],
+    ['unknown', 'Sans piste', DATA.counts.unknown],
+  ];
+  document.getElementById('tabs').innerHTML = tabs.map(([id, label, n]) =>
+    `<button class="tab${state.tab === id ? ' active' : ''}" data-tab="${id}"><b>${label}</b><span class="pill">${n}</span></button>`).join('');
+}
+
+function renderZones() {
+  const rows = [`<button class="zone-btn${state.zone === -1 ? ' active' : ''}" data-zone="-1"><span>Toutes les zones</span></button>`];
+  for (const z of DATA.zones) {
+    const c = CORE.zoneCounts(DATA, z.zone);
+    const n = state.tab === 'find' ? c.find : state.tab === 'impossible' ? c.impossible : c.unknown;
+    if (!n) continue;
+    const cards = DATA.cards.filter(x => x.zone === z.zone);
+    const allDone = state.tab === 'find' && cards.length && cards.every(x => state.done.has(placeKey(x)));
+    rows.push(`<button class="zone-btn${state.zone === z.zone ? ' active' : ''}" data-zone="${z.zone}"><span>${esc(z.name)}</span><span class="pill${allDone ? ' done' : ''}">${n}</span></button>`);
+  }
+  document.getElementById('zones').innerHTML = rows.join('');
+}
+
+function planSvg(p) {
+  if (!p) return '';
+  const dots = [
+    ...p.decor.map(d => `<circle cx="${d.px}" cy="${d.pz}" r="1.6" fill="#3b4258"/>`),
+    ...p.monsters.map(d => `<circle cx="${d.px}" cy="${d.pz}" r="2.6" fill="#6c9be0" opacity=".8"/>`),
+    ...p.chests.map(d => `<rect x="${d.px - 3.5}" y="${d.pz - 3.5}" width="7" height="7" rx="1.5" fill="#d8a84e"/>`),
+    ...p.stars.map(d => `<g><circle cx="${d.px}" cy="${d.pz}" r="8" fill="#e2663c"/><text x="${d.px}" y="${d.pz + 3.6}" text-anchor="middle" font-size="10" font-weight="700" fill="#1a0f08">${d.n}</text></g>`),
+  ];
+  return `<div class="plan"><svg viewBox="0 0 190 190" role="img" aria-label="Plan du lieu vu de dessus">${dots.join('')}</svg>
+    <div class="legend"><span><i class="dot" style="background:#e2663c"></i>à déclencher</span><span><i class="dot" style="background:#d8a84e;border-radius:2px"></i>coffre</span><span><i class="dot" style="background:#6c9be0"></i>monstres</span></div></div>`;
+}
+
+function renderFind() {
+  let cards = DATA.cards.filter(c => state.zone === -1 || c.zone === state.zone);
+  if (state.hideDone) cards = cards.filter(c => !state.done.has(placeKey(c)));
+  const intro = `<p class="intro">Chaque carte est un lieu où il reste quelque chose à voir tourner, avec <strong>comment y aller</strong> par le menu de débogage (QUEST pour la zone, MAP pour le lieu), <strong>quoi faire</strong> sur place, et un <strong>plan vu de dessus</strong> quand l’endroit est connu. Coche « Fait » une fois le lieu parcouru, puis relance la mise à jour du guide.</p>`;
+  if (!cards.length) return intro + `<div class="empty">Rien à aller chercher ici.</div>`;
+  return intro + `<div class="grid">${cards.map(c => {
+    const p = CORE.plan(c);
+    const starOf = new Set((p?.stars ?? []).map(s => s.n));
+    const items = c.items.map((it, i) => {
+      const n = i + 1, star = starOf.has(n) ? n : null;
+      const also = it.also.length ? `<div class="also">Possible aussi : ${esc(it.also.join(' · '))}</div>` : '';
+      return `<li><span class="num${star ? ' star' : ''}">${n}</span><div><div class="kind">${esc(CORE.kindLabel(it.cat))}${it.count > 1 ? ` × ${it.count}` : ''}</div><div class="hint">${esc(CORE.hint(it, star))}</div>${also}</div></li>`;
+    }).join('');
+    const done = state.done.has(placeKey(c));
+    return `<article class="card${done ? ' done' : ''}">
+      <div class="card-head"><div><h3>${esc(c.name || 'Lieu sans nom')}</h3>
+        <div class="where">${esc(zoneName(c.zone))} · menu de débogage : <b>QUEST ${c.zone}</b>, <b>MAP ${c.sub}</b></div></div>
+        <label class="check"><input type="checkbox" data-done="${placeKey(c)}"${done ? ' checked' : ''}> Fait</label></div>
+      <div class="card-body${p ? '' : ' noplan'}"><ol class="todo">${items}</ol>${planSvg(p)}</div></article>`;
+  }).join('')}</div>`;
+}
+
+function renderImpossible() {
+  const rows = DATA.impossible.filter(i => state.zone === -1 || i.zone === state.zone);
+  return `<p class="intro">Ces éléments existent dans les fichiers du jeu, mais <strong>le jeu d’origine ne peut pas les faire apparaître</strong> : des éléments de décor qu’aucune pièce ne pose, et des comportements de monstre qu’aucune créature ne porte. Inutile de les chercher. Vérifié sur les ${DATA.control.seen} éléments déjà vus en jeu : la règle ne s’y est trompée que ${DATA.control.wrong} fois.</p>
+  <table class="list"><thead><tr><th>Zone</th><th>Décor jamais posé</th><th>Comportement sans créature</th></tr></thead><tbody>
+  ${rows.map(i => `<tr><td>${esc(zoneName(i.zone))}</td><td class="n">${i.decor || '—'}</td><td class="n">${i.monster || '—'}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function renderUnknown() {
+  const rows = DATA.unknown.filter(u => state.zone === -1 || u.zone === state.zone);
+  const cats = ['effet', 'mecanisme', 'scene', 'combat', 'objet', 'sort', 'monstre', 'autre'].filter(k => rows.some(r => r.byCat[k]));
+  return `<p class="intro">Pour ceux-là, on ne sait pas encore <strong>ce qui les fait apparaître</strong> : ils naissent d’autre chose par un chemin que l’analyse ne suit pas. Le seul moyen est de <strong>jouer la zone normalement</strong> — combats, mécanismes, scènes, objets — puis de relancer la mise à jour du guide : ce qui aura tourné disparaîtra de la liste.</p>
+  <table class="list"><thead><tr><th>Zone</th>${cats.map(k => `<th>${esc(CORE.kindLabel(k))}</th>`).join('')}<th>Total</th></tr></thead><tbody>
+  ${rows.map(u => `<tr><td>${esc(zoneName(u.zone))}</td>${cats.map(k => `<td class="n">${u.byCat[k] || '—'}</td>`).join('')}<td class="n"><b>${u.total}</b></td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+function render() {
+  renderTabs(); renderZones();
+  const main = document.getElementById('main');
+  main.innerHTML = state.tab === 'find' ? renderFind() : state.tab === 'impossible' ? renderImpossible() : renderUnknown();
+  const hide = document.getElementById('hideDone');
+  hide.checked = state.hideDone;
+  hide.parentElement.style.display = state.tab === 'find' ? '' : 'none';
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-tab]');
+  if (t) { state.tab = t.dataset.tab; store.set('tab', state.tab); render(); return; }
+  const z = e.target.closest('[data-zone]');
+  if (z) { state.zone = +z.dataset.zone; store.set('zone', state.zone); render(); }
+});
+document.addEventListener('change', e => {
+  const d = e.target.closest('[data-done]');
+  if (d) {
+    if (d.checked) state.done.add(d.dataset.done); else state.done.delete(d.dataset.done);
+    store.set('done', [...state.done]); render(); return;
+  }
+  if (e.target.id === 'hideDone') { state.hideDone = e.target.checked; store.set('hideDone', state.hideDone); render(); }
+});
+
+render();
+</script>
+</body>
+</html>

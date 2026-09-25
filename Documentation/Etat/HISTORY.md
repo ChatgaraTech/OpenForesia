@@ -6,6 +6,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-25
 
+- doc : se téléporter par le menu de débogage pendant une scénette (le wagonnet) laisse le curseur de
+  scène dans les données de l'ancienne zone — « verbe 32 », qui n'existe pas ; mis en garde dans
+  `mode-debug.md`, non corrigé
+- feat : le guide des essais (`OpenForesia.Tools/Html/guide-gestionnaires.html`, `tests\guide-essais.bat`) —
+  pour les 304 gestionnaires jamais vus : 51 avec un lieu, une consigne de joueur et un plan, 77
+  impossibles dans le jeu d'origine, 176 sans piste ; relu depuis la sonde à chaque lancement
+- doc : 77 gestionnaires ne peuvent pas tourner dans le jeu d'origine — 71 décors qu'aucune liste
+  `+0x30` ne pose (la table `0x005fa5e0` n'est remplie que par elles) et 6 comportements qu'aucune
+  espèce ne porte ; règle rejouée sur les 871 déjà vus, une seule exception expliquée
+- feat : `bestiaire` écrit `decor.csv` — tout ce que la table `+0x30` pose, avec le gestionnaire
+  résolu et la position (13 459 placements)
 - feat : première tournée complète — 77 sous-zones sur 78 (1:7 jamais atteinte), 47 gestionnaires
   de plus testés : 1 125 sur 1 429, 304 restants, dont 6 IA seulement
 - fix : le banc donnait 0 aux paramètres de placement (`+0x18`) — il reprend ceux d'un vrai placement
