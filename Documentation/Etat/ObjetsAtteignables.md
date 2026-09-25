@@ -50,17 +50,17 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | gestionnaire | emplois | sous-type | implemente | teste | zones |
 |---|---:|---|---|---|---|
 | `0x00446790` | 259 | 0x40 | oui | oui | 0,1,3,4,5,6,7,8,10 |
-| `0x004753D0` | 215 | 0xbd | oui | **non** | 0,1,2,3,4,5,6,7,8,9,10 |
-| `0x00446DD0` | 189 | 0x3e | oui | **non** | 0,1,3,4,5,6,9,10 |
-| `0x00445F60` | 166 | 0x44 | oui | **non** | 0,1,3,4,5,6,7,8,9,10 |
-| `0x004462B0` | 162 | 0x43 | oui | **non** | 0,1,2,3,4,5,6,7,9,10 |
+| `0x004753D0` | 215 | 0xbd | oui | oui | 0,1,2,3,4,5,6,7,8,9,10 |
+| `0x00446DD0` | 189 | 0x3e | oui | oui | 0,1,3,4,5,6,9,10 |
+| `0x00445F60` | 166 | 0x44 | oui | oui | 0,1,3,4,5,6,7,8,9,10 |
+| `0x004462B0` | 162 | 0x43 | oui | oui | 0,1,2,3,4,5,6,7,9,10 |
 | `0x00446900` | 110 | 0x41 | oui | **non** | 0,1,2,3,4,5,6,9,10 |
 | `0x00446F30` | 95 | 0x3d | oui | **non** | 0,1,2,3,4,5,6,10 |
 | `0x00476500` | 75 | 0x5b | oui | **non** | 0,1,3,4,5,6,7,10 |
 | `0x00446200` | 36 | 0x45 | oui | **non** | 0,1,3,4,5,6,10 |
 | `0x00446410` | 25 | 0x42 | oui | **non** | 0,1,3,4,5,6,10 |
-| `0x00476350` | 17 | 0x5a | oui | **non** | 0,1,4,5,7,10 |
-| `0x00445E70` | 17 | 0x48 | oui | **non** | 0,3,4,6 |
+| `0x00476350` | 17 | 0x5a | oui | oui | 0,1,4,5,7,10 |
+| `0x00445E70` | 17 | 0x48 | oui | oui | 0,3,4,6 |
 | `0x00445CF0` | 15 | 0x4c | oui | **non** | 0,1,3,5,6,10 |
 | `0x00447630` | 14 | 0x3b | oui | **non** | 0,1,3,4,5,10 |
 | `0x0047A100` | 10 | 0x49 | oui | oui | 0,4,6 |
@@ -80,7 +80,7 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | gestionnaires distincts atteignables par un objet | **21** |
 | deja ecrits | **21** |
 | a transcrire | **0** |
-| exerces en jeu (sonde des gestionnaires) | **3** |
+| exerces en jeu (sonde des gestionnaires) | **9** |
 | naissances resolues par la table STATIQUE | **1440** |
 | naissances resolues par une table de SOUS-ZONE | **0** |
 
@@ -183,7 +183,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Armure | — | oui | **non** |
 | Armure anti-sortilège | — | oui | **non** |
 | Armure d'argent | — | oui | **non** |
-| Armure de Pawas | `0x00446DD0` | oui | **non** |
+| Armure de Pawas | `0x00446DD0` | oui | oui |
 | Armure de Satan | — | oui | **non** |
 | Armure de chevalier | — | oui | **non** |
 | Armure du dragon | — | oui | **non** |
@@ -220,18 +220,18 @@ fiche —, la meme des deux cotes de la sonde.
 | Baguette-vampire | — | oui | **non** |
 | Bahamut | `0x004477D0` | oui | **non** |
 | Bahil | — | oui | **non** |
-| Balance des juges | `0x004753D0` | ? | **non** |
-| Balle de cristal | `0x00446790` | oui | **non** |
+| Balance des juges | `0x004753D0` | ? | oui |
+| Balle de cristal | `0x00446790` | oui | oui |
 | Balle de feu | — | ? | **non** |
 | Balle de gel | — | ? | **non** |
 | Balle de l'arc-en-ciel | — | ? | **non** |
-| Balle de l'illusion | `0x004753D0` | ? | **non** |
+| Balle de l'illusion | `0x004753D0` | ? | oui |
 | Balle de lumière | — | ? | **non** |
 | Balle de terre | — | ? | oui |
 | Balle des ténèbres | — | ? | **non** |
 | Balle des éléments | — | ? | **non** |
 | Balle du tonnerre | — | ? | **non** |
-| Balle maléfique | — | ? | **non** |
+| Balle maléfique | — | ? | oui |
 | Balle sacrée | — | ? | **non** |
 | Bannière de chevalier | — | oui | **non** |
 | Belladone | — | oui | **non** |
@@ -295,7 +295,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Casse-tête | — | oui | **non** |
 | Casse-tête à chaîne | — | oui | **non** |
 | Cendre blanche | `0x00445F60` | oui | **non** |
-| Cendre bleue | `0x00445F60` | oui | **non** |
+| Cendre bleue | `0x00445F60` | oui | oui |
 | Cendre grise | `0x00445F60` | oui | **non** |
 | Cendre noire | `0x00445F60` | oui | **non** |
 | Cendre rouge | `0x00445F60` | oui | **non** |
@@ -327,14 +327,14 @@ fiche —, la meme des deux cotes de la sonde.
 | Cristal d'air | `0x004462B0` | oui | **non** |
 | Cristal d'eau | `0x004462B0` | oui | **non** |
 | Cristal d'ombre | `0x004462B0` | oui | **non** |
-| Cristal d'énergie | `0x004753D0` | ? | **non** |
+| Cristal d'énergie | `0x004753D0` | ? | oui |
 | Cristal de feu | `0x004462B0` | oui | **non** |
 | Cristal de lumière | `0x004462B0` | oui | **non** |
-| Cristal de magie | `0x004462B0` | oui | **non** |
+| Cristal de magie | `0x004462B0` | oui | oui |
 | Cristal de terre | `0x004462B0` | oui | **non** |
 | Cristal du mal | `0x004462B0` | oui | **non** |
 | Cristal saint | `0x004462B0` | oui | **non** |
-| Croix | — | oui | **non** |
+| Croix | — | oui | oui |
 | Crosse d'ambre | — | oui | **non** |
 | Crosse de Séraphin | — | oui | **non** |
 | Crosse de voeux | — | oui | **non** |
@@ -347,15 +347,15 @@ fiche —, la meme des deux cotes de la sonde.
 | Cuirasse de bronze | — | oui | **non** |
 | Cuirasse de maître | — | oui | **non** |
 | Daak | — | oui | **non** |
-| Debacle | — | oui | **non** |
+| Debacle | — | oui | oui |
 | Dominique | — | oui | **non** |
 | Dropneal | — | oui | **non** |
 | Durandal | `0x00447630` | oui | **non** |
 | Délicieux drop | `0x00446900` | oui | **non** |
-| Eau bénite | — | ? | **non** |
+| Eau bénite | — | ? | oui |
 | Ecailles de Belzébuth | — | oui | **non** |
 | Ecailles de dragon | — | oui | **non** |
-| Ecu du destin | `0x00445F60` | oui | **non** |
+| Ecu du destin | `0x00445F60` | oui | oui |
 | Elixir de magicien | `0x00446790` | oui | **non** |
 | Elixir de vie | `0x00446790` | oui | **non** |
 | Elixir des esprits | `0x00446790` | oui | **non** |
@@ -373,7 +373,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Epée noire | — | oui | **non** |
 | Excalibur | — | oui | **non** |
 | Extrait d'esprits | `0x00445F60` | oui | **non** |
-| Extrait de sang | `0x00445F60` | oui | **non** |
+| Extrait de sang | `0x00445F60` | oui | oui |
 | Fabnihl | `0x00446F30` | oui | **non** |
 | Faux de la mort | `0x00404920` | oui | **non** |
 | Fenouil | — | oui | **non** |
@@ -468,9 +468,9 @@ fiche —, la meme des deux cotes de la sonde.
 | Nobles bottes | — | oui | **non** |
 | Nobles chaussures | — | oui | **non** |
 | Os de guerrier sauvage | `0x004753D0`, `0x00446410` | oui | **non** |
-| Panoramix | `0x00446790`, `0x00476350` | oui | **non** |
+| Panoramix | `0x00446790`, `0x00476350` | oui | oui |
 | Parfum d'impératrice | `0x00446790`, `0x00445E70` | oui | **non** |
-| Parfum de convalescence | `0x00445E70` | oui | **non** |
+| Parfum de convalescence | `0x00445E70` | oui | oui |
 | Parfum de feu | — | ? | **non** |
 | Parfum de guérison | `0x00445E70` | oui | **non** |
 | Pavois de chevalier | — | oui | **non** |
@@ -484,14 +484,14 @@ fiche —, la meme des deux cotes de la sonde.
 | Pierre médicinale | `0x004753D0`, `0x00446790` | oui | **non** |
 | Pique | — | oui | **non** |
 | Plastron | — | oui | **non** |
-| Plume | `0x00445F60` | oui | **non** |
+| Plume | `0x00445F60` | oui | oui |
 | Plume dominicale | `0x004753D0`, `0x00476500` | oui | **non** |
 | Poignard d'Orihalcon | — | oui | **non** |
 | Poignard d'argent | — | oui | **non** |
 | Poignard de brigand | — | oui | **non** |
 | Poignard de sang | — | oui | **non** |
 | Poignard des brouillards | — | oui | **non** |
-| Pointe de sang | `0x00445F60` | oui | **non** |
+| Pointe de sang | `0x00445F60` | oui | oui |
 | Porte-bonheur | — | oui | **non** |
 | Potion med | `0x00446790` | oui | **non** |
 | Potion olympique | `0x00446790`, `0x00446200` | oui | **non** |
@@ -729,7 +729,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | oui | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | oui | **non** |
 
-**607 objets distincts**, dont **536** pleinement implementes et **8** deja employes
+**607 objets distincts**, dont **536** pleinement implementes et **25** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue
