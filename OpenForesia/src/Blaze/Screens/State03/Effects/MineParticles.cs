@@ -2852,7 +2852,9 @@ public static unsafe partial class Blaze
 
         // Le voile : tete a 1, les deux canaux hauts a zero, le canal bas a 0x1e une image sur
         // deux. Ghidra: `mov [5DE027h],1 ; test al,1 ; mov [5DE024h],1Eh ; jne ... ; mov [5DE024h],0`.
-        bool lit = (*(short*)(e + 0x12) & 1) != 0;
+        // ECART DECLARE (2026-09-25, demande de Vincent) — legacy-bug.md LB-051 : sans
+        // s_BossDebuffScreenFlash, le voile reste a sa valeur des images paires.
+        bool lit = s_BossDebuffScreenFlash && (*(short*)(e + 0x12) & 1) != 0;
         Mem.s_Unknown_005de024 = 0x01000000u | (lit ? 0x1eu : 0u);
 
         if (*(short*)(e + 0x12) >= 0x1e) *(uint*)e &= 0x7fffffff;

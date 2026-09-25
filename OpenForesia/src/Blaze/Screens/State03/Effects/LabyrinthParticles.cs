@@ -1463,8 +1463,10 @@ public static unsafe partial class Blaze
             (*(short*)(e + 0x12))++;
 
             // Ghidra: DAT_005de027 = 1 ; DAT_005de024 = 0x1e ou 0 ; DAT_005de025 = DAT_005de026 = 0.
+            // ECART DECLARE (2026-09-25, demande de Vincent) — legacy-bug.md LB-051 : sans
+            // s_BossDebuffScreenFlash, le voile reste a sa valeur des images paires.
             Mem.s_Unknown_005de024 = 0x01000000u
-                                   | (uint)((*(short*)(e + 0x12) & 1) != 0 ? 0x1e : 0);
+                                   | (uint)(s_BossDebuffScreenFlash && (*(short*)(e + 0x12) & 1) != 0 ? 0x1e : 0);
 
             if (*(short*)(e + 0x12) >= 0x1e) *(uint*)e &= 0x7fffffff;
         }

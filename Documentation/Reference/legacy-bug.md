@@ -2231,3 +2231,37 @@ sortie d'une façon que le port ne reproduit pas. Si c'était le cas, le défaut
 **Neutralisé — écart déclaré** (demande de Vincent, 2026-09-25) : faute de candidat, le monstre
 garde sa cible précédente, comme les modes 3 à 7 quand personne ne correspond. Quand un candidat
 existe, le tirage reste celui du binaire. Le commentaire `ECART DECLARE` dans `Varan.cs` le signale.
+
+## LB-051 — Le sort « spirale et éclair » des boss fait clignoter tout l'écran
+
+**Où** : trois copies du même corps — `FUN_0043b870` @ `0x0043b870` (grotte scellée, salle de la
+machine, sous-zone 1 : la Mort volante ; `Combat/Projectiles.cs`), `0x0043e820` (grotte scellée,
+sous-zones 13 à 15, absente de `Blaze.c` ; `Effects/SealedCaveParticles.cs`) et `0x00425e50` (château
+de l'immortel, `StepCastleRedFlash`, `Effects/ImmortalCastleParticles.cs`).
+**Signalé** le 2026-09-25 par Vincent, en jeu : « des cercles autour du boss, mais aussi des flashs
+lumineux, presque épileptiques ».
+
+Le corps sert trois rôles selon son `+0x14` : la **spirale** qui monte autour du lanceur (les
+cercles), la **masse** qui tombe et blesse, et l'**éclair** (rôle 2). Celui-ci compte quinze images ;
+aux images 10, 9, 8 et 7 il pose le voile plein cadre `DAT_005de024` en quatre rouges de plus en plus
+sombres (`0x016464fa`, `0x015050b4`, `0x013c3c78`, `0x011e1e50`), à l'image 6 il le rend noir et
+**l'effet d'état 11 frappe chaque membre debout**. Quatre images de rouge vif suivies d'un noir, et un
+boss qui relance le sort : l'écran stroboscope.
+
+Ce n'est pas un défaut de programmation — c'est ce que le binaire fait, transcrit fidèlement —, mais
+un effet pénible, et potentiellement dangereux pour une personne photosensible.
+
+**Neutralisé — écart déclaré** (demande de Vincent, 2026-09-25) : les quatre écritures colorées
+sont gardées derrière `s_BossDebuffScreenFlash` (`Combat/Projectiles.cs`), à `false`. La spirale, la
+masse, le moment où l'effet 11 frappe et l'extinction du voile à l'image 6 sont ceux du binaire, à
+l'identique. Remettre `true` rend l'éclair d'origine. Le commentaire `ECART DECLARE` le signale aux
+trois endroits.
+
+**Deuxième famille, relevée le même jour** (« Grisly le fait toujours », puis le second gros boss de la
+forêt) : **le stroboscope des invocations**. Trois corps — `StepCarrierStrobe` (`0x00413330`, forêt,
+sous-zones 5 et 9, où vit le Grizzly ; et `0x0041fca0`, Labyrinthe 5 à 8), `TickSummonBurstShake`
+(`0x00422d50`, Labyrinthe 4 et 9) et `0x00409e40` (mine 5 à 8) — font naître onze entités
+d'incantation autour du porteur (les cercles), puis posent le voile rouge (`0x1e`) **une image sur
+deux pendant trente images**. C'est le vrai stroboscope. Même interrupteur : éteint, le voile garde la
+valeur de ses images paires, `0x01000000` — couleur nulle, que `FillScreenQuad_0051F940` ne dessine
+pas. Les invocations, le son et les naissances aux images 0, 3 et 7 sont ceux du binaire.

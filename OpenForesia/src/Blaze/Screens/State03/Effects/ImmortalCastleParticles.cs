@@ -2163,10 +2163,15 @@ public static unsafe partial class Blaze
         short clock = *(short*)(e + 0x12);
 
         // Ghidra: DAT_005de024..27 — rouge, vert, bleu, puis le mode 1 dans l'octet fort.
-        if (clock == 10) Mem.s_Unknown_005de024 = 0x01000000 | (100u << 16) | (100u << 8) | 0xfa;
-        if (clock == 9) Mem.s_Unknown_005de024 = 0x01000000 | (0x50u << 16) | (0x50u << 8) | 0xb4;
-        if (clock == 8) Mem.s_Unknown_005de024 = 0x01000000 | (0x3cu << 16) | (0x3cu << 8) | 0x78;
-        if (clock == 7) Mem.s_Unknown_005de024 = 0x01000000 | (0x1eu << 16) | (0x1eu << 8) | 0x50;
+        // ECART DECLARE (2026-09-25, demande de Vincent) — legacy-bug.md LB-051. Voir
+        // s_BossDebuffScreenFlash (Combat/Projectiles.cs).
+        if (s_BossDebuffScreenFlash)
+        {
+            if (clock == 10) Mem.s_Unknown_005de024 = 0x01000000 | (100u << 16) | (100u << 8) | 0xfa;
+            if (clock == 9) Mem.s_Unknown_005de024 = 0x01000000 | (0x50u << 16) | (0x50u << 8) | 0xb4;
+            if (clock == 8) Mem.s_Unknown_005de024 = 0x01000000 | (0x3cu << 16) | (0x3cu << 8) | 0x78;
+            if (clock == 7) Mem.s_Unknown_005de024 = 0x01000000 | (0x1eu << 16) | (0x1eu << 8) | 0x50;
+        }
 
         if (clock == 6)
         {

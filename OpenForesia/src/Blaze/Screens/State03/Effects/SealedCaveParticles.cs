@@ -4355,10 +4355,15 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x12) -= 1;
 
         // Ghidra: DAT_005de027 = 1 et les trois canaux — cinq teintes de voile, en descendant.
-        if (*(short*)(e + 0x12) == 0x0a) Mem.s_Unknown_005de024 = 0x016464fa;
-        if (*(short*)(e + 0x12) == 9) Mem.s_Unknown_005de024 = 0x015050b4;
-        if (*(short*)(e + 0x12) == 8) Mem.s_Unknown_005de024 = 0x013c3c78;
-        if (*(short*)(e + 0x12) == 7) Mem.s_Unknown_005de024 = 0x011e1e50;
+        // ECART DECLARE (2026-09-25, demande de Vincent) — legacy-bug.md LB-051. Voir
+        // s_BossDebuffScreenFlash (Combat/Projectiles.cs).
+        if (s_BossDebuffScreenFlash)
+        {
+            if (*(short*)(e + 0x12) == 0x0a) Mem.s_Unknown_005de024 = 0x016464fa;
+            if (*(short*)(e + 0x12) == 9) Mem.s_Unknown_005de024 = 0x015050b4;
+            if (*(short*)(e + 0x12) == 8) Mem.s_Unknown_005de024 = 0x013c3c78;
+            if (*(short*)(e + 0x12) == 7) Mem.s_Unknown_005de024 = 0x011e1e50;
+        }
 
         if (*(short*)(e + 0x12) == 6)
         {

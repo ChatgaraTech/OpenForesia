@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-25
 
+- fix : le stroboscope rouge des invocations de boss (Grizzly et second boss de la forêt, Labyrinthe,
+  mine) est éteint lui aussi — même interrupteur, voile laissé à couleur nulle (LB-051)
+- fix : le sort « spirale et éclair » des boss (Mort volante, grotte scellée 13-15, château de
+  l'immortel) ne fait plus clignoter l'écran — écart déclaré, `s_BossDebuffScreenFlash` ; cercles,
+  dégâts et effet 11 inchangés (LB-051)
 - doc : passe guidée — 1 137 gestionnaires testés sur 1 429 (292 restants) ; 13 des 42 pistes restantes sont
   la « poussière du pas » (`0x005413E0`, effet `0xFE`), qui ne naît que sur une face de sol portant
   l'attribut `0x200` : le mécanisme marche (8 zones l'ont vu), il manque la carte de ces sols

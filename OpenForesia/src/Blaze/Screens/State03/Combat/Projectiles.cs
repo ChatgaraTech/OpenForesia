@@ -4522,6 +4522,27 @@ public static unsafe partial class Blaze
     /// puis <c>FUN_0053b730</c> —, exactement la forme des vingt et une enveloppes du lot 10.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// <b>ECART DECLARE</b> (2026-09-25, demande de Vincent) — legacy-bug.md LB-051. Le sort
+    /// « spirale, eclair, effet 11 » des boss allume le voile plein cadre quatre images de suite
+    /// dans des rouges qui s'assombrissent, puis l'eteint ; lance en boucle par un boss, cela fait
+    /// un stroboscope. A <c>false</c>, le voile n'est plus allume : la spirale, la masse, le
+    /// moment ou l'effet 11 frappe et l'extinction a l'image 6 sont ceux du binaire, a l'identique.
+    /// <c>true</c> rend le comportement d'origine. Lu par les trois copies du corps :
+    /// <see cref="EntityHandler_0043B870"/>, <see cref="EntityHandler_0043E820"/> et
+    /// <see cref="StepCastleRedFlash"/>.
+    /// <para>
+    /// Et par les trois <b>stroboscopes</b> des invocations de boss — le voile rouge une image sur
+    /// deux pendant trente images, onze entites d'incantation autour du porteur :
+    /// <see cref="StepCarrierStrobe"/> (foret 5 et 9, le Grizzly ; Labyrinthe 5 a 8),
+    /// <see cref="TickSummonBurstShake"/> (Labyrinthe 4 et 9) et
+    /// <see cref="EntityHandler_00409E40"/> (mine 5 a 8). Eteints, ils laissent le voile a
+    /// <c>0x01000000</c>, la valeur de leurs images paires : couleur nulle, que
+    /// <see cref="FillScreenQuad_0051F940"/> ne dessine pas.
+    /// </para>
+    /// </summary>
+    private static readonly bool s_BossDebuffScreenFlash = false;
+
     private static void EntityHandler_0043B870(byte* e)
     {
         short role = *(short*)(e + 0x14);
@@ -4704,10 +4725,15 @@ public static unsafe partial class Blaze
 
         // Ghidra: DAT_005de027 = 1 et les trois octets de couleur — l'octet de poids fort du meme
         // dword commande l'affichage du voile.
-        if (*(short*)(e + 0x12) == 10) Mem.s_Unknown_005de024 = 0x016464fa;
-        if (*(short*)(e + 0x12) == 9) Mem.s_Unknown_005de024 = 0x015050b4;
-        if (*(short*)(e + 0x12) == 8) Mem.s_Unknown_005de024 = 0x013c3c78;
-        if (*(short*)(e + 0x12) == 7) Mem.s_Unknown_005de024 = 0x011e1e50;
+        // ECART DECLARE (2026-09-25, demande de Vincent) — legacy-bug.md LB-051 : le voile n'est
+        // plus allume. Voir s_BossDebuffScreenFlash.
+        if (s_BossDebuffScreenFlash)
+        {
+            if (*(short*)(e + 0x12) == 10) Mem.s_Unknown_005de024 = 0x016464fa;
+            if (*(short*)(e + 0x12) == 9) Mem.s_Unknown_005de024 = 0x015050b4;
+            if (*(short*)(e + 0x12) == 8) Mem.s_Unknown_005de024 = 0x013c3c78;
+            if (*(short*)(e + 0x12) == 7) Mem.s_Unknown_005de024 = 0x011e1e50;
+        }
 
         if (*(short*)(e + 0x12) == 6)
         {

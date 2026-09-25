@@ -823,7 +823,10 @@ public static unsafe partial class Blaze
         (*(short*)(e + 0x12))++;
 
         // Le voile plein cadre : rouge a 0x1e une image sur deux, vert et bleu toujours nuls.
-        Mem.s_Unknown_005de024 = (*(short*)(e + 0x12) & 1) != 0 ? 0x0100001eu : 0x01000000u;
+        // ECART DECLARE (2026-09-25, demande de Vincent) — legacy-bug.md LB-051 : sans
+        // s_BossDebuffScreenFlash, le voile reste a sa valeur d'extinction, celle des images paires.
+        Mem.s_Unknown_005de024 = s_BossDebuffScreenFlash && (*(short*)(e + 0x12) & 1) != 0
+            ? 0x0100001eu : 0x01000000u;
 
         if (*(short*)(e + 0x12) < 0x1e) return;
 
