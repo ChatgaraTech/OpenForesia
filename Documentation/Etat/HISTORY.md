@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- feat : les types de manette 1 et 2 du menu de configuration marchent — `0x0050DE90` (cap posé à chaque
+  image) et `0x0050DD00` (désassemblée : le personnage tourne vers le cap d'un seizième de tour par image) ;
+  l'entrée 3, `0x0050DFF0`, reste non écrite car aucun menu ne l'atteint (non exercé en jeu)
 - feat : `FUN_00537a20` transcrite (`StartWithCreatedCharacter`, `State01/PartySetup.cs`) — la branche
   `DAT_005de51c != 0` de l'état 1, atteinte par la sortie « annuler » de la création : on part seul avec
   le personnage tout juste créé, vers l'état 3 ; le `NotImplementedException` disparaît (non exercé en jeu)

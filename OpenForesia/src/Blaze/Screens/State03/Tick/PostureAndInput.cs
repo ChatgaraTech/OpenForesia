@@ -39,14 +39,17 @@ public static unsafe partial class Blaze
         switch (target)
         {
             case 0x0050E140: HandleDirectionalInput_0050E140(slot, perChar, pad); return;
+            case 0x0050DE90: HandleDirectionalInput_0050DE90(slot, perChar, pad); return;
+            case 0x0050DD00: HandleDirectionalInput_0050DD00(slot, perChar, pad); return;
 
             default:
+                // 0x0050DFF0, l'entree 3 : aucun ecrivain de +0x2b7 ne depasse 2 (le menu de
+                // configuration cycle sur 0..2, le menu rapide borne a <= 2).
                 throw new NotImplementedException(
                     $"FUN_0050bf20 : le gestionnaire de commande d'indice {index} (table " +
-                    $"0x00562ce0) vaut 0x{target:X6} et n'est pas transcrit. Les quatre entrees de " +
-                    "la table sont relevees dans le binaire : 0x0050E140, 0x0050DE90 (toutes deux " +
-                    "dans Blaze.c), 0x0050DD00 et 0x0050DFF0 (absentes, a desassembler). Il prend " +
-                    "(entite, bloc par personnage, manette).");
+                    $"0x00562ce0) vaut 0x{target:X6} et n'est pas transcrit. Seule l'entree 3, " +
+                    "0x0050DFF0 (absente de Blaze.c, a desassembler), est dans ce cas, et aucun " +
+                    "ecrivain connu de +0x2b7 ne l'atteint.");
         }
     }
 
@@ -129,6 +132,142 @@ public static unsafe partial class Blaze
             *(int*)(s + 0x5c) = (pad[1] & 0x20) == 0
                 ? s_PostureSpeed_00562cc0[perChar[0x150] & 7] << 0xc
                 : 0x3c000;
+        }
+        else
+        {
+            *(int*)(s + 0x5c) = s_PostureSpeed_00562cc0[perChar[0x150] & 7] << 0xc;
+        }
+
+        uint posture = *(uint*)(perChar + 0x140);
+        int scale = 0x1000;
+        if ((posture & 0x4000) != 0) scale = 0x1333;
+        if ((posture & 0x8000) != 0) scale = 0xccc;
+        if ((posture & 4) != 0) scale = 0x800;
+
+        *(int*)(s + 0x5c) = scale * *(int*)(s + 0x5c) >> 0xc;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050de90 @ 0x0050de90 — l'entree <b>1</b> de la table de commande, le type de
+    /// manette 1 du menu de configuration (<c>+0x2b7</c>). La meme marche que
+    /// <see cref="HandleDirectionalInput_0050E140"/>, lue autrement :
+    /// <list type="bullet">
+    /// <item>le cap est recalcule <b>a chaque image</b> tant qu'une direction est tenue, pas
+    /// seulement a la transition de la croix — <c>manette + 0xb</c> n'est ni lu ni consomme ;</item>
+    /// <item>la reference est <c>(0x80 - camera) &amp; 0xf00</c>, et le cap est pose d'un coup, en
+    /// <c>+0x98</c> puis <c>+0x32</c> ;</item>
+    /// <item>desoriente (bit 3 de <c>bloc + 0x140</c>), la direction reste celle de la croix ; c'est
+    /// la reference qui est tiree au sort, et seulement si l'un des mots <c>manette + 2</c> /
+    /// <c>manette + 4</c> porte une direction — sinon l'ancien cap de <c>+0x98</c> est repris.</item>
+    /// </list>
+    /// </summary>
+    private static void HandleDirectionalInput_0050DE90(uint* slot, byte* perChar, byte* pad)
+    {
+        byte* s = (byte*)slot;
+        int direction = s_PadDirection_00562dc8[(*(ushort*)pad & 0xf0) >> 4];
+
+        if (direction == 0)
+        {
+            if ((*slot & 0x47) == 0 && (*(ushort*)pad & 0xf0) == 0 && *(short*)(s + 0x18) != 0)
+            {
+                *(uint*)(s + 0x18) = 0;
+                *slot |= 0x1000000;
+            }
+
+            return;
+        }
+
+        if ((*slot & 0x8000047) == 0 && *(short*)(s + 0x18) != 1)
+        {
+            *(uint*)(s + 0x18) = 1;
+            *slot |= 0x1000000;
+        }
+
+        if ((perChar[0x140] & 8) == 0)
+        {
+            uint reference = (0x80u - *(ushort*)(Mem.s_CameraVector_00604928 + 2)) & 0xf00;
+            *(ushort*)(s + 0x98) = (ushort)(direction * 0x200 - 0x200 + reference);
+        }
+        else if ((*(ushort*)(pad + 2) & 0xf0) != 0 || (*(ushort*)(pad + 4) & 0xf0) != 0)
+        {
+            short random = (short)CrtRand();   // Ghidra: FUN_00547140
+            *(ushort*)(s + 0x98) = (ushort)(((0x80u - (uint)random) & 0xf00) - 0x200 + direction * 0x200);
+        }
+
+        *(short*)(s + 0x32) = *(short*)(s + 0x98);
+
+        ApplyWalkSpeed(s, perChar, pad);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0050DD00</c> — l'entree <b>2</b> de la table de commande, le type de manette 2.
+    /// Absente de <c>Blaze.c</c> ; transcrite depuis <c>Legacy/Raw/Blaze/FUN_0050dd00.asm</c>.
+    ///
+    /// <para>
+    /// Instruction pour instruction <see cref="HandleDirectionalInput_0050DE90"/>, sauf en un point :
+    /// le cap vise va dans <c>+0x98</c>, mais <c>+0x32</c> n'y est pas recopie — il <b>tourne vers
+    /// lui d'un seizieme de tour par image</b> (<c>0x100</c>), par le plus court chemin : un ecart
+    /// <c>(vise - courant) &amp; 0xfff</c> sous <c>0x800</c> fait tourner d'un cran positif, au-dessus
+    /// d'un cran negatif, et le resultat est ramene au seizieme (<c>&amp; 0xf00</c>).
+    /// </para>
+    /// </summary>
+    private static void HandleDirectionalInput_0050DD00(uint* slot, byte* perChar, byte* pad)
+    {
+        byte* s = (byte*)slot;
+        int direction = s_PadDirection_00562dc8[(*(ushort*)pad >> 4) & 0xf];
+
+        if (direction == 0)
+        {
+            if ((*slot & 0x47) == 0 && (pad[0] & 0xf0) == 0 && *(short*)(s + 0x18) != 0)
+            {
+                *(uint*)(s + 0x18) = 0;
+                *slot |= 0x1000000;
+            }
+
+            return;
+        }
+
+        if ((*slot & 0x8000047) == 0 && *(short*)(s + 0x18) != 1)
+        {
+            *(uint*)(s + 0x18) = 1;
+            *slot |= 0x1000000;
+        }
+
+        if ((perChar[0x140] & 8) == 0)
+        {
+            // 0x0050dd85 : `MOV AX,0x80 / SUB AX,[0x60492a]` — la soustraction sur 16 bits.
+            uint reference = (ushort)(0x80 - *(ushort*)(Mem.s_CameraVector_00604928 + 2)) & 0xf00u;
+            *(ushort*)(s + 0x98) = (ushort)(direction * 0x200 + reference - 0x200);
+        }
+        else if ((pad[2] & 0xf0) != 0 || (pad[4] & 0xf0) != 0)
+        {
+            uint reference = (0x80u - (uint)CrtRand()) & 0xf00;   // Ghidra: FUN_00547140
+            *(ushort*)(s + 0x98) = (ushort)(reference + direction * 0x200 - 0x200);
+        }
+
+        // 0x0050dda6 : le virage d'un cran.
+        ushort current = *(ushort*)(s + 0x32);
+        uint gap = (uint)(*(ushort*)(s + 0x98) - current) & 0xfff;
+        if (gap != 0)
+        {
+            int step = gap < 0x800 ? 0x100 : -0x100;
+            *(ushort*)(s + 0x32) = (ushort)((current + step) & 0xf00);
+        }
+
+        ApplyWalkSpeed(s, perChar, pad);
+    }
+
+    /// <summary>
+    /// La queue commune des trois gestionnaires de marche (<c>0x0050E140</c>, <c>0x0050DE90</c>,
+    /// <c>0x0050DD00</c>), dupliquee par le compilateur dans chacun : la vitesse de la posture en
+    /// <c>+0x5c</c> — ou <c>0x3c000</c>, la marche rapide, hors mode de mise au point quand le bit
+    /// <c>0x2000</c> de la manette est tenu —, puis mise a l'echelle par <c>bloc + 0x140</c>.
+    /// </summary>
+    private static void ApplyWalkSpeed(byte* s, byte* perChar, byte* pad)
+    {
+        if (Mem.s_DebugModeLatch_005633a8 == 0 && (pad[1] & 0x20) != 0)
+        {
+            *(int*)(s + 0x5c) = 0x3c000;
         }
         else
         {

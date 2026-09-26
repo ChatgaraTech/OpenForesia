@@ -8835,6 +8835,12 @@ Des lacunes subsistent **hors du chemin au repos** et ne lèveront qu'en jeu ré
 de posture `0x0051A6B0`/`0x0051A700`/`0x0051A710` et de commande `0x0050DD00`/`0x0050DFF0` (tous
 absents de `Blaze.c`), plus une douzaine d'appelées qui, elles, y sont.
 
+> **2026-09-26** : les types de manette 1 et 2 sont écrits (`HandleDirectionalInput_0050DE90`, et
+> `_0050DD00` depuis `Legacy/Raw/Blaze/FUN_0050dd00.asm`, `Tick/PostureAndInput.cs`). Le type 1 pose
+> le cap à chaque image tant qu'une direction est tenue ; le type 2 vise le même cap mais **tourne
+> vers lui d'un seizième de tour par image**. Reste `0x0050DFF0` (entrée 3), inatteignable : le menu
+> de configuration cycle `+0x2b7` sur 0..2 et le menu rapide le borne à 2.
+
 ### Vérification
 
 Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, `RunWorldMapTick` (le
