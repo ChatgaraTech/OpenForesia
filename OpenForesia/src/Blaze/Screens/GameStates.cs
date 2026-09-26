@@ -140,7 +140,10 @@ public static unsafe partial class Blaze
                 RunCharacterSelectState();
                 break;
             case 5:
-                throw new NotImplementedException("FUN_00504c90 (game state 5) not yet reconstructed");
+                // Laisse de cote par decision (2026-09-26) : gestionnaire de cartes memoire herite de
+                // la PlayStation, qu'aucune ecriture de 5 n'atteint. L'editeur de sauvegarde HTML
+                // (OpenForesia.Tools/Html/) couvre le besoin. Voir REVERSE_STATUS.md.
+                throw new NotImplementedException("FUN_00504c90 (game state 5) volontairement non transcrit : gestionnaire de cartes memoire herite de la PlayStation, inatteignable dans le jeu d'origine");
             case 6:
                 RunItemMenuState();     // Ghidra: FUN_00524180
                 break;

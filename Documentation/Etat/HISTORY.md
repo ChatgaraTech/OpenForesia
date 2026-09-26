@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- doc : l'état 5 (`FUN_00504c90`) est un gestionnaire de cartes mémoire hérité de la PlayStation, inatteignable ;
+  laissé non transcrit par choix — l'éditeur de sauvegarde HTML couvre le besoin
 - feat : `tests\visionneuse-modeles.bat` (`OPENFORESIA_FORCE_STATE=8`) — ouvre la visionneuse de modèles
   directement, faute de chemin dans le jeu
 - feat : l'état 8, la visionneuse de modèles 3D (`FUN_005315d0`, `Screens/State08/ModelViewer.cs`) —
