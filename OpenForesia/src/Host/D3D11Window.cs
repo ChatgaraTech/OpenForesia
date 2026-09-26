@@ -26,6 +26,7 @@ internal static unsafe class D3D11Window
     private const uint WmExitSizeMove = 0x0232;
     private const uint ScMaximize = 0xF030;
     private const uint ScRestore = 0xF120;
+    private const uint ScKeyMenu = 0xF100;
     private const uint WmChar = 0x0102;
     private const uint WmKeyDown = 0x0100;
     private const uint WmSysKeyDown = 0x0104;
@@ -153,6 +154,13 @@ internal static unsafe class D3D11Window
                     SavePlacement();
                     return result;
                 }
+                // **Alt seul n'ouvre pas le menu de la fenêtre.** Alt gauche est la croix du jeu
+                // (action 6, section [Controls]) ; relâché seul, Windows en fait un SC_KEYMENU et
+                // entre dans la boucle modale du menu système — le jeu se fige jusqu'à Échap. Même
+                // chose pour F10 et Alt+lettre (bip). Alt+Espace (lParam = ' ') ouvre toujours le
+                // menu : c'est la seule demande explicite.
+                if (command == ScKeyMenu && lParam != ' ')
+                    return IntPtr.Zero;
                 break;
             }
 

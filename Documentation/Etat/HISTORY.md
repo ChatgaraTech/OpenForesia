@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- fix : appuyer sur Alt (la croix du jeu) ouvrait le menu système de la fenêtre et figeait le jeu — la
+  fenêtre de l'hôte avale désormais `SC_KEYMENU`, sauf Alt+Espace
 - feat : les types de manette 1 et 2 du menu de configuration marchent — `0x0050DE90` (cap posé à chaque
   image) et `0x0050DD00` (désassemblée : le personnage tourne vers le cap d'un seizième de tour par image) ;
   l'entrée 3, `0x0050DFF0`, reste non écrite car aucun menu ne l'atteint (non exercé en jeu)
