@@ -3,7 +3,7 @@
 //
 // Le jeu de 1998 balayait les lecteurs à la recherche de son disque et bouclait sur « insérez le
 // CD » tant qu'il ne le trouvait pas. OpenForesia lit ses données dans son propre dossier, où
-// l'installeur les a extraites depuis l'ISO du joueur (openspec/changes/install-from-iso). Il
+// l'installeur les a extraites depuis l'ISO du joueur (openspec/changes/archive/2026-09-26-install-from-iso). Il
 // vérifie donc, avant toute fenêtre, que chaque fichier attendu est là et a la bonne taille ; s'il
 // en manque, un seul message le dit et le jeu s'arrête.
 //

@@ -112,7 +112,7 @@ public static unsafe partial class Blaze
     /// buffers used by the rest of the engine, and runs the main application loop before tearing
     /// everything back down.
     ///
-    /// Écart legacy ++ (openspec/changes/install-from-iso) : **plus de CD**. Le répertoire courant
+    /// Écart legacy ++ (openspec/changes/archive/2026-09-26-install-from-iso) : **plus de CD**. Le répertoire courant
     /// devient le dossier du jeu, où l'installeur a extrait les données, et <see cref="GameDataCheck"/>
     /// remplace le balayage des lecteurs : s'il manque un fichier, un message et on quitte. La
     /// lecture de <c>@:\cd.idx</c> (la protection anticopie, voir LB-053) disparaît avec lui.

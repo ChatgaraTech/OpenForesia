@@ -36,7 +36,7 @@ section — so prefer it over reproducing this logic by hand.
 
 ## LEGACY ++ : LE JEU NE CONNAIT PLUS DE CD (2026-09-26)
 
-Premier chantier du mode « legacy ++ » (`Strategy.md`) : `openspec/changes/install-from-iso`. Retirés
+Premier chantier du mode « legacy ++ » (`Strategy.md`) : `openspec/changes/archive/2026-09-26-install-from-iso`. Retirés
 de la transcription, chacun avec sa ligne `// Ghidra: … — retiré` : le balayage des lecteurs et la
 boucle « insérez le CD » de `RunApplication` (`FUN_00513900`), la lecture de `@:\cd.idx` et le
 multiplicateur qu'elle alimentait dans `Handler_00544810` (LB-053), la lettre substituée dans

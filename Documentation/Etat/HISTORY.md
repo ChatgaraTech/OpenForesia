@@ -6,8 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- doc : changement `install-from-iso` **terminé et archivé** (40/40, validé par Vincent sur machine
+  propre) ; nouvelles specs `game-data-install` et `game-data-location`, `blaze-intro-attract` mise à jour
+  (sans données, le démarrage s'arrête sur un message) ; le désinstalleur s'appelle `Uninstall.exe`
 - feat : le dossier installé est en ordre — le jeu publié tient en un seul `OpenForesia.exe` (ni DLL ni
-  `createdump.exe`), et `Desinstaller.exe`, une copie de l'installeur qui se relance depuis `%TEMP%` pour
+  `createdump.exe`), et `Uninstall.exe`, une copie de l'installeur qui se relance depuis `%TEMP%` pour
   s'effacer, remplace `Desinstaller.ps1` ; l'installeur publié descend à 15,5 Mo
 - feat : **l'installeur passe de 82 à 18 Mo** — le jeu est publié élagué (108 → 21 Mo sur le disque du
   joueur ; les liaisons Direct3D de Silk.NET réduites à ce qu'on appelle), et l'installeur perd WinForms,

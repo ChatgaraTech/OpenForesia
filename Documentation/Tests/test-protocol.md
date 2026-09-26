@@ -22,7 +22,7 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 
 ## Les données du jeu sont à côté de l'exe — plus de CD (2026-09-26)
 
-Le jeu ne cherche plus de CD (`openspec/changes/install-from-iso`). Il se place au démarrage dans
+Le jeu ne cherche plus de CD (`openspec/changes/archive/2026-09-26-install-from-iso`). Il se place au démarrage dans
 le dossier de son exe, **quel que soit le dossier d'où on le lance**, et tout s'y résout : les
 données (`French\`, `Snd\`, `Music\`), `save\` et `OpenForesia.cfg`. En développement, ce dossier
 est `OpenForesia\bin\Debug\net10.0\`. Les données s'y extraient une fois depuis l'ISO, en deux

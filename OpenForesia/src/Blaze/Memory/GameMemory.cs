@@ -184,7 +184,7 @@ internal sealed unsafe class GameMemory
     // (s____Blaze_Blade_005631e8 = "@:\Blaze&Blade"). Conflating the two is what made every
     // CD-relative path resolve one directory too high and find nothing.
     //
-    // Écart legacy ++ (2026-09-26, openspec/changes/install-from-iso) : plus de lettre de lecteur.
+    // Écart legacy ++ (2026-09-26, openspec/changes/archive/2026-09-26-install-from-iso) : plus de lettre de lecteur.
     // Le répertoire courant est le dossier du jeu (RunApplication), donc la racine des données est
     // le chemin **relatif** « FRENCH\ » — l'original valait « @:\FRENCH\ », '@' remplacé par la
     // lettre du CD. Les tampons de 64 octets qui s'en servent ne voient ainsi que des chemins courts,

@@ -156,12 +156,12 @@ OpenForesia.Installer/  l'installeur du joueur (depuis le 2026-09-26) — voir c
 OpenForesia.Tools/ · OpenForesia.Tests/ · openspec/
 ```
 
-**`OpenForesia.Installer/`** (`openspec/changes/install-from-iso`) produit `OpenForesia-Setup.exe` :
+**`OpenForesia.Installer/`** (`openspec/changes/archive/2026-09-26-install-from-iso`) produit `OpenForesia-Setup.exe` :
 il lit l'ISO du joueur (`Iso/`), la reconnait et en extrait les donnees que le jeu lit
 (`Extraction/`), d'apres `Editions/editions.json` — la liste des fichiers attendus, generee depuis
 l'ISO de reference, que le jeu embarque aussi pour sa verification au demarrage
 (`Host/GameDataCheck.cs`). `Installation/` depose le jeu, les raccourcis, l'entree « Applications
-installees » et `Desinstaller.exe` (une copie de l'installeur) ; `Interface/` est la fenetre, en Win32 natif (sans WinForms, qui ne s'elague pas). C'est du code d'aujourd'hui, pas
+installees » et `Uninstall.exe` (une copie de l'installeur) ; `Interface/` est la fenetre, en Win32 natif (sans WinForms, qui ne s'elague pas). C'est du code d'aujourd'hui, pas
 une transcription : il obeit aux regles de `src/Host/` (ca doit marcher), pas a celles de
 `src/Blaze/`. La release se fabrique par `OpenForesia.Tools/publish-release.ps1`.
 

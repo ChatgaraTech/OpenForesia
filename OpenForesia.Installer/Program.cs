@@ -9,7 +9,7 @@
 //       (OpenForesia\bin\Debug\net10.0 ; les donnees, save\ et le .cfg en sont ecartes)
 //
 //   --desinstaller [<dossier>]
-//       desinstalle le jeu ; c'est ainsi que Desinstaller.exe (une copie de cet installeur, deposee
+//       desinstalle le jeu ; c'est ainsi que Uninstall.exe (une copie de cet installeur, deposee
 //       dans le dossier du jeu) est lance par le menu Demarrer et par « Applications installees »
 //
 // Deux modes caches servent au developpeur et ecrivent dans la console qui l'a lance :
@@ -36,11 +36,13 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        // Copie dans le dossier du jeu sous le nom Desinstaller.exe, l'installeur desinstalle — y
+        // Copie dans le dossier du jeu sous le nom Uninstall.exe, l'installeur desinstalle — y
         // compris sur un simple double-clic, sans argument : c'est ce que le joueur attend de ce nom.
         if (args.Length > 0 && args[0] == "--desinstaller")
             return Desinstallation.Executer(args);
-        if (string.Equals(Path.GetFileName(Environment.ProcessPath), Desinstallation.Executable, StringComparison.OrdinalIgnoreCase))
+        string nom = Path.GetFileName(Environment.ProcessPath) ?? "";
+        if (string.Equals(nom, Desinstallation.Executable, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(nom, Desinstallation.AncienExecutable, StringComparison.OrdinalIgnoreCase))
             return Desinstallation.Executer(["--desinstaller"]);
 
         if (args.Length > 0 && args[0].StartsWith("--", StringComparison.Ordinal) && args[0] != "--jeu")

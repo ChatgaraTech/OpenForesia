@@ -2334,7 +2334,7 @@ au cas par cas s'ils gênent.
 
 ## LB-053 — La protection anticopie `cd.idx` corrompt le texte si le fichier n'a pas exactement 640 Mo
 
-**Statut** : `Retiré` le 2026-09-26 (legacy ++, `openspec/changes/install-from-iso`).
+**Statut** : `Retiré` le 2026-09-26 (legacy ++, `openspec/changes/archive/2026-09-26-install-from-iso`).
 
 **Où** : `RunApplication` (`FUN_00513900`) lit la taille de `@:\cd.idx` (`DAT_00563280`) dans
 `DAT_0056321c`, puis lui ajoute `0xd8000000` juste avant la boucle principale. Le gestionnaire du

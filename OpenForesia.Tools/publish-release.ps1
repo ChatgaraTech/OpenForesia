@@ -3,7 +3,7 @@
     Produit OpenForesia-Setup.exe, l'installeur à publier sur GitHub.
 
 .DESCRIPTION
-    Quatre temps (openspec/changes/install-from-iso, lot 5) :
+    Quatre temps (openspec/changes/archive/2026-09-26-install-from-iso, lot 5) :
 
       1. publie le jeu en autonome x86, élagué, en un seul OpenForesia.exe — le runtime .NET y est
          lié, réduit à ce que le jeu appelle : ni DLL ni prérequis chez le joueur ;

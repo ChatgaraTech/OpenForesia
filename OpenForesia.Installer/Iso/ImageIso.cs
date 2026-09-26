@@ -6,7 +6,7 @@
 // LE PIEGE DE CETTE IMAGE : LES TAILLES DECLAREES MENTENT
 //
 // L'ISO de reference annonce 3,05 Go de fichiers sur 709 Mo. Trois sortes de mensonges, tous
-// voulus au pressage (voir openspec/changes/install-from-iso/design.md) :
+// voulus au pressage (voir openspec/changes/archive/2026-09-26-install-from-iso/design.md) :
 //   - `CD.IDX` declare 640 Mo : c'est la protection anticopie, et son etendue recouvre le disque ;
 //   - `OPENING.AVI` et `ANI01.AVI` declarent une taille qui court jusqu'au dernier secteur, alors
 //     que leur en-tete RIFF n'en revendique que 28 et 31 Mo ;

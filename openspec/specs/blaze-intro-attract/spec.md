@@ -8,22 +8,23 @@ binary as captured in the Ghidra decompilation.
 ## Requirements
 ### Requirement: Startup always reaches engine initialization
 
-The startup sequence SHALL reach engine initialization on any machine, regardless of whether the
-game CD, its movie files, or its title-screen bitmap are present. No loop on the startup path may
-iterate without at least one reachable exit condition.
+Once the game data check has passed, the startup sequence SHALL reach engine initialization on any
+machine, regardless of whether its movie files or its title-screen bitmap can be read. No loop on the
+startup path may iterate without at least one reachable exit condition. When the game data check
+fails, startup SHALL stop before engine initialization with the message defined by the
+`game-data-location` capability, and SHALL NOT wait for a disc.
 
 #### Scenario: No game media present
 
-- **WHEN** the application is started on a machine with no game CD mounted and no game data files
-  reachable from the configured CD root
-- **THEN** the intro sequence completes or aborts within one iteration
-- **AND** startup proceeds to engine initialization
-- **AND** the process does not spin without making progress
+- **WHEN** the application is started from a folder that does not contain the game data
+- **THEN** a single message reports the missing data
+- **AND** the process exits without reaching engine initialization
+- **AND** the process does not spin or prompt for a disc
 
 #### Scenario: Intro media partially present
 
-- **WHEN** some intro assets resolve and others do not
-- **THEN** each missing asset degrades only its own step
+- **WHEN** the data check passes but some intro assets cannot be read
+- **THEN** each unreadable asset degrades only its own step
 - **AND** the sequence still terminates and hands off to engine initialization
 
 ### Requirement: Attract loop evaluates every exit condition of the original
@@ -56,7 +57,7 @@ user.
 
 #### Scenario: Title bitmap missing
 
-- **WHEN** the title bitmap cannot be opened or read from the configured CD root
+- **WHEN** the title bitmap cannot be opened or read from the data folder
 - **THEN** the wait reports a non-zero result
 - **AND** no message box or error prompt is shown
 - **AND** the attract loop exits
@@ -98,4 +99,3 @@ is later changed.
 - **WHEN** a loop is currently unreachable only because a stub reports failure
 - **THEN** the reconstruction carries a note identifying the stub, the condition that would need to
   be signalled, and the consequence of enabling the stub without it
-

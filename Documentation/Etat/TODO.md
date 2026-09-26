@@ -2,19 +2,19 @@
 
 Point d’entrée entre deux sessions. Mis à jour le **2026-09-26**.
 
-# EN COURS : L'INSTALLEUR DEPUIS L'ISO (2026-09-26)
+# TERMINÉ : L'INSTALLEUR DEPUIS L'ISO (2026-09-26)
 
 Le projet est passé en mode **« legacy ++ »** (`Strategy.md`) : un jeu autonome, clé en main. Premier
-chantier, `openspec/changes/install-from-iso` : **39 tâches sur 40**. Le jeu ne connaît plus de CD, les
-outils lisent les données installées, l'installeur marche (testé par Vincent, y compris sur machine
-propre), la release se fabrique par `OpenForesia.Tools\publish-release.ps1` et pèse 15,5 Mo : le jeu
-élagué en un seul `OpenForesia.exe`, un installeur élagué sans WinForms, et `Desinstaller.exe` (une
-copie de l'installeur) dans le dossier du jeu.
+chantier, **terminé et archivé** : `openspec/changes/archive/2026-09-26-install-from-iso`, 40 tâches
+sur 40, validé par Vincent y compris sur machine propre. Le jeu ne connaît plus de CD ; les outils
+lisent les données installées ; la release se fabrique par `OpenForesia.Tools\publish-release.ps1` et
+pèse 15,5 Mo — le jeu élagué en un seul `OpenForesia.exe`, un installeur élagué sans WinForms, et
+`Uninstall.exe` (une copie de l'installeur) dans le dossier du jeu. Les specs `game-data-install` et
+`game-data-location` sont dans `openspec/specs/`.
 
-**Reste la tâche 5.7, à Vincent** : un test court de la release après ces derniers changements —
-installer, jouer quelques minutes, désinstaller par le menu Démarrer, par « Applications installées »
-et par un double-clic sur `Desinstaller.exe`. Ensuite : archiver le changement
-(`/opsx:archive install-from-iso`).
+**Avant de publier sur GitHub** : l'exe n'est pas signé — la page de la release doit prévenir que
+Windows affichera « Windows a protégé votre ordinateur » (Informations complémentaires → Exécuter
+quand même).
 
 # REPRISE : LE BLANC TOTAL DE LA FIN D'EIFRIT (2026-09-26)
 

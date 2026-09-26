@@ -125,13 +125,17 @@ internal static class Installation
                 },
                 null, annulation, journal);
 
-            // 3. La desinstallation : Desinstaller.exe (une copie de cet installeur). Le script
-            //    PowerShell d'une installation anterieure au 2026-09-26 est retire.
+            // 3. La desinstallation : Uninstall.exe (une copie de cet installeur). Ce qu'une
+            //    installation anterieure a laisse sous d'autres noms — le script PowerShell, puis
+            //    Desinstaller.exe — est retire.
             annulation.ThrowIfCancellationRequested();
             avancement.Report(new Avancement(fait, total, "Création des raccourcis…"));
             Desinstallation.Deposer(dossier, journal);
-            string ancienScript = Path.Combine(dossier, "Desinstaller.ps1");
-            if (File.Exists(ancienScript)) File.Delete(ancienScript);
+            foreach (string ancien in new[] { "Desinstaller.ps1", Desinstallation.AncienExecutable })
+            {
+                string chemin = Path.Combine(dossier, ancien);
+                if (File.Exists(chemin)) File.Delete(chemin);
+            }
             (string programme, string arguments) = Desinstallation.Commande(dossier);
 
             // 4. Les raccourcis.

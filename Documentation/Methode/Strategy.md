@@ -97,7 +97,7 @@ en citant l'entrée LB concernée, mais ne corrige pas un défaut d'origine de s
 
 Le jeu doit se lancer sans CD, sans DLL de 1998 et sans prérequis à installer. Les **données du
 jeu ne sont jamais dans le dépôt ni dans une release** : le joueur fournit son ISO, l'installeur en
-extrait ce qu'il faut (`openspec/changes/install-from-iso`).
+extrait ce qu'il faut (`openspec/changes/archive/2026-09-26-install-from-iso`).
 
 ---
 
@@ -623,4 +623,4 @@ aux règles « legacy ++ ».
 
 **Ce qui a motivé le changement.** Le 2026-09-26, Vincent décide de rendre le dépôt public et de
 publier un installeur : le projet doit devenir un jeu qu'on installe et qu'on joue. Le premier
-chantier du nouveau mode est l'abandon du CD (`openspec/changes/install-from-iso`).
+chantier du nouveau mode est l'abandon du CD (`openspec/changes/archive/2026-09-26-install-from-iso`).

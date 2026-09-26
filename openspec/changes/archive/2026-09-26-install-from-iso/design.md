@@ -137,7 +137,7 @@ sous `Program Files`, refus au-delà de 200 caractères, contrôle de place) →
 progression et annulation → vérification MD5 → dépôt du jeu → `save\` → raccourcis (COM
 `IShellLinkW`) → entrée `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenForesia`.
 
-La désinstallation est **`Desinstaller.exe`, une copie de l'installeur** déposée dans le dossier du
+La désinstallation est **`Uninstall.exe`, une copie de l'installeur** déposée dans le dossier du
 jeu, comme l'`unins000.exe` d'Inno Setup. Lancé par le menu Démarrer, par « Applications
 installées » (`--desinstaller`) ou par un double-clic (son nom suffit), il se recopie dans `%TEMP%`
 et se relance de là — un exécutable ne peut pas effacer son propre fichier —, demande
@@ -150,7 +150,10 @@ argument.
 Historique de ce choix : prévu d'abord ainsi, il avait été remplacé à l'implémentation du lot 4 par un
 script PowerShell (`Desinstaller.ps1`), parce que l'installeur pesait alors 82 Mo. Revenu à l'exe le
 2026-09-26, une fois l'installeur à 15 Mo : c'est la norme attendue, et cela évite de lancer
-PowerShell avec `-ExecutionPolicy Bypass`, que des antivirus surveillent.
+PowerShell avec `-ExecutionPolicy Bypass`, que des antivirus surveillent. Nommé d'abord
+`Desinstaller.exe`, renommé `Uninstall.exe` le même jour à la demande de Vincent — le nom qu'on trouve
+partout ailleurs. L'ancien nom reste reconnu au double-clic, et une réinstallation retire l'ancien
+fichier.
 
 En développement, tant que le lot 5 n'a pas produit `jeu.zip`, `OpenForesia-Setup --jeu <dossier>`
 ouvre la même fenêtre en prenant les fichiers du jeu dans un dossier de build (données, `save\`,

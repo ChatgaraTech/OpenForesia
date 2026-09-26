@@ -1,5 +1,5 @@
 // La desinstallation : l'installeur lui-meme, copie dans le dossier du jeu sous le nom
-// Desinstaller.exe et lance avec --desinstaller — comme l'unins000.exe d'Inno Setup.
+// Uninstall.exe et lance avec --desinstaller — comme l'unins000.exe d'Inno Setup.
 //
 // Un executable ne peut pas effacer son propre fichier pendant qu'il tourne. La copie du dossier du
 // jeu se recopie donc dans %TEMP% et se relance de la ; c'est cette seconde copie qui pose les
@@ -18,7 +18,10 @@ namespace OpenForesia.Installer.Installation;
 
 internal static class Desinstallation
 {
-    internal const string Executable = "Desinstaller.exe";
+    internal const string Executable = "Uninstall.exe";
+
+    /// <summary>Le nom qu'il portait jusqu'au 2026-09-26 : reconnu au double-clic, retire a la reinstallation.</summary>
+    internal const string AncienExecutable = "Desinstaller.exe";
     private const string Titre = "Désinstaller OpenForesia";
 
     private const uint MB_OKCANCEL = 1, MB_YESNOCANCEL = 3, MB_ICONQUESTION = 0x20;
@@ -37,7 +40,7 @@ internal static class Desinstallation
             ? (Path.Combine(dossier, Executable), "--desinstaller")
             : (Environment.ProcessPath!, $"--desinstaller \"{dossier}\"");
 
-    /// <summary>Depose Desinstaller.exe dans le dossier du jeu (release seulement).</summary>
+    /// <summary>Depose Uninstall.exe dans le dossier du jeu (release seulement).</summary>
     internal static void Deposer(string dossier, JournalInstallation journal)
     {
         if (!EstFichierUnique) return;
@@ -62,7 +65,7 @@ internal static class Desinstallation
         // La copie du dossier du jeu passe la main a une copie temporaire, qui pourra l'effacer.
         if (EstFichierUnique && !temporaire)
         {
-            string copie = Path.Combine(Path.GetTempPath(), $"OpenForesia-Desinstaller-{Guid.NewGuid():N}.exe");
+            string copie = Path.Combine(Path.GetTempPath(), $"OpenForesia-Uninstall-{Guid.NewGuid():N}.exe");
             File.Copy(Environment.ProcessPath!, copie);
             Process.Start(new ProcessStartInfo(copie)
             {
@@ -170,7 +173,7 @@ internal static class Desinstallation
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
     }
 
-    /// <summary>Supprime un fichier ou un dossier, en reessayant un peu : Desinstaller.exe peut
+    /// <summary>Supprime un fichier ou un dossier, en reessayant un peu : Uninstall.exe peut
     /// appartenir encore quelques instants au processus qui vient de nous lancer.</summary>
     private static bool SupprimerAvecReprise(string chemin)
     {

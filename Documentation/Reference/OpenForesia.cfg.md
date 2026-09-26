@@ -14,7 +14,7 @@ pas suivi par git ; c'est pour ça qu'une référence était nécessaire.
 ## Où le jeu le cherche
 
 À côté de l'exécutable : son nom, extension remplacée par `.cfg`. Depuis le 2026-09-26 (abandon du
-CD, `openspec/changes/install-from-iso`), le jeu se place au démarrage dans le dossier de son exe
+CD, `openspec/changes/archive/2026-09-26-install-from-iso`), le jeu se place au démarrage dans le dossier de son exe
 et lit `.\OpenForesia.cfg` en **relatif**, côté jeu (`GetIniFilePath`) comme côté `winsys3d`
 (`Setup3DDevice`). L'original bâtissait un chemin absolu avec `GetModuleFileNameA`, qu'un dossier
 d'installation hors de la page de code ANSI aurait abîmé. Donc :
