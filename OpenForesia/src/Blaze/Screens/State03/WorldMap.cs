@@ -1971,11 +1971,9 @@ public static unsafe partial class Blaze
 
         if (s_Unknown_005de51c != 0)
         {
-            // Ghidra: FUN_00537a20() â€” not yet read. Currently unreachable in practice: every
-            // known writer of s_Unknown_005de51c (case 0x12 of StepSubState7Phase, on confirm)
-            // sets it to 0 immediately before entering this state.
-            throw new NotImplementedException(
-                "thunk_FUN_00536180: FUN_00537a20 (DAT_005de51c != 0 branch) not yet reconstructed");
+            // Posé à 1 par CancelCharacterCreation : partir seul avec le personnage tout juste créé.
+            StartWithCreatedCharacter();   // Ghidra: FUN_00537a20
+            return;
         }
 
         // Ghidra: `for (iVar1 = 0x2000; ...) *puVar2++ = 0;` on dwords â€” 0x2000 * 4 = 0x8000 bytes,

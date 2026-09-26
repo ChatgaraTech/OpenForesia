@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- feat : `FUN_00537a20` transcrite (`StartWithCreatedCharacter`, `State01/PartySetup.cs`) — la branche
+  `DAT_005de51c != 0` de l'état 1, atteinte par la sortie « annuler » de la création : on part seul avec
+  le personnage tout juste créé, vers l'état 3 ; le `NotImplementedException` disparaît (non exercé en jeu)
+- doc : audit des 59 `NotImplementedException` du code — deux vrais trous atteignables (annuler la création
+  d'un personnage en nouvelle partie appelle `FUN_00537a20`, non transcrite ; les types de manette B et C,
+  `0x0050DE90`/`0x0050DD00`, ne sont pas branchés), l'occlusion de caméra probablement atteignable, et
+  deux contresens de doc : `FUN_00536170` n'est pas un « arrêt fatal » (elle pose un octet et rend 6), et
+  la branche `DAT_005de51c` n'est pas inatteignable ; le reste est défensif ou du code mort de 1998
 - doc : les scènes de mort « le membre aspiré » (`0xcb`, `0x004424B0`) et « dans la lumière » (`0xca`,
   `0x00441EB0`) des salles 13 à 15 sont vraisemblablement inatteignables — le script de chaque salle
   lance une seule scène (`0xcf` en 13, `0xcc` en 14, `0xd0` = la fin du jeu en 15), et ni catalogue,

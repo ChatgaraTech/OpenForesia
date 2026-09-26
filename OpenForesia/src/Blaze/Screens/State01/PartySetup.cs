@@ -536,6 +536,108 @@ public static unsafe partial class Blaze
         s_Unknown_00566c88 = 0xff;
     }
 
+    /// <summary>
+    /// Ghidra: FUN_00537a20 @ 0x00537a20 — la branche <c>DAT_005de51c != 0</c> de l'état de jeu 1 :
+    /// partir **seul**, avec le personnage que l'écran de création vient de poser en
+    /// <c>MainMem+0xf0000</c>, sans passer par la liste des sauvegardes. Le seul écrivain de
+    /// <c>DAT_005de51c = 1</c> est <see cref="CancelCharacterCreation"/>.
+    ///
+    /// <para>C'est la fin de <see cref="RunPartyConstitution"/> ramenée à un membre : le même
+    /// enregistrement recopié dans les trois autres emplacements, l'état partagé du groupe relu depuis
+    /// lui — le même format que <see cref="RestorePartyGlobals"/>, **mais sans le test de
+    /// <c>+0x1f00</c>** : la recopie est inconditionnelle —, puis le même garde-fou et le même bloc
+    /// de fin. Il en diffère sur deux points : les octets remis à zéro sont <c>+0x2be</c> et
+    /// <c>+0x2bf</c> seuls (pas <c>+0x2bc</c>), et la sortie pose l'état de jeu **3**.</para>
+    /// </summary>
+    private static void StartWithCreatedCharacter()
+    {
+        byte* mainMem = GetMainMemPtr();
+        uint* first = (uint*)(mainMem + 0xf0000);
+        Mem.CopyDwords(first, (uint*)(mainMem + 0xf2000), 0x800);   // Ghidra: FUN_005352e0
+        Mem.CopyDwords(first, (uint*)(mainMem + 0xf4000), 0x800);   // Ghidra: FUN_005352e0
+        Mem.CopyDwords(first, (uint*)(mainMem + 0xf6000), 0x800);   // Ghidra: FUN_005352e0
+        s_PartySize_005e9020 = 1;
+
+        uint* otBase, otEntry, primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);   // Ghidra: FUN_0052a1e0
+
+        // Après les trois recopies : seul le premier enregistrement est touché.
+        byte* record = mainMem + 0xf0000;
+        record[0x2be] = 0;
+        Res.s_Unknown_005de528 = record[0x1f01];
+        record[0x2bf] = 0;
+        s_Unknown_005de52c = record[0x1f02];
+        s_Unknown_005de530 = record[0x1f03];
+
+        // Ghidra: puVar4 part de +0x1d40 et lit puVar4[-0x10] .. puVar4[0x60] — huit banques de 0x40
+        // octets consécutives depuis +0x1d00, dans l'ordre de RestorePartyGlobals.
+        byte*[] banks =
+        [
+            s_Bank_005e96e0, s_Bank_005e9780, Mem.s_PanelSelection_005e9060, s_Bank_005e9840,
+            s_Bank_005e9720, s_Bank_005e92c0, s_Bank_005e9980, s_Bank_005e9360,
+        ];
+        for (int bank = 0; bank < banks.Length; bank++)
+            for (int i = 0; i < 0x40; i += 4)
+                *(uint*)(banks[bank] + i) = *(uint*)(record + 0x1d00 + bank * 0x40 + i);
+
+        // Ghidra: puVar3 = &DAT_005e9322 jusqu'à 0x5e9362 par pas de 8 octets — huit triplets de mots
+        // depuis +0x1f04, le quatrième mot de chaque paire laissé tel quel.
+        for (int i = 0; i < 8; i++)
+        {
+            byte* destination = s_EquipPairs_005e9320 + i * 8;
+            byte* source = record + 0x1f04 + i * 8;
+            *(ushort*)destination = *(ushort*)source;
+            *(ushort*)(destination + 2) = *(ushort*)(source + 2);
+            *(ushort*)(destination + 4) = *(ushort*)(source + 4);
+        }
+
+        // Les emplacements au-delà de la taille du groupe perdent leur octet d'identité.
+        byte* identity = mainMem + 0xf0150;
+        for (int i = 0; i < 4; i++, identity += 0x2000)
+        {
+            if (s_PartySize_005e9020 <= i) *identity = 0;
+        }
+
+        RefreshPartyAbilityMask();       // Ghidra: FUN_00535710
+        LoadPartyMemberResources();      // Ghidra: FUN_00536ba0
+
+        // Ghidra: iVar1 = DAT_005e9020, relu après les deux appels.
+        int partySize = s_PartySize_005e9020;
+        if ((int)((nint)GetMainMemPtr() - (nint)s_Unknown_005de738) + 0x138000 >= 0)
+        {
+            // Le même bloc de fin que RunDebugPartySelect — voir sa note sur 0x80010000.
+            byte* slotFlags = Inp.s_SlotFlags_005e93c0;
+            for (int i = 0; i < 4; i++, slotFlags += 0x9c)
+            {
+                *(uint*)slotFlags = i == 0
+                    ? 0x80000000u
+                    : (partySize <= i ? 0u : 0x80010000u);
+            }
+
+            s_Unknown_00566c90 = 1;
+            s_Unknown_00566c94 = 1;
+            s_Unknown_00566c84 = 0xff;
+            s_Unknown_00566c88 = 0xff;
+            s_Unknown_00566c8c = 0xff;
+            s_Unknown_005de53c = 0;
+            s_GameStateId_005de510 = 3;
+            return;
+        }
+
+        // Débordement : comme dans RunDebugPartySelect, l'original reste ici pour toujours.
+        int* draw = stackalloc int[8];
+        byte* d = (byte*)draw;
+        while (true)
+        {
+            *(short*)(d + 8) = 0x38;
+            *(short*)(d + 0xa) = 0x20;
+            *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
+            *(uint*)(d + 4) = 0x1000000;
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_BufferOverLabel_0056c950, 0, 0, -1);
+            FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+        }
+    }
+
     private static int s_Unknown_005de7e8, s_Unknown_005de7ec, s_Unknown_005de7f0, s_Unknown_005de7f4,
                         s_Unknown_005de7f8, s_Unknown_005de7fc, s_Unknown_0056c778, s_Unknown_005de800;
     // Les huit octets que ce bloc remet à zéro ne sont PAS des globales isolées : ce sont quatre

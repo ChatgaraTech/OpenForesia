@@ -3923,7 +3923,9 @@ Transcribed `RunGameState1Entry` faithfully: the block of sixteen miscellaneous 
 idle values (first encountered here, roles not yet established, declared as `s_Unknown_*` rather
 than guessed), the two now-available helper calls, the `DAT_005de51c` branch (kept as a named
 `NotImplementedException` for `FUN_00537a20` — currently unreachable in practice since every known
-writer of that flag sets it to `0` immediately before entering this state), a `0x8000`-byte clear at
+writer of that flag sets it to `0` immediately before entering this state; **wrong**, the audit of
+2026-09-26 found `CancelCharacterCreation` setting it to `1`, and the body is now transcribed as
+`StartWithCreatedCharacter`), a `0x8000`-byte clear at
 `s_SelectScratch_00573338` (note: **0x2000 dwords, not the 0x2000 bytes this project has assumed
 that scratch block's extent to be elsewhere** — the base address is confirmed the same, just a
 larger true extent than previously needed), and finally the branch to `FUN_00536270` or
@@ -4354,7 +4356,12 @@ remaniement mesuré, à faire avant `FUN_00536ea0` et pas pendant.
 1. Poser le bloc de fond 0x5e9060–0x5e99c0 (voir ci-dessus) — préalable à `FUN_00536ea0`.
 2. `FUN_00536ea0`, avec l'analyse ci-dessus.
 3. `FUN_00535500`, après désassemblage brut (disposition de pile ambiguë).
-4. `FUN_00537a20`, la branche `DAT_005de51c != 0` de `RunGameState1Entry`, jamais lue.
+4. ~~`FUN_00537a20`, la branche `DAT_005de51c != 0` de `RunGameState1Entry`, jamais lue.~~
+   **Fait le 2026-09-26** : `StartWithCreatedCharacter` (`Screens/State01/PartySetup.cs`). La
+   branche est atteignable — `CancelCharacterCreation` pose `DAT_005de51c = 1` — et part **seul**
+   avec le personnage créé : l'enregistrement de `+0xf0000` recopié dans les trois autres
+   emplacements, l'état partagé relu depuis lui comme `RestorePartyGlobals` mais **sans** le test de
+   `+0x1f00`, groupe de taille 1, sortie vers l'état de jeu **3**. Non exercé en jeu.
 5. L'état de jeu 2 (`FUN_00542160`/`FUN_00537da0`), où le chemin A débouche maintenant.
 
 ### Le déclencheur « Gurkha », vérifié en jeu (même journée, après coup)
