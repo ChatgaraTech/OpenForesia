@@ -140,10 +140,13 @@ Its directory table lies: `CD.IDX` declares 640 MB (the copy protection, LB-053)
 their RIFF size. `FRENCH2\` is a byte-identical duplicate of `FRENCH\`.
 
 **The picture depends on `Affichage.ini`** next to the exe (since 2026-09-26,
-`openspec/changes/enhance-display-resolution-filtering`): internal resolution, MSAA, final scaling,
-3D and interface texture filtering. The game **reads it, never writes it**; without it, the modern
-defaults apply, **not** the pre-change rendering — compare screenshots with `ResolutionInterne = 1`,
-`Anticrenelage = 1`, `Filtrage3D = proche`. Template: `OpenForesia.Installer/Reglages/Affichage.ini`
+`openspec/changes/enhance-display-resolution-filtering`, reduced to four keys by
+`simplify-display-settings`): `Rendu` (`moderne` / `origine`), window `Mode`, `Fenetre` size,
+`MiseAEchelle`. The game **reads it, never writes it**; without it, the modern rendering applies,
+**not** the pre-change one — compare screenshots with `Rendu = origine`. The four earlier keys
+(`ResolutionInterne`, `Anticrenelage`, `Filtrage3D`, `FiltrageInterface`) are ignored as retired.
+**An installed game is only as recent as the Setup it came from**: rerun `publish-release.ps1`
+before comparing it with the Debug build. Template: `OpenForesia.Installer/Reglages/Affichage.ini`
 (the installer drops it if absent, never over the player's). Reference:
 `Documentation/Reference/Affichage.ini.md`. These settings deliberately stay **out of the game's own
 menus**.

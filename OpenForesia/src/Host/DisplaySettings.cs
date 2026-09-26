@@ -1,12 +1,17 @@
 // =====================================================================
 // Les réglages d'affichage du joueur — `Affichage.ini`, à côté de l'exécutable.
 //
-// Hors reconstruction (legacy ++, LB-055, openspec/changes/enhance-display-resolution-filtering) :
-// le jeu de 1998 n'a pas de résolution interne, pas d'anticrénelage, et son filtrage ne se règle
-// que par `Filter=` (F10 est inerte). Ces réglages-ci ne passent PAS par les menus du jeu ni par
-// `OpenForesia.cfg`, dont le jeu reste le seul écrivain : ce fichier est **lu une fois, jamais
-// écrit**. L'installeur en dépose un exemplaire commenté ; un configurateur l'écrira peut-être un
-// jour.
+// Hors reconstruction (legacy ++, LB-055, openspec/changes/archive/2026-09-26-simplify-display-settings) : le jeu de
+// 1998 n'a pas de résolution interne, pas d'anticrénelage, pas de mode de fenêtre, et son filtrage
+// ne se règle que par `Filter=` (F10 est inerte). Ces réglages-ci ne passent PAS par les menus du
+// jeu ni par `OpenForesia.cfg`, dont le jeu reste le seul écrivain : ce fichier est **lu une fois,
+// jamais écrit**. L'installeur en dépose un exemplaire commenté.
+//
+// Quatre clés, toutes dans `[Affichage]` : `Rendu`, `Mode`, `Fenetre`, `MiseAEchelle`. Les réglages
+// fins de la première version (`ResolutionInterne`, `Anticrenelage`, `Filtrage3D`,
+// `FiltrageInterface`) sont retirés : le rendu moderne est fixe, et `Rendu = origine` rend l'image
+// d'avant LB-055. Un ancien fichier les porte encore — l'installeur n'écrase jamais celui du
+// joueur — : ils sont reconnus comme retirés et ignorés.
 //
 // Chaque clé est validée seule. Fichier absent, clé absente ou valeur refusée : la valeur par
 // défaut, et une ligne de journal par valeur refusée. Rien ici ne peut empêcher le jeu de démarrer.
@@ -17,6 +22,26 @@
 
 namespace OpenForesia.Blaze;
 
+/// <summary>`[Affichage] Rendu`.</summary>
+internal enum RenderStyle
+{
+    /// <summary>Scène à la taille affichée, MSAA 4, polygones filtrés selon `Filter=`.</summary>
+    Modern,
+    /// <summary>L'image d'avant LB-055 : taille logique, sans MSAA, au plus proche partout.</summary>
+    Original,
+}
+
+/// <summary>`[Affichage] Mode` — le mode dans lequel la fenêtre s'ouvre.</summary>
+internal enum WindowMode
+{
+    /// <summary>Fenêtre à cadre et barre de titre, redimensionnable.</summary>
+    Windowed,
+    /// <summary>Sans cadre, à la taille `Fenetre`, centrée sur le moniteur.</summary>
+    Borderless,
+    /// <summary>Sans cadre, sur tout le moniteur — aucun changement de mode d'affichage.</summary>
+    Fullscreen,
+}
+
 /// <summary>`[Affichage] MiseAEchelle` — comment la scène est posée dans la fenêtre.</summary>
 internal enum ScalingMode
 {
@@ -26,48 +51,45 @@ internal enum ScalingMode
     Integer,
 }
 
-/// <summary>`[Textures] Filtrage3D`.</summary>
-internal enum Texture3dFilter
-{
-    /// <summary>Ce que le moteur d'origine demandait : `Filter=` et son choix par texture.</summary>
-    Game,
-    /// <summary>Toujours au plus proche.</summary>
-    Nearest,
-    /// <summary>Toujours bilinéaire, quel que soit `Filter=`.</summary>
-    Bilinear,
-}
-
-/// <summary>`[Textures] FiltrageInterface` — les textures que le moteur ne filtrait jamais.</summary>
-internal enum InterfaceFilter
-{
-    Sharp,
-    Smooth,
-}
-
 internal static class DisplaySettings
 {
     internal const string FileName = "Affichage.ini";
 
-    /// <summary>Valeur de <see cref="InternalResolution"/> qui signifie « la taille affichée ».</summary>
-    internal const int AutoResolution = 0;
+    /// <summary>Échantillons du rendu moderne (design D2) ; le repli matériel reste celui du backend.</summary>
+    private const int ModernSampleCount = 4;
 
-    /// <summary>`[Affichage] ResolutionInterne` : 1..8, ou <see cref="AutoResolution"/>.</summary>
-    internal static int InternalResolution { get { EnsureLoaded(); return s_InternalResolution; } }
-
-    /// <summary>`[Affichage] Anticrenelage` : 1, 2, 4 ou 8 échantillons demandés.</summary>
-    internal static int Antialiasing { get { EnsureLoaded(); return s_Antialiasing; } }
-
+    internal static RenderStyle Render { get { EnsureLoaded(); return s_Render; } }
+    internal static WindowMode Mode { get { EnsureLoaded(); return s_Mode; } }
     internal static ScalingMode Scaling { get { EnsureLoaded(); return s_Scaling; } }
-    internal static Texture3dFilter Filter3d { get { EnsureLoaded(); return s_Filter3d; } }
-    internal static InterfaceFilter FilterInterface { get { EnsureLoaded(); return s_FilterInterface; } }
 
-    // Défauts « modernes » (design D1). Le rendu d'avant ce changement :
-    // ResolutionInterne = 1, Anticrenelage = 1, Filtrage3D = proche.
-    private static int s_InternalResolution = AutoResolution;
-    private static int s_Antialiasing = 4;
+    /// <summary>
+    /// `[Affichage] Fenetre` : taille de zone cliente demandée, ou (0, 0) pour `auto` — `auto`
+    /// dépend du moniteur et de la taille logique, il se calcule à la création de la fenêtre.
+    /// </summary>
+    internal static (int Width, int Height) WindowSize { get { EnsureLoaded(); return s_WindowSize; } }
+
+    internal static bool WindowSizeIsAuto => WindowSize.Width == 0;
+
+    // Propriétés dérivées (design D2) : les consommateurs ne lisent jamais `Rendu` directement, pour
+    // que ce que `origine` veut dire se décide ici seulement.
+
+    /// <summary>La scène est rastérisée à la taille où elle est affichée, sinon à sa taille logique.</summary>
+    internal static bool RenderAtDisplaySize => Render == RenderStyle.Modern;
+
+    /// <summary>Échantillons demandés pour la cible de scène.</summary>
+    internal static int SampleCount => Render == RenderStyle.Modern ? ModernSampleCount : 1;
+
+    /// <summary>Les polygones que le moteur filtrait le sont ; sinon tout est au plus proche.</summary>
+    internal static bool FilterPolygons => Render == RenderStyle.Modern;
+
+    private static RenderStyle s_Render = RenderStyle.Modern;
+    private static WindowMode s_Mode = WindowMode.Windowed;
+    private static (int Width, int Height) s_WindowSize = (0, 0);
     private static ScalingMode s_Scaling = ScalingMode.Fitted;
-    private static Texture3dFilter s_Filter3d = Texture3dFilter.Game;
-    private static InterfaceFilter s_FilterInterface = InterfaceFilter.Sharp;
+
+    // Clés de la première version d'`Affichage.ini` (enhance-display-resolution-filtering).
+    private static readonly string[] s_RetiredKeys =
+        ["ResolutionInterne", "Anticrenelage", "Filtrage3D", "FiltrageInterface"];
 
     private static bool s_Loaded;
 
@@ -124,35 +146,41 @@ internal static class DisplaySettings
 
     private static void Apply(string section, string key, string value)
     {
-        bool Is(string s, string k) =>
-            section.Equals(s, StringComparison.OrdinalIgnoreCase) && key.Equals(k, StringComparison.OrdinalIgnoreCase);
+        bool Is(string k) =>
+            section.Equals("Affichage", StringComparison.OrdinalIgnoreCase) &&
+            key.Equals(k, StringComparison.OrdinalIgnoreCase);
         bool Eq(string v) => value.Equals(v, StringComparison.OrdinalIgnoreCase);
 
+        // Une clé retirée se reconnaît quelle que soit sa section (`Filtrage3D` et
+        // `FiltrageInterface` vivaient sous `[Textures]`) : une ligne distincte de « clé inconnue »,
+        // pour qu'on ne cherche pas une faute de frappe (design D4).
+        if (Array.Exists(s_RetiredKeys, k => k.Equals(key, StringComparison.OrdinalIgnoreCase)))
+        {
+            Console.Error.WriteLine($"[AFFICHAGE] clé retirée, ignorée : [{section}] {key}");
+            return;
+        }
+
         bool accepted;
-        if (Is("Affichage", "ResolutionInterne"))
+        if (Is("Rendu"))
         {
-            if (Eq("auto")) { s_InternalResolution = AutoResolution; accepted = true; }
-            else accepted = int.TryParse(value, out int n) && n >= 1 && n <= 8 && Set(ref s_InternalResolution, n);
+            accepted = Eq("moderne") ? Set(ref s_Render, RenderStyle.Modern)
+                     : Eq("origine") && Set(ref s_Render, RenderStyle.Original);
         }
-        else if (Is("Affichage", "Anticrenelage"))
+        else if (Is("Mode"))
         {
-            accepted = int.TryParse(value, out int n) && n is 1 or 2 or 4 or 8 && Set(ref s_Antialiasing, n);
+            accepted = Eq("fenetre") ? Set(ref s_Mode, WindowMode.Windowed)
+                     : Eq("fenetre-sans-bordure") ? Set(ref s_Mode, WindowMode.Borderless)
+                     : Eq("plein-ecran") && Set(ref s_Mode, WindowMode.Fullscreen);
         }
-        else if (Is("Affichage", "MiseAEchelle"))
+        else if (Is("Fenetre"))
+        {
+            accepted = Eq("auto") ? Set(ref s_WindowSize, (0, 0))
+                     : TryParseSize(value, out var size) && Set(ref s_WindowSize, size);
+        }
+        else if (Is("MiseAEchelle"))
         {
             accepted = Eq("ajustee") ? Set(ref s_Scaling, ScalingMode.Fitted)
                      : Eq("entiere") && Set(ref s_Scaling, ScalingMode.Integer);
-        }
-        else if (Is("Textures", "Filtrage3D"))
-        {
-            accepted = Eq("jeu") ? Set(ref s_Filter3d, Texture3dFilter.Game)
-                     : Eq("proche") ? Set(ref s_Filter3d, Texture3dFilter.Nearest)
-                     : Eq("bilineaire") && Set(ref s_Filter3d, Texture3dFilter.Bilinear);
-        }
-        else if (Is("Textures", "FiltrageInterface"))
-        {
-            accepted = Eq("net") ? Set(ref s_FilterInterface, InterfaceFilter.Sharp)
-                     : Eq("lisse") && Set(ref s_FilterInterface, InterfaceFilter.Smooth);
         }
         else
         {
@@ -164,6 +192,19 @@ internal static class DisplaySettings
             Console.Error.WriteLine($"[AFFICHAGE] valeur refusée, défaut conservé : [{section}] {key} = {value}");
     }
 
+    /// <summary>`largeurxhauteur`, deux entiers strictement positifs ; `x` ou `X`, espaces tolérés.</summary>
+    private static bool TryParseSize(string value, out (int Width, int Height) size)
+    {
+        size = default;
+        int x = value.IndexOfAny(['x', 'X']);
+        if (x <= 0) return false;
+        if (!int.TryParse(value[..x].Trim(), out int w) || !int.TryParse(value[(x + 1)..].Trim(), out int h))
+            return false;
+        if (w <= 0 || h <= 0) return false;
+        size = (w, h);
+        return true;
+    }
+
     private static bool Set<T>(ref T field, T value)
     {
         field = value;
@@ -171,7 +212,7 @@ internal static class DisplaySettings
     }
 
     private static string Describe() =>
-        $"ResolutionInterne={(s_InternalResolution == AutoResolution ? "auto" : s_InternalResolution.ToString())} " +
-        $"Anticrenelage={s_Antialiasing} MiseAEchelle={s_Scaling} Filtrage3D={s_Filter3d} " +
-        $"FiltrageInterface={s_FilterInterface}";
+        $"Rendu={s_Render} Mode={s_Mode} " +
+        $"Fenetre={(s_WindowSize.Width == 0 ? "auto" : $"{s_WindowSize.Width}x{s_WindowSize.Height}")} " +
+        $"MiseAEchelle={s_Scaling}";
 }

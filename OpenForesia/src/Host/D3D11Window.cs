@@ -22,6 +22,7 @@ internal static unsafe class D3D11Window
     private const uint WmDestroy = 0x0002;
     private const uint WmClose = 0x0010;
     private const uint WmSize = 0x0005;
+    private const uint WmActivateApp = 0x001C;
     private const uint WmSysCommand = 0x0112;
     private const uint WmExitSizeMove = 0x0232;
     private const uint ScMaximize = 0xF030;
@@ -135,6 +136,13 @@ internal static unsafe class D3D11Window
             case WmSize:
                 s_Resized = true;
                 return IntPtr.Zero;
+
+            case WmActivateApp:
+                // DXGI sort seul de l'exclusif quand le jeu perd le focus ; au retour, le backend le
+                // reprend à la prochaine image (jamais depuis la procédure de fenêtre).
+                s_Active = wParam != 0;
+                if (s_Fullscreen) s_ExclusiveCheck = true;
+                break;
 
             // Les deux seuls messages qui disent « c'est **l'utilisateur** qui a redimensionné » :
             // la fin d'un glisser de bordure, et le bouton agrandir / restaurer de la barre de
@@ -425,7 +433,21 @@ internal static unsafe class D3D11Window
     /// </summary>
     internal static void RestorePlacement()
     {
-        if (Handle == IntPtr.Zero || !s_HasSavedPlacement || s_Fullscreen) return;
+        if (Handle == IntPtr.Zero) return;
+
+        // Démarrer en plein écran (`Mode = plein-ecran`) rend ce rétablissement nécessaire là où il
+        // ne l'était pas : `3dhelp` repositionne aussi une fenêtre sans cadre. On la ré-ajuste à
+        // l'écran plutôt que de ne rien faire (openspec/changes/archive/2026-09-26-simplify-display-settings, D6).
+        // Une fenêtre sans bordure, elle, a son relevé pris APRÈS le retrait du cadre
+        // (ApplyStartMode) : SetWindowPlacement ci-dessous lui rend son rectangle centré.
+        if (s_Fullscreen)
+        {
+            FitToMonitor();
+            Console.Error.WriteLine("[FEN] retabli : plein écran");
+            return;
+        }
+
+        if (!s_HasSavedPlacement) return;
         WindowPlacement p = s_SavedPlacement;
         p.length = (uint)sizeof(WindowPlacement);
         SetWindowPlacement(Handle, &p);
@@ -437,19 +459,40 @@ internal static unsafe class D3D11Window
     private static Rect s_WindowedRect;
     private static int s_WindowedStyle;
 
-    /// <summary>Vrai quand la fenêtre occupe l'écran entier, sans bordure.</summary>
+    /// <summary>Vrai quand la fenêtre est en plein écran (`plein-ecran` ou Alt+Entrée).</summary>
     internal static bool IsFullscreen => s_Fullscreen;
 
+    // Le plein écran demandé est **exclusif** (simplify-display-settings, D9) : la fenêtre s'étend au
+    // moniteur sans cadre, puis le backend fait passer la swap chain en exclusif — à la première
+    // image Direct3D, et de nouveau à chaque retour du focus, DXGI en sortant seul quand on clique
+    // ailleurs. C'est ce qui distingue `plein-ecran` de `fenetre-sans-bordure`, où la souris va et
+    // vient sur un second écran sans que le jeu s'efface.
+    private static bool s_ExclusiveCheck;
+    private static bool s_Active = true;
+
+    /// <summary>La swap chain doit-elle être en exclusif ?</summary>
+    internal static bool ExclusiveWanted => s_Fullscreen;
+
+    /// <summary>L'application a-t-elle le focus (WM_ACTIVATEAPP) ?</summary>
+    internal static bool IsActive => s_Active;
+
+    /// <summary>Vrai une fois après un changement qui peut demander d'entrer dans l'exclusif ou d'en sortir.</summary>
+    internal static bool TakeExclusiveCheck()
+    {
+        bool c = s_ExclusiveCheck;
+        s_ExclusiveCheck = false;
+        return c;
+    }
+
+    internal static void MarkResized() => s_Resized = true;
+
     /// <summary>
-    /// Bascule entre fenêtre et plein écran **sans bordure**.
+    /// Bascule entre le mode de départ et le plein écran exclusif.
     ///
-    /// Le plein écran est obtenu en retirant la bordure et en dimensionnant la fenêtre à l'écran :
-    /// aucun changement de mode d'affichage, aucun mode exclusif. C'est ce que font les jeux
-    /// modernes, et c'est ce qui garantit qu'on ne retombe pas dans le problème que cette change a
-    /// supprimé.
-    ///
-    /// La position et les dimensions de la fenêtre sont mémorisées à l'aller et restituées au
-    /// retour.
+    /// À l'aller, la fenêtre perd son cadre et couvre le moniteur ; l'exclusif suit à la prochaine
+    /// image (voir plus haut). Au retour, on sort d'abord de l'exclusif — DXGI rendrait sinon la
+    /// fenêtre dans l'état où il l'a prise —, puis la position, les dimensions et le style
+    /// mémorisés à l'aller sont restitués : cadre en `fenetre`, sans cadre en `fenetre-sans-bordure`.
     /// </summary>
     internal static void ToggleFullscreen()
     {
@@ -462,21 +505,13 @@ internal static unsafe class D3D11Window
             s_WindowedRect = r;
             s_WindowedStyle = GetWindowLongA(Handle, GwlStyle);
 
-            IntPtr monitor = MonitorFromWindow(Handle, MonitorDefaultToNearest);
-            var info = default(MonitorInfo);
-            info.cbSize = (uint)sizeof(MonitorInfo);
-            if (GetMonitorInfoA(monitor, &info) == 0) return;
-
-            SetWindowLongA(Handle, GwlStyle, unchecked((int)(WsPopup | WsVisible)));
-            SetWindowPos(Handle, IntPtr.Zero,
-                info.rcMonitor.Left, info.rcMonitor.Top,
-                info.rcMonitor.Width, info.rcMonitor.Height,
-                SwpFrameChanged | SwpNoZOrder | SwpNoOwnerZOrder);
-
+            if (!FitToMonitor()) return;
             s_Fullscreen = true;
+            s_ExclusiveCheck = true;
         }
         else
         {
+            D3D11Backend.SetExclusiveFullscreen(false);
             SetWindowLongA(Handle, GwlStyle, s_WindowedStyle);
             SetWindowPos(Handle, IntPtr.Zero,
                 s_WindowedRect.Left, s_WindowedRect.Top,
@@ -491,7 +526,137 @@ internal static unsafe class D3D11Window
         }
 
         s_Resized = true;
-        Console.Error.WriteLine($"[FEN] {(s_Fullscreen ? "plein écran sans bordure" : "fenêtre")}");
+        Console.Error.WriteLine($"[FEN] {(s_Fullscreen ? "plein écran" : "retour au mode de départ")}");
+    }
+
+    /// <summary>Retire le cadre et étend la fenêtre au moniteur qui la porte. Faux si le moniteur est illisible.</summary>
+    private static bool FitToMonitor()
+    {
+        if (!TryGetMonitorInfo(out MonitorInfo info)) return false;
+        SetWindowLongA(Handle, GwlStyle, unchecked((int)(WsPopup | WsVisible)));
+        SetWindowPos(Handle, IntPtr.Zero,
+            info.rcMonitor.Left, info.rcMonitor.Top,
+            info.rcMonitor.Width, info.rcMonitor.Height,
+            SwpFrameChanged | SwpNoZOrder | SwpNoOwnerZOrder);
+        return true;
+    }
+
+    private static bool TryGetMonitorInfo(out MonitorInfo info)
+    {
+        IntPtr monitor = MonitorFromWindow(Handle, MonitorDefaultToNearest);
+        info = default;
+        info.cbSize = (uint)sizeof(MonitorInfo);
+        fixed (MonitorInfo* p = &info) return GetMonitorInfoA(monitor, p) != 0;
+    }
+
+    // =====================================================================
+    // Le mode et la taille de départ — `Affichage.ini`, `Mode` et `Fenetre`
+    // (openspec/changes/archive/2026-09-26-simplify-display-settings). Aucun ne change le mode d'affichage du moniteur.
+    // =====================================================================
+
+    [DllImport("user32.dll")] private static extern int SystemParametersInfoA(uint action, uint param, void* pvParam, uint winIni);
+    private const uint SpiGetWorkArea = 0x0030;
+
+    // La zone cliente choisie au départ. `fenetre-sans-bordure` la pose telle quelle : relue par
+    // ClientSize(), elle pourrait avoir été rognée par Windows à la création de la fenêtre à cadre.
+    private static (int Width, int Height) s_StartClientSize;
+
+    /// <summary>
+    /// La zone cliente de départ (design D7), mesurée sur le moniteur principal.
+    /// <list type="bullet">
+    /// <item><c>fenetre-sans-bordure</c> : l'écran entier, barre des tâches comprise ; <c>auto</c> =
+    /// tout l'écran — la scène s'y pose en 4:3 avec ses bandes, comme en plein écran.</item>
+    /// <item><c>fenetre</c> et <c>plein-ecran</c> (dont le retour d'Alt+Entrée est une fenêtre à
+    /// cadre) : la zone de travail moins le cadre ; <c>auto</c> = le plus grand rectangle au format
+    /// de la taille logique qui tienne, ou le plus grand multiple entier en
+    /// <c>MiseAEchelle = entiere</c> — jamais moins que la taille logique.</item>
+    /// </list>
+    /// Une taille explicite trop grande est réduite en gardant ses proportions.
+    /// </summary>
+    internal static (int Width, int Height) ChooseClientSize(int logicalW, int logicalH)
+    {
+        var screen = new Rect { Right = GetSystemMetrics(0 /* SM_CXSCREEN */), Bottom = GetSystemMetrics(1 /* SM_CYSCREEN */) };
+        bool borderless = DisplaySettings.Mode == WindowMode.Borderless;
+
+        int availW, availH;
+        string where;
+        if (borderless)
+        {
+            (availW, availH, where) = (screen.Width, screen.Height, "l'écran");
+        }
+        else
+        {
+            Rect work;
+            if (SystemParametersInfoA(SpiGetWorkArea, 0, &work, 0) == 0 || work.Width <= 0 || work.Height <= 0)
+                work = screen;
+            var f = new Rect();
+            AdjustWindowRect(&f, WsOverlappedWindow, 0);
+            (availW, availH, where) = (Math.Max(1, work.Width - f.Width), Math.Max(1, work.Height - f.Height),
+                                       "l'écran de travail");
+        }
+
+        (int w, int h) size;
+        if (DisplaySettings.WindowSizeIsAuto)
+        {
+            if (borderless)
+                size = (availW, availH);
+            else if (DisplaySettings.Scaling == ScalingMode.Integer)
+            {
+                int k = Math.Max(1, Math.Min(availW / logicalW, availH / logicalH));
+                size = (logicalW * k, logicalH * k);
+            }
+            else
+            {
+                float s = MathF.Max(1f, MathF.Min((float)availW / logicalW, (float)availH / logicalH));
+                size = ((int)(logicalW * s), (int)(logicalH * s));
+            }
+        }
+        else
+        {
+            size = DisplaySettings.WindowSize;
+            if (size.w > availW || size.h > availH)
+            {
+                float s = MathF.Min((float)availW / size.w, (float)availH / size.h);
+                (int rw, int rh) = (Math.Max(1, (int)(size.w * s)), Math.Max(1, (int)(size.h * s)));
+                Console.Error.WriteLine($"[FEN] Fenetre={size.w}x{size.h} dépasse {where} — réduite à {rw}x{rh}");
+                size = (rw, rh);
+            }
+        }
+
+        s_StartClientSize = size;
+        Console.Error.WriteLine($"[FEN] zone cliente de départ {size.w}x{size.h}");
+        return size;
+    }
+
+    /// <summary>
+    /// Applique <c>Mode</c> à la fenêtre qui vient d'être créée à cadre. Appelée APRÈS
+    /// <see cref="SavePlacement"/> (design D5) : en <c>plein-ecran</c>, la bascule garde ainsi la
+    /// fenêtre à cadre de taille <c>Fenetre</c> comme point de retour d'Alt+Entrée.
+    /// </summary>
+    internal static void ApplyStartMode()
+    {
+        if (Handle == IntPtr.Zero) return;
+        switch (DisplaySettings.Mode)
+        {
+            case WindowMode.Borderless:
+            {
+                (int w, int h) = s_StartClientSize.Width > 0 ? s_StartClientSize : ClientSize();
+                if (!TryGetMonitorInfo(out MonitorInfo info)) return;
+                Rect m = info.rcMonitor;
+                SetWindowLongA(Handle, GwlStyle, unchecked((int)(WsPopup | WsVisible)));
+                SetWindowPos(Handle, IntPtr.Zero,
+                    m.Left + (m.Width - w) / 2, m.Top + (m.Height - h) / 2, w, h,
+                    SwpFrameChanged | SwpNoZOrder | SwpNoOwnerZOrder);
+                s_Resized = true;
+                // Le relevé doit décrire la fenêtre sans cadre : c'est elle que RestorePlacement rétablit.
+                SavePlacement();
+                Console.Error.WriteLine($"[FEN] fenêtre sans bordure {w}x{h}");
+                break;
+            }
+            case WindowMode.Fullscreen:
+                ToggleFullscreen();
+                break;
+        }
     }
 
     /// <summary>Amène notre fenêtre au premier plan.</summary>

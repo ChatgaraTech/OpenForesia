@@ -66,12 +66,13 @@ internal static unsafe class D3D11Backend
     // Cible hors écran : ce dans quoi le jeu rend réellement.
     //
     // Deux tailles depuis `Affichage.ini` (openspec/changes/enhance-display-resolution-filtering,
-    // design D2). La taille **logique** (s_SceneWidth/Height) est celle que le jeu demande et dans
-    // laquelle ses sommets sont exprimés — le shader normalise par elle, rien ne la change. La
-    // taille **physique** (s_TargetWidth/Height) est celle de la texture : ResolutionInterne fois
-    // la logique, ou la taille à l'écran en `auto`. Rastériser plus fin ne déplace rien.
+    // design D2 ; simplify-display-settings). La taille **logique** (s_SceneWidth/Height) est celle
+    // que le jeu demande et dans laquelle ses sommets sont exprimés — le shader normalise par elle,
+    // rien ne la change. La taille **physique** (s_TargetWidth/Height) est celle de la texture : la
+    // taille à l'écran en `Rendu = moderne`, la logique en `Rendu = origine`. Rastériser plus fin
+    // ne déplace rien.
     //
-    // Multi-échantillonnée (Anticrenelage > 1), la cible ne se lit pas directement : elle est
+    // Multi-échantillonnée (`Rendu = moderne`), la cible ne se lit pas directement : elle est
     // résolue dans s_ResolvedTexture, et s_SceneSrv désigne alors cette dernière.
     private static ComPtr<ID3D11Texture2D> s_SceneTexture;
     private static ComPtr<ID3D11RenderTargetView> s_SceneView;
@@ -423,9 +424,9 @@ internal static unsafe class D3D11Backend
     /// Retire à DXGI la main sur Alt+Entrée.
     ///
     /// Par défaut, DXGI intercepte ce raccourci et bascule la swap chain en **plein écran
-    /// exclusif** — c'est-à-dire exactement le mécanisme qu'on vient de retirer à `3dhelp`, avec
-    /// changement de mode d'affichage à la clé. Le plein écran de cette change est sans bordure et
-    /// relève de la fenêtre, pas de DXGI.
+    /// exclusif** de lui-même, sans passer par nous. Alt+Entrée est traitée par la fenêtre, qui sait
+    /// dans quel mode le joueur a démarré (`Affichage.ini`, `Mode`) et y revient ; l'exclusif, quand
+    /// `Mode = plein-ecran` le demande, est piloté par <see cref="SetExclusiveFullscreen"/>.
     /// </summary>
     private static void DisableDxgiFullscreenShortcut(IntPtr hwnd)
     {
@@ -621,13 +622,13 @@ internal static unsafe class D3D11Backend
         if (width <= 0 || height <= 0) return;
 
         var (targetW, targetH) = PhysicalTargetSize(width, height);
-        uint samples = SupportedSampleCount((uint)DisplaySettings.Antialiasing);
+        uint samples = SupportedSampleCount((uint)DisplaySettings.SampleCount);
         s_TargetDirty = false;
         if (s_SceneWidth == width && s_SceneHeight == height && s_TargetWidth == targetW &&
             s_TargetHeight == targetH && s_SampleCount == samples && s_SceneView.Handle != null) return;
 
-        // Une cible trop grande pour le GPU (8x en 4K, par exemple) : on retire d'abord le MSAA,
-        // puis la résolution interne. Le jeu doit s'afficher, même moins bien que demandé.
+        // Une cible refusée par le GPU (mémoire, écran 8K) : on retire d'abord le MSAA, puis
+        // l'agrandissement. Le jeu doit s'afficher, même moins bien que demandé.
         if (!TryCreateSceneTarget(targetW, targetH, samples))
         {
             if (!s_TargetFallbackReported)
@@ -656,33 +657,18 @@ internal static unsafe class D3D11Backend
     }
 
     /// <summary>
-    /// La taille physique de la cible pour une taille logique donnée, d'après
-    /// <c>ResolutionInterne</c> : N fois la logique, ou en <c>auto</c> le rectangle où la scène
-    /// sera affichée — jamais moins que la logique, et au plus 16384 de côté.
+    /// La taille physique de la cible pour une taille logique donnée. <c>Rendu = moderne</c> : le
+    /// rectangle où la scène sera affichée, jamais moins que la logique. <c>Rendu = origine</c> :
+    /// la logique. Le rectangle affiché tient dans la chaîne d'échange, donc dans les limites de
+    /// taille de texture du matériel.
     /// </summary>
     private static (int Width, int Height) PhysicalTargetSize(int logicalW, int logicalH)
     {
-        int factor = DisplaySettings.InternalResolution;
-        int w, h;
-        if (factor == DisplaySettings.AutoResolution)
-        {
-            if (s_BackBufferWidth <= 0 || s_BackBufferHeight <= 0) return (logicalW, logicalH);
-            var dest = DestinationRect(logicalW, logicalH);
-            (w, h) = (dest.Width, dest.Height);
-            if (w < logicalW || h < logicalH) return (logicalW, logicalH);
-        }
-        else
-        {
-            (w, h) = (logicalW * factor, logicalH * factor);
-        }
-
-        const int MaxSide = 16384;
-        if (w > MaxSide || h > MaxSide)
-        {
-            float s = MathF.Min((float)MaxSide / w, (float)MaxSide / h);
-            (w, h) = ((int)(w * s), (int)(h * s));
-        }
-        return (w, h);
+        if (!DisplaySettings.RenderAtDisplaySize) return (logicalW, logicalH);
+        if (s_BackBufferWidth <= 0 || s_BackBufferHeight <= 0) return (logicalW, logicalH);
+        var dest = DestinationRect(logicalW, logicalH);
+        if (dest.Width < logicalW || dest.Height < logicalH) return (logicalW, logicalH);
+        return (dest.Width, dest.Height);
     }
 
     /// <summary>
@@ -703,7 +689,7 @@ internal static unsafe class D3D11Backend
         if (count != wanted && !s_SampleFallbackReported)
         {
             s_SampleFallbackReported = true;
-            Console.Error.WriteLine($"[AFFICHAGE] Anticrenelage={wanted} non supporté — {count} échantillon(s)");
+            Console.Error.WriteLine($"[AFFICHAGE] MSAA {wanted} non supporté — {count} échantillon(s)");
         }
         return Math.Max(count, 1u);
     }
@@ -814,9 +800,9 @@ internal static unsafe class D3D11Backend
             0, (uint)w, (uint)h, Format.FormatUnknown, 0));
         CreateBackBufferView(w, h);
 
-        // En `auto`, la taille de rastérisation suit la fenêtre ; la cible sera recréée au
+        // En `Rendu = moderne`, la taille de rastérisation suit la fenêtre ; la cible sera recréée au
         // prochain début de scène (voir s_TargetDirty).
-        if (DisplaySettings.InternalResolution == DisplaySettings.AutoResolution) s_TargetDirty = true;
+        if (DisplaySettings.RenderAtDisplaySize) s_TargetDirty = true;
     }
 
     // =====================================================================
@@ -1203,6 +1189,7 @@ internal static unsafe class D3D11Backend
 
     private static void PresentView(ComPtr<ID3D11ShaderResourceView> source, int sourceWidth, int sourceHeight)
     {
+        if (D3D11Window.TakeExclusiveCheck()) ReconcileExclusiveFullscreen();
         if (D3D11Window.TakeResize()) HandleResize();
 
         var backBuffer = s_BackBufferView;
@@ -1609,9 +1596,56 @@ internal static unsafe class D3D11Backend
         return srv;
     }
 
+    // =====================================================================
+    // Plein écran exclusif — `Mode = plein-ecran` (openspec/changes/archive/2026-09-26-simplify-display-settings, D9).
+    //
+    // La swap chain naît fenêtrée et le reste en `fenetre` et `fenetre-sans-bordure`. En
+    // `plein-ecran`, la fenêtre est d'abord étendue au moniteur sans cadre (c'est tout ce qu'on peut
+    // faire pendant le régime GDI du démarrage, sans swap chain), puis la swap chain passe en
+    // exclusif à la première image Direct3D. Ses tampons ont alors la taille du moniteur : DXGI
+    // garde la définition du bureau. Perdre le focus fait sortir DXGI de l'exclusif de lui-même ; au
+    // retour (WM_ACTIVATEAPP), la fenêtre redemande l'examen et l'exclusif est repris ici, jamais
+    // dans la procédure de fenêtre.
+    // =====================================================================
+
+    /// <summary>Met la swap chain dans l'état que la fenêtre demande, si elle n'y est pas déjà.</summary>
+    private static void ReconcileExclusiveFullscreen()
+    {
+        bool wanted = D3D11Window.ExclusiveWanted && D3D11Window.IsActive;
+        if (wanted == IsExclusiveFullscreen()) return;
+        SetExclusiveFullscreen(wanted);
+    }
+
+    private static bool IsExclusiveFullscreen()
+    {
+        if (!Ready) return false;
+        int state = 0;
+        s_SwapChain.GetFullscreenState(&state, (IDXGIOutput**)null);
+        return state != 0;
+    }
+
+    /// <summary>
+    /// Entre dans l'exclusif ou en sort. Un refus (autre application au premier plan, bureau
+    /// distant) n'est pas une erreur : la fenêtre reste étendue au moniteur, sans cadre.
+    /// </summary>
+    internal static void SetExclusiveFullscreen(bool on)
+    {
+        if (!Ready) return;
+        int hr = s_SwapChain.SetFullscreenState(new Silk.NET.Core.Bool32(on), (IDXGIOutput*)null);
+        Console.Error.WriteLine(hr < 0
+            ? $"[FEN] plein écran exclusif {(on ? "refusé" : "non quitté")} (0x{hr:X8})"
+            : $"[FEN] plein écran exclusif {(on ? "pris" : "quitté")}");
+        // DXGI redimensionne la fenêtre à l'entrée comme à la sortie ; les tampons suivront au
+        // prochain PresentView.
+        D3D11Window.MarkResized();
+    }
+
     internal static void Shutdown()
     {
         if (!Ready) return;
+
+        // Une swap chain ne se libère pas en plein écran exclusif (règle DXGI).
+        if (IsExclusiveFullscreen()) s_SwapChain.SetFullscreenState(new Silk.NET.Core.Bool32(false), (IDXGIOutput*)null);
 
         s_WhiteTexture.Dispose();
         s_DepthOff.Dispose();

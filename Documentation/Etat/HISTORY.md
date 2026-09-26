@@ -6,6 +6,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- doc : `simplify-display-settings` validé en jeu par Vincent — réinstallation sans traits sous les textes, trois modes de fenêtre, second écran — et archivé ; spec `display-enhancements` mis à jour
+- feat : `Mode = plein-ecran` devient un vrai plein écran **exclusif** (swap chain DXGI, définition du bureau), quitté quand le jeu perd le focus et repris au retour ; `fenetre-sans-bordure` reste le mode où l'on travaille sur un second écran sans que le jeu s'efface
+- fix : `Fenetre = auto` restait à 1024x768 (multiple entier de `Size=23`, ×2 ne tient pas en 1080p) — c'est désormais le plus grand 4:3 qui tient, le multiple entier seulement en `MiseAEchelle = entiere` ; `fenetre-sans-bordure` se mesure sur l'écran entier et non la zone de travail (un 1920x1080 devenait 1834x1032) — en `auto`, elle couvre l'écran
+- feat : `Affichage.ini` simplifié — `Rendu = moderne` (taille affichée, MSAA 4, filtrage selon `Filter=`, interface nette) ou `origine` (l'image d'avant LB-055) ; les quatre clés fines de la première version sont ignorées comme « retirées »
+- feat : la fenêtre s'ouvre dans le mode choisi (`Mode` : fenêtre, fenêtre sans bordure, plein écran sans bordure) et à la taille `Fenetre` (`auto` = plus grand multiple entier qui tient à l'écran, 1280x960 au lieu de 640x480) ; Alt+Entrée bascule du mode de départ au plein écran
+- doc : proposition `simplify-display-settings` — `Affichage.ini` ramené à `Rendu` (moderne / origine), `Mode` (fenêtre, sans bordure, plein écran), `Fenetre` et `MiseAEchelle` ; constat : les traits sous les textes de la version installée venaient d'un Setup publié à 16:11, avant leurs correctifs (16:38)
 - feat : `Affichage.ini` — résolution interne (`auto` = taille de l'écran, ou ×1 à ×8), MSAA 1/2/4/8, mise à l'échelle ajustée ou entière ; le jeu le lit, ne l'écrit jamais, et ses menus n'en savent rien (LB-055)
 - feat : le filtrage de texture du jeu arrive enfin — slot device `+0x90` branché, donc `Filter=` agit ; filtrage bilinéaire fait dans le shader, sans liseré de couleur-clé ni débord de page ; interface réglable à part (`net` / `lisse`)
 - feat : l'installeur dépose un `Affichage.ini` commenté, sans jamais écraser celui du joueur

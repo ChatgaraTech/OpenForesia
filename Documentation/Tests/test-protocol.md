@@ -40,22 +40,26 @@ la commande.
 
 ## `Affichage.ini` : l'image dépend d'un fichier à côté de l'exe (2026-09-26)
 
-Depuis `openspec/changes/enhance-display-resolution-filtering`, la résolution interne, le MSAA, la
-mise à l'échelle et le filtrage viennent de `Affichage.ini`, **dans le même dossier que l'exe**
-(`OpenForesia\bin\Debug\net10.0\` en développement). Sans lui, ce sont les défauts modernes
-(`auto`, MSAA 4, `ajustee`, `jeu`, `net`) — **pas** le rendu d'avant. Le modèle commenté est
+Depuis `openspec/changes/enhance-display-resolution-filtering` (simplifié par
+`simplify-display-settings`), le rendu, le mode et la taille de la fenêtre et la mise à l'échelle
+viennent de `Affichage.ini`, **dans le même dossier que l'exe** (`OpenForesia\bin\Debug\net10.0\` en
+développement). Sans lui, c'est `Rendu = moderne` (taille affichée, MSAA 4, filtrage selon
+`Filter=`), une fenêtre à cadre de taille `auto` — **pas** le rendu d'avant. Le modèle commenté est
 `OpenForesia.Installer\Reglages\Affichage.ini` ; le copier dans le dossier de l'exe pour un essai.
-Ce qui a été lu s'imprime au démarrage en ligne `[AFFICHAGE]`, suivie de la taille de rastérisation.
+Ce qui a été lu s'imprime au démarrage en ligne `[AFFICHAGE]`, suivie de la taille de rastérisation ;
+une clé de la première version s'annonce `clé retirée, ignorée`.
 
 **Toute capture comparée à une capture antérieure au 2026-09-26** se fait avec le rendu d'origine :
 
 ```ini
 [Affichage]
-ResolutionInterne = 1
-Anticrenelage = 1
-[Textures]
-Filtrage3D = proche
+Rendu = origine
 ```
+
+**Comparer la version installée à la version Debug** n'a de sens qu'avec un Setup republié : l'exe
+installé est celui que `publish-release.ps1` a embarqué, à l'heure où il a tourné. Le 2026-09-26, des
+traits sous les textes « propres à la version installée » venaient d'un Setup de 16:11, antérieur
+aux correctifs de 16:38 — mêmes `.ini`, code différent.
 
 Le jeu d'écrans de comparaison du changement : écran-titre, menu principal, sélection de
 personnage, auberge, forêt, un combat — en rendu d'origine puis en défauts modernes, pour y chercher

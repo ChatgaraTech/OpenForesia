@@ -2372,7 +2372,8 @@ quel, défaut des enregistrements décalés compris.
 ## LB-055 — Le port rendait tout en 640x480 au plus proche, et le filtrage du jeu n'arrivait nulle part
 
 **Statut** : `Contourné` le 2026-09-26 (legacy ++, confort, demande de Vincent) —
-`openspec/changes/enhance-display-resolution-filtering`. Interrupteurs : les clés de
+`openspec/changes/enhance-display-resolution-filtering`, simplifié par
+`openspec/changes/archive/2026-09-26-simplify-display-settings`. Interrupteur : `Rendu = moderne | origine` dans
 `Affichage.ini` (`Documentation/Reference/Affichage.ini.md`).
 
 **Ce que faisait l'original** : le jeu rendait à la taille de son mode d'affichage (320x240 à
@@ -2388,7 +2389,9 @@ n'avait aucun effet, tout était au plus proche. (La touche F10, censée bascule
 inerte dans le binaire de 1998 comme ici : voir `NOTE_DEVELOPPEUR.md`, § 9.)
 
 **Contournement** (dans `src/Host/` seulement, aucun corps transcrit touché) : le slot `+0x90` est
-branché (`Shim_TextureFilter`, `DeviceShim.cs`) ; la scène est rastérisée à une taille physique
-réglable avec MSAA, et présentée à l'échelle entière ou ajustée (`D3D11Backend.cs`) ; le filtrage
-est fait dans le shader sans halo de couleur-clé ni débord de page (`SampleKeyed`). Le rendu d'avant
-se retrouve par `ResolutionInterne = 1`, `Anticrenelage = 1`, `Filtrage3D = proche`.
+branché (`Shim_TextureFilter`, `DeviceShim.cs`) ; la scène est rastérisée à la taille où elle est
+affichée avec MSAA 4, et présentée à l'échelle entière ou ajustée (`D3D11Backend.cs`) ; les polygones
+que le jeu filtrait le sont dans le shader, sans halo de couleur-clé ni débord de page
+(`SampleKeyed`). Le rendu d'avant se retrouve par `Rendu = origine`. La première version exposait
+résolution interne (×1 à ×8), MSAA 1 à 8 et deux filtrages forcés ; retirés le même jour
+(`simplify-display-settings`) : au-delà de la taille affichée, rien ne se voyait.

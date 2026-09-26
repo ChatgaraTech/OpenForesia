@@ -243,17 +243,18 @@ internal static unsafe class DeviceShim
     /// Dimensions : celles que le jeu déduira lui-même de son réglage <c>Size</c>, plutôt qu'une
     /// taille arbitraire suivie d'un redimensionnement quand la pose du viewport révèle la vraie.
     ///
-    /// Dimensions : 640x480, l'espace logique de référence du moteur — établi dans
-    /// <c>Documentation/DLL/winsys3d.md</c>. La taille de la fenêtre n'est de toute façon jamais
-    /// observée par le jeu ; la swap chain se dimensionnera sur la zone cliente réelle.
+    /// Dimensions : celles de <c>Fenetre</c> dans <c>Affichage.ini</c>, <c>auto</c> par défaut — un
+    /// multiple entier de la taille logique. La taille de la fenêtre n'est jamais observée par le
+    /// jeu ; la swap chain se dimensionne sur la zone cliente réelle.
     /// </summary>
     internal static void CreateGameWindow()
     {
-        // `Affichage.ini` est lu ici, avant la fenêtre et le device : la résolution interne et
-        // l'anticrénelage décident de la cible que le backend créera.
+        // `Affichage.ini` est lu ici, avant la fenêtre et le device : `Rendu` décide de la cible
+        // que le backend créera, `Mode` et `Fenetre` de la fenêtre elle-même.
         DisplaySettings.EnsureLoaded();
 
-        (int width, int height) = RenderSizeFromSizeSetting();
+        (int logicalW, int logicalH) = RenderSizeFromSizeSetting();
+        (int width, int height) = D3D11Window.ChooseClientSize(logicalW, logicalH);
 
         // Un échec ici n'est pas fatal : sans fenêtre à nous, le jeu retombe sur le chemin
         // d'affichage d'origine. Bruyant plutôt que silencieux, conformément à la règle du dépôt,
@@ -266,6 +267,9 @@ internal static unsafe class DeviceShim
             // négocie encore un à son initialisation, et Windows repositionne les fenêtres à cette
             // occasion : sans ce relevé, la fenêtre se déplace entre l'écran-titre et le menu.
             D3D11Window.SavePlacement();
+
+            // Le mode de départ s'applique après le relevé (simplify-display-settings, design D5).
+            D3D11Window.ApplyStartMode();
 
             // En démarrage fenêtré, notre fenêtre est la seule du jeu : c'est elle qui doit
             // recevoir la saisie.
@@ -647,13 +651,13 @@ internal static unsafe class DeviceShim
             : TextureFilterClass.Unfiltered3d;
     }
 
-    /// <summary>La primitive courante est-elle filtrée, compte tenu de `Affichage.ini` ?</summary>
-    private static bool CurrentBindFiltered() => CurrentFilterClass() switch
-    {
-        TextureFilterClass.Interface => DisplaySettings.FilterInterface == InterfaceFilter.Smooth,
-        TextureFilterClass.Unfiltered3d => DisplaySettings.Filter3d == Texture3dFilter.Bilinear,
-        _ => DisplaySettings.Filter3d != Texture3dFilter.Nearest,
-    };
+    /// <summary>
+    /// La primitive courante est-elle filtrée ? Seulement un polygone que le jeu filtrait, et
+    /// seulement en `Rendu = moderne` ; `origine` est au plus proche partout
+    /// (openspec/changes/archive/2026-09-26-simplify-display-settings, design D3).
+    /// </summary>
+    private static bool CurrentBindFiltered() =>
+        DisplaySettings.FilterPolygons && CurrentFilterClass() == TextureFilterClass.Filtered3d;
 
     // ECHAFAUDAGE — OPENFORESIA_TRACE_FILTER=1 : chaque couple (texture, classe) vu la première fois
     // fait une ligne, et la texture est écrite dans scratchpad/ sous le nom de sa classe. Sert à
