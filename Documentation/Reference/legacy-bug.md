@@ -2300,6 +2300,13 @@ place du voile opaque, derrière `s_ComfortWhiteFlash` (`Effects/AreaExitFlash.c
   cacher. Le premier correctif n'avait traité que `FUN_004183d0` : Vincent a signalé que le
   cristal restait « tout blanc », et c'était cette scène-ci.
 
+- **le portail qui suit un boss** — la scénette de sortie `FUN_00474380` (sous-type 15, écrite dans
+  `Handlers/Forest.cs` mais installée dans 23 emplacements des tables d'entités), trouvée le
+  2026-09-26 par `trace-voile` sur la fin d'Eifrit (10:11) : son état 4 pousse le **second** voile
+  `DAT_005de028` de `+10` pendant huit images jusqu'à `0x50`, puis de `-5` pendant treize. Vincent :
+  « l'écran se met à blanc puis redevient normal, sans passage ». Même voile de confort, même
+  cadence : opacité 1 à la huitième image, 0 à la vingt et unième.
+
 Les états, sons, naissances, gel des entités et sorties de zone sont ceux du binaire. `false` rend
 l'aplat d'origine. **Les autres emplois du voile restent opaques** — fondus de scène de la grotte
 scellée (`0x004384f0`, `0x00440840`), sorts du Prêtre : à traiter

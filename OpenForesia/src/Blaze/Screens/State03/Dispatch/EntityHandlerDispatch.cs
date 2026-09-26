@@ -147,7 +147,7 @@ public static unsafe partial class Blaze
     private static readonly bool s_TraceVeil =
         Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_VOILE") == "1";
 
-    private readonly record struct VeilSnapshot(uint Veil, uint Veil2, ulong BackTarget, short BackMode);
+    private readonly record struct VeilSnapshot(uint Veil, uint Veil2, ulong BackTarget, ulong BackDirect, short BackMode);
 
     private static VeilSnapshot s_VeilLast;
 
@@ -155,6 +155,7 @@ public static unsafe partial class Blaze
         Mem.s_Unknown_005de024,
         Mem.s_Unknown_005de028,
         *(ulong*)Mem.Arena(0x005e92b8) & 0xffffffffffff,
+        *(ulong*)Mem.Arena(0x005e9160) & 0xffffffffffff,   // la couleur que les modes 1 et 2 visent
         *(short*)Mem.Arena(0x005e9166));
 
     /// <summary>Une ligne si quelque chose a change depuis <paramref name="before"/>.</summary>
@@ -169,7 +170,8 @@ public static unsafe partial class Blaze
             Console.Error.WriteLine($"[VOILE] {where} {who} : voile 0x{before.Veil:X8} -> 0x{now.Veil:X8}");
         if (now.Veil2 != before.Veil2)
             Console.Error.WriteLine($"[VOILE] {where} {who} : second voile 0x{before.Veil2:X8} -> 0x{now.Veil2:X8}");
-        if (now.BackTarget != before.BackTarget || now.BackMode != before.BackMode)
+        if (now.BackTarget != before.BackTarget || now.BackDirect != before.BackDirect
+            || now.BackMode != before.BackMode)
         {
             Console.Error.WriteLine(
                 $"[VOILE] {where} {who} : ambiance {BackText(before)} -> {BackText(now)}");
@@ -177,7 +179,8 @@ public static unsafe partial class Blaze
     }
 
     private static string BackText(VeilSnapshot s) =>
-        $"({(short)s.BackTarget},{(short)(s.BackTarget >> 16)},{(short)(s.BackTarget >> 32)}) mode {s.BackMode}";
+        $"consigne ({(short)s.BackTarget},{(short)(s.BackTarget >> 16)},{(short)(s.BackTarget >> 32)}) " +
+        $"directe ({(short)s.BackDirect},{(short)(s.BackDirect >> 16)},{(short)(s.BackDirect >> 32)}) mode {s.BackMode}";
 
     /// <summary>Une fois par image, depuis la boucle de la carte : ce qui a change hors de tout
     /// gestionnaire.</summary>

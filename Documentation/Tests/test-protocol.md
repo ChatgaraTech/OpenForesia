@@ -2207,6 +2207,11 @@ Raccourci : `tests\trace-voile.bat` lance le jeu depuis `bin\Debug\net10.0` (don
 écrit `trace-voile.log` à côté de l'exécutable et réaffiche les lignes à la fermeture. Voir
 `legacy-bug.md` LB-052.
 
+Complété le 2026-09-26 : la trace suit aussi la couleur d'ambiance **directe** `DAT_005e9160..64`,
+celle que visent les modes 1 (appliquée d'un coup) et 2 (glissée). C'est elle qu'écrivent l'opcode 21
+du script de monde et les scènes (`SetSceneBackdrop`), et la première version ne la voyait pas.
+L'opcode 21 écrit en plus sa propre ligne : `script opcode 21 : ambiance directe (r,g,b) mode m`.
+
 ## Ouvrir un état de jeu directement — `OPENFORESIA_FORCE_STATE`
 
 `OPENFORESIA_FORCE_STATE=N` fait entrer `RunGameLoop` dans l'état de jeu N au lieu du menu principal,

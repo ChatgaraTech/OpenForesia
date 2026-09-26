@@ -4,6 +4,15 @@ Point d’entrée entre deux sessions. Mis à jour le **2026-09-26**.
 
 # REPRISE : LE BLANC TOTAL DE LA FIN D'EIFRIT (2026-09-26)
 
+> **TROUVÉ ET CORRIGÉ le 2026-09-26 (soir), à valider en jeu.** La trace a nommé le coupable : la
+> scénette de sortie `FUN_00474380` (`Handlers/Forest.cs`, 23 emplacements de table) pousse le
+> **second** voile `DAT_005de028` (+10 × 8, puis −5 × 13), dessiné opaque par la DLL. Elle passe
+> désormais par le voile de confort, comme le cristal (LB-052). Les deux pistes d'ambiance
+> ci-dessous étaient fausses : l'ambiance ne bouge qu'en glissant (mode 0), et le passage par
+> `0x0043D4D0` relevé en 10:11 est une scène de mort de membre (fond blanc en mode 2, puis rendu).
+> **À faire :** Vincent refait la fin d'Eifrit ; si le fondu (8 images de montée) est jugé trop
+> vif, on peut prolonger la descente au-delà de la fin de la scénette.
+
 **Le problème.** À la mort d'Eifrit (grotte scellée, **10:11**), l'écran devient **tout blanc** :
 « comme si on peignait l'écran en blanc et jouait sur la luminosité, il manque de la transparence ».
 Vincent veut un vrai fondu : alpha 0 → 1 → 0.
@@ -21,6 +30,16 @@ blanc passe par un autre chemin. **Hypothèse, non vérifiée** : la **couleur d
 (`DAT_005e92b8..bc`, mode `DAT_005e9166`, lissée par `SmoothSceneOrientationAndBackColour`) poussée
 vers le blanc par un script ou une scène — elle blanchit tous les modèles éclairés, sans voile, et
 aucun alpha n'y peut rien tel quel.
+
+**Complément du 2026-09-26 (soir).** Vincent précise : le blanc vient quand le **portail de
+téléportation** apparaît, dans la cinématique de fin — et c'est un aplat qui s'allume et s'éteint
+d'un coup, sans fondu. Deux pistes lues au code, **aucune prouvée** : (1) l'**opcode 21** du script de
+monde (`ScriptOpSetBackColour`) pose la couleur d'ambiance directe `0x005e9160..64` et son mode — en
+**mode 1** elle s'applique d'un coup ; (2) même lissée (mode 2), `SetBackColor` s'ajoute à
+l'éclairage de chaque sommet et **sature au blanc** en deux ou trois images. Écartées : les sept
+scènes de `SealedCaveScenes.cs` qui peignent le fond en blanc sont des **morts de membre du groupe**
+(pièges), pas des fins de boss. La trace ne voyait pas `0x005e9160..64` : c'est corrigé, et
+l'opcode 21 se nomme lui-même.
 
 **Première chose à faire demain.** Vincent lance **`tests\trace-voile.bat`**
 (`OPENFORESIA_TRACE_VOILE=1`), refait la fin d'Eifrit, ferme le jeu et colle les lignes `[VOILE]`.

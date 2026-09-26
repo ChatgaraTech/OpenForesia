@@ -743,6 +743,15 @@ public static unsafe partial class Blaze
         *(ushort*)Mem.Arena(0x005e9162) = s[3];
         *(ushort*)Mem.Arena(0x005e9164) = s[4];
         *(ushort*)Mem.Arena(0x005e9166) = s[1];
+
+        // ECHAFAUDAGE : OPENFORESIA_TRACE_VOILE=1, voir EntityHandlerDispatch.cs — nomme l'opcode,
+        // que la trace par image ne voit que comme « hors gestionnaire ».
+        if (s_TraceVeil)
+        {
+            Console.Error.WriteLine(
+                $"[VOILE] zone {Res.s_Unknown_005de528 & 0xff}:{s_Unknown_005de52c} script opcode 21 : " +
+                $"ambiance directe ({s[2]},{s[3]},{s[4]}) mode {s[1]}");
+        }
         return s + 5;
     }
 

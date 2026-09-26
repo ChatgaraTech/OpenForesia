@@ -6,6 +6,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- fix : le flash blanc du portail qui suit un boss (Eifrit et les autres) devient un vrai fondu — la
+  scénette de sortie `FUN_00474380` poussait le second voile, que la DLL de 1998 dessine opaque ; même
+  voile de confort que le cristal, même cadence que le binaire (LB-052), trouvé par `trace-voile`
+- feat : `trace-voile` suit aussi la couleur d'ambiance directe `0x005e9160..64` (modes 1 et 2), que la
+  première version ne voyait pas, et l'opcode 21 du script de monde signe sa propre ligne — pour
+  trouver d'où vient le blanc sans fondu de la fin d'Eifrit
 - doc : l'état 5 (`FUN_00504c90`) est un gestionnaire de cartes mémoire hérité de la PlayStation, inatteignable ;
   laissé non transcrit par choix — l'éditeur de sauvegarde HTML couvre le besoin
 - feat : `tests\visionneuse-modeles.bat` (`OPENFORESIA_FORCE_STATE=8`) — ouvre la visionneuse de modèles

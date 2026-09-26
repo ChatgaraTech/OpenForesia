@@ -1574,20 +1574,34 @@ public static unsafe partial class Blaze
         fixed (uint* fadeWord = &Mem.s_Unknown_005de028)
         {
             byte* fade = (byte*)fadeWord;
-            fade[3] = 1;
 
-            // Ghidra: `cmp word [esi+12h],8 ; jge` — huit images qui montent, le reste qui descend.
-            if (*(short*)(e + 0x12) < 8)
+            // ECART DECLARE (2026-09-26, demande de Vincent) — legacy-bug.md LB-052 : c'est le
+            // flash blanc du portail qui suit un boss (Eifrit, 10:11, et les autres). Le second voile
+            // que la DLL de 1998 dessine opaque n'est plus pousse ; le voile de confort de l'hote
+            // fait le fondu, sur la meme cadence : opacite 1 a la huitieme image, 0 a la vingt et
+            // unieme. Voir s_ComfortWhiteFlash.
+            short beat = *(short*)(e + 0x12);
+            if (s_ComfortWhiteFlash)
             {
-                fade[0] += 0x0a;
-                fade[1] += 0x0a;
-                fade[2] += 0x0a;
+                D3D11Backend.SetComfortVeil(ComfortEase(beat < 8 ? (beat + 1) / 8f : (20 - beat) / 13f));
             }
             else
             {
-                fade[0] += 0xfb;                      // Ghidra: mov al,0FBh — soit -5
-                fade[1] += 0xfb;
-                fade[2] += 0xfb;
+                fade[3] = 1;
+
+                // Ghidra: `cmp word [esi+12h],8 ; jge` — huit images qui montent, le reste qui descend.
+                if (beat < 8)
+                {
+                    fade[0] += 0x0a;
+                    fade[1] += 0x0a;
+                    fade[2] += 0x0a;
+                }
+                else
+                {
+                    fade[0] += 0xfb;                  // Ghidra: mov al,0FBh — soit -5
+                    fade[1] += 0xfb;
+                    fade[2] += 0xfb;
+                }
             }
 
             *(short*)(e + 0x12) += 1;
