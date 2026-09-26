@@ -347,6 +347,9 @@ internal static unsafe class SyntheticDevice
         vtable[0xA0 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_SrcBlend;
         vtable[0xA4 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_DestBlend;
         vtable[0x8C / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_ShadeMode;
+        // `+0x90` — le filtrage de texture que `SetTextureFilterMode` (ordinal 798) demande. Resté
+        // sur la souche neutre jusqu'au 2026-09-26 : `Filter=` n'arrivait nulle part.
+        vtable[0x90 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_TextureFilter;
         vtable[0xB0 / 4] = (delegate* unmanaged[Thiscall]<void*, void>)&Shim_BeginScene;
         vtable[0xB4 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Shim_EndScene;
         vtable[0xBC / 4] = (delegate* unmanaged[Thiscall]<void*, uint, uint, void*, uint, uint, void>)&Shim_DrawPrimitive;

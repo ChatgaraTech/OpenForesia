@@ -249,6 +249,10 @@ internal static unsafe class DeviceShim
     /// </summary>
     internal static void CreateGameWindow()
     {
+        // `Affichage.ini` est lu ici, avant la fenêtre et le device : la résolution interne et
+        // l'anticrénelage décident de la cible que le backend créera.
+        DisplaySettings.EnsureLoaded();
+
         (int width, int height) = RenderSizeFromSizeSetting();
 
         // Un échec ici n'est pas fatal : sans fenêtre à nous, le jeu retombe sur le chemin
@@ -597,6 +601,86 @@ internal static unsafe class DeviceShim
         s_TextureMapBlend = mode;
     }
 
+    // =====================================================================
+    // Filtrage de texture — le slot `+0x90`, ignoré jusqu'au 2026-09-26.
+    //
+    // winsys3d décide du filtrage à chaque liaison : `LierEmplacement` (FUN_00a27430) demande le
+    // mode 1 pour une texture ordinaire et **0 pour une texture qu'il ne veut jamais filtrer**, puis
+    // `SetTextureFilterMode` (ordinal 798) passe ici 2 (filtre) si ce mode est non nul ET que
+    // `TexFilterPossible` (`Filter=`) l'autorise, 1 sinon. (F10 devait le basculer, mais winsys3d ne la
+    // lit jamais : voir NOTE_DEVELOPPEUR.md, § 9.) Un mode inchangé ne rappelle pas le
+    // device : l'état reçu vaut pour toutes les liaisons suivantes, comme un état Direct3D 3.
+    //
+    // La classe se décide AU DESSIN, pas ici. Mesuré le 2026-09-26 (trace OPENFORESIA_TRACE_FILTER) :
+    // « mode 0 » ne veut pas dire « interface ». `LierEmplacement` demande 0 pour un SPRITE (genre 1,
+    // `LierTextureOpaque(..., 1)` des SPRT) — textes, icônes, cadres — mais aussi pour un polygone
+    // sur page 8 bits quand `Zoom8BitTextures` est posé : les petits personnages 3D. Et les
+    // polygones à plat (portraits, fonds de menu) sont filtrables. Un vrai critère 2D/3D n'existe
+    // pas à ce niveau — c'est un portage PlayStation, tout arrive déjà projeté, sans profondeur —
+    // mais SPRITE / POLYGONE en est le plus proche, et le moteur le connaît : c'est le genre, que
+    // winsys3d mémorise dans `Memo_00a2c48c` APRÈS cet appel (d'où la lecture au dessin).
+    // =====================================================================
+
+    internal enum TextureFilterClass
+    {
+        /// <summary>Un sprite (genre non nul) : textes, icônes, cadres — jamais filtré en 1998.</summary>
+        Interface,
+        /// <summary>Un polygone non filtré : `Filter=0`, ou page 8 bits zoomée.</summary>
+        Unfiltered3d,
+        /// <summary>Un polygone que le jeu filtrait.</summary>
+        Filtered3d,
+    }
+
+    // Dernière valeur reçue par `+0x90` : 2 = filtre, 1 = au plus proche. Le device de 1998 garde
+    // l'état jusqu'au prochain appel, et `SetTextureFilterMode` ne rappelle que si le mode change.
+    private static uint s_DeviceFilterValue = 1;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    internal static void Shim_TextureFilter(void* self, uint value) => s_DeviceFilterValue = value;
+
+    /// <summary>La classe de la liaison courante, lue au dessin (voir le bloc ci-dessus).</summary>
+    private static TextureFilterClass CurrentFilterClass()
+    {
+        if (Libraries.Winsys3dData.Memo_00a2c48c != 0) return TextureFilterClass.Interface;
+        return Libraries.Winsys3dData.FiltreTexture_00a2c508 != 0 && s_DeviceFilterValue == 2
+            ? TextureFilterClass.Filtered3d
+            : TextureFilterClass.Unfiltered3d;
+    }
+
+    /// <summary>La primitive courante est-elle filtrée, compte tenu de `Affichage.ini` ?</summary>
+    private static bool CurrentBindFiltered() => CurrentFilterClass() switch
+    {
+        TextureFilterClass.Interface => DisplaySettings.FilterInterface == InterfaceFilter.Smooth,
+        TextureFilterClass.Unfiltered3d => DisplaySettings.Filter3d == Texture3dFilter.Bilinear,
+        _ => DisplaySettings.Filter3d != Texture3dFilter.Nearest,
+    };
+
+    // ECHAFAUDAGE — OPENFORESIA_TRACE_FILTER=1 : chaque couple (texture, classe) vu la première fois
+    // fait une ligne, et la texture est écrite dans scratchpad/ sous le nom de sa classe. Sert à
+    // vérifier que la classe « interface » recouvre bien menus, polices et fenêtres (tâche 2.3).
+    internal static readonly bool s_TraceFilter =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_FILTER") == "1";
+    private static readonly Dictionary<(nint, TextureFilterClass), int> s_FilterSeen = [];
+
+    private static void TraceFilterClass()
+    {
+        nint key = (nint)s_BoundTexture;
+        if (key == 0) return;
+        TextureFilterClass cls = CurrentFilterClass();
+        var pair = (key, cls);
+        s_FilterSeen.TryGetValue(pair, out int count);
+        s_FilterSeen[pair] = count + 1;
+        if (count != 0) return;
+
+        Console.Error.WriteLine(
+            $"[FILTRE] texture 0x{key:X8} classe={cls} " +
+            $"(genre={Libraries.Winsys3dData.Memo_00a2c48c}, " +
+            $"mode demandé={Libraries.Winsys3dData.FiltreTexture_00a2c508}, device={s_DeviceFilterValue}, " +
+            $"TexFilterPossible={Libraries.Winsys3dData.TexFilterPossible_00a2c504}) " +
+            $"— {s_FilterSeen.Count} couples vus");
+        D3D11Backend.DumpTexture(key, $"filtre-{cls}");
+    }
+
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     internal static void Shim_AlphaBlendEnable(void* self, uint on) => s_AlphaBlendEnable = on != 0;
 
@@ -921,8 +1005,11 @@ internal static unsafe class DeviceShim
                     ? D3D11Backend.TextureView((nint)s_BoundTexture)
                     : default;
 
+                if (s_TraceFilter) TraceFilterClass();
+
                 D3D11Backend.DrawPrimitive(t, (TlVertex*)v, (int)n, bound, s_FlatShading,
-                    CurrentBlend(), alphaFromTexture: s_TextureMapBlend == 4);
+                    CurrentBlend(), alphaFromTexture: s_TextureMapBlend == 4,
+                    filtered: CurrentBindFiltered());
             });
             return;
         }

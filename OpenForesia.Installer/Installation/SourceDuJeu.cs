@@ -16,7 +16,9 @@ internal sealed class SourceDuJeu
     internal const string RessourceZip = "jeu.zip";
 
     private static readonly string[] s_DossiersEcartes = ["French", "Snd", "Music", "save"];
-    private static readonly string[] s_ExtensionsEcartees = [".cfg", ".pdb", ".log", ".txt"];
+    // `.ini` : un Affichage.ini d'essai dans la build ne doit pas ecraser celui du joueur — le
+    // fichier par defaut vient du modele embarque (Installation.DeposerReglagesAffichage).
+    private static readonly string[] s_ExtensionsEcartees = [".cfg", ".pdb", ".log", ".txt", ".ini"];
 
     internal IReadOnlyList<FichierDuJeu> Fichiers { get; }
     internal long Taille => Fichiers.Sum(f => f.Taille);

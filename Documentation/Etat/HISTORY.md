@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- feat : `Affichage.ini` — résolution interne (`auto` = taille de l'écran, ou ×1 à ×8), MSAA 1/2/4/8, mise à l'échelle ajustée ou entière ; le jeu le lit, ne l'écrit jamais, et ses menus n'en savent rien (LB-055)
+- feat : le filtrage de texture du jeu arrive enfin — slot device `+0x90` branché, donc `Filter=` agit ; filtrage bilinéaire fait dans le shader, sans liseré de couleur-clé ni débord de page ; interface réglable à part (`net` / `lisse`)
+- feat : l'installeur dépose un `Affichage.ini` commenté, sans jamais écraser celui du joueur
+- doc : `enhance-display-resolution-filtering` vérifié en jeu par Vincent — rendu d'origine identique à ×1, aucun défaut en menus, donjon et combat aux réglages par défaut, réglage conservé à la réinstallation (27/27 tâches)
+- fix : traits fins le long des textes et des cadres en haute résolution — deux causes : le MSAA interpolait les uv hors du quad (interpolation `centroid`), et le décalage de +0,1 texel des uv de sprite de winsys3d débordait sur la rangée suivante de la planche dès que la cible est agrandie (échantillon borné au rectangle du triangle, seulement hors de la taille d'origine)
+- doc : F10 (bascule du filtrage) et F8 (rechargement des textures) sont inertes dès 1998 — winsys3d ne les lit que si `DAT_00dedc40` est posé, et `Blaze.exe` n'appelle jamais les ordinaux 36/759 qui le posent (NOTE_DEVELOPPEUR § 9)
+- doc : le « jamais filtré » du moteur n'est pas l'interface — il couvre aussi les personnages 3D (pages 8 bits zoomées) ; le filtrage de l'interface se décide désormais par sprite / polygone (le genre de la liaison)
+
+- doc : proposition `enhance-display-resolution-filtering` — résolution interne jusqu'à la taille de l'écran, MSAA, mise à l'échelle entière ou ajustée, filtrage des textures 3D et de l'interface, réglés par un `Affichage.ini` que le jeu lit sans l'écrire ; constat : le slot device `+0x90` (filtrage demandé par le moteur, `Filter=` et F10) n'était branché nulle part
+
 - feat : `OpenForesia.exe` a son icône (`foresia.ico` de Vincent, centré au carré, 16 à 256 px), reprise
   par la fenêtre du jeu (barre de titre, barre des tâches) ; plus de console au lancement (`WinExe`) ;
   `VS.Log`, le journal de synchronisation verticale que `winsys3d` écrivait à chaque fermeture, ne

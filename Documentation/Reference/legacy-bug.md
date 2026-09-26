@@ -2366,3 +2366,29 @@ chaque partie ; depuis que le répertoire courant est le dossier du jeu, OpenFor
 **Retiré** : `Winsys3dImage.Detacher` (`src/Libraries/winsys3d/Image.cs`) n'écrit plus le journal
 que si la variable d'environnement `OPENFORESIA_VSLOG` vaut `1`. `EcrireJournal` reste transcrit tel
 quel, défaut des enregistrements décalés compris.
+
+---
+
+## LB-055 — Le port rendait tout en 640x480 au plus proche, et le filtrage du jeu n'arrivait nulle part
+
+**Statut** : `Contourné` le 2026-09-26 (legacy ++, confort, demande de Vincent) —
+`openspec/changes/enhance-display-resolution-filtering`. Interrupteurs : les clés de
+`Affichage.ini` (`Documentation/Reference/Affichage.ini.md`).
+
+**Ce que faisait l'original** : le jeu rendait à la taille de son mode d'affichage (320x240 à
+1024x768, taille logique fixée par `Size`), sans anticrénelage. Sur une carte 3D, il filtrait ses
+textures en bilinéaire quand `Filter=1` — sauf celles que
+`LierEmplacement` (winsys3d `FUN_00a27430`) déclare non filtrables (mode 0), qu'il échantillonnait
+toujours au plus proche. Ce n'est pas un défaut du binaire : c'est l'image de 1998.
+
+**Ce que faisait le port jusque-là** : la même taille logique, présentée au plus proche dans la
+fenêtre, donc des pixels de largeurs inégales à un facteur non entier. Et le slot device `+0x90`
+(`SetTextureFilterMode`, ordinal 798) n'était pas branché dans `SyntheticDevice.cs` : `Filter=`
+n'avait aucun effet, tout était au plus proche. (La touche F10, censée basculer ce filtrage, est
+inerte dans le binaire de 1998 comme ici : voir `NOTE_DEVELOPPEUR.md`, § 9.)
+
+**Contournement** (dans `src/Host/` seulement, aucun corps transcrit touché) : le slot `+0x90` est
+branché (`Shim_TextureFilter`, `DeviceShim.cs`) ; la scène est rastérisée à une taille physique
+réglable avec MSAA, et présentée à l'échelle entière ou ajustée (`D3D11Backend.cs`) ; le filtrage
+est fait dans le shader sans halo de couleur-clé ni débord de page (`SampleKeyed`). Le rendu d'avant
+se retrouve par `ResolutionInterne = 1`, `Anticrenelage = 1`, `Filtrage3D = proche`.

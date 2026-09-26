@@ -178,6 +178,23 @@ trente et un sites qui l'écrivent ont été relevés un à un, et aucun ne vaut
 
 ---
 
+## 9. F10 et F8 — deux touches d'atelier branchées sur un interrupteur jamais levé
+
+**`winsys3d.dll FUN_00a049c0`** (la lecture des manettes), constaté en jeu le 2026-09-26.
+
+Avant même de lire les manettes, winsys3d regarde deux touches du clavier : **F10** bascule le
+filtrage des textures (`TexFilterPossible`), **F8** recharge toutes les textures depuis la mémoire —
+de quoi comparer une image lissée et nette, ou voir une planche retouchée sans relancer le jeu.
+Chacune attend qu'on la relâche, par pas de 100 ms.
+
+Elles ne répondent jamais. La fonction commence par sortir si `DAT_00dedc40` vaut zéro, ce qu'il
+fait au chargement ; seules deux petites fonctions de la DLL (ordinaux 36 et 759, `FUN_00a04fb0`)
+le passent à 1, et `Blaze.exe` ne les appelle nulle part. Vincent a constaté que F10 ne fait rien
+dans le jeu reconstruit ; le code dit qu'il en allait de même en 1998. Les deux touches ont été
+vendues, branchées derrière un interrupteur que personne n'a jamais levé.
+
+---
+
 ## Ce qu'on cherche pour la suite
 
 Rien de systématique — ces trouvailles arrivent en travaillant sur autre chose. Mais deux endroits

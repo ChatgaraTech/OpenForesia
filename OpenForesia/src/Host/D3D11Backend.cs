@@ -24,6 +24,18 @@ internal struct TlVertex
 }
 
 /// <summary>
+/// Le sommet que l'hôte envoie réellement au GPU : un <see cref="TlVertex"/> suivi du rectangle uv
+/// de son triangle, que le filtrage manuel ne dépasse pas (voir <c>SampleKeyed</c>). Le
+/// <see cref="TlVertex"/> du jeu n'est pas touché ; ce rectangle est calculé au dépliage.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct HostVertex
+{
+    public TlVertex Vertex;
+    public float UMin, VMin, UMax, VMax;
+}
+
+/// <summary>
 /// Backend Direct3D 11 destiné à remplacer <c>3dhelp.dll</c> derrière la façade de
 /// <see cref="DeviceShim"/>.
 ///
@@ -52,12 +64,31 @@ internal static unsafe class D3D11Backend
     private static int s_BackBufferWidth, s_BackBufferHeight;
 
     // Cible hors écran : ce dans quoi le jeu rend réellement.
+    //
+    // Deux tailles depuis `Affichage.ini` (openspec/changes/enhance-display-resolution-filtering,
+    // design D2). La taille **logique** (s_SceneWidth/Height) est celle que le jeu demande et dans
+    // laquelle ses sommets sont exprimés — le shader normalise par elle, rien ne la change. La
+    // taille **physique** (s_TargetWidth/Height) est celle de la texture : ResolutionInterne fois
+    // la logique, ou la taille à l'écran en `auto`. Rastériser plus fin ne déplace rien.
+    //
+    // Multi-échantillonnée (Anticrenelage > 1), la cible ne se lit pas directement : elle est
+    // résolue dans s_ResolvedTexture, et s_SceneSrv désigne alors cette dernière.
     private static ComPtr<ID3D11Texture2D> s_SceneTexture;
     private static ComPtr<ID3D11RenderTargetView> s_SceneView;
+    private static ComPtr<ID3D11Texture2D> s_ResolvedTexture;
     private static ComPtr<ID3D11ShaderResourceView> s_SceneSrv;
     private static ComPtr<ID3D11Texture2D> s_DepthTexture;
     private static ComPtr<ID3D11DepthStencilView> s_DepthView;
     private static int s_SceneWidth, s_SceneHeight;
+    private static int s_TargetWidth, s_TargetHeight;
+    private static uint s_SampleCount = 1;
+
+    // `auto` suit la fenêtre : un redimensionnement marque la cible, que le prochain début de scène
+    // recrée — jamais au milieu d'une présentation, qui lit encore l'ancienne.
+    private static bool s_TargetDirty;
+
+    // Repli signalé une fois : le nombre d'échantillons, ou une cible trop grande pour le GPU.
+    private static bool s_SampleFallbackReported, s_TargetFallbackReported;
 
     private static ComPtr<ID3D11VertexShader> s_VertexShader;
     private static ComPtr<ID3D11PixelShader> s_PixelShader;
@@ -65,6 +96,7 @@ internal static unsafe class D3D11Backend
     private static ComPtr<ID3D11Buffer> s_ConstantBuffer;
     private static ComPtr<ID3D11Buffer> s_VertexBuffer;
     private static ComPtr<ID3D11SamplerState> s_PointSampler;
+    private static ComPtr<ID3D11SamplerState> s_LinearSampler;
     private static ComPtr<ID3D11BlendState> s_OpaqueBlend;
     // s_AlphaBlend a disparu le 2026-08-30 : BlendState(5, 6) le fabrique et le garde, au meme titre
     // que les quatre autres couples que winsys3d demande.
@@ -102,7 +134,8 @@ internal static unsafe class D3D11Backend
             float  Modulate;          // 1 = texture x diffuse, 0 = texture seule
             float  AlphaFromTexture;  // 1 = MODULATEALPHA (alpha texture x diffuse), 0 = MODULATE
             float2 ViewportOrigin;    // origine du viewport, à retrancher des positions
-            float2 Padding;
+            float  Filtered;          // 1 = filtrage bilinéaire manuel (Affichage.ini), 0 = Sample
+            float  ClampNearest;      // 1 = borner le plus proche au rectangle du triangle (cible agrandie)
         };
 
         Texture2D    SourceTexture : register(t0);
@@ -114,14 +147,87 @@ internal static unsafe class D3D11Backend
             float4 Diffuse  : COLOR0;
             float4 Specular : COLOR1;
             float2 Texcoord : TEXCOORD0;
+            float2 UvMin    : TEXCOORD1;    // rectangle uv du triangle (hôte, pas D3DTLVERTEX)
+            float2 UvMax    : TEXCOORD2;
         };
 
         struct VSOutput
         {
             float4 Position : SV_POSITION;
             float4 Diffuse  : COLOR0;
-            float2 Texcoord : TEXCOORD0;
+            // `centroid` : avec le MSAA, un pixel de bord n'est couvert qu'en partie et son centre
+            // peut tomber HORS du triangle ; interpolées au centre, les uv sortent alors du quad et
+            // lisent le texel voisin de la planche — un trait fin le long des glyphes et des cadres
+            // (relevé par Vincent le 2026-09-26). Sans MSAA, centroid = centre : rendu inchangé.
+            centroid float2 Texcoord : TEXCOORD0;
+            nointerpolation float2 UvMin : TEXCOORD1;
+            nointerpolation float2 UvMax : TEXCOORD2;
         };
+
+        // Bilinéaire fait à la main, pour deux raisons qu'un échantillonneur matériel ne sait pas
+        // tenir (openspec/changes/enhance-display-resolution-filtering, design D5) :
+        //  - la couleur-clé : un texel d'alpha nul ne prête pas sa couleur (noire) à ses voisins,
+        //    sinon chaque bord de sprite prend un liseré sombre ;
+        //  - la page : les textures sont des pages VRAM où les sprites se touchent ; on ne lit
+        //    que dans le rectangle de texels que le triangle adresse lui-même.
+        // La transparence reste tout-ou-rien : moins de la moitié du poids sur des texels
+        // opaques, et le pixel est écarté, comme par le test de DDCKEY_SRCBLT.
+        // Le rectangle de texels [lo, hi] que le triangle adresse. Un rectangle qui sort de [0, 1]
+        // est une texture répétée : pas de borne. winsys3d décale ses uv dans le texel (tables de
+        // ConstantesUv_00a2a070) : +0,1 texel pour un sprite, dont le bord droit est exclusif, +0,5
+        // pour un polygone, dont l'uv maximale désigne le centre du dernier texel. `floor(max - 0,5)`
+        // rend le dernier texel propre dans les deux cas.
+        bool TexelRect(float2 uvMin, float2 uvMax, float2 fdim, out int2 lo, out int2 hi)
+        {
+            const int Far = 1073741824;
+            bool bounded = all(uvMin >= -0.001f) && all(uvMax <= 1.001f);
+            lo = bounded ? int2(floor(uvMin * fdim)) : int2(-Far, -Far);
+            hi = bounded ? max(lo, int2(floor(uvMax * fdim - 0.5f))) : int2(Far, Far);
+            return bounded;
+        }
+
+        // Le plus proche, borné au rectangle du triangle. Le +0,1 texel des sprites fait déborder le
+        // dernier dixième de texel sur la rangée suivante de la planche ; à la taille d'origine il ne
+        // couvre presque jamais un centre de pixel, rastérisé plus fin il en couvre — un trait d'un
+        // pixel sous chaque ligne de texte (relevé par Vincent le 2026-09-26).
+        float2 ClampToTexelRect(float2 uv, float2 uvMin, float2 uvMax)
+        {
+            uint w, h;
+            SourceTexture.GetDimensions(w, h);
+            float2 fdim = float2(w, h);
+            int2 lo, hi;
+            if (!TexelRect(uvMin, uvMax, fdim, lo, hi)) return uv;
+            return clamp(uv, float2(lo) / fdim, (float2(hi) + 0.999f) / fdim);
+        }
+
+        float4 SampleKeyed(float2 uv, float2 uvMin, float2 uvMax)
+        {
+            uint w, h;
+            SourceTexture.GetDimensions(w, h);
+            int2 dim = int2(w, h);
+            float2 fdim = float2(w, h);
+
+            int2 lo, hi;
+            TexelRect(uvMin, uvMax, fdim, lo, hi);
+
+            float2 p = uv * fdim - 0.5f;
+            float2 f = frac(p);
+            int2 i0 = int2(floor(p));
+
+            float4 acc = 0;
+            float wsum = 0;
+            [unroll] for (int k = 0; k < 4; k++)
+            {
+                int2 o = int2(k & 1, k >> 1);
+                int2 t = clamp(i0 + o, lo, hi);
+                t -= dim * int2(floor(float2(t) / fdim));   // répétition (WRAP), aussi en négatif
+                float4 c = SourceTexture.Load(int3(t, 0));
+                float wt = (o.x ? f.x : 1.0f - f.x) * (o.y ? f.y : 1.0f - f.y);
+                if (c.a > 0.0f) { acc += c * wt; wsum += wt; }
+            }
+            if (wsum < 0.5f) discard;
+            return acc / wsum;
+        }
 
         VSOutput VSMain(VSInput input)
         {
@@ -141,12 +247,23 @@ internal static unsafe class D3D11Backend
             output.Position = float4(ndc * w, input.Position.z * w, w);
             output.Diffuse  = input.Diffuse;
             output.Texcoord = input.Texcoord;
+            output.UvMin    = input.UvMin;
+            output.UvMax    = input.UvMax;
             return output;
         }
 
         float4 PSMain(VSOutput input) : SV_Target
         {
-            float4 t = SourceTexture.Sample(SourceSampler, input.Texcoord);
+            // Filtered = 0 : le chemin d'avant Affichage.ini, inchangé — c'est le rendu fidèle.
+            // Un `if` et non un `? :` : HLSL évalue les deux bras d'un ternaire, et le `discard`
+            // de SampleKeyed toucherait alors le chemin fidèle.
+            float4 t;
+            [branch] if (Filtered > 0.5f)
+                t = SampleKeyed(input.Texcoord, input.UvMin, input.UvMax);
+            else if (ClampNearest > 0.5f)
+                t = SourceTexture.Sample(SourceSampler, ClampToTexelRect(input.Texcoord, input.UvMin, input.UvMax));
+            else
+                t = SourceTexture.Sample(SourceSampler, input.Texcoord);
             // Direct3D 3 décide de la combinaison texture/diffuse par TEXTUREMAPBLEND. Le jeu ne
             // le pose qu'à deux valeurs, **2 (MODULATE) et 4 (MODULATEALPHA)** — jamais DECAL :
             // `winsys3d.c:2522/2526` et `6024/6027`, le choix ne dépendant que d'un bit de capacité
@@ -343,7 +460,7 @@ internal static unsafe class D3D11Backend
         try
         {
             // Disposition calquée sur D3DTLVERTEX. Les couleurs sont des D3DCOLOR, donc BGRA.
-            var elements = stackalloc InputElementDesc[4];
+            var elements = stackalloc InputElementDesc[6];
             elements[0] = new InputElementDesc
             {
                 SemanticName = (byte*)position, SemanticIndex = 0,
@@ -368,9 +485,22 @@ internal static unsafe class D3D11Backend
                 Format = Format.FormatR32G32Float, InputSlot = 0, AlignedByteOffset = 24,
                 InputSlotClass = InputClassification.PerVertexData,
             };
+            // Le rectangle uv du triangle, ajouté par l'hôte (HostVertex) : il suit le TlVertex.
+            elements[4] = new InputElementDesc
+            {
+                SemanticName = (byte*)texcoord, SemanticIndex = 1,
+                Format = Format.FormatR32G32Float, InputSlot = 0, AlignedByteOffset = 32,
+                InputSlotClass = InputClassification.PerVertexData,
+            };
+            elements[5] = new InputElementDesc
+            {
+                SemanticName = (byte*)texcoord, SemanticIndex = 2,
+                Format = Format.FormatR32G32Float, InputSlot = 0, AlignedByteOffset = 40,
+                InputSlotClass = InputClassification.PerVertexData,
+            };
 
             SilkMarshal.ThrowHResult(s_Device.CreateInputLayout(
-                elements, 4, vsCode.GetBufferPointer(), vsCode.GetBufferSize(), ref s_InputLayout));
+                elements, 6, vsCode.GetBufferPointer(), vsCode.GetBufferSize(), ref s_InputLayout));
         }
         finally
         {
@@ -390,15 +520,15 @@ internal static unsafe class D3D11Backend
 
         var vbDesc = new BufferDesc
         {
-            ByteWidth = (uint)(sizeof(TlVertex) * MaxVerticesPerBatch),
+            ByteWidth = (uint)(sizeof(HostVertex) * MaxVerticesPerBatch),
             Usage = Usage.Dynamic,
             BindFlags = (uint)BindFlag.VertexBuffer,
             CPUAccessFlags = (uint)CpuAccessFlag.Write,
         };
         SilkMarshal.ThrowHResult(s_Device.CreateBuffer(in vbDesc, null, ref s_VertexBuffer));
 
-        // Échantillonnage au plus proche : le jeu vient d'un matériel sans filtrage, et la clé
-        // "Filter" du .cfg est le réglage qui décidera plus tard d'activer le linéaire.
+        // Échantillonnage au plus proche : le chemin fidèle. Le lissage des textures du jeu ne passe
+        // pas par un échantillonneur matériel mais par SampleKeyed, dans le shader.
         var sampler = new SamplerDesc
         {
             Filter = Filter.MinMagMipPoint,
@@ -409,6 +539,12 @@ internal static unsafe class D3D11Backend
             MaxLOD = float.MaxValue,
         };
         SilkMarshal.ThrowHResult(s_Device.CreateSamplerState(in sampler, ref s_PointSampler));
+
+        // Linéaire, bornée : pour la seule présentation (`MiseAEchelle = ajustee`). Les textures du
+        // jeu ne passent jamais par lui — leur filtrage est manuel (SampleKeyed).
+        sampler.Filter = Filter.MinMagMipLinear;
+        sampler.AddressU = sampler.AddressV = sampler.AddressW = TextureAddressMode.Clamp;
+        SilkMarshal.ThrowHResult(s_Device.CreateSamplerState(in sampler, ref s_LinearSampler));
 
         var opaque = default(BlendDesc);
         opaque.RenderTarget[0].BlendEnable = 0;
@@ -483,42 +619,184 @@ internal static unsafe class D3D11Backend
     internal static void EnsureSceneTarget(int width, int height)
     {
         if (width <= 0 || height <= 0) return;
-        if (s_SceneWidth == width && s_SceneHeight == height && s_SceneView.Handle != null) return;
 
+        var (targetW, targetH) = PhysicalTargetSize(width, height);
+        uint samples = SupportedSampleCount((uint)DisplaySettings.Antialiasing);
+        s_TargetDirty = false;
+        if (s_SceneWidth == width && s_SceneHeight == height && s_TargetWidth == targetW &&
+            s_TargetHeight == targetH && s_SampleCount == samples && s_SceneView.Handle != null) return;
+
+        // Une cible trop grande pour le GPU (8x en 4K, par exemple) : on retire d'abord le MSAA,
+        // puis la résolution interne. Le jeu doit s'afficher, même moins bien que demandé.
+        if (!TryCreateSceneTarget(targetW, targetH, samples))
+        {
+            if (!s_TargetFallbackReported)
+            {
+                s_TargetFallbackReported = true;
+                Console.Error.WriteLine(
+                    $"[AFFICHAGE] cible {targetW}x{targetH} MSAA {samples} refusée par le GPU — repli");
+            }
+            if (samples == 1 || !TryCreateSceneTarget(targetW, targetH, 1))
+            {
+                (targetW, targetH, samples) = (width, height, 1);
+                if (!TryCreateSceneTarget(targetW, targetH, 1))
+                    throw new InvalidOperationException(
+                        $"cible de scène {width}x{height} impossible à créer, même sans agrandissement");
+            }
+            else samples = 1;
+        }
+
+        s_SceneWidth = width;
+        s_SceneHeight = height;
+        s_TargetWidth = targetW;
+        s_TargetHeight = targetH;
+        s_SampleCount = samples;
+        Console.Error.WriteLine(
+            $"[AFFICHAGE] scène logique {width}x{height}, rastérisée en {targetW}x{targetH}, MSAA {samples}");
+    }
+
+    /// <summary>
+    /// La taille physique de la cible pour une taille logique donnée, d'après
+    /// <c>ResolutionInterne</c> : N fois la logique, ou en <c>auto</c> le rectangle où la scène
+    /// sera affichée — jamais moins que la logique, et au plus 16384 de côté.
+    /// </summary>
+    private static (int Width, int Height) PhysicalTargetSize(int logicalW, int logicalH)
+    {
+        int factor = DisplaySettings.InternalResolution;
+        int w, h;
+        if (factor == DisplaySettings.AutoResolution)
+        {
+            if (s_BackBufferWidth <= 0 || s_BackBufferHeight <= 0) return (logicalW, logicalH);
+            var dest = DestinationRect(logicalW, logicalH);
+            (w, h) = (dest.Width, dest.Height);
+            if (w < logicalW || h < logicalH) return (logicalW, logicalH);
+        }
+        else
+        {
+            (w, h) = (logicalW * factor, logicalH * factor);
+        }
+
+        const int MaxSide = 16384;
+        if (w > MaxSide || h > MaxSide)
+        {
+            float s = MathF.Min((float)MaxSide / w, (float)MaxSide / h);
+            (w, h) = ((int)(w * s), (int)(h * s));
+        }
+        return (w, h);
+    }
+
+    /// <summary>
+    /// Le plus grand nombre d'échantillons supporté, au plus <paramref name="wanted"/>, pour la
+    /// couleur ET la profondeur de la cible.
+    /// </summary>
+    private static uint SupportedSampleCount(uint wanted)
+    {
+        uint count = wanted;
+        while (count > 1)
+        {
+            uint colorLevels = 0, depthLevels = 0;
+            s_Device.CheckMultisampleQualityLevels(Format.FormatB8G8R8A8Unorm, count, ref colorLevels);
+            s_Device.CheckMultisampleQualityLevels(Format.FormatD24UnormS8Uint, count, ref depthLevels);
+            if (colorLevels > 0 && depthLevels > 0) break;
+            count /= 2;
+        }
+        if (count != wanted && !s_SampleFallbackReported)
+        {
+            s_SampleFallbackReported = true;
+            Console.Error.WriteLine($"[AFFICHAGE] Anticrenelage={wanted} non supporté — {count} échantillon(s)");
+        }
+        return Math.Max(count, 1u);
+    }
+
+    private static void ReleaseSceneTarget()
+    {
         s_SceneSrv.Dispose(); s_SceneSrv = default;
+        s_ResolvedTexture.Dispose(); s_ResolvedTexture = default;
         s_SceneView.Dispose(); s_SceneView = default;
         s_SceneTexture.Dispose(); s_SceneTexture = default;
         s_DepthView.Dispose(); s_DepthView = default;
         s_DepthTexture.Dispose(); s_DepthTexture = default;
+    }
 
-        var colorDesc = new Texture2DDesc
+    private static bool TryCreateSceneTarget(int width, int height, uint samples)
+    {
+        ReleaseSceneTarget();
+        try
         {
-            Width = (uint)width, Height = (uint)height, MipLevels = 1, ArraySize = 1,
-            Format = Format.FormatB8G8R8A8Unorm,
-            SampleDesc = new SampleDesc(1, 0),
-            Usage = Usage.Default,
-            BindFlags = (uint)(BindFlag.RenderTarget | BindFlag.ShaderResource),
-        };
-        SilkMarshal.ThrowHResult(s_Device.CreateTexture2D(in colorDesc, null, ref s_SceneTexture));
-        SilkMarshal.ThrowHResult(s_Device.CreateRenderTargetView(
-            s_SceneTexture, (RenderTargetViewDesc*)null, ref s_SceneView));
-        SilkMarshal.ThrowHResult(s_Device.CreateShaderResourceView(
-            s_SceneTexture, (ShaderResourceViewDesc*)null, ref s_SceneSrv));
+            var colorDesc = new Texture2DDesc
+            {
+                Width = (uint)width, Height = (uint)height, MipLevels = 1, ArraySize = 1,
+                Format = Format.FormatB8G8R8A8Unorm,
+                SampleDesc = new SampleDesc(samples, 0),
+                Usage = Usage.Default,
+                BindFlags = (uint)(samples > 1
+                    ? BindFlag.RenderTarget
+                    : BindFlag.RenderTarget | BindFlag.ShaderResource),
+            };
+            SilkMarshal.ThrowHResult(s_Device.CreateTexture2D(in colorDesc, null, ref s_SceneTexture));
+            SilkMarshal.ThrowHResult(s_Device.CreateRenderTargetView(
+                s_SceneTexture, (RenderTargetViewDesc*)null, ref s_SceneView));
 
-        var depthDesc = new Texture2DDesc
+            if (samples > 1)
+            {
+                // La cible multi-échantillonnée est résolue ici avant chaque présentation.
+                var resolvedDesc = colorDesc;
+                resolvedDesc.SampleDesc = new SampleDesc(1, 0);
+                resolvedDesc.BindFlags = (uint)BindFlag.ShaderResource;
+                SilkMarshal.ThrowHResult(s_Device.CreateTexture2D(in resolvedDesc, null, ref s_ResolvedTexture));
+                SilkMarshal.ThrowHResult(s_Device.CreateShaderResourceView(
+                    s_ResolvedTexture, (ShaderResourceViewDesc*)null, ref s_SceneSrv));
+            }
+            else
+            {
+                SilkMarshal.ThrowHResult(s_Device.CreateShaderResourceView(
+                    s_SceneTexture, (ShaderResourceViewDesc*)null, ref s_SceneSrv));
+            }
+
+            var depthDesc = new Texture2DDesc
+            {
+                Width = (uint)width, Height = (uint)height, MipLevels = 1, ArraySize = 1,
+                Format = Format.FormatD24UnormS8Uint,
+                SampleDesc = new SampleDesc(samples, 0),
+                Usage = Usage.Default,
+                BindFlags = (uint)BindFlag.DepthStencil,
+            };
+            SilkMarshal.ThrowHResult(s_Device.CreateTexture2D(in depthDesc, null, ref s_DepthTexture));
+            SilkMarshal.ThrowHResult(s_Device.CreateDepthStencilView(
+                s_DepthTexture, (DepthStencilViewDesc*)null, ref s_DepthView));
+            return true;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            Width = (uint)width, Height = (uint)height, MipLevels = 1, ArraySize = 1,
-            Format = Format.FormatD24UnormS8Uint,
-            SampleDesc = new SampleDesc(1, 0),
-            Usage = Usage.Default,
-            BindFlags = (uint)BindFlag.DepthStencil,
-        };
-        SilkMarshal.ThrowHResult(s_Device.CreateTexture2D(in depthDesc, null, ref s_DepthTexture));
-        SilkMarshal.ThrowHResult(s_Device.CreateDepthStencilView(
-            s_DepthTexture, (DepthStencilViewDesc*)null, ref s_DepthView));
+            ReleaseSceneTarget();
+            return false;
+        }
+    }
 
-        s_SceneWidth = width;
-        s_SceneHeight = height;
+    /// <summary>
+    /// Le rectangle de la zone cliente où une image de <paramref name="sourceW"/> x
+    /// <paramref name="sourceH"/> est posée : centré, rapport d'aspect conservé, bandes noires
+    /// autour. <c>ajustee</c> : le plus grand qui tienne. <c>entiere</c> : le plus grand multiple
+    /// entier, ou <c>ajustee</c> si même le facteur 1 ne tient pas. Coordonnées entières : une
+    /// origine à la demi-unité ferait baver l'échantillonneur linéaire même à 1:1.
+    /// </summary>
+    private static (int X, int Y, int Width, int Height, bool Integer) DestinationRect(int sourceW, int sourceH)
+    {
+        int bw = s_BackBufferWidth, bh = s_BackBufferHeight;
+        if (DisplaySettings.Scaling == ScalingMode.Integer)
+        {
+            int k = Math.Min(bw / sourceW, bh / sourceH);
+            if (k >= 1)
+            {
+                int iw = sourceW * k, ih = sourceH * k;
+                return ((bw - iw) / 2, (bh - ih) / 2, iw, ih, true);
+            }
+        }
+
+        float scale = MathF.Min((float)bw / sourceW, (float)bh / sourceH);
+        int w = Math.Max(1, (int)MathF.Round(sourceW * scale));
+        int h = Math.Max(1, (int)MathF.Round(sourceH * scale));
+        return ((bw - w) / 2, (bh - h) / 2, w, h, false);
     }
 
     /// <summary>Redimensionne la chaîne d'échange après un redimensionnement de la fenêtre.</summary>
@@ -535,6 +813,10 @@ internal static unsafe class D3D11Backend
         SilkMarshal.ThrowHResult(s_SwapChain.ResizeBuffers(
             0, (uint)w, (uint)h, Format.FormatUnknown, 0));
         CreateBackBufferView(w, h);
+
+        // En `auto`, la taille de rastérisation suit la fenêtre ; la cible sera recréée au
+        // prochain début de scène (voir s_TargetDirty).
+        if (DisplaySettings.InternalResolution == DisplaySettings.AutoResolution) s_TargetDirty = true;
     }
 
     // =====================================================================
@@ -547,11 +829,15 @@ internal static unsafe class D3D11Backend
 
     private static void SetSceneTargetAndState()
     {
+        if (s_TargetDirty) EnsureSceneTarget(s_SceneWidth, s_SceneHeight);
+
         var view = s_SceneView;
         var depth = s_DepthView;
         s_Context.OMSetRenderTargets(1, ref view, depth);
 
-        var viewport = new Silk.NET.Direct3D11.Viewport(0, 0, s_SceneWidth, s_SceneHeight, 0, 1);
+        // Viewport à la taille PHYSIQUE, constantes à la taille LOGIQUE : le shader ramène les
+        // sommets du jeu en NDC par la logique, le viewport les étale sur la physique.
+        var viewport = new Silk.NET.Direct3D11.Viewport(0, 0, s_TargetWidth, s_TargetHeight, 0, 1);
         s_Context.RSSetViewports(1, in viewport);
 
         s_ConstTargetW = s_SceneWidth;
@@ -573,7 +859,8 @@ internal static unsafe class D3D11Backend
     private static int s_ViewportOriginX, s_ViewportOriginY;
 
     private static void UpdateConstants(int targetWidth, int targetHeight, float modulate = 1f,
-                                        float alphaFromTexture = 0f, bool applyViewportOrigin = false)
+                                        float alphaFromTexture = 0f, bool applyViewportOrigin = false,
+                                        bool filtered = false)
     {
         MappedSubresource mapped = default;
         SilkMarshal.ThrowHResult(s_Context.Map(
@@ -585,8 +872,12 @@ internal static unsafe class D3D11Backend
         c[3] = alphaFromTexture;
         c[4] = applyViewportOrigin ? s_ViewportOriginX : 0f;
         c[5] = applyViewportOrigin ? s_ViewportOriginY : 0f;
-        c[6] = 0f;
-        c[7] = 0f;
+        c[6] = filtered ? 1f : 0f;
+        // Borner le plus proche seulement pour les primitives du jeu (celles qui retranchent l'origine
+        // du viewport) et seulement quand la cible est agrandie : à la taille logique, le rendu
+        // d'origine reste identique au pixel près.
+        c[7] = applyViewportOrigin && (s_TargetWidth != s_SceneWidth || s_TargetHeight != s_SceneHeight)
+            ? 1f : 0f;
         s_Context.Unmap(s_ConstantBuffer, 0);
 
         var cb = s_ConstantBuffer;
@@ -695,7 +986,7 @@ internal static unsafe class D3D11Backend
     internal static void DrawTriangles(
         ReadOnlySpan<TlVertex> vertices, ComPtr<ID3D11ShaderResourceView> texture,
         ComPtr<ID3D11BlendState> blend = default, float modulate = 1f, float alphaFromTexture = 0f,
-        bool applyViewportOrigin = false)
+        bool applyViewportOrigin = false, bool filtered = false, bool linearSampler = false)
     {
         if (vertices.Length < 3) return;
 
@@ -707,23 +998,35 @@ internal static unsafe class D3D11Backend
             {
                 int len = Math.Min(chunk, vertices.Length - start);
                 DrawTriangles(vertices.Slice(start, len), texture, blend, modulate,
-                              alphaFromTexture, applyViewportOrigin);
+                              alphaFromTexture, applyViewportOrigin, filtered, linearSampler);
             }
             return;
         }
 
-        UpdateConstants(s_ConstTargetW, s_ConstTargetH, modulate, alphaFromTexture, applyViewportOrigin);
+        // Le filtrage manuel n'a de sens que sur une vraie texture ; la blanche 1x1 reste au
+        // chemin d'origine.
+        filtered &= texture.Handle != null;
+        UpdateConstants(s_ConstTargetW, s_ConstTargetH, modulate, alphaFromTexture, applyViewportOrigin,
+                        filtered);
 
+        // Copie vers le tampon de sommets, chaque triangle recevant le rectangle de ses uv : c'est
+        // la zone de page que le filtrage manuel ne dépasse pas. Un quad coupé en deux triangles
+        // rectangles donne le même rectangle à ses deux moitiés — pas de couture sur la diagonale.
         MappedSubresource mapped = default;
         SilkMarshal.ThrowHResult(s_Context.Map(s_VertexBuffer, 0, Map.WriteDiscard, 0, ref mapped));
-        fixed (TlVertex* src = vertices)
+        var dst = (HostVertex*)mapped.PData;
+        for (int i = 0; i + 2 < vertices.Length; i += 3)
         {
-            System.Buffer.MemoryCopy(src, mapped.PData, (long)sizeof(TlVertex) * MaxVerticesPerBatch,
-                (long)sizeof(TlVertex) * vertices.Length);
+            TlVertex a = vertices[i], b = vertices[i + 1], c = vertices[i + 2];
+            float uMin = MathF.Min(a.U, MathF.Min(b.U, c.U)), uMax = MathF.Max(a.U, MathF.Max(b.U, c.U));
+            float vMin = MathF.Min(a.V, MathF.Min(b.V, c.V)), vMax = MathF.Max(a.V, MathF.Max(b.V, c.V));
+            dst[i]     = new HostVertex { Vertex = a, UMin = uMin, VMin = vMin, UMax = uMax, VMax = vMax };
+            dst[i + 1] = new HostVertex { Vertex = b, UMin = uMin, VMin = vMin, UMax = uMax, VMax = vMax };
+            dst[i + 2] = new HostVertex { Vertex = c, UMin = uMin, VMin = vMin, UMax = uMax, VMax = vMax };
         }
         s_Context.Unmap(s_VertexBuffer, 0);
 
-        uint stride = (uint)sizeof(TlVertex);
+        uint stride = (uint)sizeof(HostVertex);
         uint offset = 0;
         var vb = s_VertexBuffer;
         s_Context.IASetVertexBuffers(0, 1, ref vb, in stride, in offset);
@@ -735,7 +1038,7 @@ internal static unsafe class D3D11Backend
 
         var srv = texture.Handle != null ? texture : s_WhiteTexture;
         s_Context.PSSetShaderResources(0, 1, ref srv);
-        var sampler = s_PointSampler;
+        var sampler = linearSampler ? s_LinearSampler : s_PointSampler;
         s_Context.PSSetSamplers(0, 1, ref sampler);
 
         if (blend.Handle == null) blend = s_OpaqueBlend;
@@ -744,7 +1047,7 @@ internal static unsafe class D3D11Backend
         s_Context.RSSetState(s_Rasterizer);
         s_Context.OMSetDepthStencilState(s_DepthOff, 0);
 
-        s_Context.Draw((uint)vertices.Length, 0);
+        s_Context.Draw((uint)(vertices.Length - vertices.Length % 3), 0);
     }
 
     /// <summary>Prépare la cible hors écran pour une nouvelle image.</summary>
@@ -769,7 +1072,7 @@ internal static unsafe class D3D11Backend
     internal static void DrawPrimitive(
         uint primitiveType, TlVertex* vertices, int count,
         ComPtr<ID3D11ShaderResourceView> texture, bool flatShading,
-        ComPtr<ID3D11BlendState> blend = default, bool alphaFromTexture = false)
+        ComPtr<ID3D11BlendState> blend = default, bool alphaFromTexture = false, bool filtered = false)
     {
         if (count < 3) return;
 
@@ -800,7 +1103,7 @@ internal static unsafe class D3D11Backend
         }
 
         DrawTriangles(s_Expanded.AsSpan(0, n), texture, blend, 1f, alphaFromTexture ? 1f : 0f,
-                      applyViewportOrigin: true);
+                      applyViewportOrigin: true, filtered: filtered);
 
         void Emit(TlVertex a, TlVertex b, TlVertex c)
         {
@@ -815,7 +1118,15 @@ internal static unsafe class D3D11Backend
     /// Présente la cible hors écran dans la fenêtre : mise à l'échelle, rapport d'aspect préservé,
     /// image centrée, bandes restantes en noir uni.
     /// </summary>
-    internal static void Present() => PresentView(s_SceneSrv, s_SceneWidth, s_SceneHeight);
+    internal static void Present()
+    {
+        // Multi-échantillonnée, la cible se résout d'abord dans sa jumelle simple échantillon —
+        // celle que désigne s_SceneSrv.
+        if (s_SampleCount > 1)
+            s_Context.ResolveSubresource(s_ResolvedTexture, 0, s_SceneTexture, 0, Format.FormatB8G8R8A8Unorm);
+
+        PresentView(s_SceneSrv, s_TargetWidth, s_TargetHeight);
+    }
 
     // Le voile de confort : une couleur posee par-dessus l'image presentee, avec un VRAI alpha.
     private static float s_ComfortVeilAlpha;
@@ -900,15 +1211,16 @@ internal static unsafe class D3D11Backend
         float* black = stackalloc float[4] { 0f, 0f, 0f, 1f };
         s_Context.ClearRenderTargetView(s_BackBufferView, black);
 
-        // Rectangle de destination : le plus grand rectangle au rapport d'aspect de la scène qui
-        // tienne dans la zone cliente, centré. Les bandes restantes gardent le noir de l'effacement.
-        float scale = MathF.Min(
-            (float)s_BackBufferWidth / sourceWidth,
-            (float)s_BackBufferHeight / sourceHeight);
-        float drawW = sourceWidth * scale;
-        float drawH = sourceHeight * scale;
-        float originX = (s_BackBufferWidth - drawW) * 0.5f;
-        float originY = (s_BackBufferHeight - drawH) * 0.5f;
+        // Rectangle de destination selon `MiseAEchelle` (voir DestinationRect), centré. Les bandes
+        // restantes gardent le noir de l'effacement. En facteur entier, au plus proche : chaque
+        // pixel de la scène fait exactement k x k pixels d'écran. Sinon, linéaire — sans effet
+        // quand la cible est déjà à la taille affichée (`auto`), puisque l'origine est entière.
+        var dest = DestinationRect(sourceWidth, sourceHeight);
+        float drawW = dest.Width;
+        float drawH = dest.Height;
+        float originX = dest.X;
+        float originY = dest.Y;
+        bool linear = !dest.Integer;
 
         var viewport = new Silk.NET.Direct3D11.Viewport(0, 0, s_BackBufferWidth, s_BackBufferHeight, 0, 1);
         s_Context.RSSetViewports(1, in viewport);
@@ -928,7 +1240,7 @@ internal static unsafe class D3D11Backend
             Vertex(originX,         originY + drawH, 0, 1),
         ];
 
-        DrawTriangles(quad, source);
+        DrawTriangles(quad, source, linearSampler: linear);
 
         // Le voile de confort (voir SetComfortVeil) : une seule image, puis il retombe.
         if (s_ComfortVeilAlpha > 0f)
@@ -1056,7 +1368,7 @@ internal static unsafe class D3D11Backend
     // vue, ce que le regime ordinaire ne fait pas. Sans cela, DescribeTexture n'aurait rien a
     // lire : le releve de l'onde de choc arrive longtemps apres le chargement de sa texture.
     private static readonly bool s_RetainPixels =
-        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_FX") == "1";
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_FX") == "1" || DeviceShim.s_TraceFilter;
 
     /// <summary>
     /// ECHAFAUDAGE — decrit un objet texture pour le releve : ses dimensions, le texel que les
@@ -1099,7 +1411,7 @@ internal static unsafe class D3D11Backend
     /// Le relevé chiffre peut mentir par omission ; l'image, non. L'encodeur est minimal — un
     /// IHDR, un IDAT deflate et un IEND — parce qu'il ne sert qu'a regarder.
     /// </summary>
-    internal static void DumpTexture(nint key)
+    internal static void DumpTexture(nint key, string prefix = "texture")
     {
         if (!s_RetainPixels || !s_DumpedTextures.Add(key)) return;
         if (!s_GameTextures.TryGetValue(key, out GameTexture? t) || t.Pixels == null) return;
@@ -1109,7 +1421,7 @@ internal static unsafe class D3D11Backend
             string dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(
                 AppContext.BaseDirectory, "..", "..", "..", "..", "scratchpad"));
             System.IO.Directory.CreateDirectory(dir);
-            string path = System.IO.Path.Combine(dir, $"texture-{key:X8}-{t.Width}x{t.Height}.png");
+            string path = System.IO.Path.Combine(dir, $"{prefix}-{key:X8}-{t.Width}x{t.Height}.png");
 
             int w = t.Width, h = t.Height;
             uint[] px = t.Pixels;
@@ -1308,16 +1620,13 @@ internal static unsafe class D3D11Backend
         s_BlendStates.Clear();
         s_OpaqueBlend.Dispose();
         s_PointSampler.Dispose();
+        s_LinearSampler.Dispose();
         s_VertexBuffer.Dispose();
         s_ConstantBuffer.Dispose();
         s_InputLayout.Dispose();
         s_PixelShader.Dispose();
         s_VertexShader.Dispose();
-        s_DepthView.Dispose();
-        s_DepthTexture.Dispose();
-        s_SceneSrv.Dispose();
-        s_SceneView.Dispose();
-        s_SceneTexture.Dispose();
+        ReleaseSceneTarget();
         s_ImageSrv.Dispose();
         s_ImageTexture.Dispose();
         s_BackBufferView.Dispose();

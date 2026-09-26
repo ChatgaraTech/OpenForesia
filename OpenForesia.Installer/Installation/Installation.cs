@@ -125,6 +125,9 @@ internal static class Installation
                 },
                 null, annulation, journal);
 
+            // 2 bis. Les reglages d'affichage par defaut — jamais par-dessus ceux du joueur.
+            DeposerReglagesAffichage(dossier, journal);
+
             // 3. La desinstallation : Uninstall.exe (une copie de cet installeur). Ce qu'une
             //    installation anterieure a laisse sous d'autres noms — le script PowerShell, puis
             //    Desinstaller.exe — est retire.
@@ -162,6 +165,26 @@ internal static class Installation
             journal.Nettoyer();
             throw;
         }
+    }
+
+    internal const string ReglagesAffichage = "Affichage.ini";
+
+    /// <summary>
+    /// Depose `Affichage.ini`, commente, s'il n'y en a pas deja un : le jeu le lit sans jamais
+    /// l'ecrire, et une reinstallation ne doit pas effacer les reglages du joueur
+    /// (openspec/changes/enhance-display-resolution-filtering). Le modele est
+    /// `Reglages/Affichage.ini`, embarque — un seul exemplaire.
+    /// </summary>
+    private static void DeposerReglagesAffichage(string dossier, JournalInstallation journal)
+    {
+        string cible = Path.Combine(dossier, ReglagesAffichage);
+        if (File.Exists(cible)) return;
+
+        using Stream modele = typeof(Installation).Assembly.GetManifestResourceStream(ReglagesAffichage)
+            ?? throw new InvalidOperationException($"{ReglagesAffichage} n'est pas embarque dans l'installeur.");
+        journal.NoterFichier(cible);
+        using var sortie = new FileStream(cible, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        modele.CopyTo(sortie);
     }
 
     private static void EcrireEntreeDesinstallation(string dossier, string exe, string commande, long octets)

@@ -38,6 +38,32 @@ la commande.
 
 ---
 
+## `Affichage.ini` : l'image dépend d'un fichier à côté de l'exe (2026-09-26)
+
+Depuis `openspec/changes/enhance-display-resolution-filtering`, la résolution interne, le MSAA, la
+mise à l'échelle et le filtrage viennent de `Affichage.ini`, **dans le même dossier que l'exe**
+(`OpenForesia\bin\Debug\net10.0\` en développement). Sans lui, ce sont les défauts modernes
+(`auto`, MSAA 4, `ajustee`, `jeu`, `net`) — **pas** le rendu d'avant. Le modèle commenté est
+`OpenForesia.Installer\Reglages\Affichage.ini` ; le copier dans le dossier de l'exe pour un essai.
+Ce qui a été lu s'imprime au démarrage en ligne `[AFFICHAGE]`, suivie de la taille de rastérisation.
+
+**Toute capture comparée à une capture antérieure au 2026-09-26** se fait avec le rendu d'origine :
+
+```ini
+[Affichage]
+ResolutionInterne = 1
+Anticrenelage = 1
+[Textures]
+Filtrage3D = proche
+```
+
+Le jeu d'écrans de comparaison du changement : écran-titre, menu principal, sélection de
+personnage, auberge, forêt, un combat — en rendu d'origine puis en défauts modernes, pour y chercher
+des fentes entre polygones jointifs, une bavure entre sprites voisins d'une page ou un liseré sombre
+autour d'un sprite.
+
+---
+
 ## Ce que `playtest.ps1` fait
 
 1. Construit si on lui passe `-Build` (bascule sur un SDK connu via `DOTNET_ROOT` seulement si le
@@ -223,6 +249,7 @@ Poser avec `-Trace <nom sans le préfixe>` :
 | `OPENFORESIA_TRACE_VP` | le viewport |
 | `OPENFORESIA_DUMP_GEOMETRY` | l'enveloppe des coordonnées émises, ajoutée au bilan `[SHIM]` |
 | `OPENFORESIA_OPTIONS_SETUP` | la mise en place de la page d'options |
+| `OPENFORESIA_TRACE_FILTER` | la classe de filtrage de chaque texture (interface / 3D non filtrée / 3D filtrée), une ligne `[FILTRE]` par couple nouveau, et la texture en PNG dans `scratchpad/` sous le nom `filtre-<classe>-…` — c'est ce qui vérifie que « mode 0 » recouvre bien l'interface |
 
 Un échafaudage ajouté pour une enquête ponctuelle **se retire une fois l'enquête close** (règle du
 projet). Ceux listés ici sont permanents.
