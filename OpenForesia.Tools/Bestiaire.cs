@@ -1242,5 +1242,55 @@ internal static class Bestiaire
             report.AppendLine($"| `+0x{field:x2}` | 0x{ptr:x6} | {end - ptr} | `{hex}`  `{txt}` |");
         }
         report.AppendLine();
+
+        // Les trois catalogues d'effets par rang : le code de jeu lit `(*(byte**)(dir + champ))[k]`
+        // et fait naitre le sous-type `0xc0 + octet` (Behemoth +0xcc[2], Ange noir +0xd4[7],
+        // explosions +0xd0[n]). Le sous-type `0xc0 + n` designe l'entree n des tables par
+        // sous-zone.
+        report.AppendLine("**Catalogues d'effets** (`(*(byte**)(dir + champ))[k]`, en sous-types `0xc0 + octet`).");
+        report.AppendLine();
+        foreach (int field in new[] { 0xcc, 0xd0, 0xd4 })
+        {
+            int region = a.In(field, 4) ? a.I32(field) : 0;
+            int bytes = region > 0 && a.In(region, 4) ? a.I32(region) : 0;
+            if (bytes <= 0 || !a.In(bytes, 1))
+            {
+                report.AppendLine($"- `+0x{field:x2}` : region 0x{region:x6}, pas de tableau lisible");
+                continue;
+            }
+            int n = Math.Min(32, a.Len - bytes);
+            string sub = string.Join(" ", Enumerable.Range(0, n).Select(k => $"{k}:{0xc0 + a.U8(bytes + k):x2}"));
+            report.AppendLine($"- `+0x{field:x2}` : region 0x{region:x6} -> 0x{bytes:x6} : {sub}");
+        }
+        report.AppendLine();
+
+        // Les scripts de la table `+0x8c` (RunScript) : releve HEURISTIQUE de l'opcode 16
+        // (ScriptOpSpawnEffect, `10 sous-type p3 p4`) avec un sous-type >= 0xc0. Sans decodeur
+        // d'opcodes, un argument qui vaudrait 0x10 donne un faux positif : c'est une piste a
+        // verifier, pas une preuve.
+        int scripts = a.In(0x8c, 4) ? a.I32(0x8c) : 0;
+        if (scripts > 0 && a.In(scripts, 4))
+        {
+            int tableEnd = RegionEnd(a, scripts);
+            var starts = new List<int>();
+            for (int p = scripts; p + 4 <= tableEnd; p += 4)
+            {
+                int s = a.I32(p);
+                if (s > 0 && a.In(s)) starts.Add(s);
+            }
+            var hits = new List<string>();
+            for (int i = 0; i < starts.Count; i++)
+            {
+                int end = starts.Where(x => x > starts[i]).DefaultIfEmpty(RegionEnd(a, starts[i])).Min();
+                for (int p = starts[i]; p + 3 < end; p++)
+                {
+                    if (a.U8(p) == 0x10 && a.U8(p + 1) >= 0xc0)
+                        hits.Add($"script {i} +0x{p - starts[i]:x}: `10 {a.U8(p + 1):x2} {a.U8(p + 2):x2} {a.U8(p + 3):x2}`");
+                }
+            }
+            report.AppendLine($"**Scripts `+0x8c`** : {starts.Count} script(s) ; opcode 16 probable vers un sous-type >= 0xc0 : "
+                + (hits.Count == 0 ? "aucun" : string.Join(" ; ", hits)));
+            report.AppendLine();
+        }
     }
 }

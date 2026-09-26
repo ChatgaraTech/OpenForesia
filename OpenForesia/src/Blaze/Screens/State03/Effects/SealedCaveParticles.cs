@@ -4649,7 +4649,7 @@ public static unsafe partial class Blaze
         if (age > 0) return;
 
         if (age == 0) SetSceneBackdrop(0xfa, 0xfa, 0xfa, 1);        // Ghidra: DAT_005e9160..66
-        *(uint*)e &= 0xffbfffff;
+        *(uint*)e &= 0xffffbfff;                                    // Ghidra: `and dh,0BFh` — le bit 0x4000 (lu 0x400000 jusqu'au 2026-09-26)
 
         if (*(short*)(e + 0x14) == 3 && *(short*)(e + 0x9a) >= -10)
         {

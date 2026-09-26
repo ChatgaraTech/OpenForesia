@@ -1113,6 +1113,18 @@ public static unsafe partial class Blaze
     /// <c>Legacy/Raw/Blaze/SealedCave/FUN_004424B0.asm</c>.
     ///
     /// <para>
+    /// <b>Vraisemblablement inatteignable</b> (releve du CD, 2026-09-26, <c>bestiaire --regions</c>).
+    /// Elle est le sous-type <c>0xcb</c> du pool d'effets dans les salles 13 a 15, et rien ne l'y fait
+    /// naitre : le script de chaque salle lance UNE scene par l'opcode 16 — <c>0xcf</c>
+    /// (<see cref="EntityHandler_0043FB80"/>) en 13, <c>0xcc</c> (<see cref="EntityHandler_004417F0"/>)
+    /// en 14, <c>0xd0</c> (<see cref="EntityHandler_00440840"/>, la fin du jeu) en 15 ; aucun des
+    /// trois catalogues <c>+0xcc/+0xd0/+0xd4</c> ne contient <c>0xcb</c> ; aucune fiche de sort,
+    /// aucun coffre (il n'y en a pas dans ces salles), et les coffres laches par les monstres ne
+    /// tirent que <c>0xb4..0xb9</c>. Meme conclusion pour <c>0xca</c>,
+    /// <see cref="EntityHandler_00441EB0"/>. Ses gerbes (<see cref="EntityHandler_00442870"/>) ne se
+    /// voient donc pas dans le jeu d'origine.
+    /// </para>
+    /// <para>
     /// <b>La neuvieme scene : le membre aspire.</b> Meme ossature que les huit autres — les deux
     /// appels de tete, le balayage qui retient la derniere entite de scene vivante, l'ouverture
     /// commune — mais sa mise en scene tient en trois temps : un accord de trois notes, une

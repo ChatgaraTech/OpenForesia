@@ -6,6 +6,19 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- doc : les scènes de mort « le membre aspiré » (`0xcb`, `0x004424B0`) et « dans la lumière » (`0xca`,
+  `0x00441EB0`) des salles 13 à 15 sont vraisemblablement inatteignables — le script de chaque salle
+  lance une seule scène (`0xcf` en 13, `0xcc` en 14, `0xd0` = la fin du jeu en 15), et ni catalogue,
+  ni sort, ni coffre ne porte `0xcb`/`0xca`
+- feat : `bestiaire --regions` relève aussi les trois catalogues d'effets `+0xcc/+0xd0/+0xd4` (en
+  sous-types `0xc0 + n`) et, heuristiquement, les opcodes 16 des scripts `+0x8c` vers un sous-type `>= 0xc0`
+- fix : les gerbes de la scène de mort « le membre aspiré » (`0x00442870`, sous-type `0xc5`, grotte
+  scellée 13 à 15) effaçaient le bit `0x400000` au lieu de `0x4000` (`and dh,0BFh`) et restaient
+  cachées ; trouvé par l'audit des octets hauts — scène vraisemblablement inatteignable, voir ci-dessus
+- doc : audit des opérations sur octet haut de registre (`or/and/xor/test ah|bh|ch|dh`) — les 436
+  sites des 962 relevés de `Legacy/Raw/` comparés au C# ; un seul défaut de plus : la
+  couronne de la grotte scellée `0x00442870`, corrigée ci-dessus ;
+  `0x00541DC0` (Ruines souterraines) n'est pas transcrite
 - fix : le « rectangle arc-en-ciel » à la mort du Grizzly et du Behemoth — `TickPartySummon`
   (`0x004153F0` et ses trois copies) posait le bit `0x100000` sur le boss au lieu de `0x1000`
   (`or dh,10h`), si bien que la grille le dessinait comme le modèle 0 du paquet d'effets ; trouvé
