@@ -13,15 +13,19 @@ pas suivi par git ; c'est pour ça qu'une référence était nécessaire.
 
 ## Où le jeu le cherche
 
-Le chemin est construit à partir du chemin de l'exécutable, extension remplacée par `.cfg`
-(`GetIniFilePath`). Donc :
+À côté de l'exécutable : son nom, extension remplacée par `.cfg`. Depuis le 2026-09-26 (abandon du
+CD, `openspec/changes/install-from-iso`), le jeu se place au démarrage dans le dossier de son exe
+et lit `.\OpenForesia.cfg` en **relatif**, côté jeu (`GetIniFilePath`) comme côté `winsys3d`
+(`Setup3DDevice`). L'original bâtissait un chemin absolu avec `GetModuleFileNameA`, qu'un dossier
+d'installation hors de la page de code ANSI aurait abîmé. Donc :
 
 | lancement | fichier lu |
 |---|---|
-| `bin\Debug\net10.0\OpenForesia.exe` | `bin\Debug\net10.0\OpenForesia.cfg` |
-| Rider « Run », `dotnet run` | idem — c'est le chemin de l'**exe**, pas le répertoire de travail |
+| `bin\Debug\net10.0\OpenForesia.exe`, Rider « Run », `dotnet run`, `playtest.ps1` | `bin\Debug\net10.0\OpenForesia.cfg` |
+| jeu installé par `OpenForesia-Setup` | `OpenForesia.cfg` du dossier d'installation |
 
-À la différence du dossier `save\`, qui suit lui le répertoire de travail (voir `test-protocol.md`).
+Le dossier `save\` et les données du jeu (`French\`, `Snd\`, `Music\`) se trouvent au même endroit.
+S'il n'existe pas, sa première écriture (`WritePrivateProfileStringA`) le crée.
 
 ## Les trois sections
 

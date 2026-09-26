@@ -1,7 +1,7 @@
 using System.Text;
 
 /// <summary>
-/// Lecture <b>hors-jeu</b> des donnees d'ennemis du CD d'origine.
+/// Lecture <b>hors-jeu</b> des donnees d'ennemis du jeu d'origine, dans un dossier installe.
 ///
 /// <para>
 /// Rien ici n'est invente : le parcours reproduit celui du jeu, fonction par fonction.
@@ -223,10 +223,10 @@ internal static class Bestiaire
         return result;
     }
 
-    public static void Run(string cdRoot, int? onlyZone, string? outDir, bool regions)
+    public static void Run(string dossierDonnees, int? onlyZone, string? outDir, bool regions)
     {
-        string french = Path.Combine(cdRoot, "French");
-        if (!Directory.Exists(french)) french = cdRoot;
+        string french = Path.Combine(dossierDonnees, "French");
+        if (!Directory.Exists(french)) french = dossierDonnees;
 
         string systemIni = Path.Combine(french, "SYSTEM.INI");
         string archivePath = Path.Combine(french, "BLAZE.ALL");
@@ -234,7 +234,7 @@ internal static class Bestiaire
         if (!File.Exists(systemIni) || !File.Exists(archivePath))
         {
             Console.WriteLine($"Introuvable : {systemIni} et/ou {archivePath}");
-            Console.WriteLine("Donner la racine du CD (celle qui contient French\\) ou le repertoire French lui-meme.");
+            Console.WriteLine("Donner le dossier des donnees du jeu (celui qui contient French\\) ou le repertoire French lui-meme.");
             return;
         }
 

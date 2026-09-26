@@ -60,7 +60,6 @@ public static unsafe partial class Blaze
 
 
 
-    private const uint DRIVE_CDROM = 5;
 
 
 

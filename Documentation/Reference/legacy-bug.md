@@ -2331,3 +2331,23 @@ Les états, sons, naissances, gel des entités et sorties de zone sont ceux du b
 l'aplat d'origine. **Les autres emplois du voile restent opaques** — fondus de scène de la grotte
 scellée (`0x004384f0`, `0x00440840`), sorts du Prêtre : à traiter
 au cas par cas s'ils gênent.
+
+## LB-053 — La protection anticopie `cd.idx` corrompt le texte si le fichier n'a pas exactement 640 Mo
+
+**Statut** : `Retiré` le 2026-09-26 (legacy ++, `openspec/changes/install-from-iso`).
+
+**Où** : `RunApplication` (`FUN_00513900`) lit la taille de `@:\cd.idx` (`DAT_00563280`) dans
+`DAT_0056321c`, puis lui ajoute `0xd8000000` juste avant la boucle principale. Le gestionnaire du
+code de contrôle `0x01` du moteur de texte (`Handler_00544810`, binaire `0x00544810`) rend
+`(DAT_0056321c + 1) * (param_1 + 3)` — le curseur de texte suivant, **multiplié**.
+
+Le disque authentique porte un `cd.idx` dont l'entrée de répertoire déclare 671 088 640 octets
+(`0x28000000`) : `0x28000000 + 0xd8000000 = 0` sur 32 bits, le multiplicateur vaut 1, le curseur
+avance normalement. Toute autre taille — une copie qui ne reproduit pas l'entrée truquée, un fichier
+absent (`GetFileSize` rend `0xFFFFFFFF`) — donne un curseur faux, et le texte part en vrille
+plusieurs codes de contrôle plus loin, loin du lieu du contrôle. Le fichier lui-même n'est qu'un
+AVI de 1,8 Mo au secteur 88 : sa taille déclarée recouvre presque tout le disque.
+
+**Retiré** : le jeu n'a plus de CD. `Handler_00544810` rend `text + 3`, `DAT_0056321c` et ses deux
+écritures ont disparu, et l'installeur ne copie pas `cd.idx`. Les commentaires `// Ghidra:` des trois
+sites disent ce qu'il y avait.

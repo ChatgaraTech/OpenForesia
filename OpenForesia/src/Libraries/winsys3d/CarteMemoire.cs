@@ -43,7 +43,7 @@
 // `byebye-dll.md`.
 //
 // ============================================================================================
-// LA BRANCHE `cdrom:` EST MORTE, ET ELLE EST QUAND MEME TRANSCRITE
+// LA BRANCHE `cdrom:` ETAIT MORTE — RETIREE LE 2026-09-26 (LEGACY ++, INSTALL-FROM-ISO)
 //
 // `FUN_00a03f80` compare les SIX premiers octets du descripteur a `"cdrom:"` et, s'ils
 // concordent, refabrique le chemin par `_splitpath`/`_makepath` (wsyskern, ordinaux 4 et 5, voir
@@ -52,9 +52,9 @@
 // **Aucun site de la reconstruction ne peut y entrer.** Les quatre points d'entree ne recoivent
 // qu'un descripteur, `Saves.s_CardPathDescriptor_00604940`, et `SetCardPathDeviceFields`
 // (FUN_00512890) y ecrit `"save\"` avant tout autre usage : les six premiers octets valent donc
-// `s`, `a`, `v`, `e`, `\` et la premiere lettre du nom de fichier. Elle est transcrite tout de
-// meme — la fidelite ne se decide pas au cas par cas, et le jour ou un descripteur `cdrom:`
-// apparaitra c'est le comportement de 1998 qui doit sortir.
+// `s`, `a`, `v`, `e`, `\` et la premiere lettre du nom de fichier. Elle a ete transcrite tout de
+// meme, jusqu'au 2026-09-26 : en mode « legacy ++ », le jeu ne connait plus de CD, et la branche
+// a ete retiree avec le reste. Une ligne `// Ghidra:` dans ResoudreChemin dit ce qu'elle faisait.
 //
 // ============================================================================================
 // DEUX DEFAUTS DE L'ORIGINAL, RELEVES ET NON REPRODUITS A L'IDENTIQUE
@@ -101,9 +101,6 @@ internal static unsafe class Winsys3dCarteMemoire
     /// </summary>
     private static readonly byte* s_TamponChemin_00dedc58 = (byte*)NativeMemory.AllocZeroed(0x100);
 
-    /// <summary>s_cdrom__00a2c3a8 — les six octets `cdrom:`, relus dans le binaire.</summary>
-    private static readonly byte* s_Cdrom_00a2c3a8 = AllouerChaine("cdrom:");
-
     // ----------------------------------------------------------------------------------------
     // Le cadre `WIN32_FIND_DATAA`, en offsets plutot qu'en structure : c'est ainsi que les deux
     // corps le lisent, et les trois offsets sont confirmes au desassembleur (`[esp+30h]`,
@@ -117,11 +114,10 @@ internal static unsafe class Winsys3dCarteMemoire
     /// Ghidra: winsys3d.c FUN_00a03f80 @ 0x00a03f80 — resout un descripteur de carte memoire en
     /// chemin Win32, dans le casier statique <c>DAT_00dedc58</c> dont il rend l'adresse.
     ///
-    /// Deux chemins, et le second est celui que le jeu prend toujours :
+    /// L'original a deux chemins ; le premier, pour un descripteur commencant par
+    /// <c>"cdrom:"</c>, est retire (legacy ++, plus de CD). Reste celui que le jeu prenait toujours :
     ///
-    ///   - le descripteur commence par <c>"cdrom:"</c> : le chemin est refabrique avec le lecteur
-    ///     et le repertoire du descripteur, et le nom pris a <c>descripteur + 6</c> ;
-    ///   - sinon le descripteur est copie tel quel, puis **le premier <c>':'</c> a partir de
+    ///   - le descripteur est copie tel quel, puis **le premier <c>':'</c> a partir de
     ///     l'octet 2 devient un <c>'~'</c>**. C'est la convention de nommage de la carte memoire
     ///     emulee : un `:` est interdit dans un nom de fichier Windows, le portage le remplace.
     ///     A partir de l'octet 2 et non 0, pour ne pas manger le `C:` d'un chemin absolu.
@@ -136,18 +132,10 @@ internal static unsafe class Winsys3dCarteMemoire
         *(ushort*)(s_TamponChemin_00dedc58 + 4) = *(ushort*)(descripteur + 4);
         s_TamponChemin_00dedc58[6] = 0;
 
-        if (Win32.lstrcmpiA(s_TamponChemin_00dedc58, s_Cdrom_00a2c3a8) == 0)
-        {
-            // Le cadre de l'original : un tampon de lecteur de 4 octets, un tampon de repertoire
-            // juste derriere. Voir le pave de tete pour les 252 octets de l'original contre 256
-            // ici.
-            byte* lecteur = stackalloc byte[4];
-            byte* repertoire = stackalloc byte[0x100];
-
-            Chemins.Decouper(descripteur, lecteur, repertoire, null, null);
-            Chemins.Composer(s_TamponChemin_00dedc58, lecteur, repertoire, descripteur + 6, null);
-            return s_TamponChemin_00dedc58;
-        }
+        // Ghidra: `if (lstrcmpiA(DAT_00dedc58, "cdrom:") == 0)` — la branche qui refabriquait le
+        // chemin par _splitpath / _makepath (wsyskern, ordinaux 4 et 5) avec le nom pris a
+        // `descripteur + 6` — retiré (legacy ++, plus de CD ; install-from-iso). Elle etait morte :
+        // le seul descripteur du jeu commence par « save\ ».
 
         // `strcpy(DAT_00dedc58, descripteur)` — un `repne scasb` suivi d'un `rep movsd`, donc le
         // NUL est copie lui aussi.

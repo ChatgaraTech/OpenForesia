@@ -10,7 +10,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-// `Blaze` porte encore les aides que cette classe appelle : ToAnsiZ, BuildCdPath,
+// `Blaze` porte encore les aides que cette classe appelle : ToAnsiZ, BuildDataPath,
 // GetMainMemPtr, Malloc/Free, RaiseQuitException, s_ErrorCaption.
 using static OpenForesia.Blaze.Blaze;
 
@@ -889,7 +889,7 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
         // Ghidra: if (*(param_1+0xc) == 0) { ... } â€” load the title bitmap once, then cache it.
         if (player.TitleBitmapLoaded == 0)
         {
-            byte* path = res.BuildCdPath(s_TitleBitmapFileName);
+            byte* path = res.BuildDataPath(s_TitleBitmapFileName);
             player.TitleBitmap = Wsyskern.LoadBitmapFile(path, 0 /* silent on failure â€” see wsyskern.md */);
             Free(path);
 
@@ -1077,7 +1077,7 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
 
         byte* path = stackalloc byte[64];
         int i = 0;
-        for (byte* p = mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = mem.s_DataRootPath_005631f8; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = movieFileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
 

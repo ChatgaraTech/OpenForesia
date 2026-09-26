@@ -166,11 +166,9 @@ internal static unsafe class Winsys3d
     // donc le test `Ordinal_46() < 0` de FUN_00513dd0 est toujours faux dans cette version de la DLL.
     internal static int Ordinal_46() => (int)Libraries.Winsys3dSouches.RendZero();
 
-    // real: winsys3d.c FUN_00a05160 — libcd `CdSearchFile`, vidé par le portage PC : il ignore ses
-    // deux arguments et rend l'adresse d'une `CdlFILE` statique de 24 octets que personne n'écrit.
-    // L'original passe ici `(&DAT_005e9040, "BLAZE_ALL.1")` ; le site C# passe `null, null`, ce qui
-    // ne change rien puisque le corps ne les lit pas. Voir `Libraries/winsys3d/Cdrom.cs`.
-    internal static void* Ordinal_92(void* a, void* b) => Libraries.Winsys3dCdrom.CdSearchFile(a, (byte*)b);
+    // Ordinal_92 : winsys3d.c FUN_00a05160 — libcd `CdSearchFile`, vidé par le portage PC (il
+    // ignorait ses deux arguments et rendait l'adresse d'une `CdlFILE` statique de 24 octets que
+    // personne n'écrivait) — retiré (legacy ++, plus de CD ; install-from-iso).
 
     internal static uint Ordinal_104(void* a) => Libraries.Winsys3dSouches.RendZeroUnArgument(); // confirmed no-op, returns 0 (FUN_00a02e20)
 

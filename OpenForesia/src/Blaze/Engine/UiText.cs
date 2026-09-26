@@ -624,7 +624,7 @@ internal sealed unsafe class UiText
     /// read, confirmed by hand against the bytes at file offset <c>0x143c10</c> (there is no branch
     /// after it, so this is unconditional): <c>return (DAT_0056321c + 1) * (int)(param_1 + 3)</c>.
     /// Every sibling handler just returns the advanced cursor; this one is a genuine integer
-    /// multiply of it by <c>DAT_0056321c + 1</c> (<see cref="s_CdCheckFileSize_0056321c"/>). Since
+    /// multiply of it by <c>DAT_0056321c + 1</c> (retiré depuis — voir LB-053). Since
     /// <see cref="RunTextEngine"/> feeds this return value straight back in as the next parse
     /// cursor, correctness for *any* text pointer requires the multiplier to be exactly <c>1</c>,
     /// i.e. <c>DAT_0056321c == 0</c> exactly — which in turn requires the CD-check file
@@ -669,7 +669,10 @@ internal sealed unsafe class UiText
         *s_OtCursor_005e8314 = (uint)(nuint)prim;
         s_SpriteCursor_005e8324 = prim + 6;
 
-        return (byte*)((mem.s_CdCheckFileSize_0056321c + 1) * (uint)(nuint)(text + 3));
+        // Ghidra: `return (DAT_0056321c + 1) * (int)(param_1 + 3);` — le multiplicateur vaut 1 avec
+        // le CD authentique (cd.idx de 0x28000000 octets). Écart legacy ++ (LB-053) : la protection
+        // est retirée, le curseur avance simplement de trois octets.
+        return text + 3;
     }
 
     /// <summary>

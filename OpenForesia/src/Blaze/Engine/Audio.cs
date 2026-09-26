@@ -393,14 +393,17 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
         return s_TexFilterPossible;
     }
 
+    /// <summary>
+    /// Le fichier de réglages : le nom de l'exe, extension remplacée par <c>.cfg</c>. L'original le
+    /// bâtit sur le chemin **complet** rendu par <c>GetModuleFileNameA</c>. Écart legacy ++
+    /// (install-from-iso) : chemin relatif « .\OpenForesia.cfg » — le répertoire courant est le
+    /// dossier de l'exe (<see cref="RunApplication"/>), et un chemin d'installation hors de la page
+    /// de code ANSI n'est plus abîmé par l'aller-retour en <c>…ProfileA</c>.
+    /// </summary>
     internal string GetIniFilePath()
     {
-        byte* buffer = stackalloc byte[0x104];
-        Win32.GetModuleFileNameA(IntPtr.Zero, buffer, 0x104);
-        string exePath = Marshal.PtrToStringAnsi((IntPtr)buffer) ?? string.Empty;
-        int dot = exePath.LastIndexOf('.');
-        if (dot >= 0) exePath = exePath[..dot];
-        return exePath + IniFileExtension;
+        string exeName = Path.GetFileNameWithoutExtension(Environment.ProcessPath) ?? "OpenForesia";
+        return ".\\" + exeName + IniFileExtension;
     }
 
     internal uint ReadIniInt(string key, int defaultValue, byte* iniPathAnsi)

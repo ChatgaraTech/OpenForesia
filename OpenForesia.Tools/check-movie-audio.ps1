@@ -8,12 +8,14 @@
 # Le decodeur teste ici est la transcription EXACTE de OpenForesia/src/Host/MsAdpcm.cs. Si les deux
 # rendent les memes echantillons, l'algorithme du jeu est bon.
 #
-#   powershell -File OpenForesia.Tools\check-movie-audio.ps1 -Avi E:\French\Teps.AVI
+#   powershell -File OpenForesia.Tools\check-movie-audio.ps1 -Avi OpenForesia\bin\Debug\net10.0\French\Teps.AVI
+#
+# Les films sont ceux du dossier du jeu, extraits de l'ISO par OpenForesia-Setup --extraire-donnees.
 #
 # Ecrit aussi un WAV si -Wav est donne, pour pouvoir ecouter.
 
 param(
-    [string]$Avi = 'E:\French\Teps.AVI',
+    [string]$Avi = 'OpenForesia\bin\Debug\net10.0\French\Teps.AVI',
     [string]$Wav = '',
     [int]$Blocks = 200
 )

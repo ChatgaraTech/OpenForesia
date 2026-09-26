@@ -50,6 +50,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Raw", "Raw", "{B1BCCA8C-ABD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Tests", "OpenForesia.Tests\OpenForesia.Tests.csproj", "{BB80E53F-DAD7-4B1D-BE86-8F04D42B414E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Installer", "OpenForesia.Installer\OpenForesia.Installer.csproj", "{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -96,6 +98,18 @@ Global
 		{BB80E53F-DAD7-4B1D-BE86-8F04D42B414E}.Release|x64.Build.0 = Release|Any CPU
 		{BB80E53F-DAD7-4B1D-BE86-8F04D42B414E}.Release|x86.ActiveCfg = Release|Any CPU
 		{BB80E53F-DAD7-4B1D-BE86-8F04D42B414E}.Release|x86.Build.0 = Release|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Debug|x64.Build.0 = Debug|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Debug|x86.Build.0 = Debug|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Release|x64.ActiveCfg = Release|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Release|x64.Build.0 = Release|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Release|x86.ActiveCfg = Release|Any CPU
+		{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

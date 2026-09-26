@@ -790,15 +790,14 @@ public static unsafe partial class Blaze
         // FormatDecimal a deux arguments deja transcrit : le site passe quatre arguments et le
         // moteur de format complet est FUN_00549380 (424 lignes, non transcrit). Le seul format
         // utilise ici est "q:\snd\Q%02d_%02d.snd", releve a 0x005649f4 — pose directement plutot
-        // que de tirer tout le moteur pour deux entiers. La lettre de lecteur remplace le 'q'
-        // juste apres, comme pour tous les chemins CD.
+        // que de tirer tout le moteur pour deux entiers. Dans le binaire, la lettre de lecteur
+        // remplace le 'q' juste apres — retiré (legacy ++, plus de CD) : « snd\Q…», relatif.
         int subForName = Res.s_Unknown_005de528 == 0 ? 0 : (byte)s_Unknown_005de52c;
         byte* soundPath = stackalloc byte[100];
         NativeMemory.Clear(soundPath, 100);
         {
-            string name = $"q:\\snd\\Q{Res.s_Unknown_005de528 & 0xff:D2}_{subForName:D2}.snd";
+            string name = $"snd\\Q{Res.s_Unknown_005de528 & 0xff:D2}_{subForName:D2}.snd";
             for (int i = 0; i < name.Length; i++) soundPath[i] = (byte)name[i];
-            soundPath[0] = Mem.s_CdDataRootPath[0];
         }
 
         IntPtr sound = OpenExistingFileReadOnly(soundPath);           // Ghidra: Ordinal_331

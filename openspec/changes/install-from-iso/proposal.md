@@ -13,9 +13,10 @@ ce qu'il faut.
   X / Z / P), du message « insérez le CD », de la lecture de `cd.idx` et du multiplicateur qu'il
   alimente, de la lettre de lecteur substituée dans les chemins, de `CdSearchFile` (ordinal 92) et de la
   branche `cdrom:` des descripteurs de carte mémoire.
-- Le jeu lit ses données **dans un dossier** : par défaut celui de l'exécutable, qui devient aussi le
-  répertoire courant — donc `save\` est enfin toujours à côté de l'exe. Un réglage de
-  `OpenForesia.cfg` permet de pointer ailleurs (usage développeur).
+- Le jeu lit ses données **dans le dossier de l'exécutable**, qui devient aussi le répertoire
+  courant ; tous ses chemins (données, `save\`, `OpenForesia.cfg`) sont relatifs — donc `save\` est
+  enfin toujours à côté de l'exe. En développement, les données s'extraient dans le dossier de
+  sortie de la build.
 - **Vérification au démarrage** : la liste des fichiers attendus (nom et taille) est contrôlée avant
   toute création de fenêtre ; s'il en manque, un message en français le dit et le jeu s'arrête.
 - **Nouvel installeur** `OpenForesia-Setup.exe` : choisir l'ISO, la reconnaître, choisir le dossier,

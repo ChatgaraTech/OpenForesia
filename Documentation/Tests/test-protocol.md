@@ -20,6 +20,24 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 
 ---
 
+## Les données du jeu sont à côté de l'exe — plus de CD (2026-09-26)
+
+Le jeu ne cherche plus de CD (`openspec/changes/install-from-iso`). Il se place au démarrage dans
+le dossier de son exe, **quel que soit le dossier d'où on le lance**, et tout s'y résout : les
+données (`French\`, `Snd\`, `Music\`), `save\` et `OpenForesia.cfg`. En développement, ce dossier
+est `OpenForesia\bin\Debug\net10.0\`. Les données s'y extraient une fois depuis l'ISO, en deux
+secondes :
+
+```powershell
+OpenForesia.Installer\bin\Debug\net10.0-windows\OpenForesia-Setup.exe --extraire-donnees <iso> OpenForesia\bin\Debug\net10.0
+```
+
+`bin` est ignoré par git, et une recompilation ne les efface pas. S'il en manque, le jeu affiche un
+message et s'arrête avant d'ouvrir sa fenêtre ; `playtest.ps1` le détecte avant de lancer et redonne
+la commande.
+
+---
+
 ## Ce que `playtest.ps1` fait
 
 1. Construit si on lui passe `-Build` (bascule sur un SDK connu via `DOTNET_ROOT` seulement si le
@@ -46,7 +64,7 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 | `-EnvVar A=1,B` | pose `OPENFORESIA_A=1`, `OPENFORESIA_B=1` — le pendant de `-Trace` pour les drapeaux qui **changent le comportement** du jeu au lieu de le décrire. Une valeur omise vaut `1`. Voir « Le filet » plus bas |
 | `-KeepOpen` | laisse le jeu ouvert |
 | `-MenuDelay`, `-TapMs`, `-MaxTaps` | réglages fins, rarement utiles |
-| `-WorkingDir <chemin>` | dossier de travail du processus lancé. Par défaut celui de l'exe (comme un double-clic Explorer). À poser pour reproduire un lancement dont le CWD diffère — **Rider "Run" et `dotnet run` mettent tous deux par défaut le dossier du `.csproj`**, pas celui de l'exe compilé — ce qui change la résolution de tout chemin relatif que le jeu ouvre (`save\...` notamment, voir plus bas) |
+| `-WorkingDir <chemin>` | dossier de travail du processus lancé. Par défaut celui de l'exe (comme un double-clic Explorer). **Depuis le 2026-09-26 il ne change plus rien pour le jeu**, qui se replace lui-même dans le dossier de son exe : il sert à vérifier justement cela. Avant, Rider « Run » et `dotnet run` (dossier du `.csproj`) faisaient atterrir `save\` ailleurs |
 
 ### Sorties
 
@@ -168,10 +186,10 @@ Le tableau est **vérifié en jeu** : une trace posée sur le mot « tenu » (`0
 `0x0001` avec F1 enfoncé, `0x0008` avec F2, `0x8000` avec Entrée, `0x0040` avec Bas. Refaire cette
 mesure plutôt que de supposer, si un doute revient.
 
-Attention : **`OpenForesia/` ne contient pas de `.cfg`**, donc avec `-WorkingDir OpenForesia` ce sont
-les liaisons **par défaut** (`s_KeyBindingDefaults_00564ab8`) qui s'appliquent, pas le
-`bin/Debug/net10.0/OpenForesia.cfg`. Les deux tables se trouvent être identiques ici, mais la
-distinction compte dès que l'une des deux change.
+Les liaisons lues sont celles de `bin/Debug/net10.0/OpenForesia.cfg`, à côté de l'exe, quel que
+soit le dossier de lancement (depuis le 2026-09-26 ; avant, `-WorkingDir OpenForesia` pouvait faire
+tomber sur les liaisons **par défaut**, `s_KeyBindingDefaults_00564ab8`). Les deux tables se trouvent
+être identiques ici, mais la distinction compte dès que l'une des deux change.
 
 ### Taper du texte : `TYPE:` et `KBENTER`
 
@@ -224,12 +242,14 @@ dérivés du personnage (nom, statistiques, classe, élément, style) — `Blaze
 exemple. Un personnage = un fichier ; deux personnages qui diffèrent par n'importe lequel de ces
 éléments donnent deux fichiers. Détail dans `legacy-bug.md` (LB-002).
 
-`OpenForesia/save/` (à côté du `.csproj`, avec un `.gitkeep` pour rester suivi par git) existe donc
-dans le dépôt pour cette raison. **C'est l'endroit qui compte** : Rider « Run » et `dotnet run`
-lancent tous deux le process avec ce dossier comme répertoire de travail par défaut — pas
-`bin/Debug/net10.0/`, où se trouve l'exe compilé mais où `playtest.ps1` pointe par défaut. Pour
-tester le chemin d'écriture dans les mêmes conditions que Rider, passer
-`-WorkingDir OpenForesia` :
+**Depuis le 2026-09-26, `save\` est toujours `OpenForesia\bin\Debug\net10.0\save\`**, à côté de
+l'exe, quel que soit le lanceur (Rider « Run », `dotnet run`, double-clic, `playtest.ps1`). Le
+dossier existe déjà : `--extraire-donnees` le crée avec les données, et l'installeur le crée chez le
+joueur.
+
+`OpenForesia/save/` (à côté du `.csproj`, avec un `.gitkeep`) **ne sert plus** : c'était le dossier
+de travail de Rider « Run » et de `dotnet run`, que le jeu n'emploie plus. Les sauvegardes qui s'y
+trouvent sont à recopier dans `bin\Debug\net10.0\save\` pour être vues.
 
 ### Le parcours de création complet est scriptable (2026-08-18)
 
@@ -243,7 +263,7 @@ de suite, deux fichiers distincts :
 
 ```powershell
 $env:OPENFORESIA_FORCE_CONFIRM_STATS = '1'
-OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 55 -Shot -WorkingDir OpenForesia `
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 55 -Shot `
   -Then WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,TYPE:VINCENT,WAIT1,KBENTER,WAIT3,
         ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,
         ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT4,
@@ -257,7 +277,7 @@ clavier + `KBENTER`), style de langage (3), élément de protection (3), bonus (
 répartition des points — que `OPENFORESIA_FORCE_CONFIRM_STATS=1` valide d'office — et enfin l'écran
 de sauvegarde. Compter environ 55 s ; changer le `TYPE:` suffit à obtenir un autre fichier.
 
-Puis lire le fichier écrit dans `OpenForesia/save/Blaze-Saving<code>` (24576 octets, en-tête
+Puis lire le fichier écrit dans `OpenForesia/bin/Debug/net10.0/save/Blaze-Saving<code>` (24576 octets, en-tête
 `SC 11 03`, le nom tapé encodé sur deux octets par caractère à partir de l'offset 4).
 
 **Rejouer exactement le même personnage écrase sa sauvegarde**, sans plantage : le parcours
@@ -279,20 +299,15 @@ Pour repartir d'un dossier vide malgré tout :
 Get-ChildItem 'OpenForesia\save' -Filter 'Blaze-Saving*' | Remove-Item -Force
 ```
 
-### Le fichier atterrit dans le `save\` du répertoire de travail, pas dans celui du dépôt
+### Le fichier atterrit dans `bin\Debug\net10.0\save\`, quel que soit le lanceur
 
-Le chemin est relatif (`save\Blaze-Saving<code>`), donc il suit le **répertoire de travail du
-processus**, pas l'emplacement de l'exe ni celui du `.csproj` :
+Le chemin est relatif (`save\Blaze-Saving<code>`), et depuis le 2026-09-26 le répertoire de travail
+est toujours le dossier de l'exe : le fichier apparaît dans `OpenForesia\bin\Debug\net10.0\save\`,
+que le jeu soit lancé par Rider, `dotnet run`, un double-clic ou `playtest.ps1`.
 
-| lancement | le fichier apparaît dans |
-|---|---|
-| Rider « Run », `dotnet run` | `OpenForesia\save\` |
-| double-clic sur l'exe, `bin\Debug\net10.0\OpenForesia.exe` | `OpenForesia\bin\Debug\net10.0\save\` |
-| `playtest.ps1` sans `-WorkingDir` | `OpenForesia\bin\Debug\net10.0\save\` |
-| `playtest.ps1 -WorkingDir OpenForesia` | `OpenForesia\save\` |
-
-« La sauvegarde ne crée plus de fichier » est presque toujours ce décalage-là : regarder les deux
-dossiers avant de conclure.
+> Avant le 2026-09-26, il suivait le répertoire de travail du processus : Rider « Run » et
+> `dotnet run` écrivaient dans `OpenForesia\save\`, et « la sauvegarde ne crée plus de fichier »
+> était presque toujours ce décalage-là.
 
 ---
 
@@ -304,8 +319,7 @@ d'observation — en comptant environ une seconde entre la validation détectée
 fenêtre. Il faut donc **`-Seconds 0`** :
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 0 -Shot -WorkingDir OpenForesia
-```
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 0 -Shot```
 
 À `-Seconds 2` on est déjà sur l'écran suivant, ce qui donne l'illusion que la transition n'existe
 pas. **Le repère fiable est le débit de primitives du verdict** : `1 par image` est la signature de
@@ -330,7 +344,7 @@ Le curseur démarre sur la première ligne ; **BAS puis validation** prend la se
 
 ```powershell
 $env:OPENFORESIA_FORCE_CONFIRM_STATS = '1'
-OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 92 -Shot -WorkingDir OpenForesia `
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 92 -Shot `
   -Then WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,TYPE:ARTHUR,WAIT1,KBENTER,WAIT3,
         ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,
         ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT4,
@@ -351,14 +365,14 @@ déjà le carrousel, il y en a un de trop. Le repère fiable est la capture, pas
 C'est le chemin B de l'état de jeu 1, et il est **directement accessible depuis le menu principal** :
 entrée 0, « Début du jeu ». Aucun échafaudage.
 
-Le seul prérequis est qu'il existe au moins une sauvegarde dans le `save\` du répertoire de travail
-(voir le tableau plus haut) — sinon l'écran bascule aussitôt vers la sélection des personnages, ce
+Le seul prérequis est qu'il existe au moins une sauvegarde dans `bin\Debug\net10.0\save\` (voir
+plus haut) — sinon l'écran bascule aussitôt vers la sélection des personnages, ce
 qui est le comportement correct et vaut d'être testé aussi.
 
 ```powershell
 # 1. produire une sauvegarde (voir « Le parcours de création complet est scriptable »)
 # 2. puis, avec cette sauvegarde en place :
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -Shot -WorkingDir OpenForesia `
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -Shot `
     -Then WAIT4,ENTER,WAIT3,START,WAIT4,ENTER,WAIT4,ENTER,WAIT8
 ```
 
@@ -378,7 +392,7 @@ peut passer pour un succès. **Regarder la capture**, pas seulement le verdict.
 La forme qui marche descend d'un cran entre chaque prise :
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 50 -Shot -WorkingDir OpenForesia `
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 50 -Shot `
     -Then WAIT4,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT2,START,WAIT4,ENTER,WAIT4,ENTER,WAIT10
 ```
 
@@ -445,7 +459,7 @@ automatisés.
 Get-ChildItem 'OpenForesia\save' -Filter 'Blaze-Saving*' | Remove-Item -Force
 $env:OPENFORESIA_FORCE_SUBSTATE='7'; $env:OPENFORESIA_FORCE_CONFIRM_STATS='1'
 $env:OPENFORESIA_FORCE_DEBUG_PARTY='1'
-OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 34 -Shot -WorkingDir OpenForesia `
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 34 -Shot `
     -Then WAIT14,DOWN,WAIT1,ENTER,WAIT3,START,WAIT6
 ```
 
@@ -496,18 +510,18 @@ paramètre, le tableau ci-dessus le mentionne.
 
 ## Atteindre le sous-écran « Invertaire » (2026-08-18)
 
-Comme l'écran d'organisation du groupe, il exige **au moins une sauvegarde** dans le `save\` du
-répertoire de travail : sans elle, la phase 0 repart aussitôt vers l'écran racine du menu objets et
+Comme l'écran d'organisation du groupe, il exige **au moins une sauvegarde** dans
+`bin\Debug\net10.0\save\` : sans elle, la phase 0 repart aussitôt vers l'écran racine du menu objets et
 la capture montre les trois libellés, pas la liste. Créer d'abord une sauvegarde (voir « Le parcours
-de création complet est scriptable »), puis lancer avec **le même `-WorkingDir`** :
+de création complet est scriptable »), puis lancer :
 
 ```powershell
 # la liste des sauvegardes
-OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 12 -WorkingDir OpenForesia `
+OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 12 `
   -Then WAIT2,ENTER,WAIT6 -Shot
 
 # le fichier chargé et la liste d'objets
-OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 16 -WorkingDir OpenForesia `
+OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 16 `
   -Then WAIT2,ENTER,WAIT3,ENTER,WAIT7 -Shot
 ```
 
@@ -537,7 +551,7 @@ contrôle est stockée **deux fois** (0x1ffc et 0x3ffc) et il faut recalculer le
 sous-écran « Invertaire » refusera le fichier :
 
 ```powershell
-$p = 'OpenForesia\save\Blaze-Saving<code>'
+$p = 'OpenForesia\bin\Debug\net10.0\save\Blaze-Saving<code>'
 $b = [IO.File]::ReadAllBytes($p)
 $b[0x2b2] = 0xFF          # +0x2b0..0x2b4 = les emplacements portes ; 0xFF = aucun
 $sum = 0
@@ -554,7 +568,7 @@ somme du jeu porte bien sur des octets **signés**, d'où la soustraction de 256
 Puis, avec deux personnages retenus (le vendeur d'abord, il devient le membre 0) :
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 34 -WorkingDir OpenForesia -Shot `
+OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 34 -Shot `
   -Then WAIT2,DOWN,WAIT1,ENTER,WAIT4,DOWN,WAIT1,ENTER,WAIT1,UP,WAIT1,ENTER,WAIT1,START,
         WAIT5,ENTER,WAIT3,RIGHT,WAIT1,RIGHT,WAIT1,ENTER,WAIT5
 ```
@@ -572,14 +586,14 @@ d'une partie réelle une fois dans `save\`. Créer la sienne avec le parcours sc
 n'avait pas décompilée, est transcrite. Aucun drapeau n'est nécessaire.
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 36 -WorkingDir OpenForesia -Shot `
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 36 -Shot `
   -Then WAIT5,ENTER,WAIT2,START,WAIT5,ENTER,WAIT4,ENTER,WAIT16
 ```
 
 La séquence est : « Début du jeu » → un personnage retenu (`ENTER`) → `START` → « Veux-tu jouer
 avec ce groupe? » → `ENTER` → « Oui » → `ENTER`.
 
-**Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`.
+**Prérequis** : au moins une sauvegarde dans `OpenForesia\bin\Debug\net10.0\save\`.
 
 **Cette séquence est sensible au minutage et échoue régulièrement.** Deux causes distinctes, à ne
 pas confondre :
@@ -593,12 +607,13 @@ pas confondre :
 tranche est le **débit** : ~434 primitives par image veut dire qu'on est resté sur l'écran
 d'organisation du groupe ; l'état 3 atteint donne ~1 par image (il ne dessine pas encore) et
 s'arrête sur l'exception nommée du prochain corps manquant. Relancer suffit.
-## Le `save\` suit le répertoire de travail, pas l'exe (rappel)
+## Le `save\` est à côté de l'exe (rappel)
 
 Symptôme classique : « Invertaire » et « Enchère » semblent ne mener nulle part. Ils rebondissent
-en fait vers l'écran racine parce que le `save\` du répertoire de travail est vide — c'est le
-comportement de l'original quand il n'y a aucune sauvegarde. Le `.cfg`, lui, suit le chemin de
-l'**exe**. Les deux ne coïncident que si l'on lance depuis `bin\Debug\net10.0\`.
+en fait vers l'écran racine parce que `bin\Debug\net10.0\save\` est vide — c'est le comportement de
+l'original quand il n'y a aucune sauvegarde. Depuis le 2026-09-26, `save\` et le `.cfg` sont tous
+deux à côté de l'exe, quel que soit le lanceur ; avant, `save\` suivait le répertoire de travail et
+ne coïncidait avec le `.cfg` que lancé depuis `bin\Debug\net10.0\`.
 
 ---
 
@@ -629,8 +644,8 @@ le chemin Direct3D.
 | écran | commande | débit |
 |---|---|---|
 | titre / attract | `-Entry -1 -Seconds 3` | aucun (voir ci-dessus) |
-| sélection des personnages | `-Entry 1 -Seconds 20 -WorkingDir OpenForesia` | **382,3** par image |
-| menu objets | `-Entry 2 -Seconds 20 -WorkingDir OpenForesia` | **387** par image |
+| sélection des personnages | `-Entry 1 -Seconds 20` | **382,3** par image |
+| menu objets | `-Entry 2 -Seconds 20` | **387** par image |
 
 Les 382,3 concordent avec le repère historique (~382) mesuré sur le chemin hérité : le passage au
 device synthétique n'a pas déplacé la valeur.
@@ -851,7 +866,7 @@ n'était pas écrit, donc la fonction n'avait pas tourné, donc la faute était 
 Des attentes plus longues rendent la séquence fiable :
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -WorkingDir OpenForesia -Shot `
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -Shot `
   -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT20
 ```
 
@@ -975,7 +990,7 @@ clavier : les frappes de navigation sortent de l'attract, et `Title01.WAV` déma
 curseur se déplace, avant la validation.
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 20 -WorkingDir OpenForesia -Then WAIT5
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 20 -Then WAIT5
 ```
 
 Repère du 2026-08-24 : `Title01.WAV` au menu, `Menu.WAV` à la constitution du groupe,
@@ -999,7 +1014,7 @@ où il était, ce qui se lit à tort comme « le déplacement ne marche pas ».
 Trois `ENTER` puis `ESC` la referment. Ensuite `HOLD:`/`FREE:` déplacent réellement :
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 70 -WorkingDir OpenForesia -Shot `
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 70 -Shot `
   -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT3,`
 HOLD:UP,WAIT8,FREE:UP,WAIT2,HOLD:RIGHT,WAIT10,FREE:RIGHT,WAIT4
 ```
@@ -1058,7 +1073,7 @@ le partage du 2026-08-24 — c'est un test que l'agent execute lui-meme, comme u
 le menu principal.
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -WorkingDir OpenForesia -Shot `
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -Shot `
   -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT3,`
 START,WAIT8
 ```
@@ -1229,10 +1244,10 @@ portrait ni texte. ~314 contre ~509 sur la fiche.
 |---|---|
 | `START,WAIT4,PGUP,WAIT4,PGUP,WAIT4,PGUP,WAIT10` | ~407 primitives par image, « - Options - », « Sauvegarde », « Quitter », le portrait et le nom du membre |
 | `…,PGUP,WAIT4,DOWN,WAIT2,ENTER,WAIT2` | « Retour au menu d'accueil ? » et le curseur oui/non ; **ne pas repondre oui**, le jeu quitterait |
-| `…,PGUP,WAIT4,ENTER,WAIT4,ENTER,WAIT4` | « Mémorisation achevée. » — et **un fichier neuf dans `OpenForesia/save/`** |
+| `…,PGUP,WAIT4,ENTER,WAIT4,ENTER,WAIT4` | « Mémorisation achevée. » — et **un fichier neuf dans `bin/Debug/net10.0/save/`** |
 
 **La sauvegarde ecrit un vrai fichier.** Ce port remplace la carte memoire par des fichiers de
-`save\` : apres le troisieme run, `ls OpenForesia/save/` doit montrer un `Blaze-Saving*` de
+`save\` : apres le troisieme run, `ls OpenForesia/bin/Debug/net10.0/save/` doit montrer un `Blaze-Saving*` de
 **24576 octets** (0x6000) dont l'horodatage est celui du run, et dont les quatre premiers octets
 sont `53 43 11 03`. C'est la meilleure verification de la page — un artefact sur le disque plutot
 qu'une capture qui ressemble a ce qu'il faut.
@@ -1396,7 +1411,7 @@ installees par zone, et les scripts eux-memes vivent dans les donnees du disque.
 « ne fait rien » ou fait autre chose que prevu, aucune lecture statique ne dit quel verbe il appelle.
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 60 -WorkingDir OpenForesia -Trace VERBS -Then …
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 60 -Trace VERBS -Then …
 ```
 
 Chaque appel a l'opcode 0 imprime une ligne :
@@ -1427,7 +1442,7 @@ un silence. Cinq sondes ont ete posees, chacune parce que la precedente ne suffi
 a corrige une conclusion trop rapide**. Elles restent dans le code.
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -WorkingDir OpenForesia -Trace VERBS,SCRIPT,ENTITY -KeepOpen
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -Trace VERBS,SCRIPT,ENTITY -KeepOpen
 ```
 
 | ligne | source | ce qu'elle repond |
@@ -1474,7 +1489,7 @@ les fleches** : tenu, haut/bas changent de categorie et gauche/droite d'entree ;
 axes changent d'entree.
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 5 -WorkingDir OpenForesia -Shot `
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 5 -Shot `
   -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT4,`
 SPACE,WAIT2,DOWN,WAIT2,DOWN,WAIT2
 ```
@@ -1726,7 +1741,7 @@ L'agent peut lancer la trace, la depouiller, et lire le verdict ; il ne peut pas
 ## Le filet : `OPENFORESIA_AI_STUB=1`, ou récolter toutes les lacunes en une partie (2026-08-29)
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 120 -EnvVar AI_STUB -WorkingDir OpenForesia -Shot
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 120 -EnvVar AI_STUB -Shot
 ```
 
 **Le problème.** Un gestionnaire d'entité non transcrit lève, et la levée tue le processus. Une
@@ -1778,7 +1793,7 @@ gestionnaire vu dans deux lieux se transcrit une fois, mais compte deux lignes.
 
 ```powershell
 # la sous-zone où le groupe se trouve, et de nouveau à chaque changement de lieu
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 90 -EnvVar AI_BENCH=1 -WorkingDir OpenForesia -Shot
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 90 -EnvVar AI_BENCH=1 -Shot
 
 # se transférer d'abord en forêt, sous-zone 0
 … -EnvVar AI_BENCH=3:0

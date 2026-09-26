@@ -54,9 +54,11 @@ un AVI coupé à sa taille RIFF se lit à l'identique.
 
 ### D1 — Le répertoire courant EST le dossier des données
 
-Au tout début de `RunApplication`, le jeu fixe son répertoire courant au dossier des données :
-celui de l'exe (`AppContext.BaseDirectory`), sauf si `OpenForesia.cfg` en nomme un autre. Tous les
-chemins du jeu deviennent **relatifs** (`FRENCH\BLAZE.ALL`, `SND\BASE.SND`, `MUSIC\MEL00_01.WAV`).
+Au tout début de `RunApplication`, le jeu fixe son répertoire courant au dossier de l'exe
+(`AppContext.BaseDirectory`). Tous les chemins du jeu deviennent **relatifs** (`FRENCH\BLAZE.ALL`,
+`snd\Base.snd`, `Music/Mel00_01.WAV`), **y compris le fichier de réglages** (`.\OpenForesia.cfg`, lu
+côté jeu et côté `winsys3d` : l'original le bâtissait sur le chemin complet de `GetModuleFileNameA`,
+qu'un dossier hors de la page de code ANSI aurait abîmé).
 
 Pourquoi : c'est la règle qui règle tout d'un coup.
 - `save\` est déjà relatif au répertoire courant : il devient « à côté de l'exe » sans toucher au
@@ -70,8 +72,12 @@ Alternatives écartées : (a) écrire le chemin complet dans `s_CdDataRootPath` 
 tampons à agrandir, `CreateFileA` à remplacer partout ; (b) garder `@:` et traduire à l'ouverture —
 une couche de traduction qui n'existe que pour préserver une lettre de lecteur qu'on abandonne.
 
-Le réglage développeur : clé `Racine` d'une section `[Donnees]` de `OpenForesia.cfg`. Conséquence
-assumée : en développement, `save\` suit ce dossier, et `test-protocol.md` doit le dire.
+**Pas de réglage de racine.** Il était prévu (clé `[Donnees] Racine` du `.cfg`) et a été abandonné
+à l'implémentation : un répertoire courant différent du dossier de l'exe aurait rendu le `.cfg`
+introuvable en relatif, et obligé à convertir en Unicode tous les accès `…ProfileA`. En
+développement, on extrait donc les données **dans le dossier de sortie** de la build
+(`OpenForesia-Setup --extraire-donnees <iso> OpenForesia\bin\Debug\net10.0`, deux secondes ; `bin` est
+ignoré par git), et `save\` y reste, comme avant.
 
 ### D2 — Le multiplicateur de `cd.idx` est retiré, pas simulé
 
@@ -123,10 +129,21 @@ sous `Program Files`, refus au-delà de 200 caractères, contrôle de place) →
 progression et annulation → vérification MD5 → dépôt du jeu → `save\` → raccourcis (COM
 `IShellLinkW`) → entrée `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenForesia`.
 
-La désinstallation : l'installeur se copie dans le dossier sous le nom `Desinstaller.exe` ; lancé avec
-`--desinstaller`, il se recopie dans `%TEMP%` et se relance de là pour pouvoir supprimer le dossier
-(un exe ne s'efface pas lui-même), demande s'il faut garder `save\`, puis retire fichiers, raccourcis
-et clé.
+La désinstallation est un **script PowerShell**, `Desinstaller.ps1`, déposé dans le dossier du jeu
+(UTF-8 avec BOM) : l'entrée du menu Démarrer et la clé `UninstallString` le lancent par
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File`. Il demande
+confirmation, attend que le jeu soit fermé, demande s'il faut garder `save\`, puis retire
+raccourcis, clé et fichiers. Prévu d'abord comme une copie de l'installeur (`Desinstaller.exe
+--desinstaller`, relancé depuis `%TEMP%` pour pouvoir effacer le dossier), abandonné à
+l'implémentation : l'installeur embarque le jeu et le runtime, soit une centaine de Mo dupliqués
+dans le dossier du joueur. PowerShell 5.1 est présent sur tout Windows, et un script, lu en entier
+avant de s'exécuter, peut effacer son propre fichier.
+
+En développement, tant que le lot 5 n'a pas produit `jeu.zip`, `OpenForesia-Setup --jeu <dossier>`
+ouvre la même fenêtre en prenant les fichiers du jeu dans un dossier de build (données, `save\`,
+`.cfg` et symboles écartés). Sans l'option, un installeur sans jeu embarqué prend la build du dépôt
+(`OpenForesia\bin\Debug\net10.0`, retrouvé en remontant jusqu'à `OpenForesia.sln`), pour qu'un
+double-clic suffise en développement ; hors du dépôt, il dit qu'il ne contient pas le jeu.
 
 Alternative écartée : l'import au premier lancement dans le jeu lui-même — plus simple, mais le
 joueur attend un installeur, des raccourcis et une désinstallation, et cela mettrait du WinForms et de

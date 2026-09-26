@@ -63,9 +63,9 @@ param(
     [int]$MaxTaps = 30,
 
     # Dossier de travail du processus lance. Par defaut celui de l'exe (comme un double-clic
-    # Explorer) -- utile pour reproduire un lancement dont le CWD differe (ex. Rider "Run", ou
-    # "dotnet run", mettent par defaut le dossier du .csproj), ce qui compte pour tout chemin
-    # relatif que le jeu ouvre (ex. "save\...").
+    # Explorer). Depuis l'abandon du CD, le jeu se replace lui-meme dans le dossier de son exe au
+    # demarrage : ce parametre ne change donc plus ou il lit ses donnees ni ou il ecrit "save\".
+    # Il reste pour verifier justement cela (lancement depuis un autre dossier).
     [string]$WorkingDir = '',
     # Touche maintenue enfoncee de la prise de focus jusqu'a la fin du run, y compris pendant la
     # navigation du menu et sa validation. Sert aux conditions que le jeu lit sur l'etat *tenu* a un
@@ -153,6 +153,15 @@ if ($Build) {
 }
 
 if (-not (Test-Path $exe)) { Write-Host "!! introuvable : $exe  (lancer avec -Build)"; return }
+
+# Les donnees du jeu vivent a cote de l'exe depuis l'abandon du CD (install-from-iso) : le jeu les
+# verifie au demarrage et s'arrete sur un message s'il en manque -- un message que ce script ne
+# verrait pas. On le dit donc ici, avec la commande qui les extrait de l'ISO.
+if (-not (Test-Path (Join-Path (Split-Path $exe) 'French\BLAZE.ALL'))) {
+    Write-Host "!! pas de donnees de jeu dans $(Split-Path $exe). Les extraire depuis l'ISO :"
+    Write-Host "   OpenForesia.Installer\bin\Debug\net10.0-windows\OpenForesia-Setup.exe --extraire-donnees <iso> OpenForesia\bin\Debug\net10.0"
+    return
+}
 
 # --------------------------------------------------------------------------------------------
 # Injection clavier. SendKeys n'existe pas pour DirectInput : il faut SendInput en scancodes.

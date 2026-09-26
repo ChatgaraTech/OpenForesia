@@ -620,7 +620,17 @@ internal static unsafe class Winsys3dDevice
         byte* fichier = pile + 0x128;                     // S+0x138
         byte* tampon = pile + 0x228;                      // S+0x238
 
-        Win32.GetModuleFileNameA(IntPtr.Zero, fichier, 0x100);
+        // Ghidra: winsys3d.c `GetModuleFileNameA(NULL, fichier, 0x100)` — le chemin complet de l'exe.
+        // Écart legacy ++ (install-from-iso) : « .\<exe> », relatif. Le répertoire courant est le
+        // dossier du jeu (Blaze.RunApplication), et un dossier d'installation long ou hors de la
+        // page de code ANSI ne passe plus par ce tampon de 0x100 octets. La suite est inchangée :
+        // le dernier '.' tombe toujours avant « exe ».
+        {
+            string relatif = ".\\" + Path.GetFileName(Environment.ProcessPath ?? "OpenForesia.exe");
+            int n = Math.Min(relatif.Length, 0xff);
+            for (int i = 0; i < n; i++) fichier[i] = (byte)relatif[i];
+            fichier[n] = 0;
+        }
         byte* point = null;                               // _strrchr(fichier, '.')
         for (byte* p = fichier; ; p++)
         {

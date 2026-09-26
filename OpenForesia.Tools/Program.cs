@@ -53,16 +53,20 @@ if (args[0] is "extraire-donnees")
     return;
 }
 
-// Le bestiaire ne lit pas Blaze.exe mais les donnees du CD : SYSTEM.INI (le repertoire racine) et
-// BLAZE.ALL (l'archive). Voir Bestiaire.cs pour la chaine a quatre niveaux qu'il reproduit.
+// Le bestiaire ne lit pas Blaze.exe mais les donnees du jeu : SYSTEM.INI (le repertoire racine) et
+// BLAZE.ALL (l'archive), dans un dossier installe — celui qui contient French\. Sans dossier, celui
+// du jeu en developpement (OpenForesia\bin\Debug\net10.0, ou --extraire-donnees les a poses).
+// Voir Bestiaire.cs pour la chaine a quatre niveaux qu'il reproduit.
 if (args[0] is "bestiaire")
 {
-    if (args.Length < 2) { PrintUsage(); return; }
+    int premiereOption = args.Length > 1 && !args[1].StartsWith("--") ? 2 : 1;
+    string? dossierDonnees = premiereOption == 2 ? args[1] : DossierDonneesParDefaut();
+    if (dossierDonnees == null) { PrintUsage(); return; }
 
     int? zone = null;
     string? outDir = null;
     var regions = false;
-    for (var i = 2; i < args.Length; i++)
+    for (var i = premiereOption; i < args.Length; i++)
     {
         if (args[i] is "--zone" && i + 1 < args.Length && int.TryParse(args[i + 1], out var z)) { zone = z; i++; }
         else if (args[i] is "--sortie" && i + 1 < args.Length) { outDir = args[i + 1]; i++; }
@@ -70,11 +74,11 @@ if (args[0] is "bestiaire")
         else { Console.WriteLine($"Option inconnue : {args[i]}"); PrintUsage(); return; }
     }
 
-    Bestiaire.Run(args[1], zone, outDir, regions);
+    Bestiaire.Run(dossierDonnees, zone, outDir, regions);
     return;
 }
 
-// L'oracle du decodeur Indeo 4 en C# : chaque image d'un film du CD decodee par ir41_32.ax (sortie
+// L'oracle du decodeur Indeo 4 en C# : chaque image d'un film du jeu decodee par ir41_32.ax (sortie
 // IF09) et par Host/Indeo4/, comparee a l'octet pres. Voir Indeo/ComparaisonIndeo.cs.
 if (args[0] is "indeo")
 {
@@ -315,6 +319,23 @@ for (var functionIndex = 0;
 // Helpers
 // ============================================================
 
+// Le dossier de donnees du jeu en developpement : celui ou OpenForesia-Setup --extraire-donnees les
+// a posees, a cote de OpenForesia.exe. Retrouve en remontant jusqu'a OpenForesia.sln ; null hors
+// du depot, ou si les donnees n'y sont pas encore.
+static string? DossierDonneesParDefaut()
+{
+    for (var dossier = new DirectoryInfo(AppContext.BaseDirectory); dossier != null; dossier = dossier.Parent)
+    {
+        if (!File.Exists(Path.Combine(dossier.FullName, "OpenForesia.sln"))) continue;
+        string sortie = Path.Combine(dossier.FullName, "OpenForesia", "bin", "Debug", "net10.0");
+        if (Directory.Exists(Path.Combine(sortie, "French"))) return sortie;
+        Console.WriteLine($"Pas de donnees dans {sortie}. Les extraire depuis l'ISO :");
+        Console.WriteLine(@"  OpenForesia.Installer\bin\Debug\net10.0-windows\OpenForesia-Setup.exe --extraire-donnees <iso> OpenForesia\bin\Debug\net10.0");
+        return null;
+    }
+    return null;
+}
+
 static void PrintUsage()
 {
     Console.WriteLine("Usage:");
@@ -322,8 +343,9 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools sections <path>            sections PE : plages VA, offsets fichier");
     Console.WriteLine("  OpenForesia.Tools at <path> <va> [octets]    dumpe les octets a une adresse virtuelle Ghidra");
     Console.WriteLine("  OpenForesia.Tools disasm <path> <va> [octets] desassemble x86-32 a partir d'une VA Ghidra");
-    Console.WriteLine("  OpenForesia.Tools bestiaire <cd> [--zone N] [--sortie <dir>]");
-    Console.WriteLine("                                               especes, fiches, formations et butin, lus sur le CD");
+    Console.WriteLine("  OpenForesia.Tools bestiaire [<donnees>] [--zone N] [--sortie <dir>]");
+    Console.WriteLine("                                               especes, fiches, formations et butin, lus dans les donnees");
+    Console.WriteLine(@"                                               du jeu (defaut : OpenForesia\bin\Debug\net10.0)");
     Console.WriteLine("  OpenForesia.Tools montee                     simulateur de montee de niveau (fenetre)");
     Console.WriteLine("  OpenForesia.Tools indeo <film.avi> [--images N] [--codec <ax>] [--sortie <dir>]");
     Console.WriteLine("                          [--reference-seule] [--continuer] [--rgb]");

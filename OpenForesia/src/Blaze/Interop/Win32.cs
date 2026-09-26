@@ -93,7 +93,6 @@ internal static unsafe class Win32
 
     [DllImport("kernel32.dll")] internal static extern int IsDBCSLeadByte(byte TestChar);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetDriveTypeA(byte* lpRootPathName);
 
     [DllImport("kernel32.dll")] internal static extern uint GetFileSize(IntPtr hFile, uint* lpFileSizeHigh);
 

@@ -63,8 +63,13 @@ public static unsafe partial class Blaze
     // OPENFORESIA_NO_PROBE=1 la desarme.
     // =====================================================================
 
+    // Les trois relevés vivent dans le dépôt, quatre crans au-dessus de l'exécutable. Un jeu
+    // installé par OpenForesia-Setup n'a pas de dépôt au-dessus de lui : sans ce test, les sondes
+    // écriraient dans le dossier parent du dossier d'installation. Le marqueur est la solution.
     private static bool s_ProbeEnabled =
-        Environment.GetEnvironmentVariable("OPENFORESIA_NO_PROBE") != "1";
+        Environment.GetEnvironmentVariable("OPENFORESIA_NO_PROBE") != "1" &&
+        System.IO.File.Exists(System.IO.Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "..", "OpenForesia.sln"));
 
     private static readonly SortedSet<string> s_HandlersSeen = new(StringComparer.Ordinal);
 

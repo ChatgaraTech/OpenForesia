@@ -27,7 +27,7 @@ namespace OpenForesia.Blaze;
 /// </para>
 /// <para>
 /// <b>Les trois chaines de tete cessent d'etre un piege d'ordre.</b> <c>s_ArchiveFileName</c>,
-/// <c>s_SystemFileName</c> et <c>s_SoundArchiveTemplate</c> etaient des champs
+/// <c>s_SystemFileName</c> et <c>s_SoundArchivePath</c> etaient des champs
 /// <c>static readonly</c> initialises par <c>ToAnsiZ</c> - une methode qui vit dans un AUTRE
 /// fichier (<c>Platform/Startup.cs</c>). C'est exactement la forme du defaut qui a coute un
 /// plantage au demarrage le 2026-08-19 : entre fichiers, l'ordre d'initialisation des champs
@@ -62,48 +62,25 @@ internal sealed unsafe partial class Resources(GameMemory mem, Primitives2d prim
     private readonly byte* s_ArchiveFileName = ToAnsiZ("BLAZE.ALL;1");
     private readonly byte* s_SystemFileName = ToAnsiZ("SYSTEM.INI;1");
 
-    // Ghidra: s____snd_Base_snd_00568500, recovered as "@:\snd\Base.snd". A CD-**root** absolute
-    // template with its own '@' drive-letter placeholder â€” it does NOT go through the data root.
-    // Lowercase "snd", matching the disc's E:\Snd\ directory (Windows is case-insensitive here).
-    private readonly byte* s_SoundArchiveTemplate = ToAnsiZ("@:\\snd\\Base.snd");
+    // Ghidra: s____snd_Base_snd_00568500, recovered as "@:\snd\Base.snd" — a CD-**root** template,
+    // beside the language directory rather than inside it, whose '@' took the drive letter.
+    // Écart legacy ++ (install-from-iso) : chemin relatif au dossier du jeu, plus de lettre.
+    private readonly byte* s_SoundArchivePath = ToAnsiZ("snd\\Base.snd");
 
     /// <summary>
-    /// Builds a **data-root-relative** path: the data root (Ghidra DAT_005631f8, "@:\FRENCH\" with
-    /// its drive letter patched) followed by a relative filename. This is the family that covers
-    /// BLAZE.ALL;1, SYSTEM.INI;1, DATA/Font.bmp, DATA/TITLE640.BMP and the three intro movies.
-    /// <para>
-    /// It is <b>not</b> the only family â€” see <see cref="BuildCdRootPath"/> for templates that are
-    /// already absolute and address the CD root instead.
-    /// </para>
+    /// Builds a **data-root-relative** path: the data root (Ghidra DAT_005631f8, « FRENCH\ » since
+    /// the CD was dropped — see <c>s_DataRootPath_005631f8</c>) followed by a relative filename. This
+    /// is the family that covers BLAZE.ALL;1, SYSTEM.INI;1, DATA/Font.bmp, DATA/TITLE640.BMP and the
+    /// three intro movies. The sound bank and the music live beside the language directory and
+    /// don't go through it.
     /// </summary>
-    internal byte* BuildCdPath(byte* fileName)
+    internal byte* BuildDataPath(byte* fileName)
     {
         byte* path = (byte*)Malloc(64);
         int i = 0;
-        for (byte* p = mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = mem.s_DataRootPath_005631f8; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = fileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
-        return path;
-    }
-
-    /// <summary>
-    /// Builds a **CD-root** path from a template that is already absolute and carries its own '@'
-    /// drive-letter placeholder â€” e.g. "@:\snd\Base.snd" (Ghidra: s____snd_Base_snd_00568500) and
-    /// the music table's "@:/Music/Mel00_01.WAV" entries. Only index 0 is substituted; the rest of
-    /// the template is copied verbatim, separators and case included.
-    /// <para>
-    /// These live at the CD root, not under the language directory, which the disc layout confirms:
-    /// <c>E:\snd\</c> and <c>E:\Music\</c> sit beside <c>E:\French\</c> rather than inside it. Running
-    /// them through <see cref="BuildCdPath"/> would prepend the data root and never resolve.
-    /// </para>
-    /// </summary>
-    private byte* BuildCdRootPath(byte* absoluteTemplate)
-    {
-        byte* path = (byte*)Malloc(64);
-        int i = 0;
-        for (byte* p = absoluteTemplate; *p != 0 && i < 63; p++, i++) path[i] = *p;
-        path[i] = 0;
-        if (i > 0) path[0] = mem.s_CdDataRootPath[0]; // the detected drive letter
         return path;
     }
 
@@ -550,7 +527,7 @@ internal sealed unsafe partial class Resources(GameMemory mem, Primitives2d prim
     {
         if (ApplyResourceDestinationOverride(dest)) return dest;
 
-        byte* path = BuildCdPath(s_ArchiveFileName);
+        byte* path = BuildDataPath(s_ArchiveFileName);
         IntPtr handle = OpenExistingFileReadOnly(path);
         Free(path);
         if ((int)handle < 0)
@@ -794,7 +771,7 @@ internal sealed unsafe partial class Resources(GameMemory mem, Primitives2d prim
     internal void LoadFirstLevelResources()
     {
         // Ghidra: FUN_0040a600() â€” confirmed no-op.
-        byte* path = BuildCdPath(s_SystemFileName);
+        byte* path = BuildDataPath(s_SystemFileName);
         mem.s_MainResourceDirectory_005e97c4 = LoadWholeFileToBuffer(path, mem.s_MainResourceBuffer_005e97c0);
         Free(path);
         FixupResourceHeader(mem.s_MainResourceBuffer_005e97c0);
@@ -827,12 +804,10 @@ internal sealed unsafe partial class Resources(GameMemory mem, Primitives2d prim
 
         uint savedStride = mem.s_ScreenStride_005e97e0;
 
-        // CD-root family, not data-root: the sound bank lives at E:\Snd\, beside E:\French\ rather
-        // than inside it. This previously went through BuildCdPath, which prefixed the data root
-        // onto an already-absolute template and could never resolve.
-        byte* sndPath = BuildCdRootPath(s_SoundArchiveTemplate);
-        IntPtr sndHandle = OpenExistingFileReadOnly(sndPath);
-        Free(sndPath);
+        // Not data-root: the sound bank lives in snd\, beside FRENCH\ rather than inside it.
+        // Ghidra: the original patched the drive letter into "@:\snd\Base.snd" first — retiré
+        // (legacy ++, plus de CD).
+        IntPtr sndHandle = OpenExistingFileReadOnly(s_SoundArchivePath);
         // Ghidra doesn't guard the open failing here either â€” ReadFile/CloseHandle on an invalid
         // handle simply fail harmlessly, matching the original's unconditional calls.
         uint sndBytesRead;

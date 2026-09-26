@@ -105,34 +105,33 @@ public static unsafe partial class Blaze
     /// call site in `entry` (hInstance, hPrevInstance, lpCmdLine, nCmdShow), matching the
     /// standard WinMain signature.
     ///
-    /// Behavior: loops over drive letters C..Z looking for the Blaze &amp; Blade CD-ROM (special-
-    /// casing drives X and Z, then P as a fallback), shows a "please insert the CD" prompt if
-    /// none is found, then on success loads a splash bitmap resource, sets up the 3D device,
-    /// initializes COM and the audio volume/table setup, allocates the two big scratch buffers
-    /// used by the rest of the engine, and runs the main application loop before tearing
+    /// Behavior in the 1998 binary: loops over drive letters C..Z looking for the Blaze &amp; Blade
+    /// CD-ROM (special-casing drives X and Z, then P as a fallback), shows a "please insert the CD"
+    /// prompt if none is found, then on success loads a splash bitmap resource, sets up the 3D
+    /// device, initializes COM and the audio volume/table setup, allocates the two big scratch
+    /// buffers used by the rest of the engine, and runs the main application loop before tearing
     /// everything back down.
+    ///
+    /// Écart legacy ++ (openspec/changes/install-from-iso) : **plus de CD**. Le répertoire courant
+    /// devient le dossier du jeu, où l'installeur a extrait les données, et <see cref="GameDataCheck"/>
+    /// remplace le balayage des lecteurs : s'il manque un fichier, un message et on quitte. La
+    /// lecture de <c>@:\cd.idx</c> (la protection anticopie, voir LB-053) disparaît avec lui.
     /// </summary>
     private static uint RunApplication(IntPtr hInstance, IntPtr hPrevInstance, byte* lpCmdLine, uint nCmdShow)
     {
-        // Ghidra: s____Blaze_Blade_005631e8 @ 0x005631e8 â€” a 4-byte "X:\\\0" drive-root buffer
-        // whose first byte is swapped for each candidate drive letter.
-        byte* driveRoot = stackalloc byte[4];
-        driveRoot[1] = (byte)':';
-        driveRoot[2] = (byte)'\\';
-        driveRoot[3] = 0;
+        // Tous les chemins du jeu sont relatifs : données (« FRENCH\… », « snd\… », « Music/… »),
+        // sauvegardes (« save\ ») et réglages (« .\OpenForesia.cfg »). Ils se résolvent donc dans le
+        // dossier de l'exe, quel que soit le dossier d'où le jeu a été lancé, et un dossier
+        // d'installation long ou accentué ne passe jamais par les tampons ANSI de 64 octets.
+        Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+        if (!GameDataCheck.Run()) Exit(1);
 
-        // Ghidra: DAT_00563280.._0056328c, copied into local_2c/local_28/local_24/local_20 in the
-        // original. Read directly from Legacy/Binaries/Blaze.exe's .data (file offset 0x161880): "@:\cd.idx".
-        // Confirmed against the real disc, too â€” its root has a `cd.idx` file whose size (671088640
-        // bytes = 0x28000000 = 640 MiB) is exactly what Handler_00544810's TODO(REVERSE) predicted
-        // s_CdCheckFileSize_0056321c needs to be for that handler's return-value multiply to reduce
-        // to identity. Only the drive letter at index 0 is substituted per candidate, same as
-        // driveRoot above.
-        byte* cdCheckPath = stackalloc byte[16];
-        cdCheckPath[1] = (byte)':'; cdCheckPath[2] = (byte)'\\';
-        cdCheckPath[3] = (byte)'c'; cdCheckPath[4] = (byte)'d'; cdCheckPath[5] = (byte)'.';
-        cdCheckPath[6] = (byte)'i'; cdCheckPath[7] = (byte)'d'; cdCheckPath[8] = (byte)'x';
-        cdCheckPath[9] = 0;
+        // Ghidra: le balayage des lecteurs — retiré (legacy ++, plus de CD). L'original remplissait
+        // "X:\" (s____Blaze_Blade_005631e8) lettre par lettre de C à Z jusqu'à un DRIVE_CDROM, avec
+        // un repli sur P: quand X: et Z: avaient été vus, écrivait la lettre dans l'octet 0 de
+        // DAT_005631f8 (« @:\FRENCH\ »), lisait la taille de « @:\cd.idx » (DAT_00563280) dans
+        // DAT_0056321c, et bouclait sur MessageBoxA(s_Please_insert_Blaze___Blade_CD__00563258)
+        // tant que rien n'était trouvé — Annuler quittait par Exit(1).
 
         // Ghidra: `DAT_006008c8 = 1; DAT_00604930 = 2; DAT_00600904 = 3;` juste avant la boucle de
         // balayage (Blaze.c:61733). **Ce ne sont pas des pointeurs**, ce sont trois sentinelles de
@@ -143,123 +142,68 @@ public static unsafe partial class Blaze
         Res.s_OverrideDestB_00604930 = (void*)2;
         Res.s_OverrideDestC_00600904 = (void*)3;
 
-        bool foundDriveX = false;
-        bool foundDriveZ = false;
-        char foundLetter = '@';
+        IntPtr hBitmap = Wsyskern.LoadBitmapEx(hInstance, (IntPtr)0x66 /* MAKEINTRESOURCE */, out IntPtr hPalette);
+        Winsys3d.Setup3DDevice(hBitmap, hPalette, GetRendererDialogStrings());
+        Win32.DeleteObject(hBitmap);
+        Win32.DeleteObject(hPalette);
 
-        while (true)
+        Win32.CoInitialize(null);
+        SaveAndMaxWaveOutVolume();
+        Winsys3d.InitTrigTables();
+
+        // Ghidra: builds a 0x1000-entry lookup table combining the sin table (ordinal 451)
+        // low 16 bits with the cos table (ordinal 450, phase-shifted by a quarter period)
+        // in the high word â€” see Documentation/DLL/winsys3d.md. Packed sin/cos table,
+        // consumed by the not-yet-reconstructed rendering code.
+        for (int i = 0; i < 0x1000; i++)
         {
-            foundLetter = '@';
-            for (char letter = 'C'; letter < '['; letter++)
-            {
-                driveRoot[0] = (byte)letter;
-
-                // Check if drive is type DRIVE_CDROM and keep letter found
-                if (Win32.GetDriveTypeA(driveRoot) == DRIVE_CDROM)
-                {
-                    foundLetter = letter;
-                    break;
-                }
-            }
-
-            if (foundLetter == '@' && foundDriveX && foundDriveZ)
-            {
-                driveRoot[0] = (byte)'P';
-                IntPtr handle = OpenExistingFileReadOnly(driveRoot);
-                if ((int)handle < 0)
-                {
-                    foundLetter = '@';
-                }
-                else
-                {
-                    Win32.CloseHandle(handle);
-                    foundLetter = 'P';
-                }
-            }
-
-            if (foundLetter != '@')
-            {
-                // Ghidra: DAT_005631f8 = s____Blaze_Blade_005631e8[0]. A single-byte store, and
-                // that is genuinely all it is: the rest of "@:\FRENCH\" is static data the linker
-                // wrote into the image. Patch index 0 only â€” do not rebuild the string from parts,
-                // or the language directory is lost again.
-                Mem.s_CdDataRootPath[0] = (byte)foundLetter;
-
-                cdCheckPath[0] = (byte)foundLetter;
-                IntPtr hFile = OpenExistingFileReadOnly(cdCheckPath);
-                uint fileSize = Win32.GetFileSize(hFile, null);
-                Mem.s_CdCheckFileSize_0056321c = fileSize;   // Ghidra: DAT_0056321c = fileSize
-
-                IntPtr hBitmap = Wsyskern.LoadBitmapEx(hInstance, (IntPtr)0x66 /* MAKEINTRESOURCE */, out IntPtr hPalette);
-                Winsys3d.Setup3DDevice(hBitmap, hPalette, GetRendererDialogStrings());
-                Win32.DeleteObject(hBitmap);
-                Win32.DeleteObject(hPalette);
-
-                Win32.CoInitialize(null);
-                SaveAndMaxWaveOutVolume();
-                Winsys3d.InitTrigTables();
-
-                // Ghidra: builds a 0x1000-entry lookup table combining the sin table (ordinal 451)
-                // low 16 bits with the cos table (ordinal 450, phase-shifted by a quarter period)
-                // in the high word â€” see Documentation/DLL/winsys3d.md. Packed sin/cos table,
-                // consumed by the not-yet-reconstructed rendering code.
-                for (int i = 0; i < 0x1000; i++)
-                {
-                    uint low = Winsys3d.GetSinTableEntry(i) & 0xffff;
-                    int high = Winsys3d.GetCosTableEntry(i);
-                    s_LookupTable00600920[i] = low + (uint)(high << 16);
-                }
-
-                Mem.s_BaseSoundBank_00604920 = Malloc(790000);
-                Mem.s_LevelSoundBank_00600900 = Malloc(260000);
-
-                // Ghidra: Ordinal_790(&LAB_00512ef0). Le corps de ce rappel manquait a Blaze.c
-                // (adresse prise, jamais appelee directement) ; il est transcrit depuis le
-                // binaire dans Engine/Audio.cs sous le nom InitAudioDevice. winsys3d le range
-                // dans DAT_011be798 et l'appelle depuis Ordinal_789 en lui passant sa propre
-                // fenetre -- c'est la que naissent le peripherique DirectSound ET DAT_005db85c.
-                // Lui passer `null`, comme ici jusqu'au 2026-08-24, rendait tout le son inerte.
-                Winsys3d.SetDeviceLostCallback((delegate* unmanaged[Stdcall]<IntPtr, void>)&Audio.DeviceInitCallback);
-
-                LoadOptionsIni(); // Ghidra: FUN_0050f140 @ 0x0050f140
-                Mem.s_CdCheckFileSize_0056321c += 0xd8000000;   // Ghidra: DAT_0056321c = DAT_0056321c + 0xd8000000
-
-                try
-                {
-                    RunMainLoop(); // Ghidra: FUN_00529c10 @ 0x00529c10
-                }
-                catch (BlazeQuitException)
-                {
-                    // Ghidra: l'exception logicielle 0xE0000001 que le jeu lève pour abandonner la
-                    // boucle en cours et rejoindre sa sortie — « Quitter le jeu » dans les options,
-                    // et WM_QUIT dans les pompes du lecteur de vidéo. Le `finally` ci-dessous est
-                    // l'équivalent du gestionnaire SEH de l'original : la séquence d'arrêt tourne
-                    // quand même.
-                }
-                finally
-                {
-                    ShutdownStage1(); // Ghidra: FUN_00504600 @ 0x00504600
-                    SaveOptionsIni(); // Ghidra: thunk_FUN_0050f300 @ 0x0050f520 -> FUN_0050f300
-                    Aud.ShutdownStage3(); // Ghidra: FUN_00512ff0 @ 0x00512ff0
-                    // Ghidra: DestroyWindow(DAT_005db85c). La poignee est celle que winsys3d a
-                    // remise a InitAudioDevice ; nulle si le rappel n'a jamais eu lieu, auquel cas
-                    // l'original passait NULL a DestroyWindow tout comme nous.
-                    Win32.DestroyWindow(Aud.s_MainWindow_005db85c);
-                    ShutdownStage4(); // Ghidra: FUN_00542f50 @ 0x00542f50
-                    ShutdownStage5(); // Ghidra: FUN_00542f90 @ 0x00542f90
-                    RestoreWaveOutVolume(); // Ghidra: FUN_005138d0 @ 0x005138d0
-                    Win32.CoUninitialize();
-                }
-
-                return 0;
-            }
-
-            int choice = Win32.MessageBoxA(IntPtr.Zero, s_PleaseInsertCdMessage, s_ErrorCaption, 0x2001);
-            if (choice == 2 /* IDCANCEL */)
-            {
-                Exit(1);
-            }
+            uint low = Winsys3d.GetSinTableEntry(i) & 0xffff;
+            int high = Winsys3d.GetCosTableEntry(i);
+            s_LookupTable00600920[i] = low + (uint)(high << 16);
         }
+
+        Mem.s_BaseSoundBank_00604920 = Malloc(790000);
+        Mem.s_LevelSoundBank_00600900 = Malloc(260000);
+
+        // Ghidra: Ordinal_790(&LAB_00512ef0). Le corps de ce rappel manquait a Blaze.c
+        // (adresse prise, jamais appelee directement) ; il est transcrit depuis le
+        // binaire dans Engine/Audio.cs sous le nom InitAudioDevice. winsys3d le range
+        // dans DAT_011be798 et l'appelle depuis Ordinal_789 en lui passant sa propre
+        // fenetre -- c'est la que naissent le peripherique DirectSound ET DAT_005db85c.
+        // Lui passer `null`, comme ici jusqu'au 2026-08-24, rendait tout le son inerte.
+        Winsys3d.SetDeviceLostCallback((delegate* unmanaged[Stdcall]<IntPtr, void>)&Audio.DeviceInitCallback);
+
+        LoadOptionsIni(); // Ghidra: FUN_0050f140 @ 0x0050f140
+        // Ghidra: DAT_0056321c = DAT_0056321c + 0xd8000000 — retiré (legacy ++, LB-053).
+
+        try
+        {
+            RunMainLoop(); // Ghidra: FUN_00529c10 @ 0x00529c10
+        }
+        catch (BlazeQuitException)
+        {
+            // Ghidra: l'exception logicielle 0xE0000001 que le jeu lève pour abandonner la
+            // boucle en cours et rejoindre sa sortie — « Quitter le jeu » dans les options,
+            // et WM_QUIT dans les pompes du lecteur de vidéo. Le `finally` ci-dessous est
+            // l'équivalent du gestionnaire SEH de l'original : la séquence d'arrêt tourne
+            // quand même.
+        }
+        finally
+        {
+            ShutdownStage1(); // Ghidra: FUN_00504600 @ 0x00504600
+            SaveOptionsIni(); // Ghidra: thunk_FUN_0050f300 @ 0x0050f520 -> FUN_0050f300
+            Aud.ShutdownStage3(); // Ghidra: FUN_00512ff0 @ 0x00512ff0
+            // Ghidra: DestroyWindow(DAT_005db85c). La poignee est celle que winsys3d a
+            // remise a InitAudioDevice ; nulle si le rappel n'a jamais eu lieu, auquel cas
+            // l'original passait NULL a DestroyWindow tout comme nous.
+            Win32.DestroyWindow(Aud.s_MainWindow_005db85c);
+            ShutdownStage4(); // Ghidra: FUN_00542f50 @ 0x00542f50
+            ShutdownStage5(); // Ghidra: FUN_00542f90 @ 0x00542f90
+            RestoreWaveOutVolume(); // Ghidra: FUN_005138d0 @ 0x005138d0
+            Win32.CoUninitialize();
+        }
+
+        return 0;
     }
 
     // Ghidra: &PTR_s_Blaze___Blade_00563208 â€” the 5-entry ANSI string-pointer table passed as
@@ -301,10 +245,8 @@ public static unsafe partial class Blaze
     // lisaient, et c'est du .data reel malgre l'absence de suffixe VA dans leur nom.
     // RunApplication les alloue toujours, en ecrivant `Mem.s_BaseSoundBank_00604920` / `Mem.s_LevelSoundBank_00600900`.
 
-    // Ghidra: s_Please_insert_Blaze___Blade_CD__00563258 / s_Erreur_00563278 â€” symbol names were
-    // derived by Ghidra from the actual string bytes, but those bytes aren't reproduced in
-    // Blaze.c's text. TODO(REVERSE): confirm exact original text/encoding from the binary.
-    private static readonly byte* s_PleaseInsertCdMessage = ToAnsiZ("Please insert the Blaze & Blade CD-ROM.");
+    // Ghidra: s_Please_insert_Blaze___Blade_CD__00563258 — le message « insérez le CD » — retiré
+    // (legacy ++, plus de CD). s_Erreur_00563278 reste : Video.cs s'en sert encore.
     internal static readonly byte* s_ErrorCaption = ToAnsiZ("Erreur");
 
     // `internal` : appele depuis src/Host/ (DeviceShim, SyntheticDevice).
@@ -576,7 +518,8 @@ public static unsafe partial class Blaze
         Winsys3d.Ordinal_710(0x3c0, 0);
         int consoleChannel = Winsys3d.Ordinal_668(8, 0x20, 0xe0, 200, 0, 0x200);
         Winsys3d.Ordinal_720(consoleChannel);
-        Winsys3d.Ordinal_92(null, null);
+        // Ghidra: Ordinal_92(&DAT_005e9040, PTR_s_BLAZE_ALL_1_00566bbc) — `CdSearchFile` de la libcd,
+        // vide dans le portage PC et dont le retour était jeté — retiré (legacy ++, plus de CD).
         Mem.s_Unknown_005e97f0 = Winsys3d.Ordinal_104(null);
         Mem.s_ScreenStride_005e97e0 = 0x1010;
         byte* mainMem = GetMainMemPtr();
@@ -612,7 +555,7 @@ public static unsafe partial class Blaze
         byte* fontFileName = ToAnsiZ("DATA/Font.bmp"); // recovered verbatim from Legacy/Binaries/Blaze.exe @ 0x005684cc â€” forward slash, mixed case
         byte* path = stackalloc byte[64];
         int i = 0;
-        for (byte* p = Mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = Mem.s_DataRootPath_005631f8; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = fontFileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
 

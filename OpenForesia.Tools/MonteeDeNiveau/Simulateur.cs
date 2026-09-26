@@ -54,7 +54,7 @@ internal static class DonneesDeClasse
     /// l'écran en montre 13.
     /// </para>
     /// <para>
-    /// Relevées dans <c>E:\French\BLAZE.ALL</c> à l'offset <c>0x0090f0b4</c> — la suite
+    /// Relevées dans <c>French\BLAZE.ALL</c> (les données du jeu) à l'offset <c>0x0090f0b4</c> — la suite
     /// <c>0d 08 08 09 0b 08 09</c> n'y apparaît qu'<b>une seule fois</b> sur 46 Mo, et la première
     /// ligne se recoupe octet pour octet avec ce que l'écran affiche pour le Guerrier.
     /// TODO(REVERSE) : le blob qui contient la table n'est pas identifié — la remonter depuis

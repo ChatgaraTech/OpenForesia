@@ -8,9 +8,10 @@
     bestiaire-page.template.html, a la place du marqueur /*__DATA__*/, pour produire
     bestiaire.html — une page autonome, ouvrable directement dans un navigateur.
 
-    Il ne lit jamais le CD : regenerer les CSV d'abord si les donnees ont change.
+    Il ne lit jamais les donnees du jeu : regenerer les CSV d'abord si elles ont change. Le verbe
+    `bestiaire` les lit dans le dossier du jeu (OpenForesia\bin\Debug\net10.0 par defaut).
 
-        dotnet run --project OpenForesia.Tools -- bestiaire "E:\" --sortie Documentation\Reference\Bestiaire
+        dotnet run --project OpenForesia.Tools -- bestiaire --sortie Documentation\Reference\Bestiaire
         OpenForesia.Tools\build-bestiaire-page.ps1
 
     La zone 0 est ecartee partout : ses noms sont illisibles et ses sous-zones se repetent.

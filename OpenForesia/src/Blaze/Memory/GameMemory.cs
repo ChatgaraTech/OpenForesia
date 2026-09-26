@@ -183,12 +183,16 @@ internal sealed unsafe class GameMemory
     // This is a distinct buffer from the CD *presence marker* path 16 bytes earlier
     // (s____Blaze_Blade_005631e8 = "@:\Blaze&Blade"). Conflating the two is what made every
     // CD-relative path resolve one directory too high and find nothing.
-    internal readonly byte* s_CdDataRootPath = ToAnsiZ("@:\\FRENCH\\");
+    //
+    // Écart legacy ++ (2026-09-26, openspec/changes/install-from-iso) : plus de lettre de lecteur.
+    // Le répertoire courant est le dossier du jeu (RunApplication), donc la racine des données est
+    // le chemin **relatif** « FRENCH\ » — l'original valait « @:\FRENCH\ », '@' remplacé par la
+    // lettre du CD. Les tampons de 64 octets qui s'en servent ne voient ainsi que des chemins courts,
+    // quel que soit le dossier d'installation.
+    internal readonly byte* s_DataRootPath_005631f8 = ToAnsiZ("FRENCH\\");
 
-    // Ghidra: DAT_0056321c â€” the CD-check file's size, plus a fixed 0xd8000000 added once right
-    // before RunMainLoop. Read back by Handler_00544810 (UI text control code 0x01), where
-    // `(DAT_0056321c + 1)` multiplies a returned text-cursor pointer â€” see the TODO(REVERSE) there.
-    internal uint s_CdCheckFileSize_0056321c;
+    // Ghidra: DAT_0056321c — la taille de « @:\cd.idx » plus 0xd8000000, multiplicateur de curseur
+    // de texte dans Handler_00544810 — retiré (legacy ++, protection anticopie). Voir LB-053.
 
     internal uint s_RandSeed_0056e9c0; // Ghidra: DAT_0056e9c0 â€” the CRT rand seed
     internal uint s_Unknown_005e9630;

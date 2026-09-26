@@ -13,13 +13,15 @@
 # Le codec est en 32 bits : ce script doit tourner sous le PowerShell x86.
 #
 #   & C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe -File OpenForesia.Tools\decode-movie.ps1 `
-#       -Avi E:\French\Teps.AVI -Out scratchpad\teps.png -Frame 120
+#       -Avi OpenForesia\bin\Debug\net10.0\French\Teps.AVI -Out scratchpad\teps.png -Frame 120
+#
+# Les films sont ceux du dossier du jeu, extraits de l'ISO par OpenForesia-Setup --extraire-donnees.
 #
 # Le decodage est SEQUENTIEL : atteindre l'image N coute le decodage des N precedentes, puisque
 # seules les images cles se decodent seules.
 
 param(
-    [string]$Avi   = 'E:\French\Teps.AVI',
+    [string]$Avi   = 'OpenForesia\bin\Debug\net10.0\French\Teps.AVI',
     [string]$Out   = 'frame.png',
     [int]   $Frame = 0,
     [string]$Codec = 'Legacy\Binaries\ir41_32.ax'

@@ -6,6 +6,24 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- feat : la fenêtre de l'installeur (`install-from-iso` lot 4) — image du disque reconnue, dossier
+  (par défaut `%LOCALAPPDATA%\Programs\OpenForesia`, alerte sous `Program Files`, 200 caractères au plus,
+  place vérifiée), installation avec barre et annulation qui ne laisse rien, raccourcis bureau et menu
+  Démarrer, entrée « Applications installées », désinstallation par `Desinstaller.ps1` qui propose de
+  garder les sauvegardes
+- feat : les outils lisent les données installées (`install-from-iso` lot 3) — `bestiaire` sans argument
+  lit `OpenForesia\bin\Debug\net10.0` (ses 11 CSV sortent identiques à ceux tirés du CD), les scripts de
+  films n'ont plus `E:\` par défaut, `playtest.ps1` refuse de lancer sans données et donne la commande
+  d'extraction ; `test-protocol.md` et `OpenForesia.cfg.md` : `save\` et le `.cfg` sont toujours à côté
+  de l'exe, `OpenForesia\save\` ne sert plus
+- feat : **le jeu ne connaît plus de CD** (legacy ++, `install-from-iso` lot 2) — plus de balayage des
+  lecteurs ni de « insérez le CD » ; le répertoire courant est le dossier de l'exe, tous les chemins
+  sont relatifs (données, `save\`, `.cfg`), et `Host/GameDataCheck.cs` vérifie au démarrage les 133
+  fichiers attendus ; la protection `cd.idx` (multiplicateur de curseur de texte), `CdSearchFile` et
+  la branche `cdrom:` de la carte mémoire sont retirées ; les sondes se taisent hors du dépôt
+- feat : `OpenForesia.Installer` (lot 1) — lecteur ISO 9660 / Joliet, `editions.json` généré depuis
+  l'ISO de référence (133 fichiers, 281 Mo, films coupés à leur taille RIFF), et deux modes cachés :
+  `--generer-edition` et `--extraire-donnees` (extraction vérifiée au MD5, 2 s)
 - doc : passage en mode **« legacy ++ »** — le projet vise un jeu autonome et clé en main ; corriger un
   défaut de 1998 ou retirer une dépendance (CD, protection, DLL) devient légitime, en second temps,
   déclaré et validé par Vincent. Règles dans `Strategy.md` (section « Mode legacy ++ » et « Historique

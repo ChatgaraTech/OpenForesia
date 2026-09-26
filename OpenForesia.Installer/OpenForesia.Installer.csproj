@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- WinExe : pour le joueur, l'installeur est une fenetre. Les deux modes caches
+             (generer-edition, extraire-donnees ; voir Program.cs) se rattachent a la console de
+             l'appelant. -->
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+
+        <PlatformTarget>x86</PlatformTarget>
+        <AssemblyName>OpenForesia-Setup</AssemblyName>
+        <RootNamespace>OpenForesia.Installer</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- La liste des fichiers attendus, generee par le mode generer-edition depuis l'ISO de
+             reference. Aucune donnee du jeu : des noms, des tailles et des sommes. Le jeu embarque
+             le meme fichier par un lien (voir OpenForesia.csproj). -->
+        <EmbeddedResource Include="Editions\editions.json">
+            <LogicalName>editions.json</LogicalName>
+        </EmbeddedResource>
+
+        <!-- Le script de desinstallation, depose dans le dossier du jeu (UTF-8 avec BOM : il porte
+             des accents et PowerShell 5.1 lirait un fichier sans BOM en ANSI). -->
+        <EmbeddedResource Include="Installation\Desinstaller.ps1">
+            <LogicalName>Desinstaller.ps1</LogicalName>
+        </EmbeddedResource>
+
+        <!-- Le jeu publie, zippe par publish-release.ps1. Absent en developpement : l'installeur
+             prend alors les fichiers du jeu dans un dossier donne par l'option jeu. -->
+        <EmbeddedResource Include="Jeu\jeu.zip" Condition="Exists('Jeu\jeu.zip')">
+            <LogicalName>jeu.zip</LogicalName>
+        </EmbeddedResource>
+    </ItemGroup>
+
+</Project>

@@ -24,19 +24,19 @@ to be present, or read the `CD.IDX` decoy.
 
 ### Requirement: The data folder defaults to the executable's folder
 
-The data folder SHALL be the folder containing the game executable unless the configuration file
-names another folder. The game SHALL make the data folder its working directory at startup, so that
-the `save\` folder always resolves inside it, whatever folder the game was launched from.
+The data folder SHALL be the folder containing the game executable. The game SHALL make it its
+working directory at startup, so that the data, the `save\` folder and the settings file always
+resolve inside it, whatever folder the game was launched from.
 
 #### Scenario: Launched from another working directory
 
 - **WHEN** the game is started through a shortcut whose working directory is a different folder
 - **THEN** data is read from, and saves are written to, the executable's folder
 
-#### Scenario: Developer override
+#### Scenario: Settings follow the executable
 
-- **WHEN** the configuration file names a data folder
-- **THEN** the game reads its data from that folder and writes `save\` inside it
+- **WHEN** the game is started from another working directory and its settings are changed in game
+- **THEN** the settings file read and written is the one beside the executable
 
 ### Requirement: Missing or incomplete data stops startup with a clear message
 
