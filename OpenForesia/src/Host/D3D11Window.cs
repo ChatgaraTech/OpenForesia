@@ -93,6 +93,8 @@ internal static unsafe class D3D11Window
     [DllImport("user32.dll")] private static extern int GetClientRect(IntPtr hWnd, Rect* rect);
     [DllImport("user32.dll")] private static extern int AdjustWindowRect(Rect* rect, uint style, int menu);
     [DllImport("user32.dll")] private static extern IntPtr LoadCursorA(IntPtr instance, nint cursorName);
+    [DllImport("user32.dll")] private static extern IntPtr LoadImageW(IntPtr instance, nint name, uint type, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] private static extern int DestroyWindow(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern int SetForegroundWindow(IntPtr hWnd);
@@ -244,6 +246,13 @@ internal static unsafe class D3D11Window
         wc.lpfnWndProc = (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, nuint, nint, IntPtr>)&WindowProc;
         wc.hInstance = instance;
         wc.hCursor = LoadCursorA(IntPtr.Zero, 32512 /* IDC_ARROW */);
+        // L'icône de l'exe (ApplicationIcon, rangée par le SDK sous l'identifiant 32512), aux deux
+        // tailles que Windows demande : la grande pour la barre des tâches et Alt+Tab, la petite pour
+        // la barre de titre. Sans elles, la fenêtre porte l'icône générique d'application.
+        wc.hIcon = LoadImageW(instance, 32512, 1 /* IMAGE_ICON */,
+            GetSystemMetrics(11 /* SM_CXICON */), GetSystemMetrics(12 /* SM_CYICON */), 0);
+        wc.hIconSm = LoadImageW(instance, 32512, 1 /* IMAGE_ICON */,
+            GetSystemMetrics(49 /* SM_CXSMICON */), GetSystemMetrics(50 /* SM_CYSMICON */), 0);
         wc.hbrBackground = IntPtr.Zero; // on peint entièrement, pas d'effacement GDI
         wc.lpszClassName = s_ClassName;
 

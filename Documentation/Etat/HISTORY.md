@@ -6,6 +6,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- feat : `OpenForesia.exe` a son icône (`foresia.ico` de Vincent, centré au carré, 16 à 256 px), reprise
+  par la fenêtre du jeu (barre de titre, barre des tâches) ; plus de console au lancement (`WinExe`) ;
+  `VS.Log`, le journal de synchronisation verticale que `winsys3d` écrivait à chaque fermeture, ne
+  s'écrit plus que sous `OPENFORESIA_VSLOG=1` (LB-054)
 - doc : changement `install-from-iso` **terminé et archivé** (40/40, validé par Vincent sur machine
   propre) ; nouvelles specs `game-data-install` et `game-data-location`, `blaze-intro-attract` mise à jour
   (sans données, le démarrage s'arrête sur un message) ; le désinstalleur s'appelle `Uninstall.exe`

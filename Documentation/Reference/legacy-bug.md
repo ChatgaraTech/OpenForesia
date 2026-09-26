@@ -2351,3 +2351,18 @@ AVI de 1,8 Mo au secteur 88 : sa taille déclarée recouvre presque tout le disq
 **Retiré** : le jeu n'a plus de CD. `Handler_00544810` rend `text + 3`, `DAT_0056321c` et ses deux
 écritures ont disparu, et l'installeur ne copie pas `cd.idx`. Les commentaires `// Ghidra:` des trois
 sites disent ce qu'il y avait.
+
+## LB-054 — `winsys3d.dll` écrit son journal de mise au point `VS.Log` à chaque fermeture du jeu
+
+**Statut** : `Retiré` le 2026-09-26 (legacy ++, demande de Vincent) — sur demande seulement.
+
+**Où** : le `DLL_PROCESS_DETACH` de `winsys3d.dll` (`winsys3d.c entry @ 0x00a01bb0`) appelle
+`FUN_00a052e0`, qui crée `VS.Log` dans le répertoire courant et y déverse le journal des attentes
+d'image : pour chaque image, `VSyncCounter`, `VSyncShouldBe`, `PerfCounter`, `PerfShouldBe`,
+`LastDelayed`, `Wait`, `Delayed`, `Mode`. C'est l'outil de mise au point de la cadence d'affichage,
+resté actif dans la DLL livrée. Le joueur de 1998 trouvait donc un `VS.Log` à côté du jeu après
+chaque partie ; depuis que le répertoire courant est le dossier du jeu, OpenForesia faisait de même.
+
+**Retiré** : `Winsys3dImage.Detacher` (`src/Libraries/winsys3d/Image.cs`) n'écrit plus le journal
+que si la variable d'environnement `OPENFORESIA_VSLOG` vaut `1`. `EcrireJournal` reste transcrit tel
+quel, défaut des enregistrements décalés compris.

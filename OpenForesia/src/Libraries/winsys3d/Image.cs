@@ -270,7 +270,11 @@ internal static unsafe class Winsys3dImage
         s_Detache = true;
         Win32.timeKillEvent(Winsys3dData.Minuteur_011be6d0);
         Wsyskern.Free(Winsys3dData.Vram_00b6dbd0);
-        EcrireJournal();
+
+        // Écart legacy ++ (LB-054) : l'original écrit toujours VS.Log, le journal de mise au point
+        // de la synchronisation verticale resté dans la DLL livrée — un fichier inutile au joueur,
+        // posé dans le dossier du jeu à chaque fermeture. Il ne s'écrit plus que sur demande.
+        if (Environment.GetEnvironmentVariable("OPENFORESIA_VSLOG") == "1") EcrireJournal();
     }
 
     /// <summary>

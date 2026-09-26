@@ -1,7 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
+        <!-- WinExe : pas de console a cote de la fenetre du jeu. Les traces ecrites sur stdout et
+             stderr restent lisibles quand on les redirige — c'est ce que fait playtest.ps1. -->
+        <OutputType>WinExe</OutputType>
+        <!-- L'icone de l'executable (Explorateur, raccourcis), reprise par la fenetre du jeu
+             (barre de titre, barre des taches) : voir Host/D3D11Window.cs. Tiree de foresia.ico,
+             fourni par Vincent : l'image entiere, centree dans un carre transparent et declinee
+             de 16 a 256 pixels. -->
+        <ApplicationIcon>OpenForesia.ico</ApplicationIcon>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
