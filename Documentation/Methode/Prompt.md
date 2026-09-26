@@ -79,6 +79,11 @@ Lorsqu'une information est réellement inconnue :
 
 `// TODO(REVERSE): expliquer précisément ce qui reste à déterminer.`
 
+Cette priorité vaut pour la **transcription**. Depuis le 2026-09-26 (mode « legacy ++ »), corriger un
+défaut du jeu de 1998 ou retirer une de ses dépendances (CD, protection, DLL) est permis — mais
+**après** la transcription fidèle, dans un geste séparé, déclaré et validé par Vincent. Les règles
+exactes sont dans `Strategy.md`, section « Mode legacy ++ ».
+
 ## Renommage
 
 Lorsque le rôle d'une fonction Ghidra devient suffisamment clair, renomme-la avec un nom humain.
@@ -251,7 +256,24 @@ Pour chaque fonction reconstruite, marque-la comme terminée dans ce suivi.
 
 Cela permettra de reprendre facilement le travail lors d'une nouvelle session Claude Code.
 
-## Phase actuelle
+## Phase actuelle : « legacy ++ » (depuis le 2026-09-26)
+
+La transcription est très avancée : les 1 430 gestionnaires d'entité atteignables sont écrits, et
+les cinq DLL de 1998 ne sont plus livrées. Le projet vise maintenant **un jeu jouable, autonome et
+clé en main**, distribué par un installeur qui lit l'ISO du joueur.
+
+Ce que cela change pour toi :
+
+* **Tu peux corriger un défaut d'origine**, mais seulement quand Vincent le demande ou le valide,
+  après la transcription fidèle, et en le déclarant (`// Écart legacy ++ (LB-NNN) : …` sur place,
+  entrée dans `legacy-bug.md`, interrupteur si le joueur voit la différence).
+* **Tu peux retirer une dépendance à l'environnement de 1998** (CD, protection anticopie, DLL),
+  en laissant une ligne `// Ghidra: … — retiré (legacy ++, <raison>)`.
+* **Tu ne changes pas le contenu ni l'équilibre du jeu** sans demande explicite.
+* Tout le reste de ce document — la méthode, le routage, les interdictions de refactorisation —
+  s'applique sans changement.
+
+## Phase précédente : le découpage (2026-08-19)
 
 Le découpage architectural a été effectué le **2026-08-19** : `Blaze.cs` faisait 23 680 lignes, il
 est réparti en 30 fichiers. `ARCHITECTURE.md` fait autorité sur la carte et sur les règles.

@@ -7,9 +7,29 @@ Il existe parce que la distinction compte : une bizarrerie observée dans OpenFo
 transcription **fidèle** d'un défaut d'origine plutôt qu'une erreur de reconstruction. Avant de
 « corriger » quoi que ce soit, vérifier ici.
 
-**Règle du projet** : ces bugs sont reproduits tels quels. La fidélité prime, et un correctif serait
-une déviation à déclarer explicitement (voir `Strategy.md`). Chaque entrée note tout de même où
-porterait le correctif, si l'envie venait un jour d'un mode « corrigé ».
+**Règle du projet — mode « legacy ++ » depuis le 2026-09-26** : ces défauts **peuvent être
+corrigés**, et c'est le but. Une correction suit les règles de `Strategy.md`, section « Mode legacy
+++ » : on transcrit d'abord fidèlement, on corrige ensuite ; l'écart est commenté sur place
+(`// Écart legacy ++ (LB-NNN) : …`) ; il passe derrière un interrupteur quand le joueur voit ou vit
+le jeu autrement ; et il s'applique quand Vincent le demande ou le valide.
+
+**Statut d'une entrée.** Chaque entrée porte, quand il y a lieu, une ligne `**Statut**` :
+
+| statut | sens |
+|---|---|
+| *(absent)* ou `Reproduit` | le défaut est transcrit tel quel — l'état de toutes les entrées écrites avant le 2026-09-26, sauf mention contraire |
+| `Contourné` | le comportement visible est réparé ailleurs (l'hôte, par exemple), le corps transcrit reste fidèle |
+| `Corrigé` | le corps transcrit porte l'écart ; l'entrée dit où, et le nom de l'interrupteur s'il y en a un |
+| `Retiré` | le code en cause a disparu avec une dépendance de 1998 (le CD, la protection) |
+
+Les entrées LB-030, LB-051 et LB-052, écrites avant le changement de règle, sont déjà des
+contournements déclarés.
+
+> **Historique.** Jusqu'au 2026-09-26, la règle était : « ces bugs sont reproduits tels quels. La
+> fidélité prime, et un correctif serait une déviation à déclarer explicitement (voir
+> `Strategy.md`). Chaque entrée note tout de même où porterait le correctif, si l'envie venait un
+> jour d'un mode « corrigé ». » C'est pourquoi la plupart des entrées décrivent le correctif sans
+> l'appliquer. Voir `Strategy.md`, « Historique des règles ».
 
 ---
 

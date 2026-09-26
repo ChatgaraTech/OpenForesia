@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- doc : passage en mode **« legacy ++ »** — le projet vise un jeu autonome et clé en main ; corriger un
+  défaut de 1998 ou retirer une dépendance (CD, protection, DLL) devient légitime, en second temps,
+  déclaré et validé par Vincent. Règles dans `Strategy.md` (section « Mode legacy ++ » et « Historique
+  des règles »), reprises dans `CLAUDE.md`, `Prompt.md` et l'en-tête de `legacy-bug.md` (statuts
+  `Reproduit` / `Contourné` / `Corrigé` / `Retiré`) ; les anciennes règles y sont historisées
+- doc : changement OpenSpec `install-from-iso` — abandon du CD, installeur depuis l'ISO du joueur ;
+  relevé de l'ISO de référence (fausses tailles de `CD.IDX` et des AVI, `FRENCH2` doublon exact)
 - fix : appuyer sur Alt (la croix du jeu) ouvrait le menu système de la fenêtre et figeait le jeu — la
   fenêtre de l'hôte avale désormais `SC_KEYMENU`, sauf Alt+Espace
 - feat : les types de manette 1 et 2 du menu de configuration marchent — `0x0050DE90` (cap posé à chaque

@@ -38,6 +38,69 @@ Ne jamais inventer arbitrairement un comportement uniquement pour faire compiler
 
 ---
 
+## Mode « legacy ++ » (depuis le 2026-09-26)
+
+Jusqu'au 2026-09-26, le livrable était une transcription fidèle, défauts compris (voir
+« Historique des règles » en fin de document). **Le projet vise désormais un jeu jouable, autonome
+et clé en main** : corriger les bugs du jeu de 1998 et retirer ses dépendances à l'environnement de
+1998 fait partie du travail.
+
+Ce qui ne change pas : `Blaze.c` reste immuable et reste la source de vérité de **ce qu'était** le
+jeu. Toutes les règles de transcription de ce document restent en vigueur.
+
+### 1. Deux temps, jamais dans le même geste
+
+On **transcrit d'abord**, fidèlement, selon les règles ci-dessous. On **corrige ensuite**, dans un
+geste séparé. Un corps jamais transcrit ne naît pas corrigé : sans la version fidèle, personne ne
+peut plus dire ce que le correctif a changé.
+
+### 2. Trois familles d'écarts légitimes
+
+| famille | exemples | interrupteur |
+|---|---|---|
+| **corriger un défaut du jeu de 1998** | plantage, blocage, lecture hors table, calcul faux, drapeau jamais réarmé | non s'il s'agit d'un plantage ou d'un blocage ; **oui** si le joueur voit ou vit le jeu autrement (voir 4) |
+| **retirer une dépendance à l'environnement de 1998** | CD-ROM, protection anticopie, DLL d'aide, pilotes, matériel | non |
+| **confort du joueur d'aujourd'hui** | fondu au lieu d'un aplat blanc, touche Alt, fenêtre | oui si l'effet visible change |
+
+N'est **pas** légitime sans demande explicite de Vincent : changer le contenu ou l'équilibre du jeu
+(dégâts, difficulté, probabilités, textes), ou « embellir » du code transcrit.
+
+### 3. Tout écart est déclaré, à deux endroits
+
+* **Sur place** : l'ancre `// Ghidra: …` est conservée, et un commentaire `// Écart legacy ++
+  (LB-NNN) : …` dit ce que faisait l'original et pourquoi on s'en écarte. Un lecteur qui pose
+  `Blaze.c` à côté doit voir l'écart en trente secondes, pas le découvrir.
+* **Dans `Documentation/Reference/legacy-bug.md`** : une entrée LB avec son statut (`Corrigé`,
+  `Contourné`, `Retiré`) et l'emplacement du correctif. Pour un retrait de dépendance, la
+  documentation du changement OpenSpec correspondant peut tenir lieu d'entrée, à condition que
+  `legacy-bug.md` y renvoie.
+
+### 4. L'interrupteur
+
+Quand un écart change ce que le joueur voit ou vit d'une façon **discutable** — le fidèle a ses
+défenseurs —, il passe derrière un booléen nommé (`s_Comfort…`, `s_Fix…`), **à `true` par défaut**,
+qui rend le comportement d'origine à `false`. Un plantage corrigé ou une dépendance retirée n'en a
+pas : l'original n'y est pas souhaitable.
+
+### 5. Retirer du code
+
+Retirer une dépendance autorise à **supprimer** du code transcrit (le balayage des lecteurs, par
+exemple). À la place, une ligne `// Ghidra: <ce qu'il y avait> — retiré (legacy ++, <raison>)`
+garde la trace. Hors de ce cas, l'interdiction de supprimer une branche ou un appel reste entière.
+
+### 6. Qui décide
+
+Une correction de défaut s'applique quand **Vincent la demande ou la valide**. L'agent en propose,
+en citant l'entrée LB concernée, mais ne corrige pas un défaut d'origine de son propre chef.
+
+### 7. Le produit
+
+Le jeu doit se lancer sans CD, sans DLL de 1998 et sans prérequis à installer. Les **données du
+jeu ne sont jamais dans le dépôt ni dans une release** : le joueur fournit son ISO, l'installeur en
+extrait ce qu'il faut (`openspec/changes/install-from-iso`).
+
+---
+
 ## Sources de vérité
 
 Toujours utiliser `Blaze.c` comme référence principale lors de la reconstruction de Blaze.
@@ -328,6 +391,10 @@ Ne jamais :
 * éclater une arène entre plusieurs fichiers ;
 * déplacer du code dont la reconstruction est en cours.
 
+Ces interdictions portent sur la **transcription**. Un écart « legacy ++ » déclaré selon les règles
+de la section du même nom n'en relève pas — mais il ne les contourne pas non plus : on transcrit
+d'abord, on s'écarte ensuite.
+
 ---
 
 ## Compilation
@@ -361,7 +428,7 @@ Les deux obéissent à des règles opposées :
 
 | | `src/Blaze/` | `src/Host/` |
 |---|---|---|
-| Règle | la fidélité prime sur la compilabilité | ça doit **marcher** |
+| Règle | la fidélité prime sur la compilabilité ; un écart « legacy ++ » est déclaré | ça doit **marcher** |
 | Source de vérité | `Blaze.c` | aucune |
 | Un `TODO(REVERSE)` y a un sens ? | oui | non |
 | Refactorisable librement ? | **non** | oui |
@@ -528,3 +595,32 @@ l'est parce que la réclamation le lit vraiment (`s_UiDescriptors_00560ff0`,
 
 Cette paresse **ne contredit pas** la leçon « pris paresseusement, le descripteur échouait » :
 celle-ci porte sur les descripteurs de mémoire basse, pas sur les objets de sous-système.
+
+---
+
+## Historique des règles
+
+Les règles remplacées ne sont pas effacées : elles expliquent pourquoi le code existant a la forme
+qu'il a, et pourquoi `legacy-bug.md` décrit des défauts reproduits plutôt que réparés.
+
+### Phase fidèle (du début du projet au 2026-09-26)
+
+**Le livrable.** « Il n'y a pas de produit à livrer : le livrable est une transcription C# fidèle
+et compréhensible du pseudo-code Ghidra, construite fonction par fonction le long du graphe
+d'appels. » (`CLAUDE.md`)
+
+**Les défauts d'origine.** « Ces bugs sont reproduits tels quels. La fidélité prime, et un
+correctif serait une déviation à déclarer explicitement. Chaque entrée note tout de même où
+porterait le correctif, si l'envie venait un jour d'un mode « corrigé ». » (`legacy-bug.md`)
+
+**Avant de corriger une bizarrerie.** « Elle peut être une transcription fidèle d'un défaut
+d'origine, et le projet reproduit ceux-là plutôt que de les réparer. » (`CLAUDE.md`)
+
+**Les exceptions de l'époque.** Seul l'hôte (`src/Host/`) échappait à la fidélité. Trois écarts de
+confort ont été admis à la fin de cette phase, tous derrière un interrupteur et déclarés : les
+stroboscopes des boss (LB-030, LB-051) et le voile blanc opaque (LB-052). Ils ont servi de modèle
+aux règles « legacy ++ ».
+
+**Ce qui a motivé le changement.** Le 2026-09-26, Vincent décide de rendre le dépôt public et de
+publier un installeur : le projet doit devenir un jeu qu'on installe et qu'on joue. Le premier
+chantier du nouveau mode est l'abandon du CD (`openspec/changes/install-from-iso`).

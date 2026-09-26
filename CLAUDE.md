@@ -5,9 +5,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this project is
 
 OpenForesia is a **reverse-engineering reconstruction** of *Blaze & Blade* (`Blaze.exe`, a 1998
-32-bit native Windows game) into readable C#. There is no product to ship: the deliverable is a
-faithful, understandable C# transcription of Ghidra pseudocode, built up function by function
-along the call graph.
+32-bit native Windows game) into readable C#, built up function by function along the call graph
+from Ghidra pseudocode.
+
+**Since 2026-09-26 the project is in « legacy ++ » mode**: the goal is a playable, self-contained,
+turnkey game — installed from the player's own ISO, with no CD, no 1998 DLL and no prerequisite.
+Fixing defects of the 1998 game and removing its dependencies on the 1998 environment are now part
+of the work, **under the rules of `Strategy.md`, section « Mode legacy ++ »**: transcribe faithfully
+first, deviate second, never in the same gesture; declare every deviation in place
+(`// Écart legacy ++ (LB-NNN) : …`) and in `legacy-bug.md`; put it behind a switch when the player
+sees or experiences the game differently; apply a defect fix only when Vincent asks for or approves
+it. The game's data is never in the repository or in a release.
+
+> Until 2026-09-26 the rule was: « There is no product to ship: the deliverable is a faithful,
+> understandable C# transcription of Ghidra pseudocode », and original defects were reproduced, not
+> repaired. `Strategy.md` keeps the history of the superseded rules.
 
 `Documentation/Methode/Prompt.md` and `Strategy.md` (both in French) are the authoritative methodology
 documents — read them before doing reconstruction work. The summary below is not a substitute.
@@ -255,7 +267,7 @@ tests/           les raccourcis de lancement a double-cliquer (banc.bat : la sal
 | `Documentation/Etat/handlers-exerces.tsv` | **La preuve accumulée** : un couple `(gestionnaire, zone, sous-zone)` par ligne, écrit par la sonde de `Screens/State03/Dispatch/CoverageProbes.cs` à la fermeture du jeu, en union avec ce qu'il portait déjà. Suivi par git ; il ne perd jamais rien. `OPENFORESIA_NO_PROBE=1` désarme la sonde. |
 | `Documentation/Etat/objets-exerces.tsv` | **La jumelle de la précédente, sur les objets** : un couple `(clé de fiche, zone, sous-zone)` par ligne, écrit dès qu’un objet est employé en jeu. La **clé est l’hexa des seize premiers octets de la fiche**, pas son nom : les noms d’objet ne sont pas de l’ASCII. `census-item-effects.sh` la recalcule depuis `objets.csv` pour retrouver le nom lisible. Même garanties : union, écriture immédiate, suivi par git, `OPENFORESIA_NO_PROBE=1` la désarme. |
 | `Documentation/Etat/sorts-exerces.tsv` | **La troisième sonde, sur les sorts** : un couple `(famille, indice, zone, sous-zone)` par ligne, écrit dès qu’une fiche de sort est déclenchée. La paire famille/indice est ce que `CastSpell_0053A980` reçoit ; `census-spells.sh` retrouve le nom lisible dans `Bestiaire/sorts.csv`. **Le lanceur n’est pas relevé** — une incantation, l’opcode 14 d’un script d’objet et le mot `+0x06` d’une entité de scène entrent par la même fonction, et c’est la *fiche* qu’on vérifie. Mêmes garanties, même `OPENFORESIA_NO_PROBE=1`. |
-| `Documentation/Reference/legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |
+| `Documentation/Reference/legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect. Until 2026-09-26 those were reproduced, not repaired; in « legacy ++ » mode they may be fixed, as a declared deviation approved by Vincent — each entry carries its status (`Reproduit`, `Contourné`, `Corrigé`, `Retiré`). |
 | `Documentation/Reference/FormatSauvegarde.md` | **Le fichier `Blaze-Saving…`, octet par octet** : les quatre blocs (fiche, dépôt, copie de `0x3f00`, vignettes), la somme de contrôle signée **et sa copie** — sans laquelle le dépôt se croit vide —, la carte des champs de la fiche et le format d'un emplacement d'objet. À lire avant d'écrire dans une sauvegarde. |
 | `Documentation/Reference/MonteeDeNiveau.md` | **Ce que le jeu calcule à une montée de niveau** : le palier, les sept gains, les trois familles de probabilités par classe, le plafond fixé à la création (culminant à 510 pour un départ de 80 à 83), et la chance — la seule statistique qui peut baisser. Tableaux par classe et cas limites de répartition. À lire avant de toucher à `LevelUpCharacter_005391F0` ou de répondre à une question sur la progression. |
 | `Documentation/Reference/Sorts.md` | **Le système de sorts** : quelles classes lancent, les trois écoles jouables (plus l’herboristerie inatteignable du Chasseur), la fiche de sort et ses champs, l'apprentissage à la montée de niveau — le seul en jeu normal —, les sorts hors d'atteinte, la combinaison de boutons, le coût en PM. Compagnon de `MonteeDeNiveau.md`. |
@@ -302,6 +314,12 @@ Newest date at the top. No analysis paragraphs — the reasoning belongs in `REV
   make the compiler happy; never delete a hard-to-translate branch or an unknown call. When
   something is genuinely unknown, write `// TODO(REVERSE): <precisely what remains to determine>`
   and record it in `REVERSE_STATUS.md`.
+- **« Legacy ++ » deviations are a second, separate step.** Transcribe faithfully first; only then
+  fix a 1998 defect, remove a 1998 dependency (CD, copy protection, DLLs) or add player comfort —
+  keeping the `// Ghidra:` anchor, adding `// Écart legacy ++ (LB-NNN) : <what the original did>`,
+  recording it in `legacy-bug.md`, and behind a `true`-by-default switch when the change is visible
+  and debatable. Removed code leaves a `// Ghidra: … — retiré (legacy ++, <raison>)` line. Never
+  change the game's content or balance without Vincent asking. Full rules: `Strategy.md`.
 - **Keep Ghidra traceability** on every reconstructed function: `// Ghidra: FUN_00513900 @ 0x00513900`.
   Rename to a human name only when the role is actually established; otherwise keep `FUN_…` or
   `Unknown_00513900`. Same for `DAT_…`/`PTR_…` globals.
