@@ -162,6 +162,22 @@ Et une ligne **FONT**, qui bascule une valeur que plus rien dans le jeu ne lit.
 
 ---
 
+## 8. La visionneuse de modèles dont on a retiré la porte
+
+**`FUN_005315d0`** (l'état de jeu 8), reconstruit le 2026-09-26.
+
+Le répartiteur des états de jeu connaît onze états. L'un d'eux, le 8, est un **outil d'atelier** :
+une visionneuse de modèles 3D. On choisit un jeu de modèles en tenant CARRÉ, on fait tourner la
+caméra à la croix, on l'avance aux gâchettes, on passe d'une animation à l'autre avec L2 et R2 et,
+avec SELECT, on passe en image par image : ROND avance d'une image. SELECT + START ramène au menu.
+
+Personne ne peut l'ouvrir. **Aucune instruction du binaire n'écrit 8 dans le numéro d'état** : les
+trente et un sites qui l'écrivent ont été relevés un à un, et aucun ne vaut 8. Même le menu
+« Gurkha » (§ 7), qui envoie vers REBOOT et MENU, n'y mène pas. Le code est resté entier et chargé
+à chaque partie. Il ne manquait que la ligne qui y menait.
+
+---
+
 ## Ce qu'on cherche pour la suite
 
 Rien de systématique — ces trouvailles arrivent en travaillant sur autre chose. Mais deux endroits

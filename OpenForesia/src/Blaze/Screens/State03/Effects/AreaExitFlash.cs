@@ -196,6 +196,27 @@ public static unsafe partial class Blaze
     /// de plus par image, pas une lecture de travers.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// <b>ECART DECLARE</b> (2026-09-26, demande de Vincent) — legacy-bug.md LB-052. Le binaire
+    /// monte le voile plein cadre de <c>+8</c> par image pendant trente images puis le redescend de
+    /// <c>-6</c> pendant quarante et une ; mais la DLL de 1998 dessine ce voile <b>opaque</b>
+    /// (<c>TILE</c> sous <c>ChoisirMelange(1)</c>, couleur doublee), si bien que l'image est
+    /// remplacee par un aplat qui passe du noir au blanc plein puis retombe. A <c>true</c>, le
+    /// voile du jeu n'est plus pousse, et le voile de confort de l'hote
+    /// (<see cref="D3D11Backend.SetComfortVeil"/>) fait un vrai fondu vers le blanc — opacite 0,
+    /// puis 1 au bout des trente images, puis 0 au bout des quarante et une —, par-dessus l'image
+    /// intacte. Les etats, les sons, les naissances, le gel des entites et la sortie de zone sont
+    /// ceux du binaire. <c>false</c> rend l'aplat d'origine.
+    /// </summary>
+    private static readonly bool s_ComfortWhiteFlash = true;
+
+    /// <summary>La courbe du fondu : lisse aux deux bouts (<c>3t² - 2t³</c>), bornee a [0, 1].</summary>
+    private static float ComfortEase(float t)
+    {
+        t = Math.Clamp(t, 0f, 1f);
+        return t * t * (3f - 2f * t);
+    }
+
     private static void TickAreaExitFlash_004183D0(uint* e)
     {
         byte* r = (byte*)e;
@@ -231,9 +252,13 @@ public static unsafe partial class Blaze
                     r, (int*)(r + 0x1c), null, (byte)(*(uint*)(r + 0x5c) + 0xc0), 0, -1);
             }
 
-            Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, 8);
+            // ECART DECLARE (2026-09-26, demande de Vincent) — legacy-bug.md LB-052 : le voile
+            // opaque de la DLL est remplace par le voile de confort de l'hote. Voir s_ComfortWhiteFlash.
+            if (!s_ComfortWhiteFlash) Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, 8);
 
             (*(short*)(r + 0x12))++;
+
+            if (s_ComfortWhiteFlash) D3D11Backend.SetComfortVeil(ComfortEase(*(short*)(r + 0x12) / 30f));
 
             if (*(short*)(r + 0x12) == 0x1e)
             {
@@ -244,9 +269,12 @@ public static unsafe partial class Blaze
 
         if (*(short*)(r + 0x10) == 2)
         {
-            Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, -6);
+            // ECART DECLARE (2026-09-26) — LB-052, voir plus haut.
+            if (!s_ComfortWhiteFlash) Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, -6);
 
             (*(short*)(r + 0x12))++;
+
+            if (s_ComfortWhiteFlash) D3D11Backend.SetComfortVeil(ComfortEase(1f - *(short*)(r + 0x12) / 41f));
 
             if (*(short*)(r + 0x12) < 0x14)
             {

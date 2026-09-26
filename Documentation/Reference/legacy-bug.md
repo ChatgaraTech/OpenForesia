@@ -2265,3 +2265,42 @@ d'incantation autour du porteur (les cercles), puis posent le voile rouge (`0x1e
 deux pendant trente images**. C'est le vrai stroboscope. Même interrupteur : éteint, le voile garde la
 valeur de ses images paires, `0x01000000` — couleur nulle, que `FillScreenQuad_0051F940` ne dessine
 pas. Les invocations, le son et les naissances aux images 0, 3 et 7 sont ceux du binaire.
+
+## LB-052 — Le voile plein cadre est dessiné opaque : un fondu vers le blanc devient un écran blanc
+
+**Où** : le voile `DAT_005de024` (et son second, `DAT_005de028`) part en `TILE` par
+`FillScreenQuad_0051F940` (commande `0x62`, page `0xe1000200`, donc semi-transparent, mode `abr` 0).
+Côté DLL, `winsys3d.c FUN_00a10690` (`TILE`) passe par `PreparerEtatPlat`, qui appelle
+`ChoisirMelange(1)` : **mélange coupé**, alpha `0xff`, couleur doublée. Le bit de
+semi-transparence de la commande n'est pas consulté.
+**Signalé** le 2026-09-26 par Vincent : « un effet lumineux blanc trop prononcé, l'écran devient
+full blanc » — à la récupération d'un cristal en fin de boss, et à la première obtention de la
+tablette des anciens.
+
+Sur PlayStation, `abr` 0 mélange le voile à moitié (`B/2 + F/2`). Sur PC, il **remplace l'image par
+un aplat**. Le flash de fin de zone (`FUN_004183d0`) monte le voile de `+8` par image pendant trente
+images puis le redescend de `-6` : conçu comme un fondu, il donne à l'écran un aplat qui passe du
+quasi-noir au **blanc plein**, puis retombe. C'est le défaut du portage PC de 1998, transcrit
+fidèlement ; il explique aussi pourquoi les stroboscopes de LB-051 étaient si agressifs.
+
+**Contourné — écart déclaré** (demande de Vincent, 2026-09-26), sans toucher la DLL reconstruite :
+l'hôte Direct3D 11 gagne un **voile de confort** (`D3D11Backend.SetComfortVeil`) — une couleur posée
+par-dessus l'image présentée avec un vrai alpha, valable une image. Deux effets l'emploient à la
+place du voile opaque, derrière `s_ComfortWhiteFlash` (`Effects/AreaExitFlash.cs`, à `true`) :
+
+- **le flash de fin de zone** `FUN_004183d0` (le cristal, la fin d'un boss ; 18 sous-zones de la
+  forêt, de la mine, de la vieille tour et du Labyrinthe) : opacité 0 → 1 en trente images,
+  1 → 0 en quarante et une, courbe lissée ;
+- **la transition de la forêt** `0x0040edf0` (sous-zones 0 à 4) — **la tablette des anciens**,
+  confirmé en jeu le 2026-09-26 : 0 → 1 en vingt-cinq images, 1 → 0 en vingt-cinq ;
+- **la scène du cristal** — `ShiftCutsceneVeils`, partagée par les scènes de la forêt
+  (`0x00410820`, `0x00413c90`, et celle à dialogue) et de la montagne du dragon (`0x0040d930`) :
+  mêmes vingt-cinq images de montée (`0x82..0x9a`) et de descente (`0x9b..0xb3`). L'opacité vaut 1
+  à l'image `0x9b`, celle où la scène change la pose du groupe — le blanc plein est là pour la
+  cacher. Le premier correctif n'avait traité que `FUN_004183d0` : Vincent a signalé que le
+  cristal restait « tout blanc », et c'était cette scène-ci.
+
+Les états, sons, naissances, gel des entités et sorties de zone sont ceux du binaire. `false` rend
+l'aplat d'origine. **Les autres emplois du voile restent opaques** — fondus de scène de la grotte
+scellée (`0x004384f0`, `0x00440840`), sorts du Prêtre : à traiter
+au cas par cas s'ils gênent.

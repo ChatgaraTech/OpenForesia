@@ -93,7 +93,7 @@ public static unsafe partial class Blaze
 
         short beat = *(short*)(e + 0x16);
 
-        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1);
+        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1, beat);
 
         if (beat == 0x9b)
         {
@@ -109,7 +109,7 @@ public static unsafe partial class Blaze
             }
         }
 
-        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1);
+        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1, beat);
 
         if (beat == 200)
         {

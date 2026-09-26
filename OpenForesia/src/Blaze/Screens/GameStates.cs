@@ -29,6 +29,16 @@ public static unsafe partial class Blaze
     private static void RunGameLoop()
     {
         s_GameStateId_005de510 = 0;
+
+        // ECHAFAUDAGE : OPENFORESIA_FORCE_STATE=N entre directement dans l'etat de jeu N au lieu du
+        // menu principal, une seule fois. Il existe pour l'etat 8 (la visionneuse de modeles,
+        // Screens/State08/ModelViewer.cs), qu'aucune instruction du binaire n'atteint ; voir
+        // tests\visionneuse-modeles.bat. Absent de l'original.
+        if (int.TryParse(Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_STATE"), out int forcedState))
+        {
+            s_GameStateId_005de510 = forcedState;
+        }
+
         while (true)
         {
             do
@@ -138,9 +148,11 @@ public static unsafe partial class Blaze
                 RunEndingState_00531B40();   // Ghidra: FUN_00531b40 — Screens/State07/Ending.cs
                 break;
             case 8:
-                throw new NotImplementedException("FUN_005315d0 (game state 8) not yet reconstructed");
+                RunModelViewerState_005315D0();   // Ghidra: FUN_005315d0 — Screens/State08/ModelViewer.cs
+                break;
             case 9:
-                throw new NotImplementedException("FUN_0051bb00 (game state 9) not yet reconstructed");
+                RunGameOverState_0051BB00();   // Ghidra: FUN_0051bb00 — Screens/State09/GameOver.cs
+                break;
             case 10:
                 RunRebootScreen_00513BA0();   // Ghidra: FUN_00513ba0
                 break;

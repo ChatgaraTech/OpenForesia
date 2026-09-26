@@ -300,16 +300,27 @@ public static unsafe partial class Blaze
         (*(short*)(e + 0x16))++;
         short age = *(short*)(e + 0x16);
 
+        // ECART DECLARE (2026-09-26, demande de Vincent) — legacy-bug.md LB-052 : les deux voiles
+        // opaques de la DLL sont remplaces par le voile de confort de l'hote, meme cadence —
+        // vingt-cinq images de montee, vingt-cinq de descente. Voir s_ComfortWhiteFlash.
         if (age >= 0xaa && age <= 0xc2)
         {
-            Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, 10);
-            Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, 3);
+            if (!s_ComfortWhiteFlash)
+            {
+                Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, 10);
+                Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, 3);
+            }
+            else D3D11Backend.SetComfortVeil(ComfortEase((age - 0xa9) / 25f));
         }
 
         if (age >= 0xc3 && age <= 0xdb)
         {
-            Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, -10);
-            Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, -3);
+            if (!s_ComfortWhiteFlash)
+            {
+                Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, -10);
+                Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, -3);
+            }
+            else D3D11Backend.SetComfortVeil(ComfortEase((0xdb - age) / 25f));
         }
 
         if (*(short*)(e + 0x16) != 0xdc) return;

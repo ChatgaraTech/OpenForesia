@@ -191,6 +191,9 @@ public static unsafe partial class Blaze
             // premier test de TickAiBench rend la main aussitot. Voir AiBench.cs.
             TickAiBench();
 
+            // ECHAFAUDAGE : OPENFORESIA_TRACE_VOILE=1, voir EntityHandlerDispatch.cs.
+            TraceVeilOutsideHandlers();
+
             if (s_TraceScript && ++s_TickCount % 60 == 0)
             {
                 Console.Error.WriteLine(

@@ -122,6 +122,72 @@ public static unsafe partial class Blaze
     {
         NoteHandlerSeen(target);
 
+        if (!s_TraceVeil)
+        {
+            DispatchEntityHandlerGuarded(target, record, where);
+            return;
+        }
+
+        VeilSnapshot before = TakeVeilSnapshot();
+        DispatchEntityHandlerGuarded(target, record, where);
+        ReportVeilChange(before, $"gestionnaire 0x{target:X8}");
+    }
+
+    // =============================================================================================
+    // ECHAFAUDAGE — OPENFORESIA_TRACE_VOILE=1 : qui touche aux voiles et a la couleur d'ambiance.
+    //
+    // Ne de LB-052 : un « ecran tout blanc » peut venir de trois endroits sans rapport — le voile
+    // plein cadre DAT_005de024, son second DAT_005de028, ou la consigne de couleur de fond
+    // DAT_005e92b8..bc et son mode DAT_005e9166 (l'ambiance que SmoothSceneOrientationAndBackColour
+    // fait glisser, et qui blanchit tous les modeles eclaires). Plutot que deviner lequel, la trace
+    // compare les quatre avant et apres chaque gestionnaire, et une fois par image pour ce qui
+    // change hors gestionnaire (opcodes de script, verbes de scene).
+    // =============================================================================================
+
+    private static readonly bool s_TraceVeil =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_VOILE") == "1";
+
+    private readonly record struct VeilSnapshot(uint Veil, uint Veil2, ulong BackTarget, short BackMode);
+
+    private static VeilSnapshot s_VeilLast;
+
+    private static VeilSnapshot TakeVeilSnapshot() => new(
+        Mem.s_Unknown_005de024,
+        Mem.s_Unknown_005de028,
+        *(ulong*)Mem.Arena(0x005e92b8) & 0xffffffffffff,
+        *(short*)Mem.Arena(0x005e9166));
+
+    /// <summary>Une ligne si quelque chose a change depuis <paramref name="before"/>.</summary>
+    private static void ReportVeilChange(VeilSnapshot before, string who)
+    {
+        VeilSnapshot now = TakeVeilSnapshot();
+        s_VeilLast = now;
+        if (now == before) return;
+
+        string where = $"zone {Res.s_Unknown_005de528 & 0xff}:{s_Unknown_005de52c}";
+        if (now.Veil != before.Veil)
+            Console.Error.WriteLine($"[VOILE] {where} {who} : voile 0x{before.Veil:X8} -> 0x{now.Veil:X8}");
+        if (now.Veil2 != before.Veil2)
+            Console.Error.WriteLine($"[VOILE] {where} {who} : second voile 0x{before.Veil2:X8} -> 0x{now.Veil2:X8}");
+        if (now.BackTarget != before.BackTarget || now.BackMode != before.BackMode)
+        {
+            Console.Error.WriteLine(
+                $"[VOILE] {where} {who} : ambiance {BackText(before)} -> {BackText(now)}");
+        }
+    }
+
+    private static string BackText(VeilSnapshot s) =>
+        $"({(short)s.BackTarget},{(short)(s.BackTarget >> 16)},{(short)(s.BackTarget >> 32)}) mode {s.BackMode}";
+
+    /// <summary>Une fois par image, depuis la boucle de la carte : ce qui a change hors de tout
+    /// gestionnaire.</summary>
+    private static void TraceVeilOutsideHandlers()
+    {
+        if (s_TraceVeil) ReportVeilChange(s_VeilLast, "hors gestionnaire (script, scene, boucle)");
+    }
+
+    private static void DispatchEntityHandlerGuarded(uint target, byte* record, string where)
+    {
         if (!s_AiBench)
         {
             DispatchEntityHandlerCore(target, record, where);

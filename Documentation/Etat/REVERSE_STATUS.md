@@ -936,7 +936,7 @@ being a reading task.
   none is blocked at the top level: `FUN_00542130` (state 0),
   `thunk_FUN_00536180` (1), `FUN_00542160`+`FUN_00537da0` (2),
   `thunk_FUN_00516020` (3), `FUN_005066d0` (4), `FUN_00504c90` (5),
-  `FUN_00524180` (6), `FUN_00531b40` (7), `FUN_005315d0` (8), `FUN_0051bb00`
+  `FUN_00524180` (6), `FUN_00531b40` (7), `FUN_005315d0` (8, fait 2026-09-26, `Screens/State08/ModelViewer.cs` — inatteignable, aucune écriture de 8), `FUN_0051bb00` (9, fait 2026-09-26, `Screens/State09/GameOver.cs`)
   (9), `FUN_00513ba0` (10). This is the largest body of straightforwardly
   readable code reachable from the spine. Note it is gated behind #19 at
   runtime, but not for reading. **Correction (2026-08-14):** "none is blocked"

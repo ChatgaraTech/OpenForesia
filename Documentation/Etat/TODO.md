@@ -1,6 +1,47 @@
 # TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-20**.
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-26**.
+
+# REPRISE : LE BLANC TOTAL DE LA FIN D'EIFRIT (2026-09-26)
+
+**Le problème.** À la mort d'Eifrit (grotte scellée, **10:11**), l'écran devient **tout blanc** :
+« comme si on peignait l'écran en blanc et jouait sur la luminosité, il manque de la transparence ».
+Vincent veut un vrai fondu : alpha 0 → 1 → 0.
+
+**Ce qui est déjà fait (LB-052, `legacy-bug.md`).** La cause générale est établie : la DLL de 1998
+dessine le voile plein cadre (`TILE`) **opaque**, donc un fondu vers le blanc devient un aplat
+blanc. L'hôte D3D11 a gagné un voile de confort à vrai alpha (`D3D11Backend.SetComfortVeil`), et
+trois effets l'emploient derrière `s_ComfortWhiteFlash` (`Effects/AreaExitFlash.cs`) :
+- le flash de fin de zone `FUN_004183d0` (forêt, mine, vieille tour, Labyrinthe) ;
+- la tablette des anciens `0x0040edf0` (forêt 0 à 4) — **validé en jeu** ;
+- la scène du cristal `ShiftCutsceneVeils` (forêt, montagne du dragon).
+
+**Pourquoi Eifrit n'en profite pas.** Aucun corps qui écrit un voile n'est installé en 10:11 : le
+blanc passe par un autre chemin. **Hypothèse, non vérifiée** : la **couleur d'ambiance**
+(`DAT_005e92b8..bc`, mode `DAT_005e9166`, lissée par `SmoothSceneOrientationAndBackColour`) poussée
+vers le blanc par un script ou une scène — elle blanchit tous les modèles éclairés, sans voile, et
+aucun alpha n'y peut rien tel quel.
+
+**Première chose à faire demain.** Vincent lance **`tests\trace-voile.bat`**
+(`OPENFORESIA_TRACE_VOILE=1`), refait la fin d'Eifrit, ferme le jeu et colle les lignes `[VOILE]`.
+Chacune dit quoi a changé (voile, second voile ou ambiance, avant → après), qui (gestionnaire ou
+« hors gestionnaire » = script/scène) et où. **Corriger ensuite à cet endroit précis**, en écart
+déclaré, sous le même interrupteur — et compléter LB-052.
+
+**Encore ouvert sur le même sujet.** Les autres voiles restent opaques : fondus de scène de la grotte
+scellée (`0x004384f0`, `0x00440840` — la fin du jeu), sorts du Prêtre (Marteau `0x0044a080`, Parole
+sainte, Résurrection). À traiter si Vincent les signale. Les stroboscopes rouges des boss sont
+éteints (LB-051, `s_BossDebuffScreenFlash`) — à confirmer en jeu sur Grizzly.
+
+**Autres pistes laissées en plan le 2026-09-25/26** (Vincent a dit « on en reste là pour le
+moment ») :
+- **Guide des essais** (`tests\guide-essais.bat`) : 292 gestionnaires restants, dont 77 impossibles
+  dans le jeu d'origine. 13 des 42 pistes sont la « poussière du pas » (`0x005413E0`, effet `0xFE`),
+  qui ne naît que sur un sol portant l'attribut `0x200` : lire le terrain du CD pour dessiner ces
+  sols sur le plan, ou classer impossibles les sous-zones qui n'en ont pas. Autre idée : marquer les
+  77 impossibles dans `GestionnairesEntites.md` (227 réellement atteignables).
+- **Mode debug** : se téléporter pendant une scénette (le wagonnet) plante sur un « verbe 32 » —
+  documenté dans `mode-debug.md`, non corrigé.
 
 > **Chantier en cours : se passer des cinq DLL de 1998.** Son point de reprise est
 > [`byebye-dll.md`](byebye-dll.md) — le lire en premier, puis `DLLAtteignables.md` pour les chiffres.

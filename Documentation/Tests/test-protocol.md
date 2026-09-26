@@ -2193,3 +2193,24 @@ route les aurait affiches en dette pour toujours.
 **A retenir avant d'instrumenter** : compter les points d'entree avant de poser une sonde, et se
 demander lequel on n'a pas vu. Une couverture qui n'observe qu'un chemin sur deux se lit comme une
 couverture complete — c'est pire qu'une absence de mesure, parce qu'elle rassure.
+
+## `OPENFORESIA_TRACE_VOILE=1` : qui blanchit l'écran (2026-09-26)
+
+Un écran qui vire au blanc (ou au rouge) peut venir de trois endroits sans rapport : le voile plein
+cadre `DAT_005de024`, son second `DAT_005de028`, ou la consigne de couleur d'ambiance
+`DAT_005e92b8..bc` avec son mode `DAT_005e9166` — celle-ci blanchit tous les modèles éclairés, et
+l'écran semble « peint en blanc » sans qu'aucun voile ne soit posé. La trace compare les quatre avant
+et après chaque gestionnaire, puis une fois par image pour ce qui change hors gestionnaire (opcodes
+de script, verbes de scène), et écrit une ligne `[VOILE]` par changement.
+
+Raccourci : `tests\trace-voile.bat` lance le jeu depuis `bin\Debug\net10.0` (donc avec le bon `save\`),
+écrit `trace-voile.log` à côté de l'exécutable et réaffiche les lignes à la fermeture. Voir
+`legacy-bug.md` LB-052.
+
+## Ouvrir un état de jeu directement — `OPENFORESIA_FORCE_STATE`
+
+`OPENFORESIA_FORCE_STATE=N` fait entrer `RunGameLoop` dans l'état de jeu N au lieu du menu principal,
+une seule fois (échafaudage, absent de l'original). Il existe pour l'**état 8**, la visionneuse de
+modèles, qu'aucune instruction du binaire n'atteint : `tests\visionneuse-modeles.bat` le pose à 8 et
+rappelle les commandes. Pour un autre état, penser que le menu principal et l'écran de chargement
+(`FUN_0052a440`) sont sautés : ce qu'ils initialisent ne l'est pas.

@@ -246,9 +246,23 @@ public static unsafe partial class Blaze
 
     /// <summary>Le fondu des deux voiles pendant une scene : le second monte ou descend de dix par
     /// canal, le premier de trois. C'est le meme rapport que
-    /// <see cref="EntityHandler_0040EDF0"/>.</summary>
-    private static void ShiftCutsceneVeils(int step)
+    /// <see cref="EntityHandler_0040EDF0"/>.
+    ///
+    /// <para><b>ECART DECLARE</b> (2026-09-26, demande de Vincent) — legacy-bug.md LB-052 : c'est le
+    /// flash blanc du <b>cristal</b>. La DLL de 1998 dessine ces voiles opaques, donc l'ecran
+    /// devenait un aplat blanc. Sous <see cref="s_ComfortWhiteFlash"/>, ils ne sont plus pousses
+    /// et le voile de confort de l'hote fait le fondu : montee sur les vingt-cinq images
+    /// <c>0x82..0x9a</c>, descente sur <c>0x9b..0xb3</c>. L'opacite vaut 1 aux images
+    /// <c>0x9a</c> et <c>0x9b</c> — celle-ci est l'image ou la scene change la pose du groupe, que
+    /// le blanc plein est la pour cacher.</para></summary>
+    private static void ShiftCutsceneVeils(int step, short beat)
     {
+        if (s_ComfortWhiteFlash)
+        {
+            D3D11Backend.SetComfortVeil(ComfortEase(step > 0 ? (beat - 0x81) / 25f : (0xb4 - beat) / 25f));
+            return;
+        }
+
         Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, 10 * step);
         Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, 3 * step);
     }
@@ -318,7 +332,7 @@ public static unsafe partial class Blaze
 
         short beat = *(short*)(e + 0x16);
 
-        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1);
+        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1, beat);
 
         if (beat == 0x9b)
         {
@@ -334,7 +348,7 @@ public static unsafe partial class Blaze
             }
         }
 
-        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1);
+        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1, beat);
 
         if (beat == 200)
         {
@@ -454,7 +468,7 @@ public static unsafe partial class Blaze
         if (beat == 0x82) Aud.PlaySoundEffect(5, 0x100, 0x1000, 0x1000);
         if (beat == 0x83) Aud.PlaySoundEffect(5, 0x16a, 0x1000, 0x1000);
 
-        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1);
+        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1, beat);
 
         if (beat == 0x9b)
         {
@@ -470,7 +484,7 @@ public static unsafe partial class Blaze
             }
         }
 
-        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1);
+        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1, beat);
 
         if (beat == 200)
         {

@@ -817,6 +817,34 @@ internal static unsafe class D3D11Backend
     /// </summary>
     internal static void Present() => PresentView(s_SceneSrv, s_SceneWidth, s_SceneHeight);
 
+    // Le voile de confort : une couleur posee par-dessus l'image presentee, avec un VRAI alpha.
+    private static float s_ComfortVeilAlpha;
+    private static uint s_ComfortVeilRgb = 0xFFFFFF;
+
+    /// <summary>
+    /// Pose, pour la prochaine image presentee seulement, un voile de couleur <paramref name="rgb"/>
+    /// (0xRRGGBB) d'opacite <paramref name="alpha"/> (0 a 1), melange par l'alpha de la source.
+    ///
+    /// <para>
+    /// Pourquoi il existe : le voile plein cadre du jeu (<c>DAT_005de024</c>) part en <c>TILE</c>,
+    /// et la DLL de 1998 dessine un <c>TILE</c> <b>opaque</b> — <c>ChoisirMelange(1)</c>, couleur
+    /// doublee. Sur PlayStation il se melangeait a l'image ; sur PC il la <b>remplace</b> par un
+    /// aplat. Un fondu vers le blanc y devient un ecran blanc plein (legacy-bug.md LB-052). Ce
+    /// voile-ci est celui de l'echafaudage, pas de la DLL : il ne passe pas par le chemin
+    /// d'affichage fidele et ne le modifie en rien.
+    /// </para>
+    /// <para>
+    /// <b>Un appel par image</b> : la valeur retombe a zero apres chaque presentation. Un effet
+    /// qui cesse de tourner — entite eteinte, changement de zone — ne peut donc pas laisser un
+    /// voile en place.
+    /// </para>
+    /// </summary>
+    internal static void SetComfortVeil(float alpha, uint rgb = 0xFFFFFF)
+    {
+        s_ComfortVeilAlpha = alpha;
+        s_ComfortVeilRgb = rgb;
+    }
+
     // La texture d'une image entiere venue du processeur — l'image d'un film joue apres la bascule
     // en Direct3D, quand le regime GDI de demarrage est clos (StartupSurface.Retired). Recreee
     // seulement quand les dimensions changent.
@@ -901,6 +929,16 @@ internal static unsafe class D3D11Backend
         ];
 
         DrawTriangles(quad, source);
+
+        // Le voile de confort (voir SetComfortVeil) : une seule image, puis il retombe.
+        if (s_ComfortVeilAlpha > 0f)
+        {
+            uint a = (uint)MathF.Round(MathF.Min(s_ComfortVeilAlpha, 1f) * 255f);
+            uint colour = a << 24 | s_ComfortVeilRgb & 0xFFFFFF;
+            for (int i = 0; i < quad.Length; i++) quad[i].Diffuse = colour;
+            DrawTriangles(quad, default, BlendState(5, 6));
+            s_ComfortVeilAlpha = 0f;
+        }
 
         // Intervalle de synchronisation **1**, pas 0 — c'est la cadence du jeu, pas un réglage de
         // confort.

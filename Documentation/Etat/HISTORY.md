@@ -4,6 +4,24 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-26
+
+- feat : `tests\visionneuse-modeles.bat` (`OPENFORESIA_FORCE_STATE=8`) — ouvre la visionneuse de modèles
+  directement, faute de chemin dans le jeu
+- feat : l'état 8, la visionneuse de modèles 3D (`FUN_005315d0`, `Screens/State08/ModelViewer.cs`) —
+  un outil d'atelier que rien n'atteint : aucune instruction du binaire n'écrit 8 dans le numéro d'état
+- feat : l'état 9, la fin de partie (`FUN_0051bb00`, `Screens/State09/GameOver.cs`) — mourir avec tout
+  le groupe ne plante plus : image fondue, piste 0x26, 500 images ou START/CARRÉ, puis le menu principal
+- feat : `tests\trace-voile.bat` (`OPENFORESIA_TRACE_VOILE=1`) — une ligne [VOILE] par changement des deux
+  voiles plein cadre ou de la couleur d'ambiance, avec le gestionnaire et la sous-zone ; la fin
+  d'Eifrit (10:11) blanchit l'écran par un chemin qu'aucun des correctifs de LB-052 ne couvre
+- fix : le cristal restait tout blanc — c'était la scène du cristal (`ShiftCutsceneVeils`, forêt et
+  montagne du dragon), pas le flash de fin de zone ; même fondu de confort, opacité 1 à l'image où
+  la pose du groupe change (LB-052)
+- fix : le flash blanc du cristal et de fin de boss, et la transition de la forêt (tablette des
+  anciens, supposée), deviennent un vrai fondu vers le blanc — voile de confort de l'hôte avec alpha,
+  au lieu du voile que la DLL de 1998 dessine opaque (LB-052, `s_ComfortWhiteFlash`)
+
 ## 2026-09-25
 
 - fix : le stroboscope rouge des invocations de boss (Grizzly et second boss de la forêt, Labyrinthe,
