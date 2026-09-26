@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- fix : le « rectangle arc-en-ciel » à la mort du Grizzly et du Behemoth — `TickPartySummon`
+  (`0x004153F0` et ses trois copies) posait le bit `0x100000` sur le boss au lieu de `0x1000`
+  (`or dh,10h`), si bien que la grille le dessinait comme le modèle 0 du paquet d'effets ; trouvé
+  par `trace-modeles`
+- feat : `tests\trace-modeles.bat` (`OPENFORESIA_TRACE_MODELES=1`) — une ligne [MODELE] par entité de
+  la grille nouvellement dessinée (gestionnaire, modèle, décalage de texture, planche), pour nommer
+  le rectangle arc-en-ciel à la mort des boss de la forêt ; la première hypothèse (le noyau de
+  l'explosion) est réfutée par la capture
 - fix : le flash blanc du portail qui suit un boss (Eifrit et les autres) devient un vrai fondu — la
   scénette de sortie `FUN_00474380` poussait le second voile, que la DLL de 1998 dessine opaque ; même
   voile de confort que le cristal, même cadence que le binaire (LB-052), trouvé par `trace-voile`

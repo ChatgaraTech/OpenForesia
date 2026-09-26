@@ -1283,6 +1283,9 @@ public static unsafe partial class Blaze
                     uint flags = *(uint*)e;
                     if ((flags & 0x4000) != 0 || (e[0x36] & 0x80) != 0) continue;
 
+                    // ECHAFAUDAGE : OPENFORESIA_TRACE_MODELES=1, voir EntityHandlerDispatch.cs.
+                    if (s_TraceModels) TraceDrawnEntity(e, flags);
+
                     // La lueur ne suit que les chemins qui retombent sur LAB_005193ff ; les deux
                     // chemins de modele (0x80000 et 0x100000) sautent directement au maillon
                     // suivant.

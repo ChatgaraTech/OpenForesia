@@ -746,8 +746,15 @@ public static unsafe partial class Blaze
     /// trente-deux entites de <c>0x005ecaa0</c> et retient <b>la derniere</b> dont <c>+0x0c</c>
     /// est nul et qui porte <c>0x80000000</c> — la boucle du binaire ne s'arrete pas au premier
     /// trouve. De cette entite-la il recopie la position dans la sienne, lui pose la pose 2, lui
-    /// allume le bit <c>0x100000</c>, et retient son modele d'animation par la table
+    /// allume le bit <c>0x1000</c>, et retient son modele d'animation par la table
     /// <c>0x005e9640</c>. C'est cette entite que le reste du corps anime.
+    /// </para>
+    /// <para>
+    /// <b>Le bit est <c>0x1000</c>, pas <c>0x100000</c></b> : le binaire fait <c>or dh,10h</c>, et
+    /// <c>dh</c> porte les bits 8 a 15. Lu <c>0x100000</c> jusqu'au 2026-09-26, il faisait passer le
+    /// boss saisi sur le chemin « modele du paquet » de la grille : a sa mort, le modele 0 du paquet
+    /// d'effets etait dessine a sa place, avec une palette qui n'est pas la sienne — le « rectangle
+    /// arc-en-ciel » que Vincent a signale sur le Behemoth et le Grizzly.
     /// </para>
     /// <para>
     /// <b>Le compteur <c>+0x16</c> est une partition.</b> Il monte d'un par image, sans jamais
@@ -818,7 +825,7 @@ public static unsafe partial class Blaze
 
             *(short*)(scene + 0x18) = 2;
             model = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4) + 8);
-            *(uint*)scene |= 0x100000;
+            *(uint*)scene |= 0x1000;                // Ghidra: `or dh,10h` — le bit 0x1000, pas 0x100000
         }
 
         // ------------------------------------------------- la premiere image

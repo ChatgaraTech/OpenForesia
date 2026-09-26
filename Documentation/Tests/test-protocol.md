@@ -2212,6 +2212,19 @@ celle que visent les modes 1 (appliquée d'un coup) et 2 (glissée). C'est elle 
 du script de monde et les scènes (`SetSceneBackdrop`), et la première version ne la voyait pas.
 L'opcode 21 écrit en plus sa propre ligne : `script opcode 21 : ambiance directe (r,g,b) mode m`.
 
+## `OPENFORESIA_TRACE_MODELES=1` : qui dessine quoi dans la grille d'entités (2026-09-26)
+
+Pour nommer une entité qui s'affiche mal (un modèle ou une particule qui lit sa planche de
+travers), la boucle de dessin de la grille (`WorldMapHud.DrawWorldCells`) écrit une ligne
+`[MODELE]` à la première apparition de chaque combinaison : gestionnaire (le dernier que le
+répartiteur a appelé sur cet enregistrement), chemin de dessin, numéro de modèle `+0x04`,
+décalage de texture `+0x0a`/`+0x0b`, planche `+0x3c`/`+0x40`, `+0x36`, teinte et échelles.
+Elle écrit aussi une ligne `[MODELE] … chemin 0x… -> 0x…` chaque fois qu'un enregistrement déjà vu
+change de chemin de dessin (bits `0x8000`, `0x80000`, `0x100000`, `0x440000`), avec le gestionnaire
+qui l'a fait, ou « hors gestionnaire ».
+Raccourci : `tests\trace-modeles.bat`, qui ne réaffiche que les lignes de la forêt (zone 3).
+Les entités dessinées hors de la grille (groupe, interface) n'y sont pas.
+
 ## Ouvrir un état de jeu directement — `OPENFORESIA_FORCE_STATE`
 
 `OPENFORESIA_FORCE_STATE=N` fait entrer `RunGameLoop` dans l'état de jeu N au lieu du menu principal,

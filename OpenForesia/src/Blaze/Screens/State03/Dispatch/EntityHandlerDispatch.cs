@@ -121,16 +121,91 @@ public static unsafe partial class Blaze
     private static void DispatchEntityHandler(uint target, byte* record, string where)
     {
         NoteHandlerSeen(target);
+        if (s_TraceModels && record != null)   // les gestionnaires de zone sont appeles sans enregistrement
+        {
+            s_TraceModelHandlers[(nint)record] = target;
+            TraceModelPathChanges("hors gestionnaire (script, scene, boucle)");
+            if (s_TraceModelPathBits.TryAdd((nint)record, *(uint*)record & TraceModelPathMask)) s_TraceModelKeys.Add((nint)record);
+        }
 
         if (!s_TraceVeil)
         {
             DispatchEntityHandlerGuarded(target, record, where);
+            if (s_TraceModels) TraceModelPathChanges($"gestionnaire 0x{target:X8}");
             return;
         }
 
         VeilSnapshot before = TakeVeilSnapshot();
         DispatchEntityHandlerGuarded(target, record, where);
         ReportVeilChange(before, $"gestionnaire 0x{target:X8}");
+    }
+
+    // =============================================================================================
+    // ECHAFAUDAGE — OPENFORESIA_TRACE_MODELES=1 : ce que la grille d'entites dessine, et qui l'a pose.
+    //
+    // Ne du « rectangle arc-en-ciel » a la mort des boss de la foret (2026-09-26) : un modele ou une
+    // particule qui lit sa planche de travers. La boucle de dessin (WorldMapHud.DrawWorldCells)
+    // appelle TraceDrawnEntity pour chaque entite qu'elle va dessiner ; une ligne [MODELE] est
+    // ecrite a la premiere apparition de chaque combinaison (gestionnaire, chemin, modele,
+    // decalage de texture). Le gestionnaire est le dernier que le repartiteur a appele sur cet
+    // enregistrement.
+    // =============================================================================================
+
+    private static readonly bool s_TraceModels =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_MODELES") == "1";
+
+    private static Dictionary<nint, uint> s_TraceModelHandlersStorage;
+    private static Dictionary<nint, uint> s_TraceModelHandlers => s_TraceModelHandlersStorage ??= new();
+    private static HashSet<string> s_TraceModelSeenStorage;
+    private static HashSet<string> s_TraceModelSeen => s_TraceModelSeenStorage ??= new();
+
+    // Les bits qui choisissent le chemin de dessin dans la grille : 0x8000 (modele ou particule),
+    // 0x80000, 0x100000 et 0x440000. Le bit cache (0x4000) et le bit vivant n'y sont pas : ils
+    // basculent sans cesse et noieraient le releve.
+    private const uint TraceModelPathMask = 0x005c8000;
+    private static Dictionary<nint, uint> s_TraceModelPathBitsStorage;
+    private static Dictionary<nint, uint> s_TraceModelPathBits => s_TraceModelPathBitsStorage ??= new();
+    private static List<nint> s_TraceModelKeysStorage;
+    private static List<nint> s_TraceModelKeys => s_TraceModelKeysStorage ??= new();
+
+    /// <summary>Une ligne par enregistrement suivi dont les bits de chemin ont change depuis le
+    /// dernier releve, attribuee a <paramref name="who"/>. Un emplacement qui s'eteint puis renait
+    /// pour autre chose apparait aussi : le sous-type et le gestionnaire le disent.</summary>
+    private static void TraceModelPathChanges(string who)
+    {
+        foreach (nint key in s_TraceModelKeys)
+        {
+            byte* r = (byte*)key;
+            uint now = *(uint*)r & TraceModelPathMask;
+            uint before = s_TraceModelPathBits[key];
+            if (now == before) continue;
+
+            s_TraceModelPathBits[key] = now;
+            s_TraceModelHandlers.TryGetValue(key, out uint owner);
+            Console.Error.WriteLine(
+                $"[MODELE] zone {Res.s_Unknown_005de528 & 0xff}:{s_Unknown_005de52c} {who} : " +
+                $"entite 0x{(ulong)key:X8} (sous-type 0x{r[5]:X2}, gestionnaire 0x{owner:X8}, modele {r[4]}) " +
+                $"chemin 0x{before:X8} -> 0x{now:X8}");
+        }
+    }
+
+    private static void TraceDrawnEntity(byte* e, uint flags)
+    {
+        s_TraceModelHandlers.TryGetValue((nint)e, out uint handler);
+
+        string path = (flags & 0x8000) == 0
+            ? ((flags & 0x100000) != 0 ? "particule" : (flags & 0x80000) != 0 ? "particule-fond" : "rien")
+            : (flags & 0x80000) != 0 ? "modele-B" : (flags & 0x100000) != 0 ? "modele-paquet"
+            : (flags & 0x440000) != 0 ? "modele-anime" : "rien";
+
+        string key = $"{handler:X8}|{path}|{e[4]}|{e[0x0a]}|{e[0x0b]}";
+        if (!s_TraceModelSeen.Add(key)) return;
+
+        Console.Error.WriteLine(
+            $"[MODELE] zone {Res.s_Unknown_005de528 & 0xff}:{s_Unknown_005de52c} gestionnaire 0x{handler:X8} " +
+            $"sous-type 0x{e[5]:X2} {path} modele {e[4]} decalage ({e[0x0a]},{e[0x0b]}) " +
+            $"planche 0x{*(uint*)(e + 0x3c):X8}+{e[0x40]} +0x36=0x{*(ushort*)(e + 0x36):X4} " +
+            $"teinte 0x{*(uint*)(e + 0x38):X8} echelles ({*(short*)(e + 0x28)},{*(short*)(e + 0x2a)},{*(short*)(e + 0x2c)})");
     }
 
     // =============================================================================================
