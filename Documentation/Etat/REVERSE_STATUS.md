@@ -34,6 +34,19 @@ depends on the machine — check `dotnet --list-sdks` first:
 `playtest.ps1 -Build` already detects which case applies — see its "construction"
 section — so prefer it over reproducing this logic by hand.
 
+## LEGACY ++ : LE JEU NE CONNAIT PLUS DE CD (2026-09-26)
+
+Premier chantier du mode « legacy ++ » (`Strategy.md`) : `openspec/changes/install-from-iso`. Retirés
+de la transcription, chacun avec sa ligne `// Ghidra: … — retiré` : le balayage des lecteurs et la
+boucle « insérez le CD » de `RunApplication` (`FUN_00513900`), la lecture de `@:\cd.idx` et le
+multiplicateur qu'elle alimentait dans `Handler_00544810` (LB-053), la lettre substituée dans
+`DAT_005631f8` et dans les chemins de sons et de musiques, `CdSearchFile` (ordinal 92) et la branche
+`cdrom:` de `FUN_00a03f80`. Le jeu se place dans le dossier de son exe, lit tout en relatif — y
+compris son `.cfg`, que l'original bâtissait sur `GetModuleFileNameA` — et vérifie ses 133 fichiers
+au démarrage (`Host/GameDataCheck.cs`). Un installeur, `OpenForesia.Installer`, les extrait de l'ISO
+du joueur. Vérifié en jeu par Vincent : sans CD monté, lancé depuis un autre dossier, et avec un
+dossier de données manquant.
+
 ## LA CARTE DES GESTIONNAIRES EST COMPLETE — 1 430 sur 1 430 (2026-09-20)
 
 `GestionnairesEntites.md` affiche **« à transcrire : 0 »**. Les 1 430 gestionnaires d'entité

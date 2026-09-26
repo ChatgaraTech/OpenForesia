@@ -44,9 +44,9 @@ means "drive letter goes here", never a literal character.
 
 | VA | Raw bytes (as C string) | Notes |
 |---|---|---|
-| `0x005631E8` | `@:\Blaze&Blade` | CD presence marker. The 0-byte file `Blaze&Blade` exists at the CD root. |
-| `0x005631F8` | `@:\FRENCH\` | **The data root.** Not the drive root — this is the bug behind `fix-cd-data-paths`. |
-| `0x00563280` | `@:\cd.idx` | TODO #2, the CD-check filename. `cd.idx` (640 MiB) exists at the CD root. |
+| `0x005631E8` | `@:\Blaze&Blade` | CD presence marker. The 0-byte file `Blaze&Blade` exists at the CD root. The drive scan that filled it was removed on 2026-09-26 (legacy ++, `install-from-iso`). |
+| `0x005631F8` | `@:\FRENCH\` | **The data root.** Not the drive root — this is the bug behind `fix-cd-data-paths`. Since 2026-09-26 the reconstruction holds the relative `FRENCH\` (`s_DataRootPath_005631f8`): no CD, the game runs in its own folder. |
+| `0x00563280` | `@:\cd.idx` | TODO #2, the CD-check filename. `cd.idx` exists at the CD root; its directory entry declares 640 MiB (the copy protection, LB-053), its content is a 1.8 MB AVI. No longer read since 2026-09-26. |
 | `0x005684CC` | `DATA/Font.bmp` | TODO #17. Forward slash, mixed case — not `DATA\FONT.BMP`. |
 | `0x005684DC` | `ANI01.AVI` | TODO #17. |
 | `0x005684E8` | `OPENING.AVI` | TODO #17. |
@@ -1190,8 +1190,8 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00563060` | `s_KeyArrowColumn_00563060` | 232 | `Screens/State00/Options.cs` |
 | `0x00563148` | `s_RowSpriteRecord_00563148` | 24 | `Screens/State01/PartySetup.cs` |
 | `0x00563160` | `s_SaveDeviceName_00563160` | 16 | `Engine/SaveData.cs` |
-| `0x00563170` | `s_SaveFolderName_00563170` | 172 | `Engine/SaveData.cs` |
-| `0x0056321c` | `s_CdCheckFileSize_0056321c` | 396 | `Memory/GameMemory.cs` |
+| `0x00563170` | `s_SaveFolderName_00563170` | 136 | `Engine/SaveData.cs` |
+| `0x005631f8` | `s_DataRootPath_005631f8` | 432 | `Memory/GameMemory.cs` |
 | `0x005633a8` | `s_DebugModeLatch_005633a8` | 8 | `Memory/GameMemory.cs` |
 | `0x005633b0` | `s_WorldMapDescriptor_005633b0` | 2220 | `Screens/State03/WorldMap.cs` |
 | `0x00563c5c` | `s_Unknown_00563c5c` | 27 | `Screens/State03/WorldMap.cs` |

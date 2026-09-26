@@ -8,6 +8,10 @@
 //       ouvre la fenetre en prenant les fichiers du jeu dans un dossier de build
 //       (OpenForesia\bin\Debug\net10.0 ; les donnees, save\ et le .cfg en sont ecartes)
 //
+//   --desinstaller [<dossier>]
+//       desinstalle le jeu ; c'est ainsi que Desinstaller.exe (une copie de cet installeur, deposee
+//       dans le dossier du jeu) est lance par le menu Demarrer et par « Applications installees »
+//
 // Deux modes caches servent au developpeur et ecrivent dans la console qui l'a lance :
 //
 //   --generer-edition <iso> <editions.json> [--nom "<nom>"]
@@ -32,10 +36,15 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // Copie dans le dossier du jeu sous le nom Desinstaller.exe, l'installeur desinstalle — y
+        // compris sur un simple double-clic, sans argument : c'est ce que le joueur attend de ce nom.
+        if (args.Length > 0 && args[0] == "--desinstaller")
+            return Desinstallation.Executer(args);
+        if (string.Equals(Path.GetFileName(Environment.ProcessPath), Desinstallation.Executable, StringComparison.OrdinalIgnoreCase))
+            return Desinstallation.Executer(["--desinstaller"]);
+
         if (args.Length > 0 && args[0].StartsWith("--", StringComparison.Ordinal) && args[0] != "--jeu")
             return ModeCache(args);
-
-        ApplicationConfiguration.Initialize();
 
         // Le jeu a deposer : celui qu'embarque une release, ou — en developpement, tant que
         // publish-release.ps1 n'a pas produit de zip — un dossier de build passe par --jeu.
@@ -48,18 +57,18 @@ internal static class Program
         }
         catch (FileNotFoundException e)
         {
-            MessageBox.Show(e.Message, "OpenForesia", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Natif.MessageBox(IntPtr.Zero, e.Message, "OpenForesia", Natif.MB_OK | Natif.MB_ICONERROR);
             return 1;
         }
         if (jeu == null)
         {
-            MessageBox.Show("Cet installeur ne contient pas le jeu. Téléchargez OpenForesia-Setup.exe " +
-                            "depuis la page des versions du projet.", "OpenForesia",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Natif.MessageBox(IntPtr.Zero, "Cet installeur ne contient pas le jeu. Téléchargez OpenForesia-Setup.exe " +
+                                          "depuis la page des versions du projet.", "OpenForesia",
+                Natif.MB_OK | Natif.MB_ICONERROR);
             return 1;
         }
 
-        Application.Run(new FenetreInstallation(jeu));
+        FenetreInstallation.Executer(jeu);
         return 0;
     }
 

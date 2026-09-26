@@ -118,6 +118,38 @@ bytes directly — the `.text` file offset is `VA - 0x400C00`:
 od -An -tx1 -j $((0x115E7D)) -N 24 Legacy/Binaries/Blaze.exe   # VA 0x00516a7d
 ```
 
+## The game's data — no CD since 2026-09-26
+
+The game no longer looks for a CD (`openspec/changes/install-from-iso`, legacy ++). It moves into
+its own executable's folder at startup and resolves everything there, relatively: the data
+(`French\`, `Snd\`, `Music\`), `save\` and `OpenForesia.cfg`. Before opening its window,
+`Host/GameDataCheck.cs` checks the 133 files listed in `OpenForesia.Installer/Editions/editions.json`
+and stops on a message if one is missing. **The data is never in the repository** — the project has
+no rights to it.
+
+In development, extract it once from the ISO into the game's build output (two seconds; `bin` is
+ignored by git and a rebuild does not remove it):
+
+```powershell
+OpenForesia.Installer\bin\Debug\net10.0-windows\OpenForesia-Setup.exe --extraire-donnees <iso> OpenForesia\bin\Debug\net10.0
+```
+
+The reference image is `D:\Open Foresia Project\Abandonware executable\jeu-01974-Legend_of_Foresia-pcwin\Legend of Forezia.ISO`.
+Its directory table lies: `CD.IDX` declares 640 MB (the copy protection, LB-053), and the movies
+`OPENING.AVI`/`ANI01.AVI` declare sizes that run to the last sector — the installer cuts them at
+their RIFF size. `FRENCH2\` is a byte-identical duplicate of `FRENCH\`.
+
+**The player's installer** is `OpenForesia.Installer` (`OpenForesia-Setup.exe`): pick the ISO, pick
+a folder, done — shortcuts, an "installed apps" entry and `Desinstaller.exe` included. Double-clicked
+from its Debug build, it installs the repo's Debug game. **The release** is built by
+`OpenForesia.Tools\publish-release.ps1`: the game published self-contained x86 **and trimmed**
+(108 → 21 MB on disk), published as a single `OpenForesia.exe` (no DLL, no `createdump.exe`) and zipped inside a trimmed single-file installer (**~15.5 MB**), with a check that
+no game data slipped in. Trim warnings are errors there: a trim warning is code the trimmer may break
+silently. Hence two rules — **the installer has no WinForms** (it does not trim; its window is native
+Win32 in `Interface/`, its COM calls `[GeneratedComInterface]`), and **JSON goes through a generated
+`JsonSerializerContext`** in both projects. Output:
+`OpenForesia.Installer\bin\Release\publie\OpenForesia-Setup.exe`.
+
 ## Running the game — always via `test-protocol.md`
 
 **Before exercising the game in any way — launching it, reaching a screen, reproducing a crash,
@@ -150,11 +182,13 @@ dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004
 
 Both verbs take a **Ghidra virtual address** (hex, `0x` optional); byte counts are decimal.
 
-**Reading the CD's own data — `bestiaire`.** A fourth verb reads not the binary but the game data,
-by replaying the reconstructed load chain (`SYSTEM.INI` → state → zone → sub-area) offline:
+**Reading the game's own data — `bestiaire`.** A fourth verb reads not the binary but the game data
+(installed next to the game, see "The game's data" below), by replaying the reconstructed load chain
+(`SYSTEM.INI` → state → zone → sub-area) offline. Without a folder argument it reads
+`OpenForesia\bin\Debug\net10.0`:
 
 ```powershell
-dotnet run --project OpenForesia.Tools -- bestiaire "E:\" --sortie Documentation\Reference\Bestiaire
+dotnet run --project OpenForesia.Tools -- bestiaire --sortie Documentation\Reference\Bestiaire
 ```
 
 It writes the enemy cartography — species, sheets (name, HP, MP, characteristics), formations, loot
@@ -175,7 +209,7 @@ the next one starts. `census-spells.sh` turns that CSV into `Documentation/Etat/
 **finding a new table in a resource blob**: the regions follow one another without gaps, so a
 table's end is the next header pointer, and a region's first bytes usually say what it holds.
 
-**Checking the Indeo 4 decoder — `indeo`.** `indeo E:\French\Teps.AVI` decodes every frame of a
+**Checking the Indeo 4 decoder — `indeo`.** `indeo OpenForesia\bin\Debug\net10.0\French\Teps.AVI` decodes every frame of a
 film twice — through `ir41_32.ax` in `IF09` output (native YVU9; its RGB24 is dithered, useless as a
 reference) and through `Host/Indeo4/`, the C# port of FFmpeg's decoder (LGPL 2.1+, read its `LISEZMOI.md`) —
 and names the first differing byte. The port is byte-identical on all four films (8 849 frames).
@@ -276,6 +310,7 @@ tests/           les raccourcis de lancement a double-cliquer (banc.bat : la sal
 | `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `Documentation/ARCHITECTURE.md`**. |
 | `OpenForesia/src/Libraries/**` | **Les cinq DLL d'aide de 1998, reconstruites** — un répertoire par DLL (`wsyskern/`, `winsys3d/`, `3dhelp/`, `gldhelp/`). **Lire `src/Libraries/LISEZMOI.md` avant d'y ajouter du code.** Leur source de vérité est `winsys3d.c`/`wsyskern.c`/…, **jamais `Blaze.c`** — c'est la raison d'être du répertoire séparé. Quatre règles : la traçabilité porte les trois pièces (`// Ghidra: wsyskern.c LoadBitmapEx @ 0x1000bac0`, forme lue par le recensement) ; les globales d'une DLL ne rejoignent **jamais** `GameMemory` (autre espace d'adressage) ; une classe ne peut pas s'appeler `3dhelp` (répertoire `3dhelp/`, classe `Help3d`) ; la façade `Interop/` ne bouge pas, on y remplace un `[DllImport]` par un renvoi. Et la règle découverte au premier lot : **ne pas couper une représentation en deux** — le tas, les vtables et les sections critiques imposent de porter par sous-arbre complet d'un point d'entrée, pas par sujet. |
 | `OpenForesia/src/Host/**` | Our 2026 scaffolding — the Direct3D 11 replacement for the 1998 display chain. **Not bound by fidelity.** |
+| `OpenForesia.Installer/` | **The player's installer** (`OpenForesia-Setup.exe`, since 2026-09-26) — ISO reader (`Iso/`), `Editions/editions.json` (the expected files: paths, sizes, MD5 — generated by `--generer-edition`, never by hand, also embedded in the game), extraction, shortcuts, uninstaller (`Desinstaller.exe`, a copy of the installer run with `--desinstaller`), native Win32 window (no WinForms: it does not trim). Hidden developer modes: `--extraire-donnees <iso> <dossier>`, `--generer-edition <iso> <editions.json>`, `--jeu <dossier>`. Present-day code, same rules as `src/Host/`. See "The game's data" above. |
 | `OpenForesia.Tools/` | PE export-table dumper, **x86-32 disassembler** (`disasm`, via Iced), the **level-up simulator** (`montee`, `MonteeDeNiveau/`), `playtest.ps1`, the census scripts (`census-*.sh`) — dont `census-dll-surface.sh` et son compagnon `census-dll-surface.awk`, qui lit les tables d'exports PE sans passer par `dotnet` — et `census-dll-globals.sh` + `.awk`, la carte des globales —, **`check-descriptors.sh`** (see below), and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
 | `OpenForesia/src/Host/Indeo4/` | **The Indeo 4.1 decoder of the cinematics, in C#** — FFmpeg's decoder ported, **LGPL 2.1+** (read its `LISEZMOI.md`), byte-identical to Intel's `ir41_32.ax` on all 8 849 frames of the four films; `Host/Yvu9Rgb.cs` converts its YVU9 to RGB as Intel did, minus the dithering. **No 1998 binary is shipped any more** (2026-09-24): the five helper DLLs went on 2026-09-23 — their code is C# (`src/Libraries/`), and the data still read from them is extracted into `src/Libraries/Donnees/` (`OpenForesia.Tools extraire-donnees`) and embedded in the assembly — and `ir41_32.ax` the next day. The originals stay in `Legacy/Binaries/`, `ir41_32.ax` as the oracle of `OpenForesia.Tools indeo`. |
 | `OpenForesia.Tools/Html/` | **Les outils qu'on ouvre dans un navigateur** — un `.html` autonome par outil, sans serveur. Le premier est **l'éditeur de sauvegarde** (`editeur-sauvegarde.html`, raccourci `tests\editeur-sauvegarde.bat`) : caractéristiques, niveau, inventaire depuis les 397 fiches françaises du CD avec leurs vignettes, équipement, sorts, destinations et cristaux ; **pensé pour un joueur : aucun décalage ni octet à l'écran**, le contrôle y veille. La page est **générée** : éditer `*.template.html`, relancer `build-editeur-sauvegarde.ps1`, puis `node check-editeur-sauvegarde.mjs`, qui l'exécute sur les vraies sauvegardes. Le second est **le guide des essais** (`guide-gestionnaires.html`, raccourci `tests\guide-essais.bat`) : pour chaque gestionnaire d'entité jamais vu en jeu, où aller (QUEST / MAP), quoi faire et un plan du lieu — ou pourquoi c'est **impossible** dans le jeu d'origine (décor qu'aucune liste `+0x30` ne pose, comportement qu'aucune espèce ne porte ; règle contrôlée sur les 871 déjà vus, `guide-gestionnaires.analyse.mjs --controle`). **Lire son `LISEZMOI.md` avant d'ajouter un outil HTML** — il fixe les règles. |

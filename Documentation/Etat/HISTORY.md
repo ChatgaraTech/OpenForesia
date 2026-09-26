@@ -6,6 +6,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-26
 
+- feat : le dossier installé est en ordre — le jeu publié tient en un seul `OpenForesia.exe` (ni DLL ni
+  `createdump.exe`), et `Desinstaller.exe`, une copie de l'installeur qui se relance depuis `%TEMP%` pour
+  s'effacer, remplace `Desinstaller.ps1` ; l'installeur publié descend à 15,5 Mo
+- feat : **l'installeur passe de 82 à 18 Mo** — le jeu est publié élagué (108 → 21 Mo sur le disque du
+  joueur ; les liaisons Direct3D de Silk.NET réduites à ce qu'on appelle), et l'installeur perd WinForms,
+  qui ne s'élague pas : même fenêtre, refaite en contrôles Win32 natifs, COM et JSON générés à la
+  compilation ; un avertissement d'élagage bloque désormais la release
+- feat : la release (`install-from-iso` lot 5) — `OpenForesia.Tools/publish-release.ps1` publie le jeu en
+  autonome x86, l'embarque dans un `OpenForesia-Setup.exe` à fichier unique compressé (82 Mo) et contrôle
+  qu'aucune donnée du jeu n'y est entrée
+- doc : `CLAUDE.md` (les données du jeu, l'installeur, la release), `ARCHITECTURE.md`, `DataSymbols.md`
+  (`cd.idx`, la racine des données, la carte des symboles), `REVERSE_STATUS.md`
 - feat : la fenêtre de l'installeur (`install-from-iso` lot 4) — image du disque reconnue, dossier
   (par défaut `%LOCALAPPDATA%\Programs\OpenForesia`, alerte sous `Program Files`, 200 caractères au plus,
   place vérifiée), installation avec barre et annulation qui ne laisse rien, raccourcis bureau et menu

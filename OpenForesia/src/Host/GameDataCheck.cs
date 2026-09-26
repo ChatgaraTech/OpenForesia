@@ -15,14 +15,21 @@
 
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace OpenForesia.Blaze;
 
+internal sealed record GameDataFile(string chemin, long taille);
+internal sealed record GameDataEdition(string nom, List<GameDataFile> fichiers);
+internal sealed record GameDataCatalogue(List<GameDataEdition> editions);
+
+// Le sérialiseur est généré à la compilation : la release est publiée élaguée
+// (publish-release.ps1), et l'élagage retire ce que la sérialisation par réflexion lirait.
+[JsonSerializable(typeof(GameDataCatalogue))]
+internal sealed partial class GameDataJson : JsonSerializerContext;
+
 internal static class GameDataCheck
 {
-    private sealed record Fichier(string chemin, long taille);
-    private sealed record Edition(string nom, List<Fichier> fichiers);
-    private sealed record Catalogue(List<Edition> editions);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
@@ -34,20 +41,20 @@ internal static class GameDataCheck
     /// </summary>
     internal static bool Run()
     {
-        Catalogue catalogue;
+        GameDataCatalogue catalogue;
         using (Stream flux = typeof(GameDataCheck).Assembly.GetManifestResourceStream("editions.json")
                    ?? throw new InvalidOperationException("editions.json n'est pas embarqué dans le jeu."))
         {
-            catalogue = JsonSerializer.Deserialize<Catalogue>(flux)
+            catalogue = JsonSerializer.Deserialize(flux, GameDataJson.Default.GameDataCatalogue)
                         ?? throw new InvalidOperationException("editions.json est illisible.");
         }
 
         // L'édition la plus complète sur le disque : c'est elle qu'on décrit si rien ne va.
         List<string>? meilleurs = null;
-        foreach (Edition edition in catalogue.editions)
+        foreach (GameDataEdition edition in catalogue.editions)
         {
             var problemes = new List<string>();
-            foreach (Fichier fichier in edition.fichiers)
+            foreach (GameDataFile fichier in edition.fichiers)
             {
                 var info = new FileInfo(fichier.chemin);
                 if (!info.Exists || info.Length != fichier.taille) problemes.Add(fichier.chemin);
@@ -61,7 +68,7 @@ internal static class GameDataCheck
         return false;
     }
 
-    private static string Message(List<string>? problemes, Catalogue catalogue)
+    private static string Message(List<string>? problemes, GameDataCatalogue catalogue)
     {
         string dossier = Directory.GetCurrentDirectory();
         int attendus = catalogue.editions.Count == 0 ? 0 : catalogue.editions.Min(e => e.fichiers.Count);

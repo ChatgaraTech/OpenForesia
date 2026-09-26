@@ -6,9 +6,16 @@
              l'appelant. -->
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0-windows</TargetFramework>
-        <UseWindowsForms>true</UseWindowsForms>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+
+        <!-- Pas de WinForms : il ne s'elague pas et pesait une quarantaine de Mo dans l'installeur
+             publie. La fenetre est en Win32 natif (Interface/), le COM en interfaces generees, le
+             JSON en serialiseur genere : tout est compatible avec l'elagage, et avec une
+             compilation native plus tard. -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <IsTrimmable>true</IsTrimmable>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
 
         <PlatformTarget>x86</PlatformTarget>
         <AssemblyName>OpenForesia-Setup</AssemblyName>
@@ -21,12 +28,6 @@
              le meme fichier par un lien (voir OpenForesia.csproj). -->
         <EmbeddedResource Include="Editions\editions.json">
             <LogicalName>editions.json</LogicalName>
-        </EmbeddedResource>
-
-        <!-- Le script de desinstallation, depose dans le dossier du jeu (UTF-8 avec BOM : il porte
-             des accents et PowerShell 5.1 lirait un fichier sans BOM en ANSI). -->
-        <EmbeddedResource Include="Installation\Desinstaller.ps1">
-            <LogicalName>Desinstaller.ps1</LogicalName>
         </EmbeddedResource>
 
         <!-- Le jeu publie, zippe par publish-release.ps1. Absent en developpement : l'installeur

@@ -122,22 +122,35 @@ une installation est toujours sous la main, et les outils lisent le dossier inst
 
 ### D6 — L'installeur : un seul exécutable C#
 
-Projet `OpenForesia.Installer`, WinForms, publié en fichier unique autonome x86. Il **embarque le jeu**
+Projet `OpenForesia.Installer`, publié en fichier unique autonome x86, **élagué**. Sa fenêtre est
+faite de contrôles Win32 natifs (`Interface/`), ses appels COM (sélecteurs de fichier et de dossier,
+raccourcis) en interfaces générées à la compilation, son JSON en sérialiseur généré. Écrit d'abord en
+WinForms, il a été réécrit ainsi le 2026-09-26 : WinForms ne s'élague pas et pesait à lui seul une
+quarantaine de Mo. Le jeu embarqué est élagué lui aussi, avec les avertissements d'élagage traités
+comme des erreurs, et publié **en un seul `OpenForesia.exe`** de 10 Mo : le runtime y est lié, le
+dossier du joueur ne porte ni DLL ni `createdump.exe`. L'installeur publié passe de 82 à **15,5 Mo**. Une
+compilation native (NativeAOT, ≈ 13 Mo) resterait possible sans toucher au code, mais demande les
+outils C++ de Visual Studio. Il **embarque le jeu**
 (sortie de `dotnet publish OpenForesia -c Release -r win-x86 --self-contained`, zippée en ressource).
 Étapes : ISO → reconnaissance → dossier (défaut `%LOCALAPPDATA%\Programs\OpenForesia`, avertissement
 sous `Program Files`, refus au-delà de 200 caractères, contrôle de place) → extraction avec barre de
 progression et annulation → vérification MD5 → dépôt du jeu → `save\` → raccourcis (COM
 `IShellLinkW`) → entrée `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenForesia`.
 
-La désinstallation est un **script PowerShell**, `Desinstaller.ps1`, déposé dans le dossier du jeu
-(UTF-8 avec BOM) : l'entrée du menu Démarrer et la clé `UninstallString` le lancent par
-`powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File`. Il demande
-confirmation, attend que le jeu soit fermé, demande s'il faut garder `save\`, puis retire
-raccourcis, clé et fichiers. Prévu d'abord comme une copie de l'installeur (`Desinstaller.exe
---desinstaller`, relancé depuis `%TEMP%` pour pouvoir effacer le dossier), abandonné à
-l'implémentation : l'installeur embarque le jeu et le runtime, soit une centaine de Mo dupliqués
-dans le dossier du joueur. PowerShell 5.1 est présent sur tout Windows, et un script, lu en entier
-avant de s'exécuter, peut effacer son propre fichier.
+La désinstallation est **`Desinstaller.exe`, une copie de l'installeur** déposée dans le dossier du
+jeu, comme l'`unins000.exe` d'Inno Setup. Lancé par le menu Démarrer, par « Applications
+installées » (`--desinstaller`) ou par un double-clic (son nom suffit), il se recopie dans `%TEMP%`
+et se relance de là — un exécutable ne peut pas effacer son propre fichier —, demande
+confirmation, attend que le jeu soit fermé, demande s'il faut garder `save\`, retire raccourcis,
+clé et fichiers, puis confie l'effacement de sa copie temporaire à un `cmd.exe` caché (l'effacement
+au redémarrage demanderait des droits d'administrateur). En développement, l'installeur n'étant pas
+en fichier unique, rien n'est copié : l'entrée désigne l'installeur du dépôt avec le dossier en
+argument.
+
+Historique de ce choix : prévu d'abord ainsi, il avait été remplacé à l'implémentation du lot 4 par un
+script PowerShell (`Desinstaller.ps1`), parce que l'installeur pesait alors 82 Mo. Revenu à l'exe le
+2026-09-26, une fois l'installeur à 15 Mo : c'est la norme attendue, et cela évite de lancer
+PowerShell avec `-ExecutionPolicy Bypass`, que des antivirus surveillent.
 
 En développement, tant que le lot 5 n'a pas produit `jeu.zip`, `OpenForesia-Setup --jeu <dossier>`
 ouvre la même fenêtre en prenant les fichiers du jeu dans un dossier de build (données, `save\`,

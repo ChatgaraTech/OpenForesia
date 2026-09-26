@@ -50,27 +50,33 @@ internal sealed class CatalogueEditions
 {
     [JsonPropertyName("editions")] public List<Edition> Editions { get; set; } = [];
 
+    // Le serialiseur est genere a la compilation (EditionsJson) : l'installeur est publie elague, et
+    // l'elagage retire ce que la serialisation par reflexion lirait.
     private static readonly JsonSerializerOptions s_Options = new()
     {
         WriteIndented = true,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        TypeInfoResolver = EditionsJson.Default,
     };
+
+    private static System.Text.Json.Serialization.Metadata.JsonTypeInfo<CatalogueEditions> Type =>
+        (System.Text.Json.Serialization.Metadata.JsonTypeInfo<CatalogueEditions>)s_Options.GetTypeInfo(typeof(CatalogueEditions));
 
     /// <summary>Le catalogue embarque dans l'installeur.</summary>
     internal static CatalogueEditions Embarque()
     {
         using Stream flux = typeof(CatalogueEditions).Assembly.GetManifestResourceStream("editions.json")
             ?? throw new InvalidOperationException("editions.json n'est pas embarque dans l'installeur.");
-        return JsonSerializer.Deserialize<CatalogueEditions>(flux, s_Options) ?? new CatalogueEditions();
+        return JsonSerializer.Deserialize(flux, Type) ?? new CatalogueEditions();
     }
 
     internal static CatalogueEditions Lire(string chemin) =>
         File.Exists(chemin)
-            ? JsonSerializer.Deserialize<CatalogueEditions>(File.ReadAllText(chemin), s_Options) ?? new CatalogueEditions()
+            ? JsonSerializer.Deserialize(File.ReadAllText(chemin), Type) ?? new CatalogueEditions()
             : new CatalogueEditions();
 
     internal void Ecrire(string chemin) =>
-        File.WriteAllText(chemin, JsonSerializer.Serialize(this, s_Options).Replace("\r\n", "\n") + "\n");
+        File.WriteAllText(chemin, JsonSerializer.Serialize(this, Type).Replace("\r\n", "\n") + "\n");
 
     /// <summary>
     /// L'edition de cette image, ou une exception au message lisible. Deux criteres : l'etiquette du
@@ -99,3 +105,6 @@ internal sealed class CatalogueEditions
             "attendu : elle est peut-être endommagée.");
     }
 }
+
+[JsonSerializable(typeof(CatalogueEditions))]
+internal sealed partial class EditionsJson : JsonSerializerContext;

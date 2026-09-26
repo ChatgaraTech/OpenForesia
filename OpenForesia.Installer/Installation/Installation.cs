@@ -17,7 +17,6 @@ internal static class Installation
 {
     internal const string NomJeu = "OpenForesia";
     internal const string Executable = "OpenForesia.exe";
-    internal const string ScriptDesinstallation = "Desinstaller.ps1";
     internal const string CleDesinstallation = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenForesia";
 
     /// <summary>Au-dela, un chemin du jeu risquerait de depasser les 260 caracteres de Windows.</summary>
@@ -126,14 +125,14 @@ internal static class Installation
                 },
                 null, annulation, journal);
 
-            // 3. La desinstallation.
+            // 3. La desinstallation : Desinstaller.exe (une copie de cet installeur). Le script
+            //    PowerShell d'une installation anterieure au 2026-09-26 est retire.
             annulation.ThrowIfCancellationRequested();
             avancement.Report(new Avancement(fait, total, "Création des raccourcis…"));
-            string script = Path.Combine(dossier, ScriptDesinstallation);
-            journal.NoterFichier(script);
-            using (Stream modele = typeof(Installation).Assembly.GetManifestResourceStream(ScriptDesinstallation)!)
-            using (var sortie = File.Create(script))
-                modele.CopyTo(sortie);
+            Desinstallation.Deposer(dossier, journal);
+            string ancienScript = Path.Combine(dossier, "Desinstaller.ps1");
+            if (File.Exists(ancienScript)) File.Delete(ancienScript);
+            (string programme, string arguments) = Desinstallation.Commande(dossier);
 
             // 4. Les raccourcis.
             string exe = Path.Combine(dossier, Executable);
@@ -149,11 +148,10 @@ internal static class Installation
 
             string desinstaller = Path.Combine(menu, "Désinstaller OpenForesia.lnk");
             journal.NoterFichier(desinstaller);
-            Raccourcis.Creer(desinstaller, PowerShell, ArgumentsDesinstallation(script), dossier,
-                "Désinstaller OpenForesia", exe);
+            Raccourcis.Creer(desinstaller, programme, arguments, dossier, "Désinstaller OpenForesia", exe);
 
             // 5. L'entree « Applications installees ». En dernier : rien a defaire apres elle.
-            EcrireEntreeDesinstallation(dossier, exe, script, total);
+            EcrireEntreeDesinstallation(dossier, exe, $"\"{programme}\" {arguments}", total);
         }
         catch
         {
@@ -162,12 +160,7 @@ internal static class Installation
         }
     }
 
-    private static string PowerShell => Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe");
-
-    private static string ArgumentsDesinstallation(string script) =>
-        $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{script}\"";
-
-    private static void EcrireEntreeDesinstallation(string dossier, string exe, string script, long octets)
+    private static void EcrireEntreeDesinstallation(string dossier, string exe, string commande, long octets)
     {
         using RegistryKey cle = Registry.CurrentUser.CreateSubKey(CleDesinstallation);
         cle.SetValue("DisplayName", NomJeu);
@@ -176,7 +169,7 @@ internal static class Installation
         cle.SetValue("DisplayIcon", exe);
         cle.SetValue("InstallLocation", dossier);
         cle.SetValue("InstallDate", DateTime.Now.ToString("yyyyMMdd"));
-        cle.SetValue("UninstallString", $"\"{PowerShell}\" {ArgumentsDesinstallation(script)}");
+        cle.SetValue("UninstallString", commande);
         cle.SetValue("EstimatedSize", (int)(octets >> 10), RegistryValueKind.DWord);
         cle.SetValue("NoModify", 1, RegistryValueKind.DWord);
         cle.SetValue("NoRepair", 1, RegistryValueKind.DWord);

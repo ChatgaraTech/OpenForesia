@@ -35,19 +35,23 @@
 - [x] 4.5 Dépôt du jeu embarqué (zip du `dotnet publish` autonome x86) et création de `save\`
 - [x] 4.6 Raccourcis bureau et menu Démarrer (`IShellLinkW`), entrée « Désinstaller » dans le menu Démarrer
 - [x] 4.7 Entrée `HKCU\…\Uninstall\OpenForesia` (nom, version, éditeur, icône, taille, commande de désinstallation)
-- [x] 4.8 Désinstallation par le script `Desinstaller.ps1` déposé dans le dossier du jeu (design D6) : confirmation, jeu fermé, question « garder les sauvegardes ? », suppression des fichiers, raccourcis et clé
+- [x] 4.8 Désinstallation par le script `Desinstaller.ps1` déposé dans le dossier du jeu (design D6 ; remplacé par `Desinstaller.exe` en 5.6) : confirmation, jeu fermé, question « garder les sauvegardes ? », suppression des fichiers, raccourcis et clé
 - [x] 4.9 Libellés en français, sans jargon (règle des outils pour joueurs)
 
 ## 5. Release
 
-- [ ] 5.1 `OpenForesia.Tools/publish-release.ps1` (BOM UTF-8) : publie le jeu, le zippe, publie l'installeur qui l'embarque, sort `OpenForesia-Setup.exe`
-- [ ] 5.2 Contrôler que la release ne contient aucune donnée du jeu (seulement noms, tailles et sommes dans `editions.json`)
-- [ ] 5.3 Vincent déroule le parcours complet sur une machine propre (ou un compte Windows neuf) : installation, lancement, sauvegarde, désinstallation en gardant puis sans garder `save\`
+- [x] 5.1 `OpenForesia.Tools/publish-release.ps1` (BOM UTF-8) : publie le jeu, le zippe, publie l'installeur qui l'embarque, sort `OpenForesia-Setup.exe`
+- [x] 5.2 Contrôler que la release ne contient aucune donnée du jeu (seulement noms, tailles et sommes dans `editions.json`)
+- [x] 5.4 Alléger la release (82 → 18 Mo) : jeu publié élagué (JSON de `GameDataCheck` en sérialiseur généré), installeur sans WinForms — fenêtre Win32 native, COM et JSON générés — publié élagué ; avertissements d'élagage traités comme des erreurs
+- [x] 5.5 Vincent rejoue le jeu PUBLIÉ (élagué) sérieusement — films, musique, combats, sorts, sauvegarde — et reteste la fenêtre de l'installeur (même aspect, sélecteurs, annulation, raccourcis, désinstallation)
+- [x] 5.3 Vincent déroule le parcours complet sur une machine propre (ou un compte Windows neuf) : installation, lancement, sauvegarde, désinstallation en gardant puis sans garder `save\`
+- [x] 5.6 Dossier installé en ordre (demande de Vincent) : le jeu publié en un seul `OpenForesia.exe` (ni DLL ni `createdump.exe`), et `Desinstaller.exe` — une copie de l'installeur, qui se relance depuis `%TEMP%` pour s'effacer — à la place de `Desinstaller.ps1` (design D6) ; installeur à 15,5 Mo
+- [ ] 5.7 Vincent refait un test court de la release : installer, jouer quelques minutes (le jeu en fichier unique), désinstaller depuis le menu Démarrer, depuis « Applications installées » et par un double-clic sur `Desinstaller.exe`
 
 ## 6. Règles « legacy ++ » et documentation
 
 - [x] 6.1 Réécrire dans `CLAUDE.md` et `Strategy.md` la règle « la fidélité avant tout » : un écart qui répare un défaut ou retire une dépendance au matériel de 1998 est légitime s'il est déclaré
 - [x] 6.2a `legacy-bug.md` : en-tête réécrit (statuts Reproduit / Contourné / Corrigé / Retiré), ancienne règle historisée
 - [x] 6.2 `legacy-bug.md` : ajouter l'entrée « protection `cd.idx` retirée », avec l'arithmétique d'origine
-- [ ] 6.3 `DataSymbols.md` (`0x00563280`, `0x005631f8`), `ARCHITECTURE.md` (les deux nouveaux projets), `REVERSE_STATUS.md`, `CLAUDE.md` (section Layout et « Build and run »)
-- [ ] 6.4 `HISTORY.md`
+- [x] 6.3 `DataSymbols.md` (`0x00563280`, `0x005631f8`), `ARCHITECTURE.md` (les deux nouveaux projets), `REVERSE_STATUS.md`, `CLAUDE.md` (section Layout et « Build and run »)
+- [x] 6.4 `HISTORY.md`

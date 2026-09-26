@@ -63,3 +63,6 @@ scratchpad/
 # `blaze-baseline.txt` (decoupage de 2026-08-19) reste suivi, lui : asymetrie assumee, on ne
 # desindexe pas un fichier deja committe sans raison.
 OpenForesia.Tools/worldmaptick-baseline.txt
+
+# Le jeu publie, zippe par OpenForesia.Tools/publish-release.ps1 pour etre embarque dans l'installeur
+OpenForesia.Installer/Jeu/
