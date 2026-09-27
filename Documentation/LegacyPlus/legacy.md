@@ -20,7 +20,7 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 |---|---|---|---|---|
 | LP-001 | Dégâts des monstres, multipliés | `[Difficulte] DegatsMonstres` | `DegatsSubis`, entrée d'`ApplyDamage_00539A20` | écrit, à tester en jeu — `src/LegacyPlus/Difficulte.cs` |
 | LP-002 | PV des monstres, multipliés | `[Difficulte] PvMonstres` | `PvALaNaissance`, `ResetEntityStats` (`FUN_005389e0`) | écrit, à tester en jeu — `src/LegacyPlus/Difficulte.cs` |
-| — | Meilleur scaling des dégâts magiques | à définir | `ResolveSpellHit_0053A2B0` (formule `MAG / fiche[0x1e]`) | idée |
+| LP-003 | Montant des sorts du groupe × (1 + coef × MAG / 100) | `[Magie] ScalingMagique` | `MontantDeSort`, ajout du montant dans `ResolveSpellHit_0053A2B0` | écrit, à tester en jeu — `src/LegacyPlus/ScalingMagique.cs` |
 | — | Auto-loot des pièces et des gemmes | à définir | gestionnaire d'entité, par adresse | idée — gestionnaire à identifier |
 | — | Se déplacer en lançant un sort, à 50 % de la vitesse | à définir | posture ou vitesse du membre du groupe | idée — à investiguer |
 | — | Retirer les frames d'invulnérabilité des ennemis | à définir | lecture du verrou `+0x96` | idée — point de lecture à trouver |

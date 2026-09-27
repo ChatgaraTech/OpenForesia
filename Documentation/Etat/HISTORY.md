@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- feat : LP-003 — le montant des sorts du groupe monte avec la MAG du lanceur (`[Magie] ScalingMagique`, 0 = jeu d'origine, 1 conseillé : Balle de feu ~7 → ~23 au niveau 200), une ligne dans le legacy, à tester en jeu
+- doc : pourquoi un petit sort ne progresse pas dans le jeu de 1998 — `MAG / diviseur` (3 ou 4) ne dépasse jamais la défense magique d'un monstre de fin de jeu, seul le montant fixe reste
 - feat : les tweaks de gameplay ont leur cadre — `src/LegacyPlus/`, les coutures (trois lignes dans le legacy, aucune condition d'option) et `LegacyPlus.ini`, lu sans être écrit, déposé par l'installeur, tout inactif par défaut
 - feat : LP-001 et LP-002 — dégâts reçus par le groupe et PV des monstres multipliés, de ×0,1 à ×10 (`[Difficulte] DegatsMonstres`, `PvMonstres` ; 1 = jeu d'origine), à tester en jeu
 - doc : proposition OpenSpec `add-legacy-plus-tweaks-difficulty` — le cadre des tweaks de gameplay (répertoire `src/LegacyPlus/`, coutures sans condition dans le legacy, `LegacyPlus.ini`) et son premier tweak, PV et dégâts des monstres en % ; registre des tweaks ouvert dans `Documentation/LegacyPlus/legacy.md`

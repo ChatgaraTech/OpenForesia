@@ -19,14 +19,15 @@ internal static class ReglagesLegacyPlus
 
     // Un multiplicateur s'écrit `1`, `2`, `1.5` ou `1,5` dans le fichier ; il est gardé en
     // CENTIÈMES (1 = 100) pour que les tweaks calculent en entiers, sans flottant.
-    private const int CentiemesMin = 10;       // × 0,1
-    private const int CentiemesMax = 1000;     // × 10
 
     /// <summary>`[Difficulte] PvMonstres` — multiplicateur des PV des entités de scène à leur naissance, en centièmes (LP-002).</summary>
     internal static int PvMonstres { get; private set; } = 100;
 
     /// <summary>`[Difficulte] DegatsMonstres` — multiplicateur des dégâts reçus par le groupe, en centièmes (LP-001).</summary>
     internal static int DegatsMonstres { get; private set; } = 100;
+
+    /// <summary>`[Magie] ScalingMagique` — poids de la MAG dans le montant des sorts du groupe, en centièmes ; 0 = jeu d'origine (LP-003).</summary>
+    internal static int ScalingMagique { get; private set; } = 0;
 
     /// <summary>Lit `LegacyPlus.ini`. Appelée une fois, par le constructeur statique de <see cref="Coutures"/>.</summary>
     internal static void Lire()
@@ -69,7 +70,8 @@ internal static class ReglagesLegacyPlus
         }
 
         Console.Error.WriteLine(
-            $"[LEGACY++] {FileName} lu — PvMonstres=x{Ecrire(PvMonstres)}, DegatsMonstres=x{Ecrire(DegatsMonstres)}");
+            $"[LEGACY++] {FileName} lu — PvMonstres=x{Ecrire(PvMonstres)}, DegatsMonstres=x{Ecrire(DegatsMonstres)}, " +
+            $"ScalingMagique={Ecrire(ScalingMagique)}");
     }
 
     private static string Ecrire(int centiemes) =>
@@ -84,13 +86,18 @@ internal static class ReglagesLegacyPlus
         int centiemes;
         if (Est("Difficulte", "PvMonstres"))
         {
-            if (LireMultiplicateur(value, out centiemes)) PvMonstres = centiemes;
-            else Refuser(section, key, value);
+            if (LireMultiplicateur(value, 10, 1000, out centiemes)) PvMonstres = centiemes;
+            else Refuser(section, key, value, "un multiplicateur de 0.1 à 10, 1 = jeu d'origine");
         }
         else if (Est("Difficulte", "DegatsMonstres"))
         {
-            if (LireMultiplicateur(value, out centiemes)) DegatsMonstres = centiemes;
-            else Refuser(section, key, value);
+            if (LireMultiplicateur(value, 10, 1000, out centiemes)) DegatsMonstres = centiemes;
+            else Refuser(section, key, value, "un multiplicateur de 0.1 à 10, 1 = jeu d'origine");
+        }
+        else if (Est("Magie", "ScalingMagique"))
+        {
+            if (LireMultiplicateur(value, 0, 500, out centiemes)) ScalingMagique = centiemes;
+            else Refuser(section, key, value, "de 0 à 5, 0 = jeu d'origine");
         }
         else
         {
@@ -99,22 +106,23 @@ internal static class ReglagesLegacyPlus
     }
 
     /// <summary>
-    /// Un multiplicateur de 0,1 à 10 : `1`, `2`, `1.5` ou `1,5`. Rendu en centièmes, arrondi au
-    /// plus proche (`1.333` donne 133).
+    /// Un multiplicateur : `1`, `2`, `1.5` ou `1,5`. Rendu en centièmes, arrondi au plus proche
+    /// (`1.333` donne 133), et refusé hors de [<paramref name="min"/>, <paramref name="max"/>]
+    /// centièmes.
     /// </summary>
-    private static bool LireMultiplicateur(string value, out int centiemes)
+    private static bool LireMultiplicateur(string value, int min, int max, out int centiemes)
     {
         centiemes = 0;
         if (!decimal.TryParse(value.Replace(',', '.'), System.Globalization.NumberStyles.AllowDecimalPoint,
                               System.Globalization.CultureInfo.InvariantCulture, out decimal m))
             return false;
         decimal c = Math.Round(m * 100m, MidpointRounding.AwayFromZero);
-        if (c < CentiemesMin || c > CentiemesMax) return false;
+        if (c < min || c > max) return false;
         centiemes = (int)c;
         return true;
     }
 
-    private static void Refuser(string section, string key, string value) =>
+    private static void Refuser(string section, string key, string value, string attendu) =>
         Console.Error.WriteLine(
-            $"[LEGACY++] valeur refusée, défaut conservé : [{section}] {key} = {value} (attendu : un multiplicateur de 0.1 à 10, 1 = jeu d'origine)");
+            $"[LEGACY++] valeur refusée, défaut conservé : [{section}] {key} = {value} (attendu : {attendu})");
 }

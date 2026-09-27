@@ -1231,7 +1231,7 @@ public static unsafe partial class Blaze
         // Le montant de la fiche ne se rajoute que si la victime n'est PAS deja de cet element.
         if (element == 0 || element != DominantElement_005399E0(victimBlock))
         {
-            damage += *(ushort*)(sheet + 0x18 + variant * 2);
+            damage += LegacyPlus.Coutures.MontantDeSort(attacker, attackerBlock, *(ushort*)(sheet + 0x18 + variant * 2));   // Couture legacy ++ (LP-003)
         }
 
         damage -= *(short*)(victimBlock + 0x3a) >> 5;

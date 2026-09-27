@@ -34,12 +34,23 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Pv PvALaNaissance = (stats, pv) => pv;
 
+    /// <summary>Le montant fixe d'une fiche de sort, avant qu'il ne s'ajoute aux dégâts.</summary>
+    internal delegate ushort Montant(uint* attaquant, byte* blocAttaquant, ushort montant);
+
+    /// <summary>
+    /// Couture LP-003 — dans <c>ResolveSpellHit_0053A2B0</c> (Ghidra: FUN_0053a2b0), sur le
+    /// montant de la fiche (<c>fiche + 0x18 + variante * 2</c>), à l'intérieur de la condition
+    /// d'élément d'origine. Rend le montant à ajouter.
+    /// </summary>
+    internal static Montant MontantDeSort = (attaquant, blocAttaquant, montant) => montant;
+
     static Coutures()
     {
         try
         {
             ReglagesLegacyPlus.Lire();
             Difficulte.Installer();
+            ScalingMagique.Installer();
         }
         catch (Exception ex)
         {
@@ -47,6 +58,7 @@ internal static unsafe class Coutures
             Console.Error.WriteLine($"[LEGACY++] installation des tweaks impossible ({ex.Message}) — aucun tweak actif");
             DegatsSubis = (attaquant, victime, degats) => degats;
             PvALaNaissance = (stats, pv) => pv;
+            MontantDeSort = (attaquant, blocAttaquant, montant) => montant;
         }
     }
 }

@@ -18,9 +18,17 @@ Le fichier à côté de l'exécutable où le joueur active les **tweaks** (regis
 |---|---|---|---|---|
 | `[Difficulte] PvMonstres` | multiplicateur, 0.1 à 10 | 1 | PV maximaux et courants de toute entité de scène à sa naissance | LP-002 |
 | `[Difficulte] DegatsMonstres` | multiplicateur, 0.1 à 10 | 1 | dégâts des coups (mêlée et sorts) reçus par un membre du groupe | LP-001 |
+| `[Magie] ScalingMagique` | 0 à 5 | 0 | montant des sorts **du groupe** × (1 + valeur × MAG / 100) ; 1 conseillé | LP-003 |
 
-`1` = jeu d'origine, `2` = deux fois plus. Les décimales s'écrivent avec un point ou une virgule
+Pour les deux clés de difficulté, `1` = jeu d'origine, `2` = deux fois plus. Pour
+`ScalingMagique`, `0` = jeu d'origine. Les décimales s'écrivent avec un point ou une virgule
 (`1.5` ou `1,5`), à deux chiffres au plus (le reste est arrondi).
+
+**`ScalingMagique` en chiffres** (Sorcier niveau 200, MAG ≈ 130, monstre de fin de jeu, DEF
+magique ≈ 100) : Balle de feu ~7 → ~23, Boule de feu ~97 → ~191 à la valeur 1. En début de partie
+(MAG ≈ 5), presque rien ne change. Le montant ne s'ajoute toujours pas si la victime est déjà de
+l'élément du sort, comme dans le jeu d'origine. La part `MAG / diviseur − DEF` de la formule n'est
+pas touchée.
 
 ## Ce qu'elles ne couvrent pas
 
