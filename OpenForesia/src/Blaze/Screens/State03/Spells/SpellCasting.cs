@@ -365,7 +365,7 @@ public static unsafe partial class Blaze
                     return;
                 }
 
-                *(int*)(s + 0x5c) = 0;
+                *(int*)(s + 0x5c) = LegacyPlus.Coutures.VitesseEnIncantation(slot, *(int*)(s + 0x5c));   // Couture legacy ++ (LP-006)
 
                 if (*(short*)(s + 0x18) == 5)
                 {

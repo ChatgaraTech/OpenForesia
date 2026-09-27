@@ -100,6 +100,17 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Contact ButinAtteint = (membre, touche, poolButin) => touche;
 
+    /// <summary>La vitesse au sol d'un membre du groupe.</summary>
+    internal delegate int Vitesse(uint* membre, int vitesse);
+
+    /// <summary>
+    /// Couture LP-006 — dans <c>ApplyGroundMotion_0051A020</c> (Ghidra: FUN_0051a020), postures
+    /// d'incantation, là où le jeu remet la vitesse au sol <c>+0x5c</c> à zéro pendant qu'on
+    /// incante. Reçoit la vitesse que la croix vient de poser, rend celle à garder ; par défaut,
+    /// zéro — la ligne d'origine.
+    /// </summary>
+    internal static Vitesse VitesseEnIncantation = (membre, vitesse) => 0;
+
     static Coutures()
     {
         try
@@ -109,6 +120,7 @@ internal static unsafe class Coutures
             ScalingMagique.Installer();
             VerrouParAttaquant.Installer();
             RamassageAuto.Installer();
+            DeplacementEnIncantation.Installer();
             TraceCombat.Installer();                 // en dernier : il observe les décisions des tweaks
         }
         catch (Exception ex)
@@ -123,6 +135,7 @@ internal static unsafe class Coutures
             CoupPorte = (balayage, source, victime) => { };
             ImageSuivante = () => { };
             ButinAtteint = (membre, touche, poolButin) => touche;
+            VitesseEnIncantation = (membre, vitesse) => 0;
         }
     }
 }

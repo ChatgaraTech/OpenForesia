@@ -32,6 +32,9 @@ internal static class ReglagesLegacyPlus
     /// <summary>`[Combat] InvulnerabiliteEnnemis` — `oui` : le verrou partagé d'origine ; `non` : un verrou par attaquant (LP-004).</summary>
     internal static bool InvulnerabiliteEnnemis { get; private set; } = true;
 
+    /// <summary>`[Magie] DeplacementEnIncantation` — part de la vitesse de marche gardée pendant une incantation, en centièmes ; 0 = jeu d'origine (LP-006).</summary>
+    internal static int DeplacementEnIncantation { get; private set; } = 0;
+
     /// <summary>`[Butin] RamassageAuto` — `oui` : pièces et cristaux d'expérience ramassés une fois posés, sans marcher dessus (LP-005).</summary>
     internal static bool RamassageAuto { get; private set; } = false;
 
@@ -81,7 +84,7 @@ internal static class ReglagesLegacyPlus
         Console.Error.WriteLine(
             $"[LEGACY++] {FileName} lu — PvMonstres=x{Ecrire(PvMonstres)}, DegatsMonstres=x{Ecrire(DegatsMonstres)}, " +
             $"ScalingMagique={Ecrire(ScalingMagique)}, InvulnerabiliteEnnemis={(InvulnerabiliteEnnemis ? "oui" : "non")}, " +
-            $"RamassageAuto={(RamassageAuto ? "oui" : "non")}");
+            $"RamassageAuto={(RamassageAuto ? "oui" : "non")}, DeplacementEnIncantation={Ecrire(DeplacementEnIncantation)}");
     }
 
     private static string Ecrire(int centiemes) =>
@@ -114,6 +117,11 @@ internal static class ReglagesLegacyPlus
             if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) InvulnerabiliteEnnemis = true;
             else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) InvulnerabiliteEnnemis = false;
             else Refuser(section, key, value, "oui (jeu d'origine) ou non");
+        }
+        else if (Est("Magie", "DeplacementEnIncantation"))
+        {
+            if (LireMultiplicateur(value, 0, 100, out centiemes)) DeplacementEnIncantation = centiemes;
+            else Refuser(section, key, value, "de 0 (jeu d'origine) à 1 (vitesse pleine)");
         }
         else if (Est("Butin", "RamassageAuto"))
         {

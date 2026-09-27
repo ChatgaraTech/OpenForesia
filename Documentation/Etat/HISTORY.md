@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- feat : LP-006 — se déplacer en lançant un sort (`[Magie] DeplacementEnIncantation`, 0.5 = mi-vitesse) : la croix calculait déjà la vitesse pendant l'incantation, le tweak en garde une part au lieu du zéro d'origine ; une ligne dans le legacy, à tester en jeu
+- doc : LP-005 validé en jeu par Vincent, partage des pièces à quatre compris
 - fix : LP-005 — le joueur 1 ramassait toutes les pièces (le « tueur » `+9` n'est pas fiable) ; elles se partagent maintenant à tour de rôle entre les membres debout, de 1 à 4
 - feat : LP-005 — ramassage automatique des pièces et des cristaux d'expérience une fois posés (`[Butin] RamassageAuto = oui`), par le code de ramassage d'origine ; jamais les coffres ; une ligne dans le legacy, à tester en jeu
 - doc : le « rien que de l'argent » de `DespawnSceneEntity_0051a740` est le cristal d'expérience (`0x80081000`) ; les « éclats » (`0x90081000`) sont les pièces

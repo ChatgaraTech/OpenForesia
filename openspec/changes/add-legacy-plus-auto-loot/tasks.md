@@ -14,6 +14,6 @@
 
 ## 3. La vérification en jeu (Vincent)
 
-- [ ] 3.1 `oui` : pièces et cristal sont ramassés une fois posés, sans marcher dessus ; l'expérience et l'argent montent
-- [ ] 3.2 `oui` : un coffre lâché par un monstre reste au sol et s'ouvre à la main
-- [ ] 3.3 `non` : ramassage au contact seulement, comme avant
+- [x] 3.1 `oui` : pièces et cristal sont ramassés une fois posés, sans marcher dessus ; l'expérience et l'argent montent
+- [x] 3.2 `oui` : un coffre lâché par un monstre reste au sol et s'ouvre à la main
+- [x] 3.3 `non` : ramassage au contact seulement, comme avant

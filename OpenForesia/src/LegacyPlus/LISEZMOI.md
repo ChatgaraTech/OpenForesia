@@ -27,6 +27,7 @@ src/LegacyPlus/
    ScalingMagique.cs        LP-003
    VerrouParAttaquant.cs    LP-004
    RamassageAuto.cs         LP-005
+   DeplacementEnIncantation.cs  LP-006
    TraceCombat.cs           diagnostic, pas un tweak : le journal des coups de mêlée
 ```
 
