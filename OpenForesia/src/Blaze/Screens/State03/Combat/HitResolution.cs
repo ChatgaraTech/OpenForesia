@@ -804,6 +804,7 @@ public static unsafe partial class Blaze
     private static int ApplyDamage_00539A20(
         uint* attacker, uint* victim, byte* attackerBlock, byte* victimBlock, short damage, byte element)
     {
+        damage = LegacyPlus.Coutures.DegatsSubis(attacker, victim, damage);   // Couture legacy ++ (LP-001)
         *(short*)(victimBlock + 0x96) = 0;
         *(uint*)(victimBlock + 0x40) &= 0xffffffbf;
         *(short*)(victimBlock + 0x100) = damage;

@@ -1420,8 +1420,8 @@ public static unsafe partial class Blaze
         *(ushort*)(stats + 0x2e) = *(ushort*)(model + 0x1a);
         *(uint*)(stats + 0x58) = *(uint*)(model + 0x1c);
         *(uint*)(stats + 0x5c) = *(uint*)(model + 0x20);
-        *(ushort*)(stats + 0x48) = *(ushort*)(model + 0x14);
-        *(ushort*)(stats + 0x4c) = *(ushort*)(model + 0x14);
+        *(ushort*)(stats + 0x48) = LegacyPlus.Coutures.PvALaNaissance(stats, *(ushort*)(model + 0x14));   // Couture legacy ++ (LP-002)
+        *(ushort*)(stats + 0x4c) = LegacyPlus.Coutures.PvALaNaissance(stats, *(ushort*)(model + 0x14));   // Couture legacy ++ (LP-002)
         *(ushort*)(stats + 0x4a) = *(ushort*)(model + 0x16);
         *(ushort*)(stats + 0x4e) = *(ushort*)(model + 0x16);
         *(ushort*)(stats + 0x44) = *(ushort*)(model + 0x10);

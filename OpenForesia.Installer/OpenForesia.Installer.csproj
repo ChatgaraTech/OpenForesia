@@ -41,6 +41,11 @@
             <LogicalName>OpenForesia.cfg</LogicalName>
         </EmbeddedResource>
 
+        <!-- Les tweaks de gameplay, tous inactifs, deposes de meme. -->
+        <EmbeddedResource Include="Reglages\LegacyPlus.ini">
+            <LogicalName>LegacyPlus.ini</LogicalName>
+        </EmbeddedResource>
+
         <!-- Le jeu publie, zippe par publish-release.ps1. Absent en developpement : l'installeur
              prend alors les fichiers du jeu dans un dossier donne par l'option jeu. -->
         <EmbeddedResource Include="Jeu\jeu.zip" Condition="Exists('Jeu\jeu.zip')">

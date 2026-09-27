@@ -48,6 +48,23 @@ impossible : une façade s'installe depuis le chemin qu'elle détourne.
   `InstallDeviceShim`, `CreateGameWindow`, `LogDisplayMode`). Ils sont **qualifiés explicitement**
   au site d'appel (`DeviceShim.LogDisplayMode(…)`) pour que la couture reste visible.
 
+### `src/LegacyPlus/` — les tweaks de gameplay, hors du legacy
+
+Depuis le 2026-09-27 (`openspec/changes/add-legacy-plus-tweaks-difficulty`), un troisième
+répertoire porte les **tweaks** : des écarts à l'équilibre du jeu, choisis par le joueur dans
+`LegacyPlus.ini`, tous inactifs par défaut. Registre : `Documentation/LegacyPlus/legacy.md`.
+
+**La règle : aucune condition d'option dans `src/Blaze/`.** Le legacy n'appelle que des
+**coutures** (`LegacyPlus.Coutures.X(...)`), une ligne chacune, qualifiée explicitement et marquée
+`// Couture legacy ++ (LP-NNN)`. Une couture vaut l'identité par défaut. Les tweaks s'y empilent
+depuis le constructeur statique de `Coutures`, sans aucune ligne au démarrage. Un tweak se retire
+en supprimant son fichier, sans toucher au legacy. Voir `src/LegacyPlus/LISEZMOI.md`.
+
+| couture | ligne dans le legacy | tweaks |
+|---|---|---|
+| `DegatsSubis` | entrée d'`ApplyDamage_00539A20` (`Combat/HitResolution.cs`) | LP-001 |
+| `PvALaNaissance` | `+0x48` et `+0x4c` de `ResetEntityStats` (`WorldMapScript.cs`) | LP-002 |
+
 ---
 
 ## Les trois couches

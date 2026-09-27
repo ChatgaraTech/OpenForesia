@@ -93,6 +93,19 @@ garde la trace. Hors de ce cas, l'interdiction de supprimer une branche ou un ap
 Une correction de défaut s'applique quand **Vincent la demande ou la valide**. L'agent en propose,
 en citant l'entrée LB concernée, mais ne corrige pas un défaut d'origine de son propre chef.
 
+### 6 bis. Les tweaks de gameplay (depuis le 2026-09-27)
+
+Une quatrième famille, ouverte **à la demande de Vincent** : les **tweaks**, qui changent
+l'équilibre ou les règles du jeu (difficulté, auto-loot, scaling magique…). Ils diffèrent des écarts
+ci-dessus sur trois points :
+
+* **Tous inactifs par défaut**, dans `LegacyPlus.ini`. Sans le fichier, c'est le jeu de 1998.
+* **Numérotés `LP-NNN`** et recensés dans `Documentation/LegacyPlus/legacy.md`. `LB-NNN` reste
+  réservé aux défauts de 1998.
+* **Aucune condition d'option dans le code transcrit.** Le legacy n'appelle que des coutures (une
+  ligne, `// Couture legacy ++ (LP-NNN)`), et le code du tweak vit dans `src/LegacyPlus/`. Un tweak
+  ne tire jamais de nombre aléatoire.
+
 ### 7. Le produit
 
 Le jeu doit se lancer sans CD, sans DLL de 1998 et sans prérequis à installer. Les **données du

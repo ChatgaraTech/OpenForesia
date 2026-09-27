@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- feat : les tweaks de gameplay ont leur cadre — `src/LegacyPlus/`, les coutures (trois lignes dans le legacy, aucune condition d'option) et `LegacyPlus.ini`, lu sans être écrit, déposé par l'installeur, tout inactif par défaut
+- feat : LP-001 et LP-002 — dégâts reçus par le groupe et PV des monstres multipliés, de ×0,1 à ×10 (`[Difficulte] DegatsMonstres`, `PvMonstres` ; 1 = jeu d'origine), à tester en jeu
+- doc : proposition OpenSpec `add-legacy-plus-tweaks-difficulty` — le cadre des tweaks de gameplay (répertoire `src/LegacyPlus/`, coutures sans condition dans le legacy, `LegacyPlus.ini`) et son premier tweak, PV et dégâts des monstres en % ; registre des tweaks ouvert dans `Documentation/LegacyPlus/legacy.md`
 - feat : l'installeur dépose un `OpenForesia.cfg` par défaut (filtre actif, 1024x768 : `Resolution=4`, `Size=23`) et son `Affichage.ini` ouvre le jeu en `fenetre-sans-bordure` — jamais par-dessus les réglages du joueur
 
 ## 2026-09-26

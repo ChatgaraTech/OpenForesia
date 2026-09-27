@@ -128,6 +128,7 @@ internal static class Installation
             // 2 bis. Les reglages par defaut — jamais par-dessus ceux du joueur.
             DeposerReglage(ReglagesAffichage, dossier, journal);
             DeposerReglage(ReglagesJeu, dossier, journal);
+            DeposerReglage(ReglagesTweaks, dossier, journal);
 
             // 3. La desinstallation : Uninstall.exe (une copie de cet installeur). Ce qu'une
             //    installation anterieure a laisse sous d'autres noms — le script PowerShell, puis
@@ -170,11 +171,14 @@ internal static class Installation
 
     internal const string ReglagesAffichage = "Affichage.ini";
     internal const string ReglagesJeu = "OpenForesia.cfg";
+    internal const string ReglagesTweaks = "LegacyPlus.ini";
 
     /// <summary>
     /// Depose un fichier de reglages par defaut s'il n'y en a pas deja un : une reinstallation ne
-    /// doit pas effacer les reglages du joueur. Deux fichiers, embarques depuis `Reglages/` — un
+    /// doit pas effacer les reglages du joueur. Trois fichiers, embarques depuis `Reglages/` — un
     /// seul exemplaire chacun :
+    /// - `LegacyPlus.ini`, les tweaks de gameplay, tous inactifs ; lu sans jamais etre ecrit
+    ///   (openspec/changes/add-legacy-plus-tweaks-difficulty) ;
     /// - `Affichage.ini`, commente, que le jeu lit sans jamais l'ecrire
     ///   (openspec/changes/enhance-display-resolution-filtering) ;
     /// - `OpenForesia.cfg`, les options du jeu lui-meme, que la page d'options reecrit — la
