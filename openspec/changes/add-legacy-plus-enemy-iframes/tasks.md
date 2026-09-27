@@ -14,7 +14,7 @@
 
 ## 3. La vérification en jeu (Vincent)
 
-- [ ] 3.1 `oui` : un ennemi qui clignote refuse les coups, comme avant
-- [ ] 3.2 `non`, à plusieurs joueurs : deux coups rapprochés de deux joueurs sur le même ennemi passent tous les deux
-- [ ] 3.3 `non` : un sort durable (Mur de flammes) ou une flèche ne frappe pas un même ennemi à chaque image
-- [ ] 3.4 `non` : un ennemi tué se comporte normalement (fin, butin) ; un monstre qui frappe un joueur le laisse clignoter et intouchable comme avant
+- [x] 3.1 `oui` : un ennemi qui clignote refuse les coups, comme avant
+- [x] 3.2 `non`, à plusieurs joueurs : deux coups rapprochés de deux joueurs sur le même ennemi passent tous les deux
+- [x] 3.3 `non` : un sort durable (Mur de flammes) ou une flèche ne frappe pas un même ennemi à chaque image
+- [x] 3.4 `non` : un ennemi tué se comporte normalement (fin, butin) ; un monstre qui frappe un joueur le laisse clignoter et intouchable comme avant

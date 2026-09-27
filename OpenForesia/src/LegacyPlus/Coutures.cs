@@ -89,6 +89,17 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Action ImageSuivante = () => { };
 
+    /// <summary>L'entité qu'un membre du groupe « touche » ce tour-ci.</summary>
+    internal delegate byte* Contact(uint* membre, byte* touche, byte* poolButin);
+
+    /// <summary>
+    /// Couture LP-005 — dans le pas d'un membre du groupe (<c>Tick/PartyMemberStep.cs</c>), sur
+    /// l'entité que la collision désigne (Ghidra: FUN_005197d0) avant le code de ramassage.
+    /// <c>poolButin</c> est la table du butin tombé (<c>0x005f7de0</c>, 0x40 × 0x9c). Par défaut,
+    /// l'entité de la collision.
+    /// </summary>
+    internal static Contact ButinAtteint = (membre, touche, poolButin) => touche;
+
     static Coutures()
     {
         try
@@ -97,6 +108,7 @@ internal static unsafe class Coutures
             Difficulte.Installer();
             ScalingMagique.Installer();
             VerrouParAttaquant.Installer();
+            RamassageAuto.Installer();
             TraceCombat.Installer();                 // en dernier : il observe les décisions des tweaks
         }
         catch (Exception ex)
@@ -110,6 +122,7 @@ internal static unsafe class Coutures
             VictimeExclue = (balayage, source, victime, exclusion) => exclusion;
             CoupPorte = (balayage, source, victime) => { };
             ImageSuivante = () => { };
+            ButinAtteint = (membre, touche, poolButin) => touche;
         }
     }
 }

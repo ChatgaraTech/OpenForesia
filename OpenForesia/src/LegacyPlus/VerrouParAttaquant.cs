@@ -51,7 +51,8 @@ internal static unsafe class VerrouParAttaquant
         Coutures.VictimeProtegee = Protegee;
         Coutures.VictimeExclue = Exclue;
         Coutures.CoupPorte = Noter;
-        Coutures.ImageSuivante = Avancer;
+        Action image = Coutures.ImageSuivante;
+        Coutures.ImageSuivante = () => { image(); Avancer(); };
     }
 
     /// <summary>

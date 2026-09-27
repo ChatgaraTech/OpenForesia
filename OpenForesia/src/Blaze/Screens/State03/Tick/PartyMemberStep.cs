@@ -1348,7 +1348,7 @@ public static unsafe partial class Blaze
         }
 
         // Le coup recu : l'entite que la collision a designee, si elle est armee.
-        byte* hit = CollectEntityHit_005197D0(slot);
+        byte* hit = LegacyPlus.Coutures.ButinAtteint(slot, CollectEntityHit_005197D0(slot), Mem.Entity(0x005f7de0));   // Couture legacy ++ (LP-005)
         if (hit != null && (*(uint*)hit & 0x80080000) == 0x80080000)
         {
             uint kind = *(uint*)hit;

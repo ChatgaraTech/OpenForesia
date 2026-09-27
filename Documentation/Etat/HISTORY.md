@@ -6,6 +6,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- fix : LP-005 — le joueur 1 ramassait toutes les pièces (le « tueur » `+9` n'est pas fiable) ; elles se partagent maintenant à tour de rôle entre les membres debout, de 1 à 4
+- feat : LP-005 — ramassage automatique des pièces et des cristaux d'expérience une fois posés (`[Butin] RamassageAuto = oui`), par le code de ramassage d'origine ; jamais les coffres ; une ligne dans le legacy, à tester en jeu
+- doc : le « rien que de l'argent » de `DespawnSceneEntity_0051a740` est le cristal d'expérience (`0x80081000`) ; les « éclats » (`0x90081000`) sont les pièces
+- doc : LP-004 validé en jeu par Vincent, mêlée à quatre joueurs comprise
 - fix : LP-004 — l'horloge du tweak ne tournait pas : `ImageSuivante` était posée à l'entrée de `RunWorldMapTick`, qui n'est entrée qu'une fois par zone ; elle est maintenant en tête du pas de simulation (trouvé par le journal `TraceCombat` : image = 2 sur toutes les lignes)
 - feat : `[Diagnostic] TraceCombat = oui` dans `LegacyPlus.ini` — journal `legacyplus-combat.log` de chaque coup de mêlée du groupe (écarté, refusé, touché, raté), pour comprendre pourquoi un coup ne passe pas
 - fix : LP-004 en mêlée — un guerrier ne pouvait pas enchaîner ses coups, son deuxième geste étant pris pour la même attaque ; en mêlée, le refus ne vaut plus que tant que le même geste est tenu sur son image de frappe

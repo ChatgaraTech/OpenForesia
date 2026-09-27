@@ -19,6 +19,7 @@ Le fichier à côté de l'exécutable où le joueur active les **tweaks** (regis
 | `[Difficulte] PvMonstres` | multiplicateur, 0.1 à 10 | 1 | PV maximaux et courants de toute entité de scène à sa naissance | LP-002 |
 | `[Difficulte] DegatsMonstres` | multiplicateur, 0.1 à 10 | 1 | dégâts des coups (mêlée et sorts) reçus par un membre du groupe | LP-001 |
 | `[Magie] ScalingMagique` | 0 à 5 | 0 | montant des sorts **du groupe** × (1 + valeur × MAG / 100) ; 1 conseillé | LP-003 |
+| `[Butin] RamassageAuto` | `oui`, `non` | `non` | `oui` : pièces et cristaux d'expérience ramassés une fois posés, sans marcher dessus ; pièces à tour de rôle entre les joueurs debout ; jamais les coffres | LP-005 |
 | `[Combat] InvulnerabiliteEnnemis` | `oui`, `non` | `oui` | `non` : un ennemi qui clignote ne refuse plus que l'attaque qui l'a touché, pas les autres | LP-004 |
 
 Pour les deux clés de difficulté, `1` = jeu d'origine, `2` = deux fois plus. Pour

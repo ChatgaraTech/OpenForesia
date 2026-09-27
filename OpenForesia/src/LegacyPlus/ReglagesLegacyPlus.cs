@@ -32,6 +32,9 @@ internal static class ReglagesLegacyPlus
     /// <summary>`[Combat] InvulnerabiliteEnnemis` — `oui` : le verrou partagé d'origine ; `non` : un verrou par attaquant (LP-004).</summary>
     internal static bool InvulnerabiliteEnnemis { get; private set; } = true;
 
+    /// <summary>`[Butin] RamassageAuto` — `oui` : pièces et cristaux d'expérience ramassés une fois posés, sans marcher dessus (LP-005).</summary>
+    internal static bool RamassageAuto { get; private set; } = false;
+
     /// <summary>`[Diagnostic] TraceCombat` — `oui` : chaque coup de mêlée du groupe est journalisé dans `legacyplus-combat.log`. Outil de mise au point, absent du modèle de l'installeur.</summary>
     internal static bool TraceCombat { get; private set; } = false;
 
@@ -77,7 +80,8 @@ internal static class ReglagesLegacyPlus
 
         Console.Error.WriteLine(
             $"[LEGACY++] {FileName} lu — PvMonstres=x{Ecrire(PvMonstres)}, DegatsMonstres=x{Ecrire(DegatsMonstres)}, " +
-            $"ScalingMagique={Ecrire(ScalingMagique)}, InvulnerabiliteEnnemis={(InvulnerabiliteEnnemis ? "oui" : "non")}");
+            $"ScalingMagique={Ecrire(ScalingMagique)}, InvulnerabiliteEnnemis={(InvulnerabiliteEnnemis ? "oui" : "non")}, " +
+            $"RamassageAuto={(RamassageAuto ? "oui" : "non")}");
     }
 
     private static string Ecrire(int centiemes) =>
@@ -110,6 +114,12 @@ internal static class ReglagesLegacyPlus
             if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) InvulnerabiliteEnnemis = true;
             else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) InvulnerabiliteEnnemis = false;
             else Refuser(section, key, value, "oui (jeu d'origine) ou non");
+        }
+        else if (Est("Butin", "RamassageAuto"))
+        {
+            if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) RamassageAuto = true;
+            else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) RamassageAuto = false;
+            else Refuser(section, key, value, "oui ou non (jeu d'origine)");
         }
         else if (Est("Diagnostic", "TraceCombat"))
         {

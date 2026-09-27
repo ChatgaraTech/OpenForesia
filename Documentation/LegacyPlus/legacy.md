@@ -16,13 +16,18 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 
 ## Les tweaks
 
+> Au passage (LP-005) : dans `DespawnSceneEntity_0051a740`, le commentaire « rien que de l'argent »
+> désigne en fait **le cristal d'expérience** (`0x80081000`) ; ce sont les « éclats »
+> (`0x90081000`) qui sont **les pièces**. Le ramassage (`PartyMemberStep.cs`) fait foi.
+
+
 | N° | Tweak | Clé (`LegacyPlus.ini`) | Couture | État |
 |---|---|---|---|---|
 | LP-001 | Dégâts des monstres, multipliés | `[Difficulte] DegatsMonstres` | `DegatsSubis`, entrée d'`ApplyDamage_00539A20` | écrit, à tester en jeu — `src/LegacyPlus/Difficulte.cs` |
 | LP-002 | PV des monstres, multipliés | `[Difficulte] PvMonstres` | `PvALaNaissance`, `ResetEntityStats` (`FUN_005389e0`) | écrit, à tester en jeu — `src/LegacyPlus/Difficulte.cs` |
 | LP-003 | Montant des sorts du groupe × (1 + coef × MAG / 100) | `[Magie] ScalingMagique` | `MontantDeSort`, ajout du montant dans `ResolveSpellHit_0053A2B0` | écrit, à tester en jeu — `src/LegacyPlus/ScalingMagique.cs` |
-| — | Auto-loot des pièces et des gemmes | à définir | gestionnaire d'entité, par adresse | idée — gestionnaire à identifier |
+| LP-005 | Ramassage automatique des pièces et des cristaux d'expérience (pas les coffres) | `[Butin] RamassageAuto` | `ButinAtteint`, l'entité que la collision désigne dans `PartyMemberStep.cs` | écrit, à tester en jeu — `src/LegacyPlus/RamassageAuto.cs` |
 | — | Se déplacer en lançant un sort, à 50 % de la vitesse | à définir | posture ou vitesse du membre du groupe | idée — à investiguer |
-| LP-004 | Frames d'invulnérabilité des ennemis tenues par attaquant | `[Combat] InvulnerabiliteEnnemis` | `VictimeExclue` (bit `0x40`), `VictimeProtegee` (`+0x96`), `CoupPorte` dans les deux balayages (`FUN_00519940`, `FUN_00519af0`), `ImageSuivante` en tête du pas de simulation (boucle par image de `RunWorldMapTick`) | écrit, à tester en jeu — `src/LegacyPlus/VerrouParAttaquant.cs` |
+| LP-004 | Frames d'invulnérabilité des ennemis tenues par attaquant | `[Combat] InvulnerabiliteEnnemis` | `VictimeExclue` (bit `0x40`), `VictimeProtegee` (`+0x96`), `CoupPorte` dans les deux balayages (`FUN_00519940`, `FUN_00519af0`), `ImageSuivante` en tête du pas de simulation (boucle par image de `RunWorldMapTick`) | validé en jeu (2026-09-27) — `src/LegacyPlus/VerrouParAttaquant.cs` |
 | — | Vitesse des monstres | à définir | `IntegrateSceneEntityMotion_00488160` ? | idée — risque : vitesses en dur dans 166 gestionnaires |
 | — | Monstres par spawn, fréquence des spawns | à définir | à trouver | idée — mesurer d'abord la marge des pools d'entités |

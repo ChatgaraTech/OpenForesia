@@ -26,6 +26,7 @@ src/LegacyPlus/
    Difficulte.cs            LP-001, LP-002 — un fichier par tweak
    ScalingMagique.cs        LP-003
    VerrouParAttaquant.cs    LP-004
+   RamassageAuto.cs         LP-005
    TraceCombat.cs           diagnostic, pas un tweak : le journal des coups de mêlée
 ```
 
