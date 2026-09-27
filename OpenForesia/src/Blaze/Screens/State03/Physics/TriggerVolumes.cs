@@ -85,8 +85,8 @@ public static unsafe partial class Blaze
                     uint flags = *(uint*)victim;
 
                     if ((flags & 0x400000) == 0) continue;
-                    if ((flags & 0x50102040) != 0) continue;
-                    if (*(short*)(victim + 0x96) != 0) continue;      // deja en train de clignoter
+                    if (LegacyPlus.Coutures.VictimeExclue(LegacyPlus.Coutures.Balayage.Melee, attacker, victim, flags & 0x50102040) != 0) continue;   // Couture legacy ++ (LP-004)
+                    if (LegacyPlus.Coutures.VictimeProtegee(LegacyPlus.Coutures.Balayage.Melee, attacker, victim, *(short*)(victim + 0x96) != 0)) continue;      // deja en train de clignoter — Couture legacy ++ (LP-004)
                     if (!TestMeleeReach_00535A90(position, victim, probe, attacker)) continue;
 
                     short heading = *(short*)((byte*)position + 0x16);
@@ -111,6 +111,7 @@ public static unsafe partial class Blaze
 
                     // Le clignotement de degat est pose meme quand la resolution n'a rien rendu :
                     // c'est dans le binaire, hors du `if`.
+                    LegacyPlus.Coutures.CoupPorte(LegacyPlus.Coutures.Balayage.Melee, attacker, victim);   // Couture legacy ++ (LP-004)
                     victim[0x96] = 0x10;
                     victim[0x97] = 0;
                 }

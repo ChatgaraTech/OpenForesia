@@ -6,6 +6,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- fix : LP-004 — l'horloge du tweak ne tournait pas : `ImageSuivante` était posée à l'entrée de `RunWorldMapTick`, qui n'est entrée qu'une fois par zone ; elle est maintenant en tête du pas de simulation (trouvé par le journal `TraceCombat` : image = 2 sur toutes les lignes)
+- feat : `[Diagnostic] TraceCombat = oui` dans `LegacyPlus.ini` — journal `legacyplus-combat.log` de chaque coup de mêlée du groupe (écarté, refusé, touché, raté), pour comprendre pourquoi un coup ne passe pas
+- fix : LP-004 en mêlée — un guerrier ne pouvait pas enchaîner ses coups, son deuxième geste étant pris pour la même attaque ; en mêlée, le refus ne vaut plus que tant que le même geste est tenu sur son image de frappe
+- fix : LP-004 n'avait aucun effet — les deux balayages écartent aussi une victime qui porte le bit `0x40` (« encaisse un coup »), posé à chaque coup et retombé seulement à la fin du clignotement : second verrou, désormais levé par la couture `VictimeExclue`
+- feat : LP-004 — les frames d'invulnérabilité des ennemis tenues par attaquant (`[Combat] InvulnerabiliteEnnemis = non`) : à plusieurs, chaque joueur, flèche ou sort touche un ennemi qui clignote, et une même attaque ne compte jamais deux fois ; sept lignes dans le legacy, à tester en jeu
+- doc : le verrou d'invulnérabilité `+0x96` d'un ennemi est partagé par tous les attaquants, et tout ce que le groupe lance contre un ennemi passe par deux balayages (`FUN_00519940` pour la mêlée, `FUN_00519af0` pour projectiles et sorts)
 - feat : LP-003 — le montant des sorts du groupe monte avec la MAG du lanceur (`[Magie] ScalingMagique`, 0 = jeu d'origine, 1 conseillé : Balle de feu ~7 → ~23 au niveau 200), une ligne dans le legacy, à tester en jeu
 - doc : pourquoi un petit sort ne progresse pas dans le jeu de 1998 — `MAG / diviseur` (3 ou 4) ne dépasse jamais la défense magique d'un monstre de fin de jeu, seul le montant fixe reste
 - feat : les tweaks de gameplay ont leur cadre — `src/LegacyPlus/`, les coutures (trois lignes dans le legacy, aucune condition d'option) et `LegacyPlus.ini`, lu sans être écrit, déposé par l'installeur, tout inactif par défaut

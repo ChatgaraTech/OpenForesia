@@ -44,6 +44,51 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Montant MontantDeSort = (attaquant, blocAttaquant, montant) => montant;
 
+    /// <summary>
+    /// Lequel des deux balayages du groupe appelle — ils ne se ressemblent pas : la mêlée ne tourne
+    /// que sur la dernière image d'un geste, un projectile cherche sa cible à chaque image.
+    /// </summary>
+    internal enum Balayage
+    {
+        /// <summary>Ghidra: FUN_00519940 — la mêlée du groupe (<c>Physics/TriggerVolumes.cs</c>).</summary>
+        Melee,
+        /// <summary>Ghidra: FUN_00519af0 — la cible d'un projectile ou d'un sort (<c>Combat/Projectiles.cs</c>).</summary>
+        Projectile,
+    }
+
+    /// <summary>Le refus d'un coup à une victime dont le verrou d'invulnérabilité court.</summary>
+    internal delegate bool Protection(Balayage balayage, byte* source, byte* victime, bool verrouOrigine);
+
+    /// <summary>Un fait, sans valeur à rendre : un coup porté.</summary>
+    internal delegate void Coup(Balayage balayage, byte* source, byte* victime);
+
+    /// <summary>
+    /// Couture LP-004 — dans les deux balayages qui cherchent un ennemi à toucher pour le groupe.
+    /// Rend vrai si le coup est refusé ; par défaut, la condition d'origine : le verrou
+    /// <c>+0x96</c> court.
+    /// </summary>
+    internal static Protection VictimeProtegee = (balayage, source, victime, verrouOrigine) => verrouOrigine;
+
+    /// <summary>Les bits d'état qui écartent une victime d'un balayage.</summary>
+    internal delegate uint Exclusion(Balayage balayage, byte* source, byte* victime, uint exclusion);
+
+    /// <summary>
+    /// Couture LP-004 — le filtre d'état des mêmes balayages, <c>mot &amp; 0x50102040</c>. Son bit
+    /// <c>0x40</c> (« encaisse un coup ») est posé par chaque coup et ne retombe qu'à la fin du
+    /// clignotement : c'est le second verrou. Rend les bits qui écartent la victime ; par défaut,
+    /// ceux d'origine.
+    /// </summary>
+    internal static Exclusion VictimeExclue = (balayage, source, victime, exclusion) => exclusion;
+
+    /// <summary>Couture LP-004 — les mêmes balayages ont trouvé leur victime. Par défaut, rien.</summary>
+    internal static Coup CoupPorte = (balayage, source, victime) => { };
+
+    /// <summary>
+    /// Couture LP-004 — en tête du pas de simulation, dans la boucle par image de <c>RunWorldMapTick</c> (Ghidra: FUN_00516fc0) : une image de la
+    /// carte du monde commence. Par défaut, rien.
+    /// </summary>
+    internal static Action ImageSuivante = () => { };
+
     static Coutures()
     {
         try
@@ -51,6 +96,8 @@ internal static unsafe class Coutures
             ReglagesLegacyPlus.Lire();
             Difficulte.Installer();
             ScalingMagique.Installer();
+            VerrouParAttaquant.Installer();
+            TraceCombat.Installer();                 // en dernier : il observe les décisions des tweaks
         }
         catch (Exception ex)
         {
@@ -59,6 +106,10 @@ internal static unsafe class Coutures
             DegatsSubis = (attaquant, victime, degats) => degats;
             PvALaNaissance = (stats, pv) => pv;
             MontantDeSort = (attaquant, blocAttaquant, montant) => montant;
+            VictimeProtegee = (balayage, source, victime, verrouOrigine) => verrouOrigine;
+            VictimeExclue = (balayage, source, victime, exclusion) => exclusion;
+            CoupPorte = (balayage, source, victime) => { };
+            ImageSuivante = () => { };
         }
     }
 }

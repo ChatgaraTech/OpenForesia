@@ -25,6 +25,8 @@ src/LegacyPlus/
    ReglagesLegacyPlus.cs    lecture de LegacyPlus.ini (lu une fois, jamais écrit)
    Difficulte.cs            LP-001, LP-002 — un fichier par tweak
    ScalingMagique.cs        LP-003
+   VerrouParAttaquant.cs    LP-004
+   TraceCombat.cs           diagnostic, pas un tweak : le journal des coups de mêlée
 ```
 
 Un tweak est une classe statique avec une méthode `Installer()`. Si son option est active, il

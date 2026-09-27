@@ -284,6 +284,7 @@ public static unsafe partial class Blaze
                         // sequence est l'ordre du monde. Vue, puis scripts du meneur, puis les six
                         // tables d'entites, puis le groupe, puis les rencontres, les effets, les
                         // scripts de fin et la camera de scenette.
+                        LegacyPlus.Coutures.ImageSuivante();            // Couture legacy ++ (LP-004)
                         SmoothSceneOrientationAndBackColour();          // FUN_00532bf0
                         RunLeaderScriptListEarly(s_Unknown_005e97cc);   // FUN_00513ef0
                         TickEntityTable_005fa5e0();                     // FUN_0050e5e0

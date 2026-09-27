@@ -65,6 +65,8 @@ en supprimant son fichier, sans toucher au legacy. Voir `src/LegacyPlus/LISEZMOI
 | `DegatsSubis` | entrée d'`ApplyDamage_00539A20` (`Combat/HitResolution.cs`) | LP-001 |
 | `PvALaNaissance` | `+0x48` et `+0x4c` de `ResetEntityStats` (`WorldMapScript.cs`) | LP-002 |
 | `MontantDeSort` | ajout du montant de fiche dans `ResolveSpellHit_0053A2B0` (`Combat/HitResolution.cs`) | LP-003 |
+| `VictimeExclue`, `VictimeProtegee`, `CoupPorte` | le filtre d'état (`0x40`, second verrou), le test du verrou `+0x96` et la victime trouvée, dans `SweepSceneEntitiesForMeleeHit_00519940` (`Physics/TriggerVolumes.cs`) et `_00519AF0` (`Combat/Projectiles.cs`) | LP-004 |
+| `ImageSuivante` | en tête du pas de simulation, dans la boucle par image de `RunWorldMapTick` (`Tick/WorldMapTick.cs`) — pas à l'entrée de la fonction, qui ne tourne qu'une fois par zone | LP-004 |
 
 ---
 

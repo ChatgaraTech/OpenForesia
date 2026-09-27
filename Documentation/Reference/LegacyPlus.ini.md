@@ -19,6 +19,7 @@ Le fichier à côté de l'exécutable où le joueur active les **tweaks** (regis
 | `[Difficulte] PvMonstres` | multiplicateur, 0.1 à 10 | 1 | PV maximaux et courants de toute entité de scène à sa naissance | LP-002 |
 | `[Difficulte] DegatsMonstres` | multiplicateur, 0.1 à 10 | 1 | dégâts des coups (mêlée et sorts) reçus par un membre du groupe | LP-001 |
 | `[Magie] ScalingMagique` | 0 à 5 | 0 | montant des sorts **du groupe** × (1 + valeur × MAG / 100) ; 1 conseillé | LP-003 |
+| `[Combat] InvulnerabiliteEnnemis` | `oui`, `non` | `oui` | `non` : un ennemi qui clignote ne refuse plus que l'attaque qui l'a touché, pas les autres | LP-004 |
 
 Pour les deux clés de difficulté, `1` = jeu d'origine, `2` = deux fois plus. Pour
 `ScalingMagique`, `0` = jeu d'origine. Les décimales s'écrivent avec un point ou une virgule
@@ -29,6 +30,24 @@ magique ≈ 100) : Balle de feu ~7 → ~23, Boule de feu ~97 → ~191 à la vale
 (MAG ≈ 5), presque rien ne change. Le montant ne s'ajoute toujours pas si la victime est déjà de
 l'élément du sort, comme dans le jeu d'origine. La part `MAG / diviseur − DEF` de la formule n'est
 pas touchée.
+
+**`InvulnerabiliteEnnemis = non`** : dans le jeu d'origine, un ennemi touché devient intouchable
+pour **tout le monde** tant qu'il clignote (le compteur `+0x96` et le bit d'état `0x40`). Avec
+`non`, seule **la même attaque** est refusée : un projectile ou un sort pendant la durée du verrou
+qu'il a posé, un geste de mêlée tant qu'il est tenu sur son image de frappe. Les autres joueurs,
+flèches et sorts passent, et un guerrier enchaîne ses coups ; une même attaque ne compte jamais
+deux fois. Le clignotement, le recul et l'interruption restent ceux d'origine. Les frames
+d'invulnérabilité **du groupe** ne changent pas.
+
+## Diagnostic (absent du modèle de l'installeur)
+
+| clé | valeurs | défaut | effet |
+|---|---|---|---|
+| `[Diagnostic] TraceCombat` | `oui`, `non` | `non` | journalise chaque coup de mêlée du groupe dans `legacyplus-combat.log`, à côté de l'exe |
+
+Pour chaque ennemi que le coup examine : `ÉCARTÉ` (bits d'état), `REFUSÉ` (même geste, ou verrou
+d'origine), `TOUCHÉ`, ou `RATÉ` (hors de portée, ou paré ; le journal dit si l'ennemi porte la garde
+`0x10`). Le fichier est réécrit à chaque lancement. Code : `src/LegacyPlus/TraceCombat.cs`.
 
 ## Ce qu'elles ne couvrent pas
 

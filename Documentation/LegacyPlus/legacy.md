@@ -23,6 +23,6 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-003 | Montant des sorts du groupe × (1 + coef × MAG / 100) | `[Magie] ScalingMagique` | `MontantDeSort`, ajout du montant dans `ResolveSpellHit_0053A2B0` | écrit, à tester en jeu — `src/LegacyPlus/ScalingMagique.cs` |
 | — | Auto-loot des pièces et des gemmes | à définir | gestionnaire d'entité, par adresse | idée — gestionnaire à identifier |
 | — | Se déplacer en lançant un sort, à 50 % de la vitesse | à définir | posture ou vitesse du membre du groupe | idée — à investiguer |
-| — | Retirer les frames d'invulnérabilité des ennemis | à définir | lecture du verrou `+0x96` | idée — point de lecture à trouver |
+| LP-004 | Frames d'invulnérabilité des ennemis tenues par attaquant | `[Combat] InvulnerabiliteEnnemis` | `VictimeExclue` (bit `0x40`), `VictimeProtegee` (`+0x96`), `CoupPorte` dans les deux balayages (`FUN_00519940`, `FUN_00519af0`), `ImageSuivante` en tête du pas de simulation (boucle par image de `RunWorldMapTick`) | écrit, à tester en jeu — `src/LegacyPlus/VerrouParAttaquant.cs` |
 | — | Vitesse des monstres | à définir | `IntegrateSceneEntityMotion_00488160` ? | idée — risque : vitesses en dur dans 166 gestionnaires |
 | — | Monstres par spawn, fréquence des spawns | à définir | à trouver | idée — mesurer d'abord la marge des pools d'entités |

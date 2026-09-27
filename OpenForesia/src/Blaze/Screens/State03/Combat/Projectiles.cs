@@ -155,8 +155,8 @@ public static unsafe partial class Blaze
                      found = *(byte**)(found + 0x68))
                 {
                     if ((*(uint*)found & 0x400000) == 0) continue;
-                    if ((*(uint*)found & 0x50102040) != 0) continue;
-                    if (*(short*)(found + 0x96) != 0) continue;
+                    if (LegacyPlus.Coutures.VictimeExclue(LegacyPlus.Coutures.Balayage.Projectile, entity, found, *(uint*)found & 0x50102040) != 0) continue;   // Couture legacy ++ (LP-004)
+                    if (LegacyPlus.Coutures.VictimeProtegee(LegacyPlus.Coutures.Balayage.Projectile, entity, found, *(short*)(found + 0x96) != 0)) continue;   // Couture legacy ++ (LP-004)
                     if (!TestMeleeReach_00535A90(position, found, probe, entity)) continue;
 
                     if ((*(uint*)found & 0x10) != 0 && (flags & 0x800) == 0
@@ -169,6 +169,7 @@ public static unsafe partial class Blaze
                     }
 
                     *Mem.Camera(0x005de0b8) = 1;
+                    LegacyPlus.Coutures.CoupPorte(LegacyPlus.Coutures.Balayage.Projectile, entity, found);   // Couture legacy ++ (LP-004)
                     return found;
                 }
             }

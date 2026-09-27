@@ -29,6 +29,12 @@ internal static class ReglagesLegacyPlus
     /// <summary>`[Magie] ScalingMagique` — poids de la MAG dans le montant des sorts du groupe, en centièmes ; 0 = jeu d'origine (LP-003).</summary>
     internal static int ScalingMagique { get; private set; } = 0;
 
+    /// <summary>`[Combat] InvulnerabiliteEnnemis` — `oui` : le verrou partagé d'origine ; `non` : un verrou par attaquant (LP-004).</summary>
+    internal static bool InvulnerabiliteEnnemis { get; private set; } = true;
+
+    /// <summary>`[Diagnostic] TraceCombat` — `oui` : chaque coup de mêlée du groupe est journalisé dans `legacyplus-combat.log`. Outil de mise au point, absent du modèle de l'installeur.</summary>
+    internal static bool TraceCombat { get; private set; } = false;
+
     /// <summary>Lit `LegacyPlus.ini`. Appelée une fois, par le constructeur statique de <see cref="Coutures"/>.</summary>
     internal static void Lire()
     {
@@ -71,7 +77,7 @@ internal static class ReglagesLegacyPlus
 
         Console.Error.WriteLine(
             $"[LEGACY++] {FileName} lu — PvMonstres=x{Ecrire(PvMonstres)}, DegatsMonstres=x{Ecrire(DegatsMonstres)}, " +
-            $"ScalingMagique={Ecrire(ScalingMagique)}");
+            $"ScalingMagique={Ecrire(ScalingMagique)}, InvulnerabiliteEnnemis={(InvulnerabiliteEnnemis ? "oui" : "non")}");
     }
 
     private static string Ecrire(int centiemes) =>
@@ -98,6 +104,18 @@ internal static class ReglagesLegacyPlus
         {
             if (LireMultiplicateur(value, 0, 500, out centiemes)) ScalingMagique = centiemes;
             else Refuser(section, key, value, "de 0 à 5, 0 = jeu d'origine");
+        }
+        else if (Est("Combat", "InvulnerabiliteEnnemis"))
+        {
+            if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) InvulnerabiliteEnnemis = true;
+            else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) InvulnerabiliteEnnemis = false;
+            else Refuser(section, key, value, "oui (jeu d'origine) ou non");
+        }
+        else if (Est("Diagnostic", "TraceCombat"))
+        {
+            if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) TraceCombat = true;
+            else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) TraceCombat = false;
+            else Refuser(section, key, value, "oui ou non");
         }
         else
         {
