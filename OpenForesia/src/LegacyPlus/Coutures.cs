@@ -111,6 +111,35 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Vitesse VitesseEnIncantation = (membre, vitesse) => 0;
 
+    /// <summary>La tentative de rencontre aléatoire d'une image, et le pool des entités de scène.</summary>
+    internal delegate void Tentative(Action rencontre, byte* poolScene);
+
+    /// <summary>
+    /// Couture LP-007 — l'appel de <c>TrySpawnRandomEncounter</c> (Ghidra: FUN_0050ed70) dans le pas
+    /// de simulation. <c>poolScene</c> est l'en-tête du pool des entités de scène (<c>0x005f2d00</c>) :
+    /// son octet bas est le nombre d'entités vivantes. Par défaut, un appel.
+    /// </summary>
+    internal static Tentative Rencontre = (rencontre, poolScene) => rencontre();
+
+    /// <summary>
+    /// Couture LP-007 — la première garde de <c>TrySpawnRandomEncounter</c> : le minuteur court.
+    /// Par défaut, la condition d'origine.
+    /// </summary>
+    internal static Func<bool, bool> RencontreEnAttente = attente => attente;
+
+    /// <summary>
+    /// Couture LP-007 — la garde « une entité de scène vit encore » de
+    /// <c>TrySpawnRandomEncounter</c>. Par défaut, la condition d'origine.
+    /// </summary>
+    internal static Func<bool, bool> RencontreBloquee = bloquee => bloquee;
+
+    /// <summary>
+    /// Couture LP-007 — les deux rechargements du minuteur de rencontre (l'entrée de sous-zone, et
+    /// chaque entité de scène vivante qui le trouve à zéro). Reçoit le délai tiré par le jeu, rend
+    /// celui à poser ; par défaut, le même.
+    /// </summary>
+    internal static Func<int, int> DelaiRencontre = delai => delai;
+
     static Coutures()
     {
         try
@@ -121,6 +150,7 @@ internal static unsafe class Coutures
             VerrouParAttaquant.Installer();
             RamassageAuto.Installer();
             DeplacementEnIncantation.Installer();
+            Rencontres.Installer();
             TraceCombat.Installer();                 // en dernier : il observe les décisions des tweaks
         }
         catch (Exception ex)
@@ -136,6 +166,10 @@ internal static unsafe class Coutures
             ImageSuivante = () => { };
             ButinAtteint = (membre, touche, poolButin) => touche;
             VitesseEnIncantation = (membre, vitesse) => 0;
+            Rencontre = (rencontre, poolScene) => rencontre();
+            RencontreEnAttente = attente => attente;
+            RencontreBloquee = bloquee => bloquee;
+            DelaiRencontre = delai => delai;
         }
     }
 }

@@ -1722,7 +1722,7 @@ public static unsafe partial class Blaze
 
         int roll = CrtRand();                       // Ghidra: FUN_00547140
         *(uint*)Mem.Arena(0x005e9ae8) = 0;
-        s_Unknown_00564540 = (roll % 6 + 6) * 0x14;
+        s_Unknown_00564540 = LegacyPlus.Coutures.DelaiRencontre((roll % 6 + 6) * 0x14);   // Couture legacy ++ (LP-007)
 
         SpawnSubAreaEntities(sheet[6]);             // Ghidra: FUN_005350b0
 

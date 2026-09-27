@@ -864,7 +864,7 @@ public static unsafe partial class Blaze
             {
                 if (s_Unknown_00564540 == 0)
                 {
-                    s_Unknown_00564540 = (CrtRand() % 6 + 10) * 0x14;
+                    s_Unknown_00564540 = LegacyPlus.Coutures.DelaiRencontre((CrtRand() % 6 + 10) * 0x14);   // Couture legacy ++ (LP-007)
                 }
 
                 if (*(ushort*)(record + 0x96) != 0)

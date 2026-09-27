@@ -20,6 +20,9 @@ Le fichier à côté de l'exécutable où le joueur active les **tweaks** (regis
 | `[Difficulte] DegatsMonstres` | multiplicateur, 0.1 à 10 | 1 | dégâts des coups (mêlée et sorts) reçus par un membre du groupe | LP-001 |
 | `[Magie] ScalingMagique` | 0 à 5 | 0 | montant des sorts **du groupe** × (1 + valeur × MAG / 100) ; 1 conseillé | LP-003 |
 | `[Magie] DeplacementEnIncantation` | 0 à 1 | 0 | part de la vitesse de marche gardée pendant une incantation ; 0.5 conseillé ; le lanceur garde sa pose et glisse | LP-006 |
+| `[Rencontres] Frequence` | 0.1 à 10 | 1 | cadence des rencontres aléatoires ; chaque délai est divisé d'autant | LP-007 |
+| `[Rencontres] MonstresMax` | 0 à 12 | 0 | 0 : tout tuer avant la rencontre suivante ; N : une rencontre peut arriver en plein combat tant que moins de N entités de scène vivent | LP-007 |
+| `[Rencontres] Formations` | 1 à 4 | 1 | formations par rencontre, chacune tirée parmi les huit de la sous-zone et placée à part ; jamais au-delà de 12 monstres vivants | LP-007 |
 | `[Butin] RamassageAuto` | `oui`, `non` | `non` | `oui` : pièces et cristaux d'expérience ramassés une fois posés, sans marcher dessus ; pièces à tour de rôle entre les joueurs debout ; jamais les coffres | LP-005 |
 | `[Combat] InvulnerabiliteEnnemis` | `oui`, `non` | `oui` | `non` : un ennemi qui clignote ne refuse plus que l'attaque qui l'a touché, pas les autres | LP-004 |
 

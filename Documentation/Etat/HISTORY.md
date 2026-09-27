@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- fix : LP-007 — trop de monstres faisait se dégrader la carte ; le tweak ne fait plus rien naître au-delà de 12 entités vivantes (`MonstresMax` borné à 12)
+- doc : le moteur de 1998 a un budget de 2 500 primitives par image (`s_Unknown_005e9818`, posé par `FrameBegin`) ; épuisé, il ne dessine plus rien — préconisation pour le relever notée dans `Documentation/LegacyPlus/legacy.md`
+- feat : LP-007 — les rencontres aléatoires réglables (`[Rencontres] Frequence`, `MonstresMax`, `Formations`) : délai divisé, rencontres possibles en plein combat sous un plafond, plusieurs formations par rencontre ; tout passe par le tirage et le placement d'origine ; cinq lignes dans le legacy, à tester en jeu
+- doc : une rencontre aléatoire n'arrive que si AUCUNE entité de scène ne vit (l'octet bas du pool `0x005f2d00`) — chaque monstre vivant recharge le minuteur ; la table des monstres compte 32 emplacements, les formations du CD 1 à 11 monstres
+- doc : la vitesse des monstres est abandonnée comme tweak, à la demande de Vincent
 - feat : LP-006 — se déplacer en lançant un sort (`[Magie] DeplacementEnIncantation`, 0.5 = mi-vitesse) : la croix calculait déjà la vitesse pendant l'incantation, le tweak en garde une part au lieu du zéro d'origine ; une ligne dans le legacy, à tester en jeu
 - doc : LP-005 validé en jeu par Vincent, partage des pièces à quatre compris
 - fix : LP-005 — le joueur 1 ramassait toutes les pièces (le « tueur » `+9` n'est pas fiable) ; elles se partagent maintenant à tour de rôle entre les membres debout, de 1 à 4

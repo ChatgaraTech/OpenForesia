@@ -573,7 +573,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void TrySpawnRandomEncounter()
     {
-        if (s_Unknown_00564540 != 0)
+        if (LegacyPlus.Coutures.RencontreEnAttente(s_Unknown_00564540 != 0))   // Couture legacy ++ (LP-007)
         {
             s_Unknown_00564540--;
             return;
@@ -581,7 +581,7 @@ public static unsafe partial class Blaze
 
         if (s_Unknown_005de544 == s_PartySize_005e9020) return;
         if (*(sbyte*)(s_Unknown_005f2ce0 + 0x10) == -1) return;
-        if (*Mem.Entity(0x005f2d00) != 0) return;
+        if (LegacyPlus.Coutures.RencontreBloquee(*Mem.Entity(0x005f2d00) != 0)) return;   // Couture legacy ++ (LP-007)
 
         int member = CrtRand() % s_PartySize_005e9020;
         uint* slot = (uint*)(Inp.s_SlotFlags_005e93c0 + member * 0x9c);

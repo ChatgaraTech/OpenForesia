@@ -35,6 +35,15 @@ internal static class ReglagesLegacyPlus
     /// <summary>`[Magie] DeplacementEnIncantation` — part de la vitesse de marche gardée pendant une incantation, en centièmes ; 0 = jeu d'origine (LP-006).</summary>
     internal static int DeplacementEnIncantation { get; private set; } = 0;
 
+    /// <summary>`[Rencontres] Frequence` — cadence des rencontres aléatoires, en centièmes ; le délai est divisé d'autant (LP-007).</summary>
+    internal static int FrequenceRencontres { get; private set; } = 100;
+
+    /// <summary>`[Rencontres] MonstresMax` — 0 : il faut tout tuer avant la rencontre suivante ; N : une rencontre peut arriver tant que moins de N entités vivent (LP-007).</summary>
+    internal static int MonstresMax { get; private set; } = 0;
+
+    /// <summary>`[Rencontres] Formations` — formations qu'une rencontre fait naître (LP-007).</summary>
+    internal static int FormationsParRencontre { get; private set; } = 1;
+
     /// <summary>`[Butin] RamassageAuto` — `oui` : pièces et cristaux d'expérience ramassés une fois posés, sans marcher dessus (LP-005).</summary>
     internal static bool RamassageAuto { get; private set; } = false;
 
@@ -84,7 +93,8 @@ internal static class ReglagesLegacyPlus
         Console.Error.WriteLine(
             $"[LEGACY++] {FileName} lu — PvMonstres=x{Ecrire(PvMonstres)}, DegatsMonstres=x{Ecrire(DegatsMonstres)}, " +
             $"ScalingMagique={Ecrire(ScalingMagique)}, InvulnerabiliteEnnemis={(InvulnerabiliteEnnemis ? "oui" : "non")}, " +
-            $"RamassageAuto={(RamassageAuto ? "oui" : "non")}, DeplacementEnIncantation={Ecrire(DeplacementEnIncantation)}");
+            $"RamassageAuto={(RamassageAuto ? "oui" : "non")}, DeplacementEnIncantation={Ecrire(DeplacementEnIncantation)}, " +
+            $"Rencontres : Frequence=x{Ecrire(FrequenceRencontres)}, MonstresMax={MonstresMax}, Formations={FormationsParRencontre}");
     }
 
     private static string Ecrire(int centiemes) =>
@@ -123,6 +133,21 @@ internal static class ReglagesLegacyPlus
             if (LireMultiplicateur(value, 0, 100, out centiemes)) DeplacementEnIncantation = centiemes;
             else Refuser(section, key, value, "de 0 (jeu d'origine) à 1 (vitesse pleine)");
         }
+        else if (Est("Rencontres", "Frequence"))
+        {
+            if (LireMultiplicateur(value, 10, 1000, out centiemes)) FrequenceRencontres = centiemes;
+            else Refuser(section, key, value, "un multiplicateur de 0.1 à 10, 1 = jeu d'origine");
+        }
+        else if (Est("Rencontres", "MonstresMax"))
+        {
+            if (LireEntier(value, 0, Rencontres.LimiteRendu, out int n)) MonstresMax = n;
+            else Refuser(section, key, value, $"de 0 (jeu d'origine) à {Rencontres.LimiteRendu}");
+        }
+        else if (Est("Rencontres", "Formations"))
+        {
+            if (LireEntier(value, 1, 4, out int n)) FormationsParRencontre = n;
+            else Refuser(section, key, value, "de 1 (jeu d'origine) à 4");
+        }
         else if (Est("Butin", "RamassageAuto"))
         {
             if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) RamassageAuto = true;
@@ -157,6 +182,11 @@ internal static class ReglagesLegacyPlus
         centiemes = (int)c;
         return true;
     }
+
+    /// <summary>Un entier de <paramref name="min"/> à <paramref name="max"/>.</summary>
+    private static bool LireEntier(string value, int min, int max, out int n) =>
+        int.TryParse(value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out n)
+        && n >= min && n <= max;
 
     private static void Refuser(string section, string key, string value, string attendu) =>
         Console.Error.WriteLine(

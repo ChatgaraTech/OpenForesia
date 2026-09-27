@@ -68,6 +68,7 @@ en supprimant son fichier, sans toucher au legacy. Voir `src/LegacyPlus/LISEZMOI
 | `VictimeExclue`, `VictimeProtegee`, `CoupPorte` | le filtre d'état (`0x40`, second verrou), le test du verrou `+0x96` et la victime trouvée, dans `SweepSceneEntitiesForMeleeHit_00519940` (`Physics/TriggerVolumes.cs`) et `_00519AF0` (`Combat/Projectiles.cs`) | LP-004 |
 | `VitesseEnIncantation` | le zéro de vitesse au sol des postures d'incantation, dans `ApplyGroundMotion_0051A020` (`Spells/SpellCasting.cs`) | LP-006 |
 | `ButinAtteint` | l'entité que la collision désigne, avant le ramassage, dans `Tick/PartyMemberStep.cs` | LP-005 |
+| `Rencontre`, `RencontreEnAttente`, `RencontreBloquee`, `DelaiRencontre` | l'appel de `TrySpawnRandomEncounter` (`Tick/WorldMapTick.cs`), ses deux gardes « minuteur » et « entité vivante » (`Ai/Forest/Goblin.cs`), les deux rechargements du minuteur (`Tick/WorldSimulationStep.cs`, `WorldMap.cs`) | LP-007 |
 | `ImageSuivante` | en tête du pas de simulation, dans la boucle par image de `RunWorldMapTick` (`Tick/WorldMapTick.cs`) — pas à l'entrée de la fonction, qui ne tourne qu'une fois par zone | LP-004 |
 
 ---

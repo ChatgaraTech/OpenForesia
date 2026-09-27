@@ -303,7 +303,7 @@ public static unsafe partial class Blaze
 
                         if ((Mem.s_WorldFlags_005de02c & 0x10) == 0)
                         {
-                            TrySpawnRandomEncounter();                  // FUN_0050ed70
+                            LegacyPlus.Coutures.Rencontre(TrySpawnRandomEncounter, Mem.Entity(0x005f2d00));   // FUN_0050ed70 — Couture legacy ++ (LP-007)
                         }
 
                         TickEffectSlots_005e9b60();                     // FUN_0050f0d0
