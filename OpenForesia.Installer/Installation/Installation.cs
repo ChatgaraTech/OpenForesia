@@ -129,6 +129,7 @@ internal static class Installation
             DeposerReglage(ReglagesAffichage, dossier, journal);
             DeposerReglage(ReglagesJeu, dossier, journal);
             DeposerReglage(ReglagesTweaks, dossier, journal);
+            DeposerReglage(ReglagesBoutique, dossier, journal);
 
             // 3. La desinstallation : Uninstall.exe (une copie de cet installeur). Ce qu'une
             //    installation anterieure a laisse sous d'autres noms — le script PowerShell, puis
@@ -172,11 +173,13 @@ internal static class Installation
     internal const string ReglagesAffichage = "Affichage.ini";
     internal const string ReglagesJeu = "OpenForesia.cfg";
     internal const string ReglagesTweaks = "LegacyPlus.ini";
+    internal const string ReglagesBoutique = "Boutique.ini";
 
     /// <summary>
     /// Depose un fichier de reglages par defaut s'il n'y en a pas deja un : une reinstallation ne
-    /// doit pas effacer les reglages du joueur. Trois fichiers, embarques depuis `Reglages/` — un
+    /// doit pas effacer les reglages du joueur. Quatre fichiers, embarques depuis `Reglages/` — un
     /// seul exemplaire chacun :
+    /// - `Boutique.ini`, la boutique de l'auberge (LP-008), desactivee, et son catalogue ;
     /// - `LegacyPlus.ini`, les tweaks de gameplay, tous inactifs ; lu sans jamais etre ecrit
     ///   (openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty) ;
     /// - `Affichage.ini`, commente, que le jeu lit sans jamais l'ecrire

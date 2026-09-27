@@ -46,6 +46,12 @@
             <LogicalName>LegacyPlus.ini</LogicalName>
         </EmbeddedResource>
 
+        <!-- La boutique de l'auberge (LP-008), desactivee, et son catalogue ; generee par
+             OpenForesia.Tools/generer-boutique.mjs, retouchee a la main. -->
+        <EmbeddedResource Include="Reglages\Boutique.ini">
+            <LogicalName>Boutique.ini</LogicalName>
+        </EmbeddedResource>
+
         <!-- Le jeu publie, zippe par publish-release.ps1. Absent en developpement : l'installeur
              prend alors les fichiers du jeu dans un dossier donne par l'option jeu. -->
         <EmbeddedResource Include="Jeu\jeu.zip" Condition="Exists('Jeu\jeu.zip')">

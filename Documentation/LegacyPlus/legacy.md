@@ -29,8 +29,56 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-005 | Ramassage automatique des pièces et des cristaux d'expérience (pas les coffres) | `[Butin] RamassageAuto` | `ButinAtteint`, l'entité que la collision désigne dans `PartyMemberStep.cs` | validé en jeu (2026-09-27) — `src/LegacyPlus/RamassageAuto.cs` |
 | LP-006 | Se déplacer en lançant un sort, à une part de la vitesse de marche | `[Magie] DeplacementEnIncantation` | `VitesseEnIncantation`, le zéro de vitesse des postures d'incantation dans `ApplyGroundMotion_0051A020` | validé en jeu (2026-09-27) — `src/LegacyPlus/DeplacementEnIncantation.cs` |
 | LP-004 | Frames d'invulnérabilité des ennemis tenues par attaquant | `[Combat] InvulnerabiliteEnnemis` | `VictimeExclue` (bit `0x40`), `VictimeProtegee` (`+0x96`), `CoupPorte` dans les deux balayages (`FUN_00519940`, `FUN_00519af0`), `ImageSuivante` en tête du pas de simulation (boucle par image de `RunWorldMapTick`) | validé en jeu (2026-09-27) — `src/LegacyPlus/VerrouParAttaquant.cs` |
+| LP-008 | La boutique de l'auberge : l'armoire de la carte 82 vend le catalogue de `Boutique.ini` | `Boutique.ini` : `[Boutique] Actif`, `[Catalogue]` | `PasDuMembre` (l'ouverture), `DessinSurImpression` (l'écran) | validé en jeu (2026-09-27) — `src/LegacyPlus/Boutique*.cs`, `CatalogueObjets.cs` |
 | — | Vitesse des monstres | — | — | **abandonné** par Vincent le 2026-09-27 — les vitesses sont écrites en dur dans chacun des 166 gestionnaires de comportement |
 | LP-007 | Rencontres aléatoires : cadence, chevauchement pendant un combat, plusieurs formations | `[Rencontres] Frequence`, `MonstresMax`, `Formations` | `Rencontre` (l'appel de `TrySpawnRandomEncounter`), `RencontreEnAttente` et `RencontreBloquee` (ses deux gardes), `DelaiRencontre` (les deux rechargements du minuteur) | validé en jeu (2026-09-27) — `src/LegacyPlus/Rencontres.cs` |
+
+## LP-008, la boutique de l'auberge (validée en jeu le 2026-09-27)
+
+Demande de Vincent (2026-09-27) : une boutique dans l'auberge — quête 0, carte 82 « Le coffre », à
+gauche du coffre, près de l'armoire — qui vend des équipements. Catalogue et prix :
+`Boutique.ini` (modèle : `OpenForesia.Installer/Reglages/Boutique.ini`, généré par
+`node OpenForesia.Tools/generer-boutique.mjs`, puis retouché à la main).
+
+**Décidé** : le joueur qui ouvre la boutique paie avec sa bourse (`+0x26c`) et reçoit l'objet ;
+l'objet est remis comme par un coffre (`GrantChestContents_00530F20`) ; **pas de personnage** — au vu
+de l'étape 1, le point de vente est **l'armoire** de la carte 82 : on s'en approche et on appuie sur
+le bouton d'action.
+
+**Étape 1, ce qui est établi :**
+- **L'or ne sert à rien dans le jeu de 1998** : la bourse se remplit et s'affiche, rien ne la dépense.
+- **Aucun prix dans les données** : les fiches d'objets n'en portent pas. Le catalogue les déduit de
+  la puissance (ATT `+0x30`, DEF `+0x32`, bonus `+0x20`), de la zone d'apparition et de l'or
+  gagné par monstre dans cette zone (`(rang + 9) / 10` par pièce, 1,5 pièce en moyenne).
+  272 équipements obtenables sont en vente ; 116 introuvables en jeu sont désactivés.
+- **Les modèles 3D sont chargés par carte** : `LoadWorldMapArea` charge le répertoire de la quête,
+  puis `LoadWorldMapSubArea` recharge par-dessus, **pour chaque carte**, son bloc propre — espèces
+  (`+0x4c`), modèles (`+0x98`), maillages, **textures** décodées dans des emplacements numérotés
+  depuis 0. La carte 82 n'a **aucun** personnage ; le PNJ de l'auberge (modèle « ｵﾔ… », 1 PV,
+  sous-type 0 : `EntityHandler_00486EE0`, qui lance son script quand un membre le voit) vit dans
+  les blocs des cartes **81, 83, 84 et 85**. L'amener en 82 demande de charger le bloc d'une autre
+  carte, et de placer ses textures dans des emplacements libres sans écraser celles de la 82.
+- **Le numéro d'objet n'est pas global** : chaque carte a son catalogue d'une quarantaine d'objets,
+  et `GrantChestContents` reçoit un indice dans **celui de la carte courante**. Vendre n'importe
+  quel objet demandera de remettre la **fiche brute** (colonne `octets` d'`objets.csv`), comme
+  le fait déjà l'éditeur de sauvegarde.
+- **Position** : `[Diagnostic] TracePosition = oui` écrit la position du joueur 1 à chaque arrêt
+  d'une seconde (`legacyplus-position.log`). Le coffre de la carte 82 est vers x = −556, z = 1000.
+- **L'armoire** (relevé de Vincent, 2026-09-27) : debout devant elle, face à elle, le joueur 1 est
+  à x = −1285, y = 400, z = 900, cap 3072 (il regarde vers les x décroissants). Dans cette direction,
+  à 87 unités, `decor.csv` place un décor ordinaire (entrée 7 de la carte 82, gestionnaire
+  `0x004734b0`) à **(−1372, 400, 900)** : l'armoire. Déclenchement proposé : à moins de ~120 unités
+  de ce point, face à lui à 45° près, bouton d'action.
+- **À vérifier à l'étape 2** : le relevé, accroché à la couture `ButinAtteint`, n'a écrit aucune ligne
+  périodique ; cette partie du pas d'un membre n'est peut-être pas atteinte à chaque image. La
+  détection de l'armoire devra s'accrocher à un point atteint à coup sûr.
+
+**Étape 2, écrite (à tester)** — change `openspec/changes/archive/2026-09-27-add-legacy-plus-inn-shop` : une couture
+`PasDuMembre` à l'entrée de `TickPartyMember` ; `Boutique.cs` ouvre une boîte du jeu (`BindMenuLabels`,
+mise en scène d'un coffre, rappel `RestorePartyReactions_00530ED0`) quand un membre debout, à moins de
+120 unités de l'armoire et face à elle à 45° près, appuie sur son bouton d'action ; l'appui est
+consommé. Le programme de texte reprend les codes d'`AnnounceItem` (`labels + 0x2a8` / `+ 0x2ac`), et
+ses octets sont écrits dans `legacyplus-boutique.log` pour vérification.
 
 ## Préconisations en attente
 

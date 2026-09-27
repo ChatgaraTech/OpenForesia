@@ -49,6 +49,7 @@ d'invulnérabilité **du groupe** ne changent pas.
 | clé | valeurs | défaut | effet |
 |---|---|---|---|
 | `[Diagnostic] TraceCombat` | `oui`, `non` | `non` | journalise chaque coup de mêlée du groupe dans `legacyplus-combat.log`, à côté de l'exe |
+| `[Diagnostic] TracePosition` | `oui`, `non` | `non` | écrit la position du joueur 1 (unités de `formations.csv`) et son cap à chaque arrêt d'une seconde, dans `legacyplus-position.log` |
 
 Pour chaque ennemi que le coup examine : `ÉCARTÉ` (bits d'état), `REFUSÉ` (même geste, ou verrou
 d'origine), `TOUCHÉ`, ou `RATÉ` (hors de portée, ou paré ; le journal dit si l'ennemi porte la garde

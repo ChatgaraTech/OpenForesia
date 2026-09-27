@@ -6,6 +6,23 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- doc : la boutique de l'auberge (LP-008) archivée ; spec `gameplay-inn-shop` créée, `game-data-install` gagne le dépôt de `Boutique.ini`
+- feat : l'installeur dépose `Boutique.ini` (boutique désactivée, catalogue), sans écraser celui du joueur
+- doc : LP-008, étape 3c validée en jeu par Vincent — achat, inventaire, icône, sauvegarde
+- feat : LP-008, étape 3c — l'achat réel : la bourse est débitée, l'objet rangé dans l'inventaire par les règles du coffre (empilement, dernier emplacement libre, inventaire plein refusé), son icône envoyée à la place du personnage en mémoire vidéo, identifié ; à tester en jeu
+- doc : LP-008, étape 3b validée en jeu par Vincent
+- feat : LP-008 — le pied de page de la boutique ne garde que « Page x/y », à la demande de Vincent
+- feat : LP-008, étape 3b — l'index des objets (fiche et vignette) lu dans `FrenchSYSTEM.INI` et `BLAZE.ALL` au premier accès à la boutique, par le lecteur de l'outil `bestiaire` ; l'écran montre l'icône de l'objet sous le curseur, agrandie deux fois, à tester en jeu
+- doc : LP-008, étape 3a validée en jeu par Vincent
+- feat : LP-008, étape 3a — l'écran de la boutique : 10 objets par page, curseur, prix, bourse de l'acheteur, dessinés avec la police 8×8 du jeu sur un fond semi-transparent ; la manette est lue pendant le gel ; l'achat est vérifié et journalisé seulement ; une couture `DessinSurImpression` dans le legacy, à tester en jeu
+- doc : LP-008, étape 2 validée en jeu par Vincent
+- fix : LP-008 — ouvrir la boutique plantait le rendu du texte : le code `0x0b` (appel de sous-libellé) porte trois octets d'opérande, et le préfixe était coupé au premier octet imprimable, en plein opérande ; seule l'instruction `0b 01 a0 00` est maintenant reprise
+- feat : LP-008, étape 2 — l'armoire de la carte 82 ouvre une boîte du jeu (« Bienvenue à la boutique de l'auberge ! ») quand un joueur face à elle appuie sur son bouton d'action ; `Boutique.ini` lu (`[Boutique] Actif`, `[Catalogue]`) ; une ligne dans le legacy, à tester en jeu
+- doc : LP-008 — l'armoire de la carte 82 est le décor en (−1372, 400, 900), relevé en jeu par `TracePosition` ; le relevé tolère désormais l'oscillation d'un personnage immobile
+- doc : LP-008 — décision de Vincent : pas de PNJ, l'armoire de la carte 82 est le point de vente
+- feat : `Boutique.ini` — le catalogue du futur marchand de l'auberge (LP-008), 272 équipements à prix déduits de leur puissance, de leur zone et de l'or gagné par monstre ; généré par `OpenForesia.Tools/generer-boutique.mjs`
+- feat : `[Diagnostic] TracePosition = oui` — la position du joueur 1 à chaque arrêt, pour placer le marchand
+- doc : LP-008, étape 1 — l'or ne sert à rien en 1998 ; les modèles et textures sont chargés par carte, et la carte 82 n'a aucun personnage (le PNJ de l'auberge vit en 81, 83, 84, 85) ; le numéro d'objet est propre à chaque carte
 - doc : les six changes legacy ++ (LP-001 à LP-007) validés en jeu par Vincent et archivés ; sept specs `gameplay-*` créées, et `game-data-install` gagne le dépôt de `LegacyPlus.ini`
 - fix : LP-007 — trop de monstres faisait se dégrader la carte ; le tweak ne fait plus rien naître au-delà de 12 entités vivantes (`MonstresMax` borné à 12)
 - doc : le moteur de 1998 a un budget de 2 500 primitives par image (`s_Unknown_005e9818`, posé par `FrameBegin`) ; épuisé, il ne dessine plus rien — préconisation pour le relever notée dans `Documentation/LegacyPlus/legacy.md`

@@ -140,6 +140,27 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Func<int, int> DelaiRencontre = delai => delai;
 
+    /// <summary>Le pas d'un membre du groupe, à son entrée : le membre, sa manette, son bloc de personnage, le descripteur de la boîte du monde.</summary>
+    internal delegate void Pas(uint* membre, byte* pad, byte* perChar, byte* descripteur);
+
+    /// <summary>
+    /// Couture LP-008 — à l'entrée de <c>TickPartyMember</c> (Ghidra: FUN_0050bf20), après la garde
+    /// « membre inactif » : chaque membre actif, à chaque image de simulation. <c>pad + 2</c> porte
+    /// les boutons pressés à cette image ; un tweak peut y effacer un bit pour consommer l'appui.
+    /// <c>descripteur</c> est <c>s_WorldMapDescriptor_005633b0</c>. Par défaut, rien.
+    /// </summary>
+    internal static Pas PasDuMembre = (membre, pad, perChar, descripteur) => { };
+
+    /// <summary>Une sur-impression dessinée par un tweak : l'ordering table et le curseur de primitives, rendu avancé.</summary>
+    internal delegate uint* Dessin(uint* otBase, uint* curseur);
+
+    /// <summary>
+    /// Couture LP-008 — dans <c>DrawWorldMapFrame</c> (<c>Tick/WorldMapHud.cs</c>), juste après le
+    /// panneau d'interface : un tweak y ajoute ses primitives à l'ordering table de l'image. Appelée à
+    /// chaque image dessinée, gel compris. Par défaut, le curseur tel quel.
+    /// </summary>
+    internal static Dessin DessinSurImpression = (otBase, curseur) => curseur;
+
     static Coutures()
     {
         try
@@ -150,8 +171,10 @@ internal static unsafe class Coutures
             VerrouParAttaquant.Installer();
             RamassageAuto.Installer();
             DeplacementEnIncantation.Installer();
+            Boutique.Installer();
             Rencontres.Installer();
-            TraceCombat.Installer();                 // en dernier : il observe les décisions des tweaks
+            TraceCombat.Installer();
+            TracePosition.Installer();                 // en dernier : il observe les décisions des tweaks
         }
         catch (Exception ex)
         {
@@ -166,6 +189,8 @@ internal static unsafe class Coutures
             ImageSuivante = () => { };
             ButinAtteint = (membre, touche, poolButin) => touche;
             VitesseEnIncantation = (membre, vitesse) => 0;
+            PasDuMembre = (membre, pad, perChar, descripteur) => { };
+            DessinSurImpression = (otBase, curseur) => curseur;
             Rencontre = (rencontre, poolScene) => rencontre();
             RencontreEnAttente = attente => attente;
             RencontreBloquee = bloquee => bloquee;

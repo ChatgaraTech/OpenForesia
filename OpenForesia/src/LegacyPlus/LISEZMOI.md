@@ -29,7 +29,12 @@ src/LegacyPlus/
    RamassageAuto.cs         LP-005
    DeplacementEnIncantation.cs  LP-006
    Rencontres.cs            LP-007
+   Boutique.cs              LP-008 (en cours) — l'ouverture de la boutique, à l'armoire ; ReglagesBoutique.cs lit Boutique.ini
+   BoutiqueEcran.cs         LP-008 — l'écran de la boutique (liste, pages, bourse, aperçu de l'icône)
+   CatalogueObjets.cs       LP-008 — l'index nom → fiche et vignette, lu dans les fichiers du jeu
+   BoutiqueAchat.cs         LP-008 — l'achat : bourse, emplacement, rangement, icône
    TraceCombat.cs           diagnostic, pas un tweak : le journal des coups de mêlée
+   TracePosition.cs         diagnostic : la position du joueur 1 à chaque arrêt
 ```
 
 Un tweak est une classe statique avec une méthode `Installer()`. Si son option est active, il

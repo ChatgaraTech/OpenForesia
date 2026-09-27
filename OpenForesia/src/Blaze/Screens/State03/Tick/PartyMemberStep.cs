@@ -137,6 +137,8 @@ public static unsafe partial class Blaze
 
         if ((*slot & 0x4000008) != 0) return;
 
+        LegacyPlus.Coutures.PasDuMembre(slot, pad, perChar, s_WorldMapDescriptor_005633b0);   // Couture legacy ++ (LP-008)
+
         if (perChar[0x207] != 0) perChar[0x207]--;
 
         // La cible tenue a +0x74 est oubliee des qu'elle cesse d'etre active.

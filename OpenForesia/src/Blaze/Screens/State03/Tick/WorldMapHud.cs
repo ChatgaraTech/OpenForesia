@@ -396,6 +396,8 @@ public static unsafe partial class Blaze
         s_Unknown_005de158 = 0;
         s_Unknown_005de15c = 0;
 
+        cursor = LegacyPlus.Coutures.DessinSurImpression(otBase, cursor);   // Couture legacy ++ (LP-008)
+
         if (debugLatch == 0 && s_DebugOverlayEnabled_005de020 != 0)
         {
             // Le journal MONITOR (0x0051815a..0x00518473) : les bits qui ont bouge depuis la

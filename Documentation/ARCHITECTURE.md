@@ -69,6 +69,8 @@ en supprimant son fichier, sans toucher au legacy. Voir `src/LegacyPlus/LISEZMOI
 | `VitesseEnIncantation` | le zéro de vitesse au sol des postures d'incantation, dans `ApplyGroundMotion_0051A020` (`Spells/SpellCasting.cs`) | LP-006 |
 | `ButinAtteint` | l'entité que la collision désigne, avant le ramassage, dans `Tick/PartyMemberStep.cs` | LP-005 |
 | `Rencontre`, `RencontreEnAttente`, `RencontreBloquee`, `DelaiRencontre` | l'appel de `TrySpawnRandomEncounter` (`Tick/WorldMapTick.cs`), ses deux gardes « minuteur » et « entité vivante » (`Ai/Forest/Goblin.cs`), les deux rechargements du minuteur (`Tick/WorldSimulationStep.cs`, `WorldMap.cs`) | LP-007 |
+| `DessinSurImpression` | `DrawWorldMapFrame`, juste après le panneau d'interface (`Tick/WorldMapHud.cs`) | LP-008 |
+| `PasDuMembre` | l'entrée de `TickPartyMember`, après la garde « membre inactif » (`Tick/PartyMemberStep.cs`) | LP-008 |
 | `ImageSuivante` | en tête du pas de simulation, dans la boucle par image de `RunWorldMapTick` (`Tick/WorldMapTick.cs`) — pas à l'entrée de la fonction, qui ne tourne qu'une fois par zone | LP-004 |
 
 ---
