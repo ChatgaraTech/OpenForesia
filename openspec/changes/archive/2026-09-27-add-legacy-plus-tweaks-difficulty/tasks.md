@@ -34,8 +34,8 @@
 
 ## 6. La vérification en jeu (Vincent)
 
-- [ ] 6.1 Sans `LegacyPlus.ini`, puis avec toutes les clés à 1 : un même combat donne les mêmes dégâts et les mêmes PV qu'avant le change
-- [ ] 6.2 `PvMonstres = 2` : un monstre met deux fois plus de coups à tomber ; un décor cassable et un boss se comportent normalement
-- [ ] 6.3 `DegatsMonstres = 2` : les chiffres de dégâts reçus par le groupe doublent ; ceux infligés aux monstres ne changent pas
-- [ ] 6.4 Une valeur invalide (`PvMonstres = beaucoup`) : le jeu démarre, la ligne de journal apparaît, l'autre clé s'applique
-- [ ] 6.5 Refaire le Setup (`publish-release.ps1`) et vérifier qu'une installation neuve dépose `LegacyPlus.ini`, et qu'une réinstallation garde celui du joueur
+- [x] 6.1 Sans `LegacyPlus.ini`, puis avec toutes les clés à 1 : un même combat donne les mêmes dégâts et les mêmes PV qu'avant le change
+- [x] 6.2 `PvMonstres = 2` : un monstre met deux fois plus de coups à tomber ; un décor cassable et un boss se comportent normalement
+- [x] 6.3 `DegatsMonstres = 2` : les chiffres de dégâts reçus par le groupe doublent ; ceux infligés aux monstres ne changent pas
+- [x] 6.4 Une valeur invalide (`PvMonstres = beaucoup`) : le jeu démarre, la ligne de journal apparaît, l'autre clé s'applique
+- [x] 6.5 Refaire le Setup (`publish-release.ps1`) et vérifier qu'une installation neuve dépose `LegacyPlus.ini`, et qu'une réinstallation garde celui du joueur

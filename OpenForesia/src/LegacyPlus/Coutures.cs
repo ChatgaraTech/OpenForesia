@@ -1,7 +1,7 @@
 // =====================================================================
 // Les coutures — les seuls points par lesquels le code transcrit s'ouvre aux tweaks.
 //
-// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-tweaks-difficulty, design D1-D2).
+// Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty, design D1-D2).
 // Le code de `src/Blaze/` appelle une couture en une ligne, marquée `// Couture legacy ++ (LP-NNN)`,
 // et ne nomme jamais un tweak. Chaque couture vaut par défaut l'identité : aucun tweak actif, c'est
 // le jeu de 1998.

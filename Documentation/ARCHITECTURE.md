@@ -50,7 +50,7 @@ impossible : une façade s'installe depuis le chemin qu'elle détourne.
 
 ### `src/LegacyPlus/` — les tweaks de gameplay, hors du legacy
 
-Depuis le 2026-09-27 (`openspec/changes/add-legacy-plus-tweaks-difficulty`), un troisième
+Depuis le 2026-09-27 (`openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty`), un troisième
 répertoire porte les **tweaks** : des écarts à l'équilibre du jeu, choisis par le joueur dans
 `LegacyPlus.ini`, tous inactifs par défaut. Registre : `Documentation/LegacyPlus/legacy.md`.
 

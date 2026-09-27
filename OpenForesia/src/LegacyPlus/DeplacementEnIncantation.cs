@@ -1,7 +1,7 @@
 // =====================================================================
 // LP-006 — se déplacer en lançant un sort, à une part de la vitesse de marche.
 //
-// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-move-while-casting).
+// Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-move-while-casting).
 // Dans le jeu de 1998, la croix calcule la vitesse de marche même pendant une incantation, puis
 // `ApplyGroundMotion_0051A020` la remet à zéro : le lanceur est cloué. Ici, il en garde une part.
 // Le lanceur garde sa pose d'incantation : il glisse. La combinaison (boutons d'action) n'est pas

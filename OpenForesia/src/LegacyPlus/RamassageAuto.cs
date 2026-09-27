@@ -1,7 +1,7 @@
 // =====================================================================
 // LP-005 — le ramassage automatique des pièces et des cristaux d'expérience.
 //
-// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-auto-loot).
+// Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-auto-loot).
 // Dans le jeu de 1998, il faut marcher sur le butin. Ici, quand la collision d'un membre ne désigne
 // rien de ramassable, le tweak lui désigne un butin POSÉ au sol ; c'est ensuite le code d'origine
 // (`PartyMemberStep`) qui donne l'expérience partagée ou l'argent, joue le son et rend l'emplacement.

@@ -1,7 +1,7 @@
 // =====================================================================
 // LP-004 — le verrou d'invulnérabilité des ennemis, tenu par attaque.
 //
-// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-enemy-iframes).
+// Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-enemy-iframes).
 // Dans le jeu de 1998, un ennemi touché devient intouchable pour TOUT le monde tant que son verrou
 // court — deux verrous en fait : le compteur `+0x96` et le bit d'état `0x40` (« encaisse un coup »),
 // retombé seulement à la fin du clignotement. À quatre joueurs, trois coups sur quatre se perdent,

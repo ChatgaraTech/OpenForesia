@@ -16,8 +16,8 @@
 
 ## 3. La vérification en jeu (Vincent)
 
-- [ ] 3.1 `Frequence = 2` : après une rencontre nettoyée, la suivante vient deux fois plus vite
-- [ ] 3.2 `MonstresMax = 12` : une rencontre arrive pendant un combat, et plus aucune au-delà de 12 entités
-- [ ] 3.3 `Formations = 2` : une rencontre fait naître deux groupes, chacun à sa place
-- [ ] 3.4 Une salle de boss : le boss naît une fois ; noter si une rencontre aléatoire arrive pendant le combat avec `MonstresMax > 0`
-- [ ] 3.5 Tous les défauts : les rencontres sont celles d'origine
+- [x] 3.1 `Frequence = 2` : après une rencontre nettoyée, la suivante vient deux fois plus vite
+- [x] 3.2 `MonstresMax = 12` : une rencontre arrive pendant un combat, et plus aucune au-delà de 12 entités
+- [x] 3.3 `Formations = 2` : une rencontre fait naître deux groupes, chacun à sa place
+- [x] 3.4 Une salle de boss : le boss naît une fois ; noter si une rencontre aléatoire arrive pendant le combat avec `MonstresMax > 0`
+- [x] 3.5 Tous les défauts : les rencontres sont celles d'origine

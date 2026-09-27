@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-27
 
+- doc : les six changes legacy ++ (LP-001 à LP-007) validés en jeu par Vincent et archivés ; sept specs `gameplay-*` créées, et `game-data-install` gagne le dépôt de `LegacyPlus.ini`
 - fix : LP-007 — trop de monstres faisait se dégrader la carte ; le tweak ne fait plus rien naître au-delà de 12 entités vivantes (`MonstresMax` borné à 12)
 - doc : le moteur de 1998 a un budget de 2 500 primitives par image (`s_Unknown_005e9818`, posé par `FrameBegin`) ; épuisé, il ne dessine plus rien — préconisation pour le relever notée dans `Documentation/LegacyPlus/legacy.md`
 - feat : LP-007 — les rencontres aléatoires réglables (`[Rencontres] Frequence`, `MonstresMax`, `Formations`) : délai divisé, rencontres possibles en plein combat sous un plafond, plusieurs formations par rencontre ; tout passe par le tirage et le placement d'origine ; cinq lignes dans le legacy, à tester en jeu

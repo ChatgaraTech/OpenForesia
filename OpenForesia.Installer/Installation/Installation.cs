@@ -178,7 +178,7 @@ internal static class Installation
     /// doit pas effacer les reglages du joueur. Trois fichiers, embarques depuis `Reglages/` — un
     /// seul exemplaire chacun :
     /// - `LegacyPlus.ini`, les tweaks de gameplay, tous inactifs ; lu sans jamais etre ecrit
-    ///   (openspec/changes/add-legacy-plus-tweaks-difficulty) ;
+    ///   (openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty) ;
     /// - `Affichage.ini`, commente, que le jeu lit sans jamais l'ecrire
     ///   (openspec/changes/enhance-display-resolution-filtering) ;
     /// - `OpenForesia.cfg`, les options du jeu lui-meme, que la page d'options reecrit — la

@@ -1,7 +1,7 @@
 // =====================================================================
 // LP-007 — les rencontres aléatoires : cadence, chevauchement, nombre de formations.
 //
-// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-encounters).
+// Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-encounters).
 // Dans le jeu de 1998, `TrySpawnRandomEncounter` ne fait naître une formation que si le minuteur est
 // à zéro ET qu'aucune entité de scène ne vit — il faut tout tuer avant la suivante —, puis attend
 // 200 à 300 images. Ici :

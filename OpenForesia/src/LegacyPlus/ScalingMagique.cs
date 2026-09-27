@@ -1,7 +1,7 @@
 // =====================================================================
 // LP-003 — le montant des sorts du groupe monte avec la MAG du lanceur.
 //
-// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-spell-scaling).
+// Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-spell-scaling).
 // Dans le jeu de 1998, un petit sort (diviseur 3 ou 4) ne gagne rien avec le niveau : sa part
 // `MAG / diviseur − DEF` reste nulle contre un monstre de fin de jeu, et seul le montant fixe de la
 // fiche reste. Le tweak multiplie ce montant par `1 + coef × MAG / 100`, en entiers.

@@ -14,6 +14,6 @@
 
 ## 3. La vérification en jeu (Vincent)
 
-- [ ] 3.1 `0.5` : un lanceur avance à mi-vitesse en tapant sa combinaison, et le sort part normalement
-- [ ] 3.2 `0.5` : sans direction tenue, il reste sur place
-- [ ] 3.3 `0` : il est cloué, comme avant
+- [x] 3.1 `0.5` : un lanceur avance à mi-vitesse en tapant sa combinaison, et le sort part normalement
+- [x] 3.2 `0.5` : sans direction tenue, il reste sur place
+- [x] 3.3 `0` : il est cloué, comme avant

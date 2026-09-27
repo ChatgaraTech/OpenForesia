@@ -14,6 +14,6 @@
 
 ## 3. La vérification en jeu (Vincent)
 
-- [ ] 3.1 `ScalingMagique = 0` : les dégâts d'une Balle de feu sont ceux d'avant
-- [ ] 3.2 `ScalingMagique = 1` avec un lanceur de haut niveau : la Balle de feu fait nettement plus ; un monstre lanceur de sorts ne tape pas plus fort
-- [ ] 3.3 Un sort d'état (Zombie, Pardon) garde son comportement
+- [x] 3.1 `ScalingMagique = 0` : les dégâts d'une Balle de feu sont ceux d'avant
+- [x] 3.2 `ScalingMagique = 1` avec un lanceur de haut niveau : la Balle de feu fait nettement plus ; un monstre lanceur de sorts ne tape pas plus fort
+- [x] 3.3 Un sort d'état (Zombie, Pardon) garde son comportement

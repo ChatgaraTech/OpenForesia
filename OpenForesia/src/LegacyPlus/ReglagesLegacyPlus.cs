@@ -1,7 +1,7 @@
 // =====================================================================
 // Les tweaks choisis par le joueur — `LegacyPlus.ini`, à côté de l'exécutable.
 //
-// Hors reconstruction (legacy ++, tweaks LP-NNN, openspec/changes/add-legacy-plus-tweaks-difficulty).
+// Hors reconstruction (legacy ++, tweaks LP-NNN, openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty).
 // Même contrat qu'`Affichage.ini` : lu une fois, jamais écrit ; fichier absent, clé absente ou
 // valeur refusée = la valeur par défaut, une ligne de journal par valeur refusée ; rien ici ne peut
 // empêcher le jeu de démarrer. Tous les défauts rendent le jeu de 1998.

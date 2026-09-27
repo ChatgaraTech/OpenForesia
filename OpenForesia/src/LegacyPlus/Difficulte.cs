@@ -2,7 +2,7 @@
 // LP-001, LP-002 — la difficulté : dégâts et PV des monstres, multipliés (1 = jeu d'origine).
 // Les multiplicateurs arrivent en centièmes (`ReglagesLegacyPlus`) : 100 = ×1, 250 = ×2,5.
 //
-// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-tweaks-difficulty, design D3-D4).
+// Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty, design D3-D4).
 // Ne tire aucun nombre aléatoire. Les bornes [1, 32767] tiennent au type : PV et dégâts sont des
 // `short` signés partout où le jeu les compare, et le jeu ne fait jamais zéro dégât.
 //
