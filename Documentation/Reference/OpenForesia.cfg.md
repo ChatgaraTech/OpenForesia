@@ -27,6 +27,11 @@ d'installation hors de la page de code ANSI aurait abîmé. Donc :
 Le dossier `save\` et les données du jeu (`French\`, `Snd\`, `Music\`) se trouvent au même endroit.
 S'il n'existe pas, sa première écriture (`WritePrivateProfileStringA`) le crée.
 
+**L'installeur en dépose un** (2026-09-27) s'il n'y en a pas, et n'écrase jamais celui du joueur :
+`OpenForesia.Installer/Reglages/OpenForesia.cfg`, embarqué. C'est la référence ci-dessus sauf
+`Resolution=4` et `Size=23` — l'image en 1024x768, `Filter=1` inchangé — et `[D3DDriver]` à `!!`,
+la valeur que le jeu prend quand la clé manque et qu'il remplace par son pilote au premier lancement.
+
 ## Les trois sections
 
 ### `[D3DDriver]`

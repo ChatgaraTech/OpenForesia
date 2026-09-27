@@ -18,6 +18,8 @@ plus bas).
 - L'installeur en dépose un exemplaire commenté s'il n'y en a pas, et ne l'écrase jamais. Le modèle
   est `OpenForesia.Installer/Reglages/Affichage.ini` — un seul exemplaire, embarqué dans l'installeur.
   En développement, le copier à la main dans `OpenForesia\bin\Debug\net10.0\`.
+- **Le modèle déposé ouvre le jeu en `fenetre-sans-bordure`** (2026-09-27), alors que sans fichier
+  le défaut reste `fenetre` : un jeu installé démarre sans cadre, un Debug sans `.ini` avec.
 
 ## Les clés
 

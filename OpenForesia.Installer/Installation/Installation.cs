@@ -125,8 +125,9 @@ internal static class Installation
                 },
                 null, annulation, journal);
 
-            // 2 bis. Les reglages d'affichage par defaut — jamais par-dessus ceux du joueur.
-            DeposerReglagesAffichage(dossier, journal);
+            // 2 bis. Les reglages par defaut — jamais par-dessus ceux du joueur.
+            DeposerReglage(ReglagesAffichage, dossier, journal);
+            DeposerReglage(ReglagesJeu, dossier, journal);
 
             // 3. La desinstallation : Uninstall.exe (une copie de cet installeur). Ce qu'une
             //    installation anterieure a laisse sous d'autres noms — le script PowerShell, puis
@@ -168,20 +169,26 @@ internal static class Installation
     }
 
     internal const string ReglagesAffichage = "Affichage.ini";
+    internal const string ReglagesJeu = "OpenForesia.cfg";
 
     /// <summary>
-    /// Depose `Affichage.ini`, commente, s'il n'y en a pas deja un : le jeu le lit sans jamais
-    /// l'ecrire, et une reinstallation ne doit pas effacer les reglages du joueur
-    /// (openspec/changes/enhance-display-resolution-filtering). Le modele est
-    /// `Reglages/Affichage.ini`, embarque — un seul exemplaire.
+    /// Depose un fichier de reglages par defaut s'il n'y en a pas deja un : une reinstallation ne
+    /// doit pas effacer les reglages du joueur. Deux fichiers, embarques depuis `Reglages/` — un
+    /// seul exemplaire chacun :
+    /// - `Affichage.ini`, commente, que le jeu lit sans jamais l'ecrire
+    ///   (openspec/changes/enhance-display-resolution-filtering) ;
+    /// - `OpenForesia.cfg`, les options du jeu lui-meme, que la page d'options reecrit — la
+    ///   reference de 1998 (`Documentation/Reference/OpenForesia.cfg.default`, `Filter=1` compris)
+    ///   sauf `Resolution=4` et `Size=23` — l'image en 1024x768 — et `[D3DDriver]` a « !! », la
+    ///   valeur que le jeu prend quand la cle manque (il y ecrit son pilote au premier lancement).
     /// </summary>
-    private static void DeposerReglagesAffichage(string dossier, JournalInstallation journal)
+    private static void DeposerReglage(string nom, string dossier, JournalInstallation journal)
     {
-        string cible = Path.Combine(dossier, ReglagesAffichage);
+        string cible = Path.Combine(dossier, nom);
         if (File.Exists(cible)) return;
 
-        using Stream modele = typeof(Installation).Assembly.GetManifestResourceStream(ReglagesAffichage)
-            ?? throw new InvalidOperationException($"{ReglagesAffichage} n'est pas embarque dans l'installeur.");
+        using Stream modele = typeof(Installation).Assembly.GetManifestResourceStream(nom)
+            ?? throw new InvalidOperationException($"{nom} n'est pas embarque dans l'installeur.");
         journal.NoterFichier(cible);
         using var sortie = new FileStream(cible, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         modele.CopyTo(sortie);

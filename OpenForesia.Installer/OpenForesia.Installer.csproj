@@ -31,9 +31,14 @@
         </EmbeddedResource>
 
         <!-- Les reglages d'affichage par defaut, commentes, deposes a l'installation s'il n'y en a
-             pas deja (Installation.DeposerReglagesAffichage). -->
+             pas deja (Installation.DeposerReglage). -->
         <EmbeddedResource Include="Reglages\Affichage.ini">
             <LogicalName>Affichage.ini</LogicalName>
+        </EmbeddedResource>
+
+        <!-- Les options du jeu par defaut (filtre, 1024x768), deposees de meme. -->
+        <EmbeddedResource Include="Reglages\OpenForesia.cfg">
+            <LogicalName>OpenForesia.cfg</LogicalName>
         </EmbeddedResource>
 
         <!-- Le jeu publie, zippe par publish-release.ps1. Absent en developpement : l'installeur

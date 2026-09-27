@@ -17,7 +17,7 @@ internal sealed class SourceDuJeu
 
     private static readonly string[] s_DossiersEcartes = ["French", "Snd", "Music", "save"];
     // `.ini` : un Affichage.ini d'essai dans la build ne doit pas ecraser celui du joueur — le
-    // fichier par defaut vient du modele embarque (Installation.DeposerReglagesAffichage).
+    // fichier par defaut vient du modele embarque (Installation.DeposerReglage) ; de meme pour le .cfg.
     private static readonly string[] s_ExtensionsEcartees = [".cfg", ".pdb", ".log", ".txt", ".ini"];
 
     internal IReadOnlyList<FichierDuJeu> Fichiers { get; }

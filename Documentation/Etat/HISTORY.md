@@ -4,6 +4,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-27
+
+- feat : l'installeur dépose un `OpenForesia.cfg` par défaut (filtre actif, 1024x768 : `Resolution=4`, `Size=23`) et son `Affichage.ini` ouvre le jeu en `fenetre-sans-bordure` — jamais par-dessus les réglages du joueur
+
 ## 2026-09-26
 
 - doc : `simplify-display-settings` validé en jeu par Vincent — réinstallation sans traits sous les textes, trois modes de fenêtre, second écran — et archivé ; spec `display-enhancements` mis à jour
