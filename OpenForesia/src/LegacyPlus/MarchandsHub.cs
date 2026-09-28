@@ -68,9 +68,10 @@ internal static unsafe class MarchandsHub
                 Fichier = "BoutiqueArmures.ini", Titre = "LE KOBOLD - ARMURES", Categorie = 0x06, FiltreClasse = true },
         new() { Nom = "Sylphide", Identite = 13, X = -1301, Z = 1510, Cap = 1024, TexX = 832, Rang = 3, PalY = 268, Entree = 0xd8,   // l'Elfe au féminin
                 Fichier = "BoutiqueArmes.ini", Titre = "LA SYLPHIDE - ARMES", Categorie = 0x01, FiltreClasse = true },
-        // LP-011 : la Voleuse (le Voleur au féminin), devant le mur du fond, tournée vers la porte. La
-        // bande x 832 est pleine : sa texture va dans l'autre zone vide du relevé, x 0..255, y 272..447.
-        new() { Nom = "Voleuse", Identite = 10, X = -1028, Z = 1618, Cap = 1024, TexX = 0, Rang = 1, PalY = 272, Entree = 0xdc,
+        // LP-011 : la Voleuse (le Voleur au féminin), devant le mur du fond, tournée vers la porte
+        // (cap 2048 : un quart de tour à droite des autres, demande de Vincent). La bande x 832 est
+        // pleine : sa texture va dans l'autre zone vide du relevé, x 0..255, y 272..447.
+        new() { Nom = "Voleuse", Identite = 10, X = -1028, Z = 1618, Cap = 2048, TexX = 0, Rang = 1, PalY = 272, Entree = 0xdc,
                 Fichier = "BoutiqueVente.ini", Titre = "LA VOLEUSE - RACHAT", Categorie = 0, FiltreClasse = false, Rachat = true },
     ];
 

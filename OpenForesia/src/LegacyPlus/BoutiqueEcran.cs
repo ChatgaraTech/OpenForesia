@@ -13,6 +13,9 @@
 //   haut / bas      choisir                gauche / droite   page précédente / suivante
 //   action          acheter (BoutiqueAchat, étape 3c)       menu (bouton 3)   sortir
 //
+// L'action pose d'abord la question « Ton choix se porte sur cet objet ? Oui / Non » (flèches pour
+// choisir, action pour valider, menu = non) ; l'achat ou la vente n'a lieu que sur « Oui ».
+//
 // Ne tire aucun nombre aléatoire.
 // =====================================================================
 
@@ -54,6 +57,12 @@ internal static unsafe class BoutiqueEcran
     private static int s_Curseur;
     private static string s_Message = "";
     private static string s_Titre = "";
+
+    // La validation (demande de Vincent, 2026-09-28) : l'action ne fait qu'ouvrir la question, un
+    // second appui sur « Oui » achète ou vend. Menu ou « Non » revient à la liste.
+    private static bool s_Question;
+    private static bool s_Oui;
+    private const string Question = "Ton choix se porte sur cet objet ?";
 
     /// <summary>
     /// Une ligne de l'écran : le libellé affiché, le nom exact de l'objet, le prix, et — pour une
@@ -122,6 +131,7 @@ internal static unsafe class BoutiqueEcran
         s_PerChar = perChar;
         s_Joueur = ((byte*)acheteur)[8];
         s_Curseur = 0;
+        s_Question = false;
         s_Message = lignes.Count == 0 ? siVide : "";
         Jeu.FreezeAllEntities();
         s_Journal?.WriteLine($"ouverte par J{s_Joueur + 1} ({titre}), bourse {Bourse}");
@@ -147,6 +157,18 @@ internal static unsafe class BoutiqueEcran
         bool acheter = (*(ushort*)(pad + 2) & action) != 0;
 
         int n = s_Lignes.Count;
+        if (s_Question)
+        {
+            if ((appuis & (Haut | Bas | Gauche | Droite)) != 0) s_Oui = !s_Oui;
+            if ((appuis & Menu) != 0) s_Question = false;
+            else if (acheter)
+            {
+                s_Question = false;
+                if (s_Oui) Acheter();
+            }
+            return;
+        }
+
         if ((appuis & Menu) != 0) { Fermer(); return; }
         if (n == 0) return;
         if ((appuis & Haut) != 0) s_Curseur = (s_Curseur - 1 + n) % n;
@@ -154,7 +176,12 @@ internal static unsafe class BoutiqueEcran
         if ((appuis & Gauche) != 0) s_Curseur = Math.Max(0, s_Curseur - ParPage);
         if ((appuis & Droite) != 0) s_Curseur = Math.Min(n - 1, s_Curseur + ParPage);
         if ((appuis & (Haut | Bas | Gauche | Droite)) != 0) s_Message = "";
-        if (acheter) Acheter();
+        if (acheter)
+        {
+            s_Question = true;
+            s_Oui = true;
+            s_Message = "";
+        }
     }
 
     /// <summary>Étape 3c : l'achat réel (BoutiqueAchat), et son message.</summary>
@@ -218,11 +245,19 @@ internal static unsafe class BoutiqueEcran
         if (objet != null)
         {
             curseur = Apercu(otBase, curseur, objet.Vignette);
-            curseur = Paragraphe(otBase, curseur, LigneDescription, Description(objet.Fiche));
+            if (!s_Question) curseur = Paragraphe(otBase, curseur, LigneDescription, Description(objet.Fiche));
             curseur = Paragraphe(otBase, curseur, LigneValeurs, Valeurs(objet.Fiche));
         }
 
-        if (s_Message.Length > 0) curseur = Ecrire(otBase, curseur, MargeG, LigneMessage, Ascii(s_Message));
+        if (s_Question)
+        {
+            // La question prend la place du message, le choix celle de la description.
+            curseur = Ecrire(otBase, curseur, MargeG, LigneMessage, Question);
+            curseur = Ecrire(otBase, curseur, MargeG + 10, LigneDescription, "Oui");
+            curseur = Ecrire(otBase, curseur, MargeG + 74, LigneDescription, "Non");
+            curseur = Ecrire(otBase, curseur, s_Oui ? MargeG : MargeG + 64, LigneDescription, ">");
+        }
+        else if (s_Message.Length > 0) curseur = Ecrire(otBase, curseur, MargeG, LigneMessage, Ascii(s_Message));
         curseur = Ecrire(otBase, curseur, MargeG, LignePied, $"Page {page + 1}/{pages}");
 
         // Le fond EN DERNIER : ajouté en tête de la liste de l'ordering table, il est dessiné le

@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- feat : l'écran de boutique demande « Ton choix se porte sur cet objet ? Oui / Non » avant d'acheter ou de vendre (flèches, action pour valider, menu = non)
+- fix : la Voleuse tourne d'un quart de tour à droite (cap 1024 → 2048)
+- doc : Excalibur n'est pas rachetable — `generer-boutique.mjs` le classe « introuvable » (commenté dans `BoutiqueArmes.ini`) alors qu'il sort d'un coffre de la zone 10, sous-zone 4 : `coffres.csv` ne relève pas ce coffre, seul `butin.csv` porte la ligne
 - feat : LP-011 — la Voleuse (identité 10) se tient dans le hub, tournée vers la porte, texture dans la seconde zone libre de la VRAM (x 0, y 320) ; elle rachète l'inventaire hors équipement et le coffre, à 50 % du prix d'achat (`BoutiqueVente.ini`, `[Vente] Taux`), piles entières ; une vente depuis le coffre écrit la sauvegarde ; à tester en jeu
 - feat : l'écran de boutique a un mode rachat ; la place en VRAM devient propre à chaque marchand
 - feat : LP-010 — l'écran de boutique s'agrandit (304 × 224) et montre, pour l'objet sous le curseur, sa description et ses valeurs non nulles lues dans la fiche : ATT, DEF, MATT, MDEF, les sept caractéristiques, les huit éléments
