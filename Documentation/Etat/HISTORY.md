@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- doc : LP-012, l'arène du hub, validée en jeu par Vincent ; le changement `add-legacy-plus-arena` est archivé
 - fix : `EcranMenu` laissait le monde gelé en se fermant par menu ou par Non — `Retour()` retirait la dernière page puis appelait `Fermer()`, qui ne fait rien sur une pile vide (garde `!Ouvert`) : ni dégel ni « fermé » au journal, seule la caméra répondait (boutiques du hub quittées par F2, Non au téléporteur ; trouvé au journal de Vincent). La dernière page est désormais fermée avant d'être retirée ; revenir sur une page de question la repose
 - fix : `RestorePartyReactions_00530ED0` réarmait la manette au mauvais endroit — le binaire écrit l'octet `+4` du bloc de 0x10 octets de la manette (`shl ecx,4`), la transcription faisait un pas de 4 octets (identique pour la manette 0, faux pour les autres)
 - fix : LP-012 — le téléporteur du hub, le portail de l'arène et le message du panda ne s'ouvrent plus pour un compagnon piloté par le jeu (bit `0x10000`) : leur question lirait une manette inexistante
