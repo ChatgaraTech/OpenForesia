@@ -29,7 +29,8 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-005 | Ramassage automatique des pièces et des cristaux d'expérience (pas les coffres) | `[Butin] RamassageAuto` | `ButinAtteint`, l'entité que la collision désigne dans `PartyMemberStep.cs` | validé en jeu (2026-09-27) — `src/LegacyPlus/RamassageAuto.cs` |
 | LP-006 | Se déplacer en lançant un sort, à une part de la vitesse de marche | `[Magie] DeplacementEnIncantation` | `VitesseEnIncantation`, le zéro de vitesse des postures d'incantation dans `ApplyGroundMotion_0051A020` | validé en jeu (2026-09-27) — `src/LegacyPlus/DeplacementEnIncantation.cs` |
 | LP-004 | Frames d'invulnérabilité des ennemis tenues par attaquant | `[Combat] InvulnerabiliteEnnemis` | `VictimeExclue` (bit `0x40`), `VictimeProtegee` (`+0x96`), `CoupPorte` dans les deux balayages (`FUN_00519940`, `FUN_00519af0`), `ImageSuivante` en tête du pas de simulation (boucle par image de `RunWorldMapTick`) | validé en jeu (2026-09-27) — `src/LegacyPlus/VerrouParAttaquant.cs` |
-| LP-008 | La boutique de l'auberge : l'armoire de la carte 82 vend le catalogue de `Boutique.ini` | `Boutique.ini` : `[Boutique] Actif`, `[Catalogue]` | `PasDuMembre` (l'ouverture), `DessinSurImpression` (l'écran) | validé en jeu (2026-09-27) — `src/LegacyPlus/Boutique*.cs`, `CatalogueObjets.cs` |
+| LP-008 | La boutique de l'auberge : l'armoire de la carte 82 vend le catalogue de `Boutique.ini` | `Boutique.ini` : `[Boutique] Actif`, `[Catalogue]` | `PasDuMembre` (l'ouverture), `DessinSurImpression` (l'écran) | **retiré** le 2026-09-28, remplacé par LP-010 — l'écran (`BoutiqueEcran.cs`), l'achat (`BoutiqueAchat.cs`) et l'index (`CatalogueObjets.cs`) servent aux marchands |
+| LP-010 | Les marchands du hub : Lutin (objets), Voleur (accessoires), Kobold (armures, boucliers), Sylphide (armes), sous des modèles de classe ; armes et armures filtrées par la classe de l'acheteur | `LegacyPlus\Boutique{Objets,Accessoires,Armures,Armes}.ini` : `[Boutique] Actif`, `[Catalogue]` | `ListeDApparition` (le chargement), `DessinSurImpression` (le dessin, l'écran), `PasDuMembre` (la collision, l'ouverture) | validé en jeu (2026-09-28) — `src/LegacyPlus/MarchandsHub.cs` |
 | LP-009 | Le hub de l'auberge : une porte dans chaque réception, vers la carte 82 vidée sous le numéro 86 | `[Auberge] Hub` | `EntreeSousZone` (`LoadWorldMapSubArea`), `ListeDApparition` et `DecorNe` (`SpawnSubAreaEntities`), `PasDuMembre` (la porte), `TransfertScripte` (opcode 17), `PointDEntree` et `EcartDeReprise` (`PlaceWorldMapParty`), `LieuSauve` (menu et coffre) | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/HubAuberge.cs`, `openspec/changes/archive/2026-09-28-add-legacy-plus-inn-hub` |
 | — | Vitesse des monstres | — | — | **abandonné** par Vincent le 2026-09-27 — les vitesses sont écrites en dur dans chacun des 166 gestionnaires de comportement |
 | LP-007 | Rencontres aléatoires : cadence, chevauchement pendant un combat, plusieurs formations | `[Rencontres] Frequence`, `MonstresMax`, `Formations` | `Rencontre` (l'appel de `TrySpawnRandomEncounter`), `RencontreEnAttente` et `RencontreBloquee` (ses deux gardes), `DelaiRencontre` (les deux rechargements du minuteur) | validé en jeu (2026-09-27) — `src/LegacyPlus/Rencontres.cs` |
@@ -157,6 +158,37 @@ fin de partie (lecture à confirmer en jeu).
 
 **Restent pour l'écriture** : le mur (relevé de Vincent, `TracePosition`) ; le point d'entrée que le
 couloir donne à l'opcode 17 pour arriver en 82 (un journal au premier passage) ; les collisions.
+
+## LP-010, les marchands du hub (validés en jeu le 2026-09-28)
+
+Change : `openspec/changes/archive/2026-09-28-add-legacy-plus-hub-merchants`. Quatre PNJ sous des modèles de classe
+jouable (Lutin 7, Voleur 2, Kobold 6, Sylphide 13), une boutique par catégorie d'objet.
+
+- **Les ressources d'une classe sont dans le répertoire de l'ÉTAT 1** (la composition du groupe),
+  pas de l'état 3 : `LoadPartyMemberResources` tourne pendant l'état 1, et sur la carte ce qu'il a
+  chargé reste en place. Relevé hors jeu par `OpenForesia.Tools classes` : modèle 14 à 22 Ko,
+  animations 29 à 52 Ko en 8 ou 9 clips, deux textures aux mêmes dimensions pour toutes les classes —
+  une 8 bits de 128 mots × 64 lignes avec quatre palettes de 256 couleurs, une 4 bits de 16 mots × 64.
+- **Où le jeu les pose, pour l'emplacement `i`** : texture 1 en x 256..383, y 256 + 64·i (les quatre
+  membres remplissent donc x 256..383, y 256..511) ; texture 2 en x 384 + 16·i, y 448..511 ;
+  palettes aux lignes 480 + 4·i et 496. Un cinquième emplacement tomberait en y = 512, hors de la
+  VRAM : les marchands ont besoin d'une place trouvée ailleurs (relevé `[Diagnostic] ReleveVram`).
+- **Ce qu'un modèle de classe lit en VRAM** (`DrawAnimatedModel`, `EmitModelQuads`) : UNE page et
+  UNE palette pour tout le modèle, prises dans `0x005e8f00` à l'entrée de l'octet 2 de son `+0x3c`
+  (`0x20 + i` pour le membre `i`) ; les enregistrements n'apportent que les UV, et
+  `AdjustModelTexturePages` leur ajoute `64·i` en V (octet 1 de la pagination). La texture 2 n'entre
+  pas dans le rendu du personnage. Les octets `0x04`/`0x06` des parties sont des drapeaux (`0x400` :
+  sans tri en profondeur). La palette n'est pas contrainte à la bande 448..511 : n'importe où tant que
+  y ≤ 507 (le plafond `0x7ec0` du mot UV).
+- **La VRAM du hub** (relevé du 2026-09-28, groupe de quatre) : la bande **x 832..1023, y 256..511**
+  est entièrement vide — le même gabarit que le bloc du groupe (x 256..447), neuf pages plus loin ;
+  **x 0..255, y 224..447** aussi. Ni le coffre (vignettes en x ≥ 960, y 136..208 ; palettes en
+  y 508..511) ni l'achat (x 384..443) n'y écrivent.
+- **Le plan retenu** : le marchand `k` (0..3) prend l'emplacement virtuel `i = k` — texture 1 en
+  (832, 256 + 64·k), 128 mots × 64 lignes (la page 13, 8 bits, couvre x 832..959) ; ses quatre
+  palettes en (0, 256 + 4·k), 256 × 4 ; une entrée libre de `0x005e8f00` (`0xcc + 4·k`) portant cette
+  page et cette palette ; pagination du modèle : octet 1 = `0x40·k`, octet 2 = l'index de l'entrée.
+- **L'animation de repos est le clip 0** (relevé en jeu : un membre immobile joue le clip 0).
 
 ## Préconisations en attente
 

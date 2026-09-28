@@ -6,6 +6,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- doc : les marchands du hub (LP-010) archivés, validés en jeu par Vincent ; spec `gameplay-hub-merchants` créée, `gameplay-inn-shop` perd l'armoire, `game-data-install` dépose les quatre boutiques (5.5 et 5.6 non essayés en jeu)
+- feat : LP-010 — les quatre boutiques des marchands du hub : un fichier chacune dans `LegacyPlus\` (installeur compris), catégorie relue dans la fiche, armes et armures filtrées par la classe de l'acheteur (demande de Vincent), ouverture face au marchand ; à tester en jeu
+- feat : `generer-boutique.mjs` écrit les quatre catalogues — l'équipement au prix de LP-008, les objets utilisables à un barème par famille ; les prix déjà écrits sont repris
+- feat : la boutique de l'armoire (LP-008) est retirée ; `Boutique.ini` n'est plus lu ni déposé
+- feat : LP-010 — les quatre marchands se tiennent dans le hub (Lutin validé en jeu ; Voleur, Kobold et Sylphide ajoutés à 150 unités d'intervalle, à tester)
+- fix : LP-010 — le Lutin passait devant tout : sa transformée n'avait pas le bit 1 de `+0x1a` (le `+0x36` qu'un membre porte), qui fait calculer la profondeur des parties posées ; les membres ne le traversent plus (poussée hors d'un cercle de 48 unités)
+- feat : LP-010, premier lot — le Lutin se tient dans le hub, au repos : sa classe relue dans le répertoire de l'état 1, texture posée dans la bande libre de la VRAM, dessiné par la couture `DessinSurImpression` ; `RelocateModelBundle` et `RelocateAnimationBundle` passent en `internal` ; à tester en jeu
+- doc : LP-010, étape 1 faite — un modèle de classe n'emploie qu'une texture, désignée par une entrée de `0x005e8f00` et un décalage V ; dans le hub, la bande x 832..1023, y 256..511 de la VRAM est libre et reçoit les quatre marchands ; leur repos est le clip 0
+- feat : `OpenForesia.Tools classes` — les ressources des seize identités de classe (modèle, animations, deux textures) ; diagnostic Debug `[Diagnostic] ReleveVram` (image et carte de la VRAM à l'arrivée dans chaque carte) ; le relevé de position donne aussi l'animation en cours
+- doc : LP-010 — les ressources de classe vivent dans le répertoire de l'état 1 ; un cinquième emplacement de personnage tomberait hors de la VRAM
+- doc : change `add-legacy-plus-hub-merchants` (LP-010) proposé — quatre marchands dans le hub sous des modèles de classes jouables (Lutin, Voleur, Kobold, Sylphide), une boutique par catégorie d'objet, quatre fichiers dans `LegacyPlus\`, l'armoire LP-008 retirée ; étape 1 = mesure de la VRAM
+- doc : le jeu ne charge que les classes du groupe, dans quatre emplacements dont la place en VRAM dépend du numéro ; membres du groupe et entités de scène ont des tables de modèles distinctes
 - doc : le hub de l'auberge (LP-009) archivé, validé en jeu par Vincent ; spec `gameplay-inn-hub` créée (5.1, 5.6 et 5.7 non essayés en jeu)
 - feat : LP-009 — le coffre du hub est déplacé en (-1337, 886), à la demande de Vincent ; la liste de la 82 est recopiée, les rangs ne bougent pas
 - fix : LP-009 — en sortant du hub, le groupe se retrouvait perché sur l'estrade (le jeu prend une face de sol sous le point, et l'estrade passait au-dessus) ; retour en (-109, 504), juste après elle

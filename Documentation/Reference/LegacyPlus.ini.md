@@ -45,6 +45,23 @@ flèches et sorts passent, et un guerrier enchaîne ses coups ; une même attaqu
 deux fois. Le clignotement, le recul et l'interruption restent ceux d'origine. Les frames
 d'invulnérabilité **du groupe** ne changent pas.
 
+## Les boutiques des marchands du hub — `LegacyPlus\Boutique*.ini` (LP-010)
+
+Quatre fichiers à part, dans le dossier `LegacyPlus\` à côté de l'exécutable, un par marchand du hub
+(`[Auberge] Hub = oui` requis) : `BoutiqueObjets.ini` (le Lutin, objets utilisables),
+`BoutiqueAccessoires.ini` (le Voleur), `BoutiqueArmures.ini` (le Kobold, armures et boucliers),
+`BoutiqueArmes.ini` (la Sylphide). Même contrat : lus une fois, jamais écrits.
+
+| clé | valeurs | défaut | effet |
+|---|---|---|---|
+| `[Boutique] Actif` | `oui`, `non` | `non` | `oui` : le marchand se tient dans le hub et vend ; `non` : pas de marchand |
+| `[Catalogue] <nom> = <prix>` | 1 à 99 999 | — | un objet en vente, dans l'ordre du fichier ; le nom exact du jeu ; `;` devant la ligne la retire |
+
+Le jeu relit la catégorie de chaque objet dans sa fiche : un objet d'une autre catégorie n'est pas
+proposé. Chez la Sylphide et le Kobold, chaque joueur ne voit que ce que sa classe peut porter. Les
+modèles sont générés par `node OpenForesia.Tools/generer-boutique.mjs`, qui reprend les prix déjà
+écrits. `Boutique.ini` (l'armoire, LP-008) n'est plus lu.
+
 ## Diagnostic (absent du modèle de l'installeur)
 
 **Version Debug seulement** : la version publiée (`publish-release.ps1`, `-c Release`) ne les

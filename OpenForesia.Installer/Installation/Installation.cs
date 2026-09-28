@@ -129,7 +129,8 @@ internal static class Installation
             DeposerReglage(ReglagesAffichage, dossier, journal);
             DeposerReglage(ReglagesJeu, dossier, journal);
             DeposerReglage(ReglagesTweaks, dossier, journal);
-            DeposerReglage(ReglagesBoutique, dossier, journal);
+            foreach (string boutique in ReglagesBoutiques)
+                DeposerReglage(DossierLegacyPlus + "/" + boutique, dossier, journal);
 
             // 3. La desinstallation : Uninstall.exe (une copie de cet installeur). Ce qu'une
             //    installation anterieure a laisse sous d'autres noms — le script PowerShell, puis
@@ -173,13 +174,18 @@ internal static class Installation
     internal const string ReglagesAffichage = "Affichage.ini";
     internal const string ReglagesJeu = "OpenForesia.cfg";
     internal const string ReglagesTweaks = "LegacyPlus.ini";
-    internal const string ReglagesBoutique = "Boutique.ini";
+    // Les quatre boutiques des marchands du hub (LP-010), dans un dossier a part — `Boutique.ini`,
+    // la boutique de l'armoire (LP-008), n'est plus depose : le jeu ne le lit plus.
+    internal const string DossierLegacyPlus = "LegacyPlus";
+    internal static readonly string[] ReglagesBoutiques =
+        ["BoutiqueObjets.ini", "BoutiqueAccessoires.ini", "BoutiqueArmures.ini", "BoutiqueArmes.ini"];
 
     /// <summary>
     /// Depose un fichier de reglages par defaut s'il n'y en a pas deja un : une reinstallation ne
-    /// doit pas effacer les reglages du joueur. Quatre fichiers, embarques depuis `Reglages/` — un
+    /// doit pas effacer les reglages du joueur. Sept fichiers, embarques depuis `Reglages/` — un
     /// seul exemplaire chacun :
-    /// - `Boutique.ini`, la boutique de l'auberge (LP-008), desactivee, et son catalogue ;
+    /// - `LegacyPlus/Boutique*.ini`, les quatre boutiques des marchands du hub (LP-010), desactivees,
+    ///   et leur catalogue — le nom de ressource porte le sous-dossier, recree a la destination ;
     /// - `LegacyPlus.ini`, les tweaks de gameplay, tous inactifs ; lu sans jamais etre ecrit
     ///   (openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty) ;
     /// - `Affichage.ini`, commente, que le jeu lit sans jamais l'ecrire
@@ -191,8 +197,9 @@ internal static class Installation
     /// </summary>
     private static void DeposerReglage(string nom, string dossier, JournalInstallation journal)
     {
-        string cible = Path.Combine(dossier, nom);
+        string cible = Path.Combine(dossier, nom.Replace('/', Path.DirectorySeparatorChar));
         if (File.Exists(cible)) return;
+        journal.CreerDossier(Path.GetDirectoryName(cible)!);
 
         using Stream modele = typeof(Installation).Assembly.GetManifestResourceStream(nom)
             ?? throw new InvalidOperationException($"{nom} n'est pas embarque dans l'installeur.");

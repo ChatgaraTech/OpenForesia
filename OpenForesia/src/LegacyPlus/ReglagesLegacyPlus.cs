@@ -56,6 +56,9 @@ internal static class ReglagesLegacyPlus
     /// <summary>`[Diagnostic] TracePosition` — `oui` : la position du joueur 1 à chaque arrêt d'une seconde, dans `legacyplus-position.log`. Outil de mise au point.</summary>
     internal static bool TracePosition { get; private set; } = false;
 
+    /// <summary>`[Diagnostic] ReleveVram` — `oui` : une image et une carte de la VRAM à l'arrivée dans chaque carte (LP-010). Version Debug seulement.</summary>
+    internal static bool ReleveVram { get; private set; } = false;
+
     /// <summary>Lit `LegacyPlus.ini`. Appelée une fois, par le constructeur statique de <see cref="Coutures"/>.</summary>
     internal static void Lire()
     {
@@ -171,6 +174,12 @@ internal static class ReglagesLegacyPlus
         {
             if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) TraceCombat = true;
             else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) TraceCombat = false;
+            else Refuser(section, key, value, "oui ou non");
+        }
+        else if (Est("Diagnostic", "ReleveVram"))
+        {
+            if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) ReleveVram = true;
+            else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) ReleveVram = false;
             else Refuser(section, key, value, "oui ou non");
         }
         else if (Est("Diagnostic", "TracePosition"))

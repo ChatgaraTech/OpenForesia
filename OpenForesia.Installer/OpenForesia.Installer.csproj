@@ -46,10 +46,20 @@
             <LogicalName>LegacyPlus.ini</LogicalName>
         </EmbeddedResource>
 
-        <!-- La boutique de l'auberge (LP-008), desactivee, et son catalogue ; generee par
-             OpenForesia.Tools/generer-boutique.mjs, retouchee a la main. -->
-        <EmbeddedResource Include="Reglages\Boutique.ini">
-            <LogicalName>Boutique.ini</LogicalName>
+        <!-- Les quatre boutiques des marchands du hub (LP-010), desactivees, et leur catalogue ;
+             generees par OpenForesia.Tools/generer-boutique.mjs, retouchees a la main. Deposees
+             dans LegacyPlus\ : le nom de ressource porte le sous-dossier. -->
+        <EmbeddedResource Include="Reglages\LegacyPlus\BoutiqueObjets.ini">
+            <LogicalName>LegacyPlus/BoutiqueObjets.ini</LogicalName>
+        </EmbeddedResource>
+        <EmbeddedResource Include="Reglages\LegacyPlus\BoutiqueAccessoires.ini">
+            <LogicalName>LegacyPlus/BoutiqueAccessoires.ini</LogicalName>
+        </EmbeddedResource>
+        <EmbeddedResource Include="Reglages\LegacyPlus\BoutiqueArmures.ini">
+            <LogicalName>LegacyPlus/BoutiqueArmures.ini</LogicalName>
+        </EmbeddedResource>
+        <EmbeddedResource Include="Reglages\LegacyPlus\BoutiqueArmes.ini">
+            <LogicalName>LegacyPlus/BoutiqueArmes.ini</LogicalName>
         </EmbeddedResource>
 
         <!-- Le jeu publie, zippe par publish-release.ps1. Absent en developpement : l'installeur

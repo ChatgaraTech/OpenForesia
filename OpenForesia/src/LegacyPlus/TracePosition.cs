@@ -1,4 +1,4 @@
-// =====================================================================
+﻿// =====================================================================
 // Diagnostic — le relevé de position du joueur 1, `legacyplus-position.log`.
 //
 // Hors reconstruction : un outil de mise au point, pas un tweak (aucun numéro LP). Activé par
@@ -68,7 +68,7 @@ internal static unsafe class TracePosition
         int joueur = m[8];
 
         // La ligne de secours : toutes les cinq secondes, pour chaque joueur, quoi qu'il arrive.
-        if (joueur < 4 && ++s_Images[joueur] % ImagesSecours == 0) Ecrire(joueur, "position", x, y, z, cap);
+        if (joueur < 4 && ++s_Images[joueur] % ImagesSecours == 0) Ecrire(joueur, "position", x, y, z, cap, m);
         if (joueur != 0) return;
 
         // L'arrêt se juge sur le plan du sol seulement, à quelques unités près : la hauteur est
@@ -83,16 +83,16 @@ internal static unsafe class TracePosition
 
         if (s_Ecrit || ++s_Immobile < ImagesArret) return;
         s_Ecrit = true;
-        Ecrire(joueur, "arrêt   ", x, y, z, cap);
+        Ecrire(joueur, "arrêt   ", x, y, z, cap, m);
     }
 
     /// <summary>La ligne va dans le journal et dans la console (la fenêtre d'exécution de Rider),
     /// avec la zone et la sous-zone chargées.</summary>
-    private static void Ecrire(int joueur, string quoi, int x, int y, int z, int cap)
+    private static void Ecrire(int joueur, string quoi, int x, int y, int z, int cap, byte* m)
     {
         string ligne = $"J{joueur + 1} {quoi} : zone {Jeu.Res.s_Unknown_005de528 & 0xff}, carte {Jeu.s_Unknown_005de52c}, "
                        + $"section {*(byte*)Jeu.Mem.Camera(0x005de038)}, "
-                       + $"x = {x}, y = {y}, z = {z}, cap = {cap}";
+                       + $"x = {x}, y = {y}, z = {z}, cap = {cap}, animation {*(short*)(m + 0x18)} image {*(short*)(m + 0x1a)} (emplacement {m[4]})";
         s_Journal?.WriteLine(ligne);
         Console.WriteLine($"[POSITION] {ligne}");
     }

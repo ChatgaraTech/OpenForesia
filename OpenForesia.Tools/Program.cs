@@ -88,6 +88,16 @@ if (args[0] is "terrain" && args.Length >= 3)
     return;
 }
 
+// Les ressources de chaque classe jouable (modele, animation, deux textures), lues hors jeu :
+// `classes [dossier]`. Ecrit pour les marchands du hub (LP-010).
+if (args[0] is "classes")
+{
+    string? dossier = args.Length > 1 ? args[1] : DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Bestiaire.Classes(dossier);
+    return;
+}
+
 // L'oracle du decodeur Indeo 4 en C# : chaque image d'un film du jeu decodee par ir41_32.ax (sortie
 // IF09) et par Host/Indeo4/, comparee a l'octet pres. Voir Indeo/ComparaisonIndeo.cs.
 if (args[0] is "indeo")

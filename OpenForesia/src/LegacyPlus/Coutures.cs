@@ -232,13 +232,14 @@ internal static unsafe class Coutures
             VerrouParAttaquant.Installer();
             RamassageAuto.Installer();
             DeplacementEnIncantation.Installer();
-            Boutique.Installer();
             Rencontres.Installer();
             HubAuberge.Installer();
+            MarchandsHub.Installer();
 #if DEBUG
             // Les outils de diagnostic n'existent que dans la version Debug : la version publiée
             // (publish-release.ps1, -c Release) ne les installe jamais, même avec la clé.
             TraceCombat.Installer();
+            ReleveVram.Installer();
             TracePosition.Installer();                 // en dernier : il observe les décisions des tweaks
 #endif
         }

@@ -401,6 +401,60 @@ internal static class Bestiaire
         }
     }
 
+    /// <summary>
+    /// Le verbe <c>classes</c> : pour chacune des seize identites (<c>genre &lt;&lt; 3 | classe</c>),
+    /// les ressources que <c>LoadPartyMemberResources</c> (FUN_00536ba0) tire du repertoire de
+    /// l'etat 1 — deux textures (<c>+0x84</c>, pas 8, la seconde 0x80 octets plus loin), le paquet de
+    /// modele (<c>+0x2c</c>, pas 8) et le paquet d'animation (<c>+0x7c</c>, pas 4). Pour une texture :
+    /// sa taille, ses trois octets de description et les dimensions lues dans son en-tete TIM.
+    /// </summary>
+    public static void Classes(string dossierDonnees)
+    {
+        string french = Path.Combine(dossierDonnees, "French");
+        if (!Directory.Exists(french)) french = dossierDonnees;
+        byte[] archive = File.ReadAllBytes(Path.Combine(french, "BLAZE.ALL"));
+        var root = new Blob(File.ReadAllBytes(Path.Combine(french, "SYSTEM.INI")));
+        root.Fixup();
+        // L'etat 1 (la composition du groupe) : c'est pendant lui que LoadPartyMemberResources tourne,
+        // Mem.s_MainResourceDirectory_005e97c4 porte alors SON repertoire. Sur la carte (etat 3), ce
+        // qu'il a charge reste en place ; le repertoire, lui, n'y est plus.
+        var d = LoadEntry(archive, root, EntryList(root, 0x48)[1]);
+
+        string Tim(Blob t)
+        {
+            if (t.Len < 8) return "?";
+            int flags = t.I32(4), off = 8;
+            string mode = (flags & 3) switch { 0 => "4b", 1 => "8b", 2 => "15b", _ => "24b" };
+            string s = mode;
+            if ((flags & 8) != 0 && t.In(off, 12)) { s += $" palette {t.U16(off + 8)}x{t.U16(off + 10)}"; off += t.I32(off); }
+            if (t.In(off, 12)) s += $" image {t.U16(off + 8)}x{t.U16(off + 10)} (mots)";
+            return s;
+        }
+        string Octets(int v) => $"{v & 0xff:x2} {(v >> 8) & 0xff:x2} {(v >> 16) & 0xff:x2} {(v >> 24) & 0xff:x2}";
+
+        int tex = d.I32(0x84), mod = d.I32(0x2c), anim = d.I32(0x7c);
+        Console.WriteLine("identite,modele_octets,modele_pagination,animation_octets,animation_clips,texture1,texture1_desc,texture2,texture2_desc");
+        for (int id = 0; id < 16; id++)
+        {
+            var m = LoadEntryRaw(archive, d, d.I32(mod + id * 8));
+            var a = LoadEntryRaw(archive, d, d.I32(anim + id * 4));
+            var t1 = LoadEntryRaw(archive, d, d.I32(tex + id * 8));
+            var t2 = LoadEntryRaw(archive, d, d.I32(tex + 0x80 + id * 8));
+            Console.WriteLine($"{id},{m.Len},{Octets(d.I32(mod + id * 8 + 4))},{a.Len},{(a.Len >= 4 ? a.I32(0) : 0)},"
+                              + $"{t1.Len} {Tim(t1)},{Octets(d.I32(tex + id * 8 + 4))},{t2.Len} {Tim(t2)},{Octets(d.I32(tex + 0x80 + id * 8 + 4))}");
+
+            // Les parties du paquet de modele : RelocateModelBundle (FUN_00532640) fait `descripteur[1]
+            // |= pagination` pour chacune — c'est ce mot qui devient le +0x3c de la partie, dont
+            // l'octet 2 choisit l'entree de la table 0x005e8f00 (DrawAnimatedModel).
+            if (m.Len >= 4)
+            {
+                int n = m.I32(0);
+                var parts = Enumerable.Range(0, Math.Min(n, 32)).Select(j => Octets(m.I32((n + 1 + j) * 4)));
+                Console.WriteLine($"  parties ({n}) : {string.Join(" | ", parts)}");
+            }
+        }
+    }
+
     // Les seuils de FUN_0053a920 : rand() % plage, compare a 0x18, 0x29, 0x38, 0x45, 0x50, 0x59,
     // 0x5f. Huit rangs, donc, et ce sont ces bornes qui donnent les pourcentages.
     // =============================================================================================

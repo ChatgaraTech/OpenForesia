@@ -50,6 +50,8 @@ internal static unsafe class BoutiqueEcran
     private static int s_Joueur;
     private static int s_Curseur;
     private static string s_Message = "";
+    private static string s_Titre = "";
+    private static IReadOnlyList<(string Nom, int Prix)> s_Catalogue = Array.Empty<(string, int)>();
 
     private static uint* s_Atlas;                       // la police 8×8 : {0x40803000, 0x02300000}, comme s_GlyphAtlas_00566c28
     private static byte* s_Texte;                       // une ligne, en octets, terminée par un zéro
@@ -73,17 +75,20 @@ internal static unsafe class BoutiqueEcran
         };
     }
 
-    internal static void Ouvrir(uint* acheteur, byte* perChar)
+    /// <summary>
+    /// Ouvre l'écran sur le catalogue d'un marchand (LP-010), déjà filtré par l'appelant. Un
+    /// catalogue vide ouvre quand même l'écran, avec un message : le joueur sait pourquoi.
+    /// </summary>
+    internal static void Ouvrir(uint* acheteur, byte* perChar, string titre, IReadOnlyList<(string Nom, int Prix)> catalogue)
     {
-        if (ReglagesBoutique.Catalogue.Count == 0) return;
-        if (!CatalogueObjets.Construit)
-            CatalogueObjets.Construire(ReglagesBoutique.Catalogue.Select(o => o.Nom), s_Journal);   // étape 3b, une fois
+        s_Titre = titre;
+        s_Catalogue = catalogue;
         s_Ouvert = true;
         s_Acheteur = acheteur;
         s_PerChar = perChar;
         s_Joueur = ((byte*)acheteur)[8];
         s_Curseur = 0;
-        s_Message = "";
+        s_Message = catalogue.Count == 0 ? "Rien a vendre pour toi ici." : "";
         Jeu.FreezeAllEntities();
         s_Journal?.WriteLine($"ouverte par J{s_Joueur + 1}, bourse {Bourse}");
     }
@@ -107,8 +112,9 @@ internal static unsafe class BoutiqueEcran
         ushort action = *(ushort*)(s_PerChar + 0x1fc4);
         bool acheter = (*(ushort*)(pad + 2) & action) != 0;
 
-        int n = ReglagesBoutique.Catalogue.Count;
+        int n = s_Catalogue.Count;
         if ((appuis & Menu) != 0) { Fermer(); return; }
+        if (n == 0) return;
         if ((appuis & Haut) != 0) s_Curseur = (s_Curseur - 1 + n) % n;
         if ((appuis & Bas) != 0) s_Curseur = (s_Curseur + 1) % n;
         if ((appuis & Gauche) != 0) s_Curseur = Math.Max(0, s_Curseur - ParPage);
@@ -120,7 +126,7 @@ internal static unsafe class BoutiqueEcran
     /// <summary>Étape 3c : l'achat réel (BoutiqueAchat), et son message.</summary>
     private static void Acheter()
     {
-        var (nom, prix) = ReglagesBoutique.Catalogue[s_Curseur];
+        var (nom, prix) = s_Catalogue[s_Curseur];
         int avant = Bourse;
         var resultat = BoutiqueAchat.Acheter(s_Acheteur, s_PerChar, nom, prix);
         s_Message = resultat switch
@@ -140,10 +146,10 @@ internal static unsafe class BoutiqueEcran
         LireLaManette();
         if (!s_Ouvert) return curseur;                   // fermée à cette image
 
-        var catalogue = ReglagesBoutique.Catalogue;
-        int page = s_Curseur / ParPage, pages = (catalogue.Count + ParPage - 1) / ParPage;
+        var catalogue = s_Catalogue;
+        int page = s_Curseur / ParPage, pages = Math.Max(1, (catalogue.Count + ParPage - 1) / ParPage);
 
-        curseur = Ecrire(otBase, curseur, MargeG, LigneTitre, "BOUTIQUE DE L'AUBERGE");
+        curseur = Ecrire(otBase, curseur, MargeG, LigneTitre, Ascii(s_Titre));
         string bourse = $"Bourse : {Bourse}";
         curseur = Ecrire(otBase, curseur, MargeD - bourse.Length * 8, LigneTitre, bourse);
 
@@ -160,7 +166,7 @@ internal static unsafe class BoutiqueEcran
             curseur = Ecrire(otBase, curseur, PrixD - prix.Length * 8, y, prix);
         }
 
-        var objet = CatalogueObjets.Trouver(catalogue[s_Curseur].Nom);
+        var objet = catalogue.Count > 0 ? CatalogueObjets.Trouver(catalogue[s_Curseur].Nom) : null;
         if (objet != null) curseur = Apercu(otBase, curseur, objet.Vignette);
 
         if (s_Message.Length > 0) curseur = Ecrire(otBase, curseur, MargeG, LigneMessage, Ascii(s_Message));

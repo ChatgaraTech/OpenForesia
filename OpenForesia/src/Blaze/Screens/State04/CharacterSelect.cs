@@ -124,7 +124,8 @@ public static unsafe partial class Blaze
     /// compte : c'est ce qui rend le compte lisible à <c>[-4]</c>, comme le fait le code de rendu
     /// en <c>Blaze.c:79042</c>.
     /// </summary>
-    private static int RelocateModelBundle(int* bundle, byte* metadata, byte** result)
+    // `internal` pour LP-010 (src/LegacyPlus/MarchandsHub.cs), qui charge des classes pour les marchands du hub.
+    internal static int RelocateModelBundle(int* bundle, byte* metadata, byte** result)
     {
         uint pageBits = *(uint*)(metadata + 4);
         int count = bundle[0];
@@ -245,7 +246,7 @@ public static unsafe partial class Blaze
     /// Comme pour les modèles, le pointeur publié vise le tableau d'offsets et non le compte, que
     /// <c>Blaze.c:79042</c> relit à <c>[-4]</c>.
     /// </summary>
-    private static void RelocateAnimationBundle(int* bundle, byte** result)
+    internal static void RelocateAnimationBundle(int* bundle, byte** result)   // `internal` pour LP-010
     {
         int count = bundle[0];
         int stride = count * 4;

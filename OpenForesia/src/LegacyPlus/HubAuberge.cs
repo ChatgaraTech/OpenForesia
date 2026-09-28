@@ -27,7 +27,8 @@ namespace OpenForesia.LegacyPlus;
 internal static unsafe class HubAuberge
 {
     /// <summary>La sous-zone du hub (un emplacement vide de la zone 0) et celle dont il prend le contenu.</summary>
-    private const byte Hub = 86, Coffre = 82;
+    internal const byte Hub = 86;
+    private const byte Coffre = 82;
 
     /// <summary>Le point d'entrée de la 82 pris pour arriver dans le hub. TODO : confirmé par le journal
     /// [HUB] d'un passage ordinaire couloir → 82 (tâche 3.2).</summary>

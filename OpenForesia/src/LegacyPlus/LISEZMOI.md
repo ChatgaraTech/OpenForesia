@@ -29,10 +29,11 @@ src/LegacyPlus/
    RamassageAuto.cs         LP-005
    DeplacementEnIncantation.cs  LP-006
    Rencontres.cs            LP-007
-   Boutique.cs              LP-008 (en cours) — l'ouverture de la boutique, à l'armoire ; ReglagesBoutique.cs lit Boutique.ini
-   BoutiqueEcran.cs         LP-008 — l'écran de la boutique (liste, pages, bourse, aperçu de l'icône)
-   CatalogueObjets.cs       LP-008 — l'index nom → fiche et vignette, lu dans les fichiers du jeu
-   BoutiqueAchat.cs         LP-008 — l'achat : bourse, emplacement, rangement, icône
+   MarchandsHub.cs          LP-010 — les quatre marchands du hub : classes chargées, dessin, collision, ouverture, filtres
+   ReglagesBoutique.cs      LP-010 — un fichier de boutique de LegacyPlus\ (Actif, catalogue)
+   BoutiqueEcran.cs         LP-008, repris par LP-010 — l'écran de la boutique (liste, pages, bourse, aperçu de l'icône)
+   CatalogueObjets.cs       LP-008, repris — l'index nom → fiche et vignette, lu dans les fichiers du jeu
+   BoutiqueAchat.cs         LP-008, repris — l'achat : bourse, emplacement, rangement, icône
    HubAuberge.cs            LP-009 — la porte de la réception, le hub (la 82 vidée, sous-zone 86), le retour, la sauvegarde
    TraceCombat.cs           diagnostic, pas un tweak : le journal des coups de mêlée
    TracePosition.cs         diagnostic : la position du joueur 1 à chaque arrêt
