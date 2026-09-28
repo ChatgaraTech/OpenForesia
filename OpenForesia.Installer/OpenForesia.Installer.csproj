@@ -61,6 +61,10 @@
         <EmbeddedResource Include="Reglages\LegacyPlus\BoutiqueArmes.ini">
             <LogicalName>LegacyPlus/BoutiqueArmes.ini</LogicalName>
         </EmbeddedResource>
+        <!-- La Voleuse (LP-011), qui rachete : pas de catalogue, un taux. -->
+        <EmbeddedResource Include="Reglages\LegacyPlus\BoutiqueVente.ini">
+            <LogicalName>LegacyPlus/BoutiqueVente.ini</LogicalName>
+        </EmbeddedResource>
 
         <!-- Le jeu publie, zippe par publish-release.ps1. Absent en developpement : l'installeur
              prend alors les fichiers du jeu dans un dossier donne par l'option jeu. -->

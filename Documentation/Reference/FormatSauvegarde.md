@@ -20,6 +20,11 @@ C'est le format que lit et écrit l'**éditeur de sauvegarde** (`OpenForesia.Too
 `0x1ffc` porte la **somme des `0x1ffc` premiers octets lus comme signés**, sur 32 bits. Le
 chargement (`PartySetup.cs`) refuse une fiche dont la somme ne correspond pas.
 
+**Un autre écrivain, hors du jeu de 1998 : le rachat de la Voleuse (LP-011).** Vendre un objet du
+coffre vide son emplacement dans le fichier, crédite l'or de la fiche du fichier (`+0x26c`), refait
+la somme et sa copie, puis recopie la somme dans le personnage en mémoire (`+0x1ffc`) — sans quoi le
+coffre, à sa prochaine ouverture, se croirait vide (`src/LegacyPlus/BoutiqueVente.cs`).
+
 **La copie de `0x3f00` compte aussi.** Le dépôt relit `0x2000..0x3fff` d'un bloc et compare
 `0x3ffc` (la copie de la somme) à la somme du personnage chargé. Une copie périmée fait croire au
 jeu que le dépôt est vide. Tout écrivain doit donc recalculer `0x1ffc`, **puis** recopier

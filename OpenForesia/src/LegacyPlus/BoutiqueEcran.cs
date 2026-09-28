@@ -54,7 +54,17 @@ internal static unsafe class BoutiqueEcran
     private static int s_Curseur;
     private static string s_Message = "";
     private static string s_Titre = "";
-    private static IReadOnlyList<(string Nom, int Prix)> s_Catalogue = Array.Empty<(string, int)>();
+
+    /// <summary>
+    /// Une ligne de l'écran : le libellé affiché, le nom exact de l'objet, le prix, et — pour une
+    /// vente (LP-011) — la fiche et la vignette de l'exemplaire lui-même, lues dans l'emplacement.
+    /// Sans fiche, l'aperçu la cherche dans l'index des objets par le nom.
+    /// </summary>
+    internal sealed record Ligne(string Affiche, string Nom, int Prix, byte[]? Fiche = null, byte[]? Vignette = null);
+
+    private static IReadOnlyList<Ligne> s_Lignes = Array.Empty<Ligne>();
+    private static Func<IReadOnlyList<Ligne>>? s_Lister;     // mode vente : la liste, recalculée après chaque vente
+    private static Func<Ligne, string>? s_Vendre;            // mode vente : l'action, rend le message
 
     private static uint* s_Atlas;                       // la police 8×8 : {0x40803000, 0x02300000}, comme s_GlyphAtlas_00566c28
     private static byte* s_Texte;                       // une ligne, en octets, terminée par un zéro
@@ -84,16 +94,37 @@ internal static unsafe class BoutiqueEcran
     /// </summary>
     internal static void Ouvrir(uint* acheteur, byte* perChar, string titre, IReadOnlyList<(string Nom, int Prix)> catalogue)
     {
+        s_Lister = null;
+        s_Vendre = null;
+        Demarrer(acheteur, perChar, titre, catalogue.Select(o => new Ligne(o.Nom, o.Nom, o.Prix)).ToList(),
+                 "Rien a vendre pour toi ici.");
+    }
+
+    /// <summary>
+    /// Ouvre l'écran en mode RACHAT (LP-011) : <paramref name="lister"/> donne ce que le joueur peut
+    /// vendre, <paramref name="vendre"/> vend une ligne et rend le message ; la liste est recalculée
+    /// après chaque vente.
+    /// </summary>
+    internal static void OuvrirVente(uint* vendeur, byte* perChar, string titre,
+                                     Func<IReadOnlyList<Ligne>> lister, Func<Ligne, string> vendre)
+    {
+        s_Lister = lister;
+        s_Vendre = vendre;
+        Demarrer(vendeur, perChar, titre, lister(), "Rien que je puisse te racheter.");
+    }
+
+    private static void Demarrer(uint* acheteur, byte* perChar, string titre, IReadOnlyList<Ligne> lignes, string siVide)
+    {
         s_Titre = titre;
-        s_Catalogue = catalogue;
+        s_Lignes = lignes;
         s_Ouvert = true;
         s_Acheteur = acheteur;
         s_PerChar = perChar;
         s_Joueur = ((byte*)acheteur)[8];
         s_Curseur = 0;
-        s_Message = catalogue.Count == 0 ? "Rien a vendre pour toi ici." : "";
+        s_Message = lignes.Count == 0 ? siVide : "";
         Jeu.FreezeAllEntities();
-        s_Journal?.WriteLine($"ouverte par J{s_Joueur + 1}, bourse {Bourse}");
+        s_Journal?.WriteLine($"ouverte par J{s_Joueur + 1} ({titre}), bourse {Bourse}");
     }
 
     private static void Fermer()
@@ -115,7 +146,7 @@ internal static unsafe class BoutiqueEcran
         ushort action = *(ushort*)(s_PerChar + 0x1fc4);
         bool acheter = (*(ushort*)(pad + 2) & action) != 0;
 
-        int n = s_Catalogue.Count;
+        int n = s_Lignes.Count;
         if ((appuis & Menu) != 0) { Fermer(); return; }
         if (n == 0) return;
         if ((appuis & Haut) != 0) s_Curseur = (s_Curseur - 1 + n) % n;
@@ -129,7 +160,18 @@ internal static unsafe class BoutiqueEcran
     /// <summary>Étape 3c : l'achat réel (BoutiqueAchat), et son message.</summary>
     private static void Acheter()
     {
-        var (nom, prix) = s_Catalogue[s_Curseur];
+        if (s_Vendre != null)
+        {
+            Ligne vendue = s_Lignes[s_Curseur];
+            int bourseAvant = Bourse;
+            s_Message = s_Vendre(vendue);
+            s_Lignes = s_Lister!();
+            if (s_Curseur >= s_Lignes.Count) s_Curseur = Math.Max(0, s_Lignes.Count - 1);
+            s_Journal?.WriteLine($"vente : {vendue.Affiche} ({vendue.Prix}) — bourse {bourseAvant} → {Bourse} : {s_Message}");
+            return;
+        }
+
+        var (nom, prix) = (s_Lignes[s_Curseur].Nom, s_Lignes[s_Curseur].Prix);
         int avant = Bourse;
         var resultat = BoutiqueAchat.Acheter(s_Acheteur, s_PerChar, nom, prix);
         s_Message = resultat switch
@@ -149,7 +191,7 @@ internal static unsafe class BoutiqueEcran
         LireLaManette();
         if (!s_Ouvert) return curseur;                   // fermée à cette image
 
-        var catalogue = s_Catalogue;
+        var catalogue = s_Lignes;
         int page = s_Curseur / ParPage, pages = Math.Max(1, (catalogue.Count + ParPage - 1) / ParPage);
 
         curseur = Ecrire(otBase, curseur, MargeG, LigneTitre, Ascii(s_Titre));
@@ -161,7 +203,7 @@ internal static unsafe class BoutiqueEcran
             int k = page * ParPage + i;
             if (k >= catalogue.Count) break;
             int y = LignePremier + i * Pas;
-            string nom = Ascii(catalogue[k].Nom);
+            string nom = Ascii(catalogue[k].Affiche);
             if (nom.Length > NomMax) nom = nom[..NomMax];
             if (k == s_Curseur) curseur = Ecrire(otBase, curseur, MargeG, y, ">");
             curseur = Ecrire(otBase, curseur, MargeG + 10, y, nom);
@@ -169,7 +211,10 @@ internal static unsafe class BoutiqueEcran
             curseur = Ecrire(otBase, curseur, PrixD - prix.Length * 8, y, prix);
         }
 
-        var objet = catalogue.Count > 0 ? CatalogueObjets.Trouver(catalogue[s_Curseur].Nom) : null;
+        Ligne? courante = catalogue.Count > 0 ? catalogue[s_Curseur] : null;
+        var objet = courante?.Fiche != null
+            ? new CatalogueObjets.Objet(courante.Fiche, courante.Vignette ?? new byte[0x140])
+            : courante != null ? CatalogueObjets.Trouver(courante.Nom) : null;
         if (objet != null)
         {
             curseur = Apercu(otBase, curseur, objet.Vignette);

@@ -64,6 +64,13 @@ objets utilisables, seules les sept herbes le sont, au Chasseur). Les
 modèles sont générés par `node OpenForesia.Tools/generer-boutique.mjs`, qui reprend les prix déjà
 écrits. `Boutique.ini` (l'armoire, LP-008) n'est plus lu.
 
+**`BoutiqueVente.ini` — la Voleuse, qui rachète (LP-011).** `[Boutique] Actif` comme les autres, et
+`[Vente] Taux` (1 à 100, défaut 50) : le pourcentage du prix d'achat payé au joueur. Pas de
+catalogue : un objet se revend s'il figure dans l'une des quatre boutiques (active ou non), au prix
+qu'il y a. Elle rachète l'inventaire du joueur sauf ce qu'il porte, et son coffre ; une pile se vend
+en entier. **Vendre depuis le coffre écrit la sauvegarde du personnage tout de suite** (l'objet sort
+du coffre, l'or entre dans la bourse enregistrée).
+
 ## Diagnostic (absent du modèle de l'installeur)
 
 **Version Debug seulement** : la version publiée (`publish-release.ps1`, `-c Release`) ne les

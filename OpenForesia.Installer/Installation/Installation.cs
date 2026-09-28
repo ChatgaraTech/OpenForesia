@@ -178,7 +178,7 @@ internal static class Installation
     // la boutique de l'armoire (LP-008), n'est plus depose : le jeu ne le lit plus.
     internal const string DossierLegacyPlus = "LegacyPlus";
     internal static readonly string[] ReglagesBoutiques =
-        ["BoutiqueObjets.ini", "BoutiqueAccessoires.ini", "BoutiqueArmures.ini", "BoutiqueArmes.ini"];
+        ["BoutiqueObjets.ini", "BoutiqueAccessoires.ini", "BoutiqueArmures.ini", "BoutiqueArmes.ini", "BoutiqueVente.ini"];
 
     /// <summary>
     /// Depose un fichier de reglages par defaut s'il n'y en a pas deja un : une reinstallation ne

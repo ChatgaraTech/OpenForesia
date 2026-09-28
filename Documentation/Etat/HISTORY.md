@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- feat : LP-011 — la Voleuse (identité 10) se tient dans le hub, tournée vers la porte, texture dans la seconde zone libre de la VRAM (x 0, y 320) ; elle rachète l'inventaire hors équipement et le coffre, à 50 % du prix d'achat (`BoutiqueVente.ini`, `[Vente] Taux`), piles entières ; une vente depuis le coffre écrit la sauvegarde ; à tester en jeu
+- feat : l'écran de boutique a un mode rachat ; la place en VRAM devient propre à chaque marchand
 - feat : LP-010 — l'écran de boutique s'agrandit (304 × 224) et montre, pour l'objet sous le curseur, sa description et ses valeurs non nulles lues dans la fiche : ATT, DEF, MATT, MDEF, les sept caractéristiques, les huit éléments
 - feat : LP-010 — le Lutin filtre aussi par la classe de l'acheteur : les sept herbes ne sont proposées qu'au Chasseur, le seul que leur fiche autorise
 - feat : LP-010 — le Voleur filtre aussi ses accessoires par la classe de l'acheteur (33 des 119 sont réservés, gantelets de fer, objets d'elfe…), à la demande de Vincent

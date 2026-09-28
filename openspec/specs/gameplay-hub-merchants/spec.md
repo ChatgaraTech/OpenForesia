@@ -73,6 +73,32 @@ message saying there is nothing for that member.
 - **WHEN** a warrior, then a hunter, opens the usable-items shop
 - **THEN** the herbs are listed for the hunter only
 
+### Requirement: The Voleuse buys back what the player carries and stores
+
+With the hub enabled and `LegacyPlus\BoutiqueVente.ini` setting `Actif = oui`, a fifth merchant, the
+Voleuse (the playable Voleur class, female), SHALL stand in the hub and, when spoken to, SHALL list
+the items of the speaker's inventory that are not equipped and the items of the speaker's storage
+chest. An item SHALL be listed only if one of the four shop files sells it, at `[Vente] Taux` percent
+(50 by default) of that price, and a stack SHALL be sold whole. A sale SHALL add the price to the
+speaker's purse and remove the item; a sale from the chest SHALL be written to the speaker's save
+at once, and the chest SHALL still open normally afterwards. A sale that would take the purse above
+99 999 SHALL be refused.
+
+#### Scenario: Selling a stack from the inventory
+
+- **WHEN** a player carrying 12 Petites potions, sold 60 by the usable-items merchant, sells them to the Voleuse at 50 %
+- **THEN** the purse gains 360 and the slot is empty
+
+#### Scenario: Equipped items stay
+
+- **WHEN** a player speaks to the Voleuse
+- **THEN** the weapon, armour, shield and accessories the player wears are not listed
+
+#### Scenario: Selling from the chest
+
+- **WHEN** a player sells an item listed from the chest, then opens the chest
+- **THEN** the chest shows its other items, without the sold one, and loading the save later keeps the sale
+
 ### Requirement: A merchant opens its shop at the action button
 
 When a standing party member stands in front of a merchant, faces it within 45 degrees and presses

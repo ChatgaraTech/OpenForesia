@@ -20,6 +20,9 @@ internal sealed class ReglagesBoutique
     internal string Fichier { get; }
     internal bool Actif { get; private set; }
 
+    /// <summary>`[Vente] Taux` — la Voleuse (LP-011) rachète au taux de ce pourcentage du prix d'achat ; 50 par défaut.</summary>
+    internal int Taux { get; private set; } = 50;
+
     /// <summary>Le catalogue, dans l'ordre du fichier : le nom exact de l'objet et son prix.</summary>
     internal IReadOnlyList<(string Nom, int Prix)> Catalogue => _catalogue;
 
@@ -74,6 +77,15 @@ internal sealed class ReglagesBoutique
                 if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) r.Actif = true;
                 else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) r.Actif = false;
                 else Console.Error.WriteLine($"[BOUTIQUE] {fichier} : valeur refusée, Actif = {value} (attendu : oui ou non)");
+            }
+            else if (section.Equals("Vente", StringComparison.OrdinalIgnoreCase)
+                     && key.Equals("Taux", StringComparison.OrdinalIgnoreCase))
+            {
+                if (int.TryParse(value, System.Globalization.NumberStyles.None,
+                                 System.Globalization.CultureInfo.InvariantCulture, out int taux) && taux >= 1 && taux <= 100)
+                    r.Taux = taux;
+                else
+                    Console.Error.WriteLine($"[BOUTIQUE] {fichier} : valeur refusée, Taux = {value} (attendu : 1 à 100)");
             }
             else if (section.Equals("Catalogue", StringComparison.OrdinalIgnoreCase))
             {

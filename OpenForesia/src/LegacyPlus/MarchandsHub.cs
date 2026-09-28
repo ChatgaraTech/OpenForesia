@@ -47,6 +47,12 @@ internal static unsafe class MarchandsHub
         public required bool FiltreClasse;
         public ReglagesBoutique? Boutique;
         public List<(string Nom, int Prix)>? Vente;   // le catalogue du fichier, filtré par catégorie
+        public bool Rachat;                            // LP-011 : la Voleuse rachète au lieu de vendre
+
+        // La place en VRAM (legacy.md, LP-010) : la texture 1 en (TexX, 256 + 64·Rang), la page de
+        // TexX en y 256, le décalage V de 64·Rang porté par la pagination du modèle ; les palettes en
+        // (0, PalY) ; l'entrée Entree de 0x005e8f00.
+        public required int TexX, Rang, PalY, Entree;
     }
 
     // Les quatre marchands, le long du mur ouest, à 150 unités l'un de l'autre à partir de la place
@@ -54,20 +60,23 @@ internal static unsafe class MarchandsHub
     // l'entrée de table : ne pas réordonner sans le savoir.
     private static readonly Marchand[] s_Marchands =
     [
-        new() { Nom = "Lutin", Identite = 7, X = -1301, Z = 1060, Cap = 1024,
+        new() { Nom = "Lutin", Identite = 7, X = -1301, Z = 1060, Cap = 1024, TexX = 832, Rang = 0, PalY = 256, Entree = 0xcc,
                 Fichier = "BoutiqueObjets.ini", Titre = "LE LUTIN - OBJETS", Categorie = 0, FiltreClasse = true },   // les 7 herbes : Chasseur seulement
-        new() { Nom = "Voleur", Identite = 2, X = -1301, Z = 1210, Cap = 1024,
+        new() { Nom = "Voleur", Identite = 2, X = -1301, Z = 1210, Cap = 1024, TexX = 832, Rang = 1, PalY = 260, Entree = 0xd0,
                 Fichier = "BoutiqueAccessoires.ini", Titre = "LE VOLEUR - ACCESSOIRES", Categorie = 0x08, FiltreClasse = true },   // 33 des 119 sont réservés (Vincent, 2026-09-28)
-        new() { Nom = "Kobold", Identite = 6, X = -1301, Z = 1360, Cap = 1024,
+        new() { Nom = "Kobold", Identite = 6, X = -1301, Z = 1360, Cap = 1024, TexX = 832, Rang = 2, PalY = 264, Entree = 0xd4,
                 Fichier = "BoutiqueArmures.ini", Titre = "LE KOBOLD - ARMURES", Categorie = 0x06, FiltreClasse = true },
-        new() { Nom = "Sylphide", Identite = 13, X = -1301, Z = 1510, Cap = 1024,       // l'Elfe au féminin
+        new() { Nom = "Sylphide", Identite = 13, X = -1301, Z = 1510, Cap = 1024, TexX = 832, Rang = 3, PalY = 268, Entree = 0xd8,   // l'Elfe au féminin
                 Fichier = "BoutiqueArmes.ini", Titre = "LA SYLPHIDE - ARMES", Categorie = 0x01, FiltreClasse = true },
+        // LP-011 : la Voleuse (le Voleur au féminin), devant le mur du fond, tournée vers la porte. La
+        // bande x 832 est pleine : sa texture va dans l'autre zone vide du relevé, x 0..255, y 272..447.
+        new() { Nom = "Voleuse", Identite = 10, X = -1028, Z = 1618, Cap = 1024, TexX = 0, Rang = 1, PalY = 272, Entree = 0xdc,
+                Fichier = "BoutiqueVente.ini", Titre = "LA VOLEUSE - RACHAT", Categorie = 0, FiltreClasse = false, Rachat = true },
     ];
 
     private const short Sol = 400;              // la hauteur des pieds dans la 82, repère des relevés
     private const int Clip = 0;                 // le repos (relevé en jeu)
-    private const int TextureX = 832, TextureY = 256, PaletteY = 256;
-    private const int EntreeTable = 0xcc;       // 0x005e8f00 + 0xcc + 4·k
+    private const int TextureY = 256;           // la rangée de pages des textures de marchand
 
     private static byte* s_Etat1;               // le répertoire de l'état 1, relu une fois
     private static byte* s_Tampon;              // la texture le temps de l'envoi
@@ -139,8 +148,8 @@ internal static unsafe class MarchandsHub
             {
                 Marchand m = s_Marchands[k];
                 if (m.Boutique is not { Actif: true }) continue;   // boutique inactive : pas de marchand
-                if (m.Modele == null) ChargerPaquets(m, k);
-                EnvoyerTexture(m, k);
+                if (m.Modele == null) ChargerPaquets(m);
+                EnvoyerTexture(m);
             }
         }
         catch (Exception ex)
@@ -171,11 +180,11 @@ internal static unsafe class MarchandsHub
     }
 
     /// <summary>Le modèle et les animations de la classe, relogés comme pour un membre k.</summary>
-    private static void ChargerPaquets(Marchand m, int k)
+    private static void ChargerPaquets(Marchand m)
     {
         int* modele = (int*)(*(int*)(s_Etat1 + 0x2c) + m.Identite * 8);
         uint pagination = (uint)modele[1];
-        uint pb1 = (uint)(k * 0x40), pb2 = (uint)((EntreeTable >> 2) + k);
+        uint pb1 = (uint)(m.Rang * 0x40), pb2 = (uint)(m.Entree >> 2);
         byte* meta = (byte*)NativeMemory.AllocZeroed(8);
         *(uint*)(meta + 4) = (pagination & 0xff0000ffu) | (pb1 << 8) | (pb2 << 16);
 
@@ -206,7 +215,7 @@ internal static unsafe class MarchandsHub
     }
 
     /// <summary>La texture 1 de la classe à la place du marchand k, et l'entrée de table qui la désigne.</summary>
-    private static void EnvoyerTexture(Marchand m, int k)
+    private static void EnvoyerTexture(Marchand m)
     {
         int* texture = (int*)(*(int*)(s_Etat1 + 0x84) + m.Identite * 8);
         int* entree = (int*)(nint)texture[0];
@@ -219,25 +228,25 @@ internal static unsafe class MarchandsHub
 
         short* palette = tim.ClutRect;
         palette[0] = 0;
-        palette[1] = (short)(PaletteY + 4 * k);
+        palette[1] = (short)m.PalY;
         Winsys3d.Ordinal_674(palette, tim.ClutData);
 
         short* image = tim.PixelRect;
-        image[0] = TextureX;
-        image[1] = (short)(TextureY + 64 * k);
+        image[0] = (short)m.TexX;
+        image[1] = (short)(TextureY + 64 * m.Rang);
         Winsys3d.Ordinal_674(image, tim.PixelData);
 
         // La page de la bande (x 832, y 256), comme DecodeResourceChunk la calcule — le décalage de
         // 64·k lignes passe par la pagination du modèle, pas par la page.
-        int tpage = ((TextureX >> 2) & 0xf0) | (TextureY & 0x100);
+        int tpage = ((m.TexX >> 2) & 0xf0) | (TextureY & 0x100);
         tpage = (short)(tpage | 0x2000) >> 4;
         tpage |= ((int)tim.Mode & 3) << 7;
-        byte* table = Jeu.Mem.s_EntityDecodeTable_005e8f00 + EntreeTable + 4 * k;
+        byte* table = Jeu.Mem.s_EntityDecodeTable_005e8f00 + m.Entree;
         *(ushort*)table = (ushort)tpage;
-        *(ushort*)(table + 2) = (ushort)(((PaletteY + 4 * k) << 6) | 0);
+        *(ushort*)(table + 2) = (ushort)((m.PalY << 6) | 0);
 
         Journal($"{m.Nom} : texture {image[2]}×{image[3]} en ({image[0]}, {image[1]}), palette {palette[2]}×{palette[3]} en (0, {palette[1]}), " +
-                $"page 0x{tpage:x4}, entrée +0x{EntreeTable + 4 * k:x}");
+                $"page 0x{tpage:x4}, entrée +0x{m.Entree:x}");
     }
 
     // ---- la boutique -----------------------------------------------------------------------------
@@ -271,6 +280,17 @@ internal static unsafe class MarchandsHub
             if (ecart > DemiAngle) continue;
 
             *(ushort*)(pad + 2) &= (ushort)~action;
+            if (m.Rachat)
+            {
+                var prix = PrixDAchat();
+                int taux = m.Boutique!.Taux;
+                s_Journal?.WriteLine($"J{p[8] + 1} parle à la {m.Nom} (rachat à {taux} %)");
+                BoutiqueEcran.OuvrirVente(membre, perChar, m.Titre,
+                    () => BoutiqueVente.Lister(perChar, prix, taux),
+                    ligne => BoutiqueVente.Vendre(membre, perChar, ligne));
+                return;
+            }
+
             int classe = perChar[0x150] & 7;
             var vente = Vente(m).Where(o => !m.FiltreClasse || PeutPorter(o.Nom, classe)).ToList();
             s_Journal?.WriteLine($"J{p[8] + 1} (classe {classe}) parle au {m.Nom} : {vente.Count} objets sur {m.Vente!.Count}");
@@ -304,6 +324,24 @@ internal static unsafe class MarchandsHub
             else s_Journal?.WriteLine($"{m.Fichier} : « {o.Nom} » n'est pas de cette catégorie (octet +0x13 = 0x{objet.Fiche[0x13]:x2}), écarté");
         }
         return m.Vente;
+    }
+
+    private static Dictionary<string, int>? s_PrixDAchat;
+
+    /// <summary>
+    /// Le prix d'achat de chaque objet dans l'une des quatre boutiques (actives ou non : c'est le
+    /// fichier qui fait foi) — la base du rachat (LP-011). Un objet absent n'est pas racheté.
+    /// </summary>
+    private static Dictionary<string, int> PrixDAchat()
+    {
+        if (s_PrixDAchat != null) return s_PrixDAchat;
+        s_PrixDAchat = new();
+        foreach (Marchand m in s_Marchands)
+        {
+            if (m.Rachat || m.Boutique == null) continue;
+            foreach (var (nom, prix) in m.Boutique.Catalogue) s_PrixDAchat.TryAdd(nom, prix);
+        }
+        return s_PrixDAchat;
     }
 
     /// <summary>La fiche dit quelles classes peuvent porter l'objet : l'octet +0x12, un bit par classe.</summary>

@@ -170,3 +170,30 @@ for (const b of BOUTIQUES) {
   fs.writeFileSync(SORTIE + b.fichier, L.join("\r\n"), "utf8");
   console.log(`${SORTIE}${b.fichier} : ${obtenables.length} en vente, ${jamais.length} désactivés`);
 }
+
+// La Voleuse (LP-011) : le rachat, sans catalogue — ses prix sont ceux des quatre boutiques.
+fs.writeFileSync(SORTIE + "BoutiqueVente.ini", [
+  "; OpenForesia — la Voleuse, dans le hub de l'auberge : elle RACHÈTE (« legacy ++ », LP-011)",
+  ";",
+  "; On lui parle en se tenant devant elle, tourné vers elle, avec le bouton d'action. Le hub s'active",
+  "; dans LegacyPlus.ini ([Auberge] Hub = oui). Ce fichier est lu par le jeu, jamais écrit.",
+  ";",
+  "; Elle rachète ce que le joueur porte sur lui, SAUF ce qu'il a équipé, et ce qu'il a laissé dans",
+  "; son coffre. Le prix : le taux ci-dessous, en pourcentage du prix d'achat de l'objet dans l'une des",
+  "; quatre boutiques (BoutiqueObjets.ini, BoutiqueAccessoires.ini, BoutiqueArmures.ini,",
+  "; BoutiqueArmes.ini). Un objet qu'aucune d'elles ne vend ne se revend pas. Une pile se vend en",
+  "; entier, d'un seul appui.",
+  ";",
+  "; Vendre un objet du coffre modifie tout de suite la sauvegarde du personnage (l'objet sort du",
+  "; coffre, l'or entre dans la bourse enregistrée).",
+  "",
+  "[Boutique]",
+  "; oui = la Voleuse se tient dans le hub et rachète ; non = pas de Voleuse.",
+  "Actif = non",
+  "",
+  "[Vente]",
+  "; Pourcentage du prix d'achat payé au joueur : de 1 à 100.",
+  "Taux = 50",
+  "",
+].join("\r\n"), "utf8");
+console.log(`${SORTIE}BoutiqueVente.ini : rachat à 50 %`);
