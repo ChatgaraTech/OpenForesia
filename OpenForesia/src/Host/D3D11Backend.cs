@@ -1354,8 +1354,8 @@ internal static unsafe class D3D11Backend
     // ECHAFAUDAGE — OPENFORESIA_TRACE_FX=1 conserve les texels cote CPU apres la creation de la
     // vue, ce que le regime ordinaire ne fait pas. Sans cela, DescribeTexture n'aurait rien a
     // lire : le releve de l'onde de choc arrive longtemps apres le chargement de sa texture.
-    private static readonly bool s_RetainPixels =
-        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_FX") == "1" || DeviceShim.s_TraceFilter;
+    private static readonly bool s_RetainPixels = Diagnostic.Actif &&
+        (Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_FX") == "1" || DeviceShim.s_TraceFilter);
 
     /// <summary>
     /// ECHAFAUDAGE — decrit un objet texture pour le releve : ses dimensions, le texel que les

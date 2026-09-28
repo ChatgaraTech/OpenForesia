@@ -683,6 +683,14 @@ device synthétique n'a pas déplacé la valeur.
 
 ---
 
+## La version publiée est muette (2026-09-28)
+
+Un jeu installé par `OpenForesia-Setup.exe` est publié en **Release** : il n'écrit **aucun**
+journal — ni console (`stdout`/`stderr` coupés dès le module initializer), ni sondes `*-exerces.tsv`,
+ni `tournee-faite.txt`, ni captures de textures, ni `VS.Log`, quelle que soit la variable posée.
+L'interrupteur est `Diagnostic.Actif` (`src/Host/Diagnostic.cs`), vrai en Debug seulement. **Tout
+essai qui lit un journal se fait donc sur la build Debug** — c'est déjà ce que fait `playtest.ps1`.
+
 ## Deux processus `OpenForesia` : le lanceur et le jeu (2026-09-28, LB-056)
 
 Depuis LB-056, le processus lancé (celui de `Start-Process`, donc `$p` dans `playtest.ps1`) est un

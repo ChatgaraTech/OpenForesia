@@ -96,6 +96,15 @@ internal static class Startup
     [ModuleInitializer]
     internal static void ClaimDisplayListArena()
     {
+        // La version publiée n'écrit aucun journal (Host/Diagnostic.cs) : la console, où vont
+        // toutes les lignes de diagnostic, est coupée ici, avant la première — ce module
+        // initializer passe avant Main.
+        if (!Diagnostic.Actif)
+        {
+            Console.SetOut(TextWriter.Null);
+            Console.SetError(TextWriter.Null);
+        }
+
         if (ReserveBasse.EstLanceur) return;
         ArenaClaimed = Blaze.TryPrepareDisplayListArena();
     }

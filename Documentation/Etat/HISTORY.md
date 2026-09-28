@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- feat : la version publiée (Release) n'écrit plus aucun journal — console coupée, sondes de couverture, tournée du banc, captures de textures et `VS.Log` éteints quel que soit le réglage ; un seul interrupteur, `Diagnostic.Actif` (`src/Host/Diagnostic.cs`), vrai en Debug seulement
 - fix : le jeu n'écrit plus `legacyplus-boutique.log` à côté de l'exécutable ; les lignes de diagnostic des marchands et de la boutique passent sur la sortie d'erreurs (`[MARCHANDS]`, `[BOUTIQUE]`)
 - fix : LB-056 — le jeu ne s'ouvrait parfois pas (« No free block of 0x280000 bytes … below 0x01000000 », trois essais perdus) ; le processus lancé devient un lanceur qui crée le jeu suspendu, lui réserve l'arène et le bassin des descripteurs sous 16 Mo avant que le runtime ne démarre, puis l'attend ; l'ancienne recherche reste le repli ; à tester en jeu
 - feat : plus de clé `[Boutique] Actif` dans les `Boutique*.ini` — `[Auberge] Hub = oui` suffit, les cinq marchands sont là ; un ancien fichier qui la porte encore est lu, la clé ignorée ; fichier absent : catalogue vide

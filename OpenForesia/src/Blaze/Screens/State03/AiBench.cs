@@ -52,7 +52,7 @@ public static unsafe partial class Blaze
     /// La tournée implique le banc : <c>OPENFORESIA_AI_BENCH</c> n'a pas besoin d'être posé.
     /// </summary>
     private static readonly string s_AiBenchTourSpec =
-        Environment.GetEnvironmentVariable("OPENFORESIA_AI_BENCH_TOUR") ?? "";
+        Diagnostic.Actif ? Environment.GetEnvironmentVariable("OPENFORESIA_AI_BENCH_TOUR") ?? "" : "";   // Release : jamais de tournee-faite.txt
 
     /// <summary><c>OPENFORESIA_AI_BENCH_DWELL</c> — le séjour par sous-zone de la tournée, en
     /// secondes d'horloge (40 par défaut). En horloge et non en images : la cadence du jeu varie
