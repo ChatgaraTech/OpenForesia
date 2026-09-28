@@ -32,6 +32,7 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-008 | La boutique de l'auberge : l'armoire de la carte 82 vend le catalogue de `Boutique.ini` | `Boutique.ini` : `[Boutique] Actif`, `[Catalogue]` | `PasDuMembre` (l'ouverture), `DessinSurImpression` (l'écran) | **retiré** le 2026-09-28, remplacé par LP-010 — l'écran (`BoutiqueEcran.cs`), l'achat (`BoutiqueAchat.cs`) et l'index (`CatalogueObjets.cs`) servent aux marchands |
 | LP-010 | Les marchands du hub : Lutin (objets), Voleur (accessoires), Kobold (armures, boucliers), Sylphide (armes), sous des modèles de classe ; les quatre catalogues filtrés par la classe de l'acheteur | `LegacyPlus\Boutique{Objets,Accessoires,Armures,Armes}.ini` : `[Catalogue]` — présents dès que le hub l'est (`[Boutique] Actif` retiré le 2026-09-28) | `ListeDApparition` (le chargement), `DessinSurImpression` (le dessin, l'écran), `PasDuMembre` (la collision, l'ouverture) | validé en jeu (2026-09-28) — `src/LegacyPlus/MarchandsHub.cs` |
 | LP-009 | Le hub de l'auberge : une porte dans chaque réception, vers la carte 82 vidée sous le numéro 86 | `[Auberge] Hub` | `EntreeSousZone` (`LoadWorldMapSubArea`), `ListeDApparition` et `DecorNe` (`SpawnSubAreaEntities`), `PasDuMembre` (la porte), `TransfertScripte` (opcode 17), `PointDEntree` et `EcartDeReprise` (`PlaceWorldMapParty`), `LieuSauve` (menu et coffre) | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/HubAuberge.cs`, `openspec/changes/archive/2026-09-28-add-legacy-plus-inn-hub` |
+| LP-012 | L'arène du hub : un téléporteur, un menu (mode, palier 1 à 10 : PV et dégâts × palier), la salle du boss de la vieille tour (4/9) vidée pour un combat rejouable ; fin native (cinématique, portail vers le hub, deux coffres), défaite = retour au hub | aucune : suit `[Auberge] Hub` | `PasDuMembre` (la question), `DessinSurImpression` (le menu), `EntreeSousZone`, `PointDEntree`, `DecorNe`, `Rencontre`, `LieuSauve`, `ImageSuivante` (directeur, fin, journal Debug), `PvALaNaissance`, `DegatsSubis`, `ListeDApparition` (les coffres), et trois coutures neuves : `VolumesTus` (`TriggerVolumes.cs`), `DefaiteEvitee` (`WorldMapHud.cs`, le passage à l'état 9) et `ScriptTu` (`RunEntityScript`, aucun script de la sous-zone en arène) | en cours — lot 1 écrit (question, menu ; téléporteur vu en jeu), lots 2 à 4 écrits (l'aller, la salle vidée ; le directeur, le palier ; la fin, la défaite), à tester en jeu ; `openspec/changes/add-legacy-plus-arena` |
 | LP-011 | Le rachat : la Voleuse du hub rachète l'inventaire (hors équipement) et le coffre du joueur, à un taux du prix d'achat des quatre boutiques ; un objet absent des catalogues ne se revend pas ; une pile se vend en entier | `LegacyPlus\BoutiqueVente.ini` : `[Vente] Taux` (50) | celles de LP-010 | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/BoutiqueVente.cs`, `MarchandsHub.cs` ; une vente depuis le coffre écrit la sauvegarde (emplacement vidé, or crédité, sommes refaites) |
 | — | Vitesse des monstres | — | — | **abandonné** par Vincent le 2026-09-27 — les vitesses sont écrites en dur dans chacun des 166 gestionnaires de comportement |
 | LP-007 | Rencontres aléatoires : cadence, chevauchement pendant un combat, plusieurs formations | `[Rencontres] Frequence`, `MonstresMax`, `Formations` | `Rencontre` (l'appel de `TrySpawnRandomEncounter`), `RencontreEnAttente` et `RencontreBloquee` (ses deux gardes), `DelaiRencontre` (les deux rechargements du minuteur) | validé en jeu (2026-09-27) — `src/LegacyPlus/Rencontres.cs` |
@@ -192,6 +193,69 @@ jouable (Lutin 7, Voleur 2, Kobold 6, Sylphide 13), une boutique par catégorie 
   palettes en (0, 256 + 4·k), 256 × 4 ; une entrée libre de `0x005e8f00` (`0xcc + 4·k`) portant cette
   page et cette palette ; pagination du modèle : octet 1 = `0x40·k`, octet 2 = l'index de l'entrée.
 - **L'animation de repos est le clip 0** (relevé en jeu : un membre immobile joue le clip 0).
+
+## LP-012, l'arène du hub (étape 1, mesure du 2026-09-28)
+
+Demande de Vincent (2026-09-28) : depuis le hub, un téléporteur vers une arène — la salle du boss
+de la vieille tour, 4/9 « Parmi les Elus » —, un boss à un palier de 1 à 10 (PV et dégâts × palier),
+la cinématique de fin du jeu, un portail vers le hub, deux coffres ; la défaite ramène au hub. Change :
+`openspec/changes/add-legacy-plus-arena`. Validée d'abord sur l'Enchanteresse (native), puis le
+Grizzly (`add-legacy-plus-boss-graft`), puis tous les boss l'un après l'autre.
+
+**Ce que la mesure établit (lecture du code, sans jeu) :**
+
+- **La naissance d'une formation** : l'opcode 13 des scripts (`ScriptOpSpawnFormation`,
+  `WorldMapScript.cs:1170`) prend la liste `*(int**)(ctx + 0x34)[n]` et appelle
+  `SpawnEntityFormation(ctx, liste, 0, mode)` (`FUN_0051b850`, `:1455`) : des enregistrements de
+  `0x20` octets terminés par `-1` — mot 0 le genre, X / Y / Z en `+4` / `+6` / `+8`, cap en `+0xc`,
+  `+0xa` et `+0xe` recopiés en `+0x30` / `+0x34`, `+0x10`/`+0x14` les références, `+0x18` le mot
+  `+0x14` de l'entité. `mode` non nul : échelle `0x1000`, teinte blanche. Rend le nombre né. **Le
+  directeur l'appelle tel quel**, sur une copie du premier enregistrement de la formation 0 de 4/9
+  (l'Enchanteresse seule, sans ses deux Ténébreux).
+- **Le palier n'a besoin d'aucune couture nouvelle** : `PvALaNaissance` (LP-002, `ResetEntityStats`)
+  porte les PV maximum `+0x48` et courants `+0x4c` — des **`ushort`**, 65 535 au plus : 910 × 10
+  tient, 800 aussi — et `DegatsSubis` (LP-001, `ApplyDamage_00539A20`, par où passent **tous** les
+  coups) porte les dégâts, un `short` (à borner à 32 767 après × palier). Reste à vérifier à l'essai
+  qui est l'« attaquant » d'un sort de l'Enchanteresse : elle, ou l'entité du projectile.
+- **Les scripts de la salle** entrent par deux portes : les **volumes de déclenchement**
+  (`TestTriggerVolumes_00534CD0`, `Physics/TriggerVolumes.cs`) — entrée, sortie, première sortie —
+  et la **réaction d'une entité frappée** de genre 10 (`HitResolution.cs:1081`, `:1271`), qui lance
+  le script `+0x0e` de la victime. Le directeur fait naître ses créatures sans script ; les volumes
+  sont tus par **une couture nouvelle en tête de `TestTriggerVolumes_00534CD0`** (le bit `0x10` de
+  `0x005de02c`, qui les coupe déjà, gèle aussi la boucle du monde : inutilisable). Conséquence
+  voulue : en arène, les sorties de la salle ne mènent nulle part ; on en sort par le portail ou par
+  la défaite.
+- **Rien ne traite (4, 9) à part** dans le legacy : aucun test `zone == 4 && sous-zone == 9` ; seules
+  des tables de gestionnaires par groupe de sous-zones (`LabyrinthParticles.cs:1686`) — des données.
+  La scénette de sortie (`0x00474380`) ne court-circuite que (3, 8) et (4, 6).
+- **La sauvegarde** s'écrit par deux chemins, tous deux déjà passés par la couture `LieuSauve` :
+  le menu du jeu (`WorldMapMenu.cs:3779`) et le coffre de stockage (`WorldMapDepot.cs:2279`, absent
+  de l'arène vidée). En arène, l'entrée « sauvegarder » du menu est refusée ; `LieuSauve` écrit le
+  lieu du hub, en filet.
+- **La défaite** : `Tick/WorldMapHud.cs:175-182` — tous tombés, `0x005de02c |= 2` lance le fondu ;
+  `s_GameStateId_005de510 = 9` quand il a fini. **Une couture nouvelle** sur ce passage à l'état 9.
+- **Le téléporteur du hub** (relevé et captures de Vincent, `Tests/11. Teleporteur` ;
+  `OpenForesia.Tools decor-modele 5 9 2 <rang>`) : en 5/9, section 2, une salle à **quatre piliers
+  lumineux** aux coins (rangs 2 à 5, le modèle 1 ; deux portent une lueur, une particule, rangs 7 et 8)
+  et, **au centre, le téléporteur** : rang 6, genre 2, le **modèle 6** du paquet `+0x24`, descripteur
+  `01 03 01 20` (entrée de texture 1, une page 4 bits entière, semi-transparent), en (−2500, 55, −100),
+  paramètre de dessin `0x000c` (la palette 12). Deux essais ratés avant lui : les effets de la 82
+  (une flamme), puis un pilier et sa lueur (« un bloc lumineux »). Greffé dans le hub : le répertoire
+  de 5/9 relu, le paquet relogé, la page envoyée **en (960, 256)**, palette **ligne 276**, entrée de
+  table **`0xe0`**, à 55 au-dessus du sol comme en 5/9. La VRAM libre du hub restante : x 0..255,
+  y 224..447 hors marchands (palettes 256..275) et Voleuse (x 0..127, y 320..383).
+
+**Fichiers proposés** (`src/LegacyPlus/`, à valider par Vincent) :
+
+| Fichier | Ce qu'il porte |
+|---|---|
+| `EcranMenu.cs` | l'écran de menu générique tiré de `BoutiqueEcran` (liste, pas, question Oui / Non) ; la boutique et le rachat passent dessus |
+| `AreneTeleporteur.cs` | le téléporteur du hub, la question « …dangereux, on y va ? », le menu en trois pas |
+| `Arene.cs` | le mode arène : l'interrupteur, l'aller, la salle vidée, les volumes tus, la sauvegarde, la défaite |
+| `AreneDirecteur.cs` | les programmes et leurs vagues, la naissance, le palier, la fin (scénette, portail, coffres) |
+
+Coutures nouvelles dans `src/Blaze/` : deux, une ligne chacune — l'entrée des volumes de
+déclenchement et le passage à l'état 9.
 
 ## Préconisations en attente
 

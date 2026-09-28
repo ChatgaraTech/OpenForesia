@@ -186,6 +186,7 @@ public static unsafe partial class Blaze
                                          [CallerMemberName] string caller = "")
     {
         if (s_TraceScript) s_ScriptCaller = caller;
+        if (LegacyPlus.Coutures.ScriptTu(scriptIndex, caller)) return;   // Couture legacy ++ (LP-012)
 
         if (Winsys3d.Ordinal_46() < 0)
         {
@@ -1452,7 +1453,7 @@ public static unsafe partial class Blaze
     /// </summary>
     /// <param name="mode">Ghidra <c>param_4</c> : zero donne une entite plate et invisible (echelle
     /// nulle, teinte nulle), non nul une entite a l'echelle 0x1000 et teintee de blanc.</param>
-    private static int SpawnEntityFormation(byte* ctx, int* formation, ushort param3, int mode)
+    internal static int SpawnEntityFormation(byte* ctx, int* formation, ushort param3, int mode)   // `internal` pour LP-012 : le directeur de l'arene
     {
         int spawned = 0;
         int* record = formation;

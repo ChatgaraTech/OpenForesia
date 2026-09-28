@@ -36,6 +36,8 @@ internal static unsafe class HubAuberge
 
     /// <summary>Les rangs d'entité gardés dans le hub : la porte (0) et son échelle (1), le corps du
     /// coffre (15) et son couvercle scripté (16) — decor.csv, carte 82.</summary>
+    /// <remarks>Les deux effets 14 et 17 (sous-types 12 et 11) ont été essayés comme téléporteur de
+    /// l'arène le 2026-09-28 : c'est une flamme (Vincent). Retirés à nouveau.</remarks>
     private static readonly int[] s_Gardes = [0, 1, 15, 16];
 
     // La porte de la 82 dans la liste de la réception : sous-types 2 (la porte) et 15 (son échelle).
@@ -357,6 +359,17 @@ internal static unsafe class HubAuberge
         Journal($"J{m[8] + 1} passe la porte : réception {chargee} (reprise {s_RepriseOrigine}) → hub, entrée {EntreeCoffre}");
     }
 
+    /// <summary>
+    /// L'arène (LP-012) renvoie le groupe au hub : le prochain placement est une arrivée dans le hub,
+    /// comme par la porte — même place, même cap, aucun script d'arrivée. La réception d'origine,
+    /// retenue au passage de la porte, reste celle où mène la sortie du hub.
+    /// </summary>
+    internal static void RetourDArene()
+    {
+        s_Aller = true;
+        s_Retour = false;
+    }
+
     // ---- le retour -------------------------------------------------------------------------------
 
     /// <summary>
@@ -427,8 +440,9 @@ internal static unsafe class HubAuberge
 
     // ---- la sauvegarde ---------------------------------------------------------------------------
 
-    /// <summary>Dans le hub, la sauvegarde retient la réception d'origine (D6).</summary>
-    private static void Sauvegarde(byte* entete)
+    /// <summary>Dans le hub, la sauvegarde retient la réception d'origine (D6). L'arène (LP-012) y
+    /// renvoie la sienne, après avoir écrit le hub comme lieu.</summary>
+    internal static void Sauvegarde(byte* entete)
     {
         if (entete[1] != 0 || entete[2] != Hub) return;
 

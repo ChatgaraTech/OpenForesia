@@ -1,0 +1,288 @@
+// =====================================================================
+// LP-012 — le directeur de l'arène : les programmes, leurs vagues, la naissance et le palier.
+//
+// Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-arena, design D3 et D4). Un
+// programme est une liste de vagues ; une vague, des créatures désignées par leur place dans les
+// formations de la sous-zone (formation n, rang r de la table +0x34 du répertoire). Le directeur,
+// appelé à chaque image en mode arène (Arene.Actif) :
+//
+//   1. laisse passer un court délai après l'arrivée, puis fait naître la vague courante par
+//      SpawnEntityFormation (Ghidra: FUN_0051b850), le chemin de l'opcode 13 des scripts — la
+//      créature a donc son IA, sa fiche, ses collisions, exactement comme d'origine ;
+//   2. suit les emplacements de la table de scène (0x005ecaa0) nés de cet appel, et passe à la vague
+//      suivante quand tous sont morts (le bit 0x80000000 du mot d'état est tombé) ;
+//   3. après la dernière, passe la main à Arene.Victoire : la cinématique, les coffres, le portail.
+//
+// LE PALIER (D4), sur deux coutures existantes :
+//   - PvALaNaissance (LP-002) : pendant la naissance d'une vague, et pendant elle seule, les PV
+//     maximum et courants × palier, bornés à 65 535 (des ushort ; 910 × 10 tient) ;
+//   - DegatsSubis (LP-001) : un coup porté À UN MEMBRE DU GROUPE par une créature suivie × palier,
+//     borné à 32 767. L'attaquant d'un sort est souvent l'entité du projectile, pas la créature : pour
+//     un attaquant né dans l'une des deux tables d'effets (0x005ff400, 0x005edee0), on suit ses deux
+//     pointeurs vers une entité source, +0x74 (le lanceur) et +0x6c (SpawnEffectEntity y range sa
+//     source). En Debug, chaque coup reçu en arène est écrit [ARENE], pour vérifier à l'essai qui
+//     est l'attaquant.
+//
+// Limite connue : ce que la créature fait naître elle-même dans la table de scène (une invocation)
+// n'est pas suivi — ni multiplié, ni attendu pour finir la vague.
+//
+// Le directeur ne tire aucun nombre ; SpawnEntityFormation, elle, tire la cible initiale de chaque
+// créature (CrtRand, comme pour toute formation du jeu) : c'est le tirage du jeu, pas celui du tweak.
+// =====================================================================
+
+using System.Runtime.InteropServices;
+using Jeu = OpenForesia.Blaze.Blaze;
+
+namespace OpenForesia.LegacyPlus;
+
+internal static unsafe class AreneDirecteur
+{
+    /// <summary>
+    /// Une créature : le rang <paramref name="Rang"/> de la formation <paramref name="Formation"/> de
+    /// la sous-zone. Une <paramref name="Place"/> la déplace (x, z, cap) : l'enregistrement perd alors
+    /// ses deux faces de sol (<c>-1</c>), et <c>SpawnEntityFormation</c> pose la créature au sol par
+    /// <c>TryPlaceEntity</c> — comme le banc d'essai.
+    /// </summary>
+    internal sealed record Creature(int Formation, int Rang, (short X, short Z, short Cap)? Place = null);
+
+    /// <summary>Une vague : les créatures qui naissent ensemble.</summary>
+    internal sealed record Vague(Creature[] Creatures);
+
+    /// <summary>Un programme de l'arène : le nom que le menu affiche, et ses vagues dans l'ordre.</summary>
+    internal sealed record Programme(string Nom, Vague[] Vagues);
+
+    /// <summary>
+    /// Les programmes, dans l'ordre du menu. L'Enchanteresse, boss natif de 4/9, valide la mécanique :
+    /// une vague, elle seule — le rang 0 de la formation 0 (formations.csv : espèce 1, (100, 200,
+    /// −2200), cap 2048), sans ses deux Ténébreux. Elle prend la place d'arrivée du groupe, (100,
+    /// −2900), tournée vers lui (cap 0), et le groupe la sienne (Vincent, 2026-09-28 ;
+    /// <c>Arene.cs</c>). Elle reste au menu quand les boss greffés arrivent.
+    /// </summary>
+    internal static readonly Programme[] Programmes =
+    [
+        new("ENCHANTERESSE", [new Vague([new Creature(0, 0, (100, -2900, 0))])]),
+    ];
+
+    internal const int PalierMax = 10;
+
+    /// <summary>Le dernier choix confirmé au menu ; <c>null</c> tant qu'aucun départ n'a été demandé.</summary>
+    internal static (Programme Programme, int Palier)? Choix { get; private set; }
+
+    /// <summary>Le joueur a confirmé : l'arène part avec ce programme, à ce palier.</summary>
+    internal static void Choisir(Programme programme, int palier)
+    {
+        Choix = (programme, palier);
+        Journal($"départ demandé : {programme.Nom}, palier {palier}");
+        Arene.Partir();
+    }
+
+    // ---- le déroulé ------------------------------------------------------------------------------
+
+    /// <summary>Images entre l'arrivée et la première vague, puis entre deux vagues.</summary>
+    private const int Delai = 30;
+
+    private const int Enregistrement = 8;                // ints par enregistrement de formation
+    private const int TailleScene = 0x9c, PlacesScene = 0x20;
+    private const int PoolScene = 0x005ecaa0;
+    private static readonly (int Base, int Places)[] s_PoolsEffets = [(0x005ff400, 0x20), (0x005edee0, 0x80)];
+
+    private static Programme? s_Programme;
+    private static int s_Palier = 1;
+    private static int s_Vague;
+    private static int s_Attente;
+    private static bool s_EnCours;
+    private static bool s_Naissance;                     // SpawnEntityFormation tourne pour le directeur
+    private static uint s_Suivis;                        // emplacements de scène de la vague, en masque
+
+    internal static void Installer()
+    {
+        if (!ReglagesLegacyPlus.Hub) return;
+
+        Coutures.Pv pv = Coutures.PvALaNaissance;
+        Coutures.PvALaNaissance = (stats, valeur) =>
+        {
+            valeur = pv(stats, valeur);
+            return s_Naissance ? (ushort)Math.Min(ushort.MaxValue, valeur * s_Palier) : valeur;
+        };
+
+        Coutures.Degats degats = Coutures.DegatsSubis;
+        Coutures.DegatsSubis = (attaquant, victime, montant) => Degats(attaquant, victime, degats(attaquant, victime, montant));
+
+        Action image = Coutures.ImageSuivante;
+        Coutures.ImageSuivante = () =>
+        {
+            image();
+            if (Arene.Actif) Image();
+        };
+    }
+
+    /// <summary>Le mode arène vient d'être levé : le programme choisi repart de sa première vague.</summary>
+    internal static void Commencer()
+    {
+        s_Suivis = 0;
+        s_Vague = 0;
+        s_Attente = Delai;
+        s_EnCours = Choix != null;
+        if (Choix is not { } choix) { Journal("aucun programme choisi : l'arène reste vide"); return; }
+
+        s_Programme = choix.Programme;
+        s_Palier = Math.Clamp(choix.Palier, 1, PalierMax);
+        Journal($"programme {s_Programme.Nom}, palier {s_Palier}, {s_Programme.Vagues.Length} vague(s)");
+    }
+
+    /// <summary>Le mode arène vient d'être baissé.</summary>
+    internal static void Arreter()
+    {
+        s_EnCours = false;
+        s_Suivis = 0;
+    }
+
+    private static void Image()
+    {
+        if (!s_EnCours || s_Programme == null) return;
+
+        if (s_Suivis == 0)
+        {
+            if (--s_Attente > 0) return;
+            Naitre(s_Programme.Vagues[s_Vague]);
+            return;
+        }
+
+        // Un emplacement suivi qui n'est plus vivant ne l'est plus jamais pour nous : réutilisé,
+        // il porterait autre chose.
+        byte* table = Jeu.Mem.Entity(PoolScene);
+        for (int i = 0; i < PlacesScene; i++)
+        {
+            uint bit = 1u << i;
+            if ((s_Suivis & bit) != 0 && (*(uint*)(table + i * TailleScene) & 0x80000000) == 0) s_Suivis &= ~bit;
+        }
+        if (s_Suivis != 0) return;
+
+        Journal($"vague {s_Vague + 1} vaincue");
+        if (++s_Vague < s_Programme.Vagues.Length) { s_Attente = Delai; return; }
+
+        s_EnCours = false;
+        Journal($"programme {s_Programme.Nom} terminé");
+        Arene.Victoire();
+    }
+
+    /// <summary>
+    /// Une vague : ses enregistrements recopiés depuis les formations de la sous-zone, terminés par
+    /// <c>-1</c>, et remis à <c>SpawnEntityFormation</c> en mode 0 — celui des rencontres du jeu
+    /// (<c>Goblin.cs</c>) et du banc d'essai.
+    /// </summary>
+    private static void Naitre(Vague vague)
+    {
+        byte* repertoire = Jeu.s_Unknown_005e97cc;
+        int** formations = repertoire == null ? null : *(int***)(repertoire + 0x34);
+        if (formations == null) { Abandonner("la sous-zone n'a pas de table de formations"); return; }
+
+        int* liste = (int*)NativeMemory.AllocZeroed((nuint)((vague.Creatures.Length + 1) * Enregistrement), sizeof(int));
+        try
+        {
+            int n = 0;
+            foreach (Creature c in vague.Creatures)
+            {
+                int* source = formations[c.Formation];
+                int rang = 0;
+                while (rang < c.Rang && source[rang * Enregistrement] != -1) rang++;
+                if (source[rang * Enregistrement] == -1) { Abandonner($"formation {c.Formation} sans rang {c.Rang}"); return; }
+                int* r = liste + n * Enregistrement;
+                for (int k = 0; k < Enregistrement; k++) r[k] = source[rang * Enregistrement + k];
+                if (c.Place is { } place)
+                {
+                    *(short*)((byte*)r + 4) = place.X;           // la hauteur (+6) est gardée
+                    *(short*)((byte*)r + 8) = place.Z;           // +0xa, recopié en +0x30, est gardé
+                    *(short*)((byte*)r + 0xc) = place.Cap;       // +0xe, recopié en +0x34, est gardé
+                    r[4] = -1;
+                    r[5] = -1;
+                }
+                n++;
+            }
+            liste[n * Enregistrement] = -1;
+
+            uint avant = Vivants();
+            int nes;
+            s_Naissance = true;
+            try { nes = Jeu.SpawnEntityFormation(repertoire, liste, 0, 0); }
+            finally { s_Naissance = false; }
+            s_Suivis = Vivants() & ~avant;
+
+            if (s_Suivis == 0) { Abandonner($"vague {s_Vague + 1} : aucune créature n'a pu naître"); return; }
+            Journal($"vague {s_Vague + 1} : {nes} créature(s) née(s), PV × {s_Palier}, emplacements 0x{s_Suivis:x8}");
+        }
+        finally { NativeMemory.Free(liste); }
+    }
+
+    private static void Abandonner(string raison)
+    {
+        s_EnCours = false;
+        Journal($"programme arrêté : {raison}");
+    }
+
+    /// <summary>Les emplacements vivants de la table de scène, en masque.</summary>
+    private static uint Vivants()
+    {
+        uint masque = 0;
+        byte* table = Jeu.Mem.Entity(PoolScene);
+        for (int i = 0; i < PlacesScene; i++)
+            if ((*(uint*)(table + i * TailleScene) & 0x80000000) != 0) masque |= 1u << i;
+        return masque;
+    }
+
+    // ---- le palier des dégâts --------------------------------------------------------------------
+
+    private static short Degats(uint* attaquant, uint* victime, short montant)
+    {
+        if (!Arene.Actif || victime == null || (*victime & 0xfc0000) != 0x800000) return montant;
+
+        bool suivi = s_EnCours && DeLaVague((byte*)attaquant);
+        short rendu = suivi && montant > 0 ? (short)Math.Min(short.MaxValue, montant * s_Palier) : montant;
+#if DEBUG
+        Journal($"J{((byte*)victime)[8] + 1} touché par {Nommer((byte*)attaquant)}{(suivi ? " (suivi)" : "")} : {montant} → {rendu}");
+#endif
+        return rendu;
+    }
+
+    /// <summary>L'attaquant est une créature suivie, ou une entité d'effet qui en vient.</summary>
+    private static bool DeLaVague(byte* attaquant)
+    {
+        if (attaquant == null) return false;
+        if (Suivi(attaquant)) return true;
+        if (!DansUnPoolEffets(attaquant)) return false;
+        return Suivi(*(byte**)(attaquant + 0x74)) || Suivi(*(byte**)(attaquant + 0x6c));
+    }
+
+    private static bool Suivi(byte* entite)
+    {
+        long ecart = entite - Jeu.Mem.Entity(PoolScene);
+        if (ecart < 0 || ecart >= PlacesScene * TailleScene || ecart % TailleScene != 0) return false;
+        return (s_Suivis & (1u << (int)(ecart / TailleScene))) != 0;
+    }
+
+    private static bool DansUnPoolEffets(byte* entite)
+    {
+        foreach ((int debut, int places) in s_PoolsEffets)
+        {
+            long ecart = entite - Jeu.Mem.Entity(debut);
+            if (ecart >= 0 && ecart < places * TailleScene && ecart % TailleScene == 0) return true;
+        }
+        return false;
+    }
+
+#if DEBUG
+    private static string Nommer(byte* entite)
+    {
+        if (entite == null) return "rien";
+        foreach ((int debut, int places) in s_PoolsEffets.Prepend((PoolScene, PlacesScene)))
+        {
+            long ecart = entite - Jeu.Mem.Entity(debut);
+            if (ecart >= 0 && ecart < places * TailleScene && ecart % TailleScene == 0)
+                return $"0x{debut:x8}[{ecart / TailleScene}] (sous-type {entite[5]})";
+        }
+        return $"0x{(nint)entite:x}";
+    }
+#endif
+
+    private static void Journal(string message) => Console.Error.WriteLine($"[ARENE] {message}");
+}

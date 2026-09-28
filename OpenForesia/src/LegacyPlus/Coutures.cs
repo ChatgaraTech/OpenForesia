@@ -222,6 +222,31 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Lieu LieuSauve = entete => { };
 
+    /// <summary>
+    /// Couture LP-012 — en tête de <c>TestTriggerVolumes_00534CD0</c> (Ghidra: FUN_00534cd0), après
+    /// la garde d'origine (le bit <c>0x10</c> du monde, qui gèle aussi la boucle et ne peut donc pas
+    /// servir) : vrai tait tous les volumes de déclenchement de cette image — aucun script lancé,
+    /// aucun compte de passage. Par défaut, faux.
+    /// </summary>
+    internal static Func<bool> VolumesTus = () => false;
+
+    /// <summary>
+    /// Couture LP-012 — dans le panneau de la carte (<c>Tick/WorldMapHud.cs</c>), au passage à
+    /// l'état 9 (la fin de partie) quand tout le groupe est tombé et que le fondu de mort est fini :
+    /// vrai, le tweak a pris la main et le passage n'a pas lieu. Par défaut, faux.
+    /// </summary>
+    internal static Func<bool> DefaiteEvitee = () => false;
+
+    /// <summary>Un script de la sous-zone sur le point d'être lancé : son indice et le nom de l'appelant.</summary>
+    internal delegate bool Script(uint indice, string appelant);
+
+    /// <summary>
+    /// Couture LP-012 — en tête de <c>RunEntityScript</c> (Ghidra: FUN_00513dd0), par où passent tous
+    /// les scripts de la sous-zone (table <c>contexte + 0x8c</c>) : arrivée, entrée de section,
+    /// volumes, entité frappée ou morte, dialogues. Vrai : le script n'est pas lancé. Par défaut, faux.
+    /// </summary>
+    internal static Script ScriptTu = (indice, appelant) => false;
+
     static Coutures()
     {
         try
@@ -235,6 +260,9 @@ internal static unsafe class Coutures
             Rencontres.Installer();
             HubAuberge.Installer();
             MarchandsHub.Installer();
+            AreneTeleporteur.Installer();
+            Arene.Installer();
+            AreneDirecteur.Installer();
 #if DEBUG
             // Les outils de diagnostic n'existent que dans la version Debug : la version publiée
             // (publish-release.ps1, -c Release) ne les installe jamais, même avec la clé.
@@ -269,6 +297,9 @@ internal static unsafe class Coutures
             PointDEntree = point => point;
             EcartDeReprise = ecart => ecart;
             LieuSauve = entete => { };
+            VolumesTus = () => false;
+            DefaiteEvitee = () => false;
+            ScriptTu = (indice, appelant) => false;
         }
     }
 }

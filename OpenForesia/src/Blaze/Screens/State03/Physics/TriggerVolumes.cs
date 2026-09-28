@@ -156,6 +156,7 @@ public static unsafe partial class Blaze
     private static void TestTriggerVolumes_00534CD0(uint* entityPtr)
     {
         if ((Mem.s_WorldFlags_005de02c & 0x10) != 0) return;
+        if (LegacyPlus.Coutures.VolumesTus()) return;   // Couture legacy ++ (LP-012)
 
         byte* entity = (byte*)entityPtr;
         byte* pending = Mem.Entity(0x005fa560);

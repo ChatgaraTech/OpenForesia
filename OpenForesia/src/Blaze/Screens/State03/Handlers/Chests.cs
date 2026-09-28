@@ -388,7 +388,12 @@ public static unsafe partial class Blaze
             *(ushort*)(slot + 0x3e) = 0;
             *(ushort*)(slot + 0x18) = slot[0x42];
 
-            Inp.s_InputStateBase_00604a20[*pads * 4 + 4] |= 0xf0;
+            // Ghidra: `(&DAT_00604a24)[*pads * 4]` sur un tableau de DWORDS — le binaire fait
+            // `shl ecx,4 ; or byte [ecx+604A24h],0F0h` : l'octet +4 du bloc de 0x10 octets de CETTE
+            // manette. Transcrit jusqu'au 2026-09-28 avec un pas de 4 OCTETS, ce qui écrivait 0xf0
+            // dans le bloc d'une autre manette dès que le type n'était pas 0 : le joueur perdait la
+            // main en refermant la boîte (relevé par l'écran de menu LP-012, qui emploie ce rappel).
+            Inp.s_InputStateBase_00604a20[*pads * 0x10 + 4] |= 0xf0;
         }
     }
 

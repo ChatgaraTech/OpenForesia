@@ -88,6 +88,36 @@ if (args[0] is "terrain" && args.Length >= 3)
     return;
 }
 
+// Ce qu'une greffe de decor demande (LP-012, le teleporteur du hub), lu hors jeu :
+// `decor-modele <zone> <sous-zone> <section> <rang> [dossier]`.
+if (args[0] is "decor-modele" && args.Length >= 5)
+{
+    string? dossier = args.Length > 5 ? args[5] : DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Bestiaire.DecorModele(dossier, int.Parse(args[1]), int.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]));
+    return;
+}
+
+// Les points d'entree d'une sous-zone (LP-012, l'arene), lus hors jeu :
+// `entrees <zone> <sous-zone> [dossier]`.
+if (args[0] is "entrees" && args.Length >= 3)
+{
+    string? dossier = args.Length > 3 ? args[3] : DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Bestiaire.Entrees(dossier, int.Parse(args[1]), int.Parse(args[2]));
+    return;
+}
+
+// Les programmes de texte de la table +0x70 de l'etat 3 (LP-012, les boites de l'arene), lus hors
+// jeu : `libelles <index hexa> [<index hexa>...]`.
+if (args[0] is "libelles" && args.Length >= 2)
+{
+    string? dossier = DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Bestiaire.Libelles(dossier, args.Skip(1).Select(s => Convert.ToInt32(s, 16)));
+    return;
+}
+
 // Les ressources de chaque classe jouable (modele, animation, deux textures), lues hors jeu :
 // `classes [dossier]`. Ecrit pour les marchands du hub (LP-010).
 if (args[0] is "classes")

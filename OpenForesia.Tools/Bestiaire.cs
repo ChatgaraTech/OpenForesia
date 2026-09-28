@@ -455,6 +455,165 @@ internal static class Bestiaire
         }
     }
 
+    /// <summary>
+    /// Le verbe <c>decor-modele</c> : pour un enregistrement de decor (zone, sous-zone, section,
+    /// rang de la table <c>+0x30</c>), ce qu'une greffe de ce decor demande (LP-012, le teleporteur du
+    /// hub). Le genre (<c>octet 0 &amp; 3</c> : 0 particule, 1 modele fixe, 2 modele trie par face),
+    /// l'indice de modele (<c>+0x1c</c>) et le mot <c>+0x1e</c> (<c>record[7] &gt;&gt; 16</c>, le
+    /// parametre du dessin) ; puis le dernier paquet de la liste <c>+0x24</c> — celui dont
+    /// <c>LoadWorldMapSubArea</c> recopie les modeles dans la table de morceaux, et que l'indice
+    /// designe —, ses quatre octets de pagination et le descripteur de la partie ; enfin les textures
+    /// de la sous-zone (<c>+0x10</c>, entrees 0, 1, 2… de la table de decodage) avec leurs octets de
+    /// description et leur en-tete TIM, car l'octet 2 de la pagination choisit l'une d'elles.
+    /// </summary>
+    /// <summary>
+    /// Le verbe <c>entrees</c> : les points d'entree d'une sous-zone, huit dwords chacun a
+    /// <c>+0x40</c> du repertoire, tels que <c>PlaceWorldMapParty</c> les lit — section (octet bas du
+    /// dword 0), script d'arrivee (moitie haute), x / z, et la hauteur quand la position est imposee
+    /// (dwords 4 et 5 differents de <c>0xffffffff</c>). La fin de la table est celle de sa region.
+    /// Ecrit pour l'arene (LP-012).
+    /// </summary>
+    public static void Entrees(string dossierDonnees, int zone, int sousZone)
+    {
+        string french = Path.Combine(dossierDonnees, "French");
+        if (!Directory.Exists(french)) french = dossierDonnees;
+        byte[] archive = File.ReadAllBytes(Path.Combine(french, "BLAZE.ALL"));
+        var root = new Blob(File.ReadAllBytes(Path.Combine(french, "SYSTEM.INI")));
+        root.Fixup();
+
+        var stateDir = LoadEntry(archive, root, EntryList(root, 0x48)[3]);
+        var zoneBlob = LoadEntry(archive, stateDir, EntryList(stateDir, 0x48)[zone]);
+        var a = LoadEntry(archive, zoneBlob, EntryList(zoneBlob, 0x48)[sousZone]);
+
+        int table = a.I32(0x40);
+        int fin = RegionEnd(a, table);
+        Console.WriteLine("entree,section,script,x,z,imposee,hauteur,mot1,mot2,mot3,mot4,mot5,mot6,mot7");
+        for (int n = 0; a.In(table + n * 0x20, 0x20) && table + (n + 1) * 0x20 <= fin; n++)
+        {
+            int o = table + n * 0x20;
+            uint w0 = (uint)a.I32(o);
+            bool imposee = a.I32(o + 0x10) != -1 || a.I32(o + 0x14) != -1;
+            Console.WriteLine($"{n},{w0 & 0xff},{w0 >> 16:x4},{a.I16(o + 4)},{a.I16(o + 8)},{(imposee ? "oui" : "non")},"
+                              + $"{(imposee ? (a.I32(o + 4) >> 16).ToString() : "")},"
+                              + string.Join(",", Enumerable.Range(1, 7).Select(k => $"{(uint)a.I32(o + k * 4):x8}")));
+        }
+    }
+
+    /// <summary>
+    /// Le verbe <c>libelles</c> : les programmes de texte de la table <c>+0x70</c> du répertoire de
+    /// l'état 3 — celle que <c>AnnounceItem</c> lit (<c>labels + index * 4</c>) et que le code de
+    /// contrôle <c>0x0b 01 nn nn</c> appelle —, en hexadécimal puis en Latin-1 (codes de contrôle
+    /// entre crochets). Écrit pour les boîtes de l'arène (LP-012).
+    /// </summary>
+    public static void Libelles(string dossierDonnees, IEnumerable<int> indices)
+    {
+        string french = Path.Combine(dossierDonnees, "French");
+        if (!Directory.Exists(french)) french = dossierDonnees;
+        byte[] archive = File.ReadAllBytes(Path.Combine(french, "BLAZE.ALL"));
+        var root = new Blob(File.ReadAllBytes(Path.Combine(french, "SYSTEM.INI")));
+        root.Fixup();
+        var a = LoadEntry(archive, root, EntryList(root, 0x48)[3]);
+
+        int table = a.I32(0x70);
+        foreach (int k in indices)
+        {
+            int o = a.I32(table + k * 4);
+            if (!a.In(o)) { Console.WriteLine($"libelle 0x{k:x} : hors du repertoire (0x{o:x})"); continue; }
+            var octets = new List<byte>();
+            for (int i = o; a.In(i) && octets.Count < 160; i++)
+            {
+                octets.Add(a.U8(i));
+                if (a.U8(i) == 0 && octets.Count >= 4) break;
+            }
+            var texte = new System.Text.StringBuilder();
+            foreach (byte b in octets) texte.Append(b < 0x20 ? $"[{b:x2}]" : ((char)b).ToString());
+            Console.WriteLine($"libelle 0x{k:x} ({octets.Count} octets) :");
+            Console.WriteLine("  " + string.Join(" ", octets.Select(b => b.ToString("x2"))));
+            Console.WriteLine("  " + texte);
+        }
+    }
+
+    public static void DecorModele(string dossierDonnees, int zone, int sousZone, int section, int rang)
+    {
+        string french = Path.Combine(dossierDonnees, "French");
+        if (!Directory.Exists(french)) french = dossierDonnees;
+        byte[] archive = File.ReadAllBytes(Path.Combine(french, "BLAZE.ALL"));
+        var root = new Blob(File.ReadAllBytes(Path.Combine(french, "SYSTEM.INI")));
+        root.Fixup();
+
+        var stateDir = LoadEntry(archive, root, EntryList(root, 0x48)[3]);
+        var zoneBlob = LoadEntry(archive, stateDir, EntryList(stateDir, 0x48)[zone]);
+        var a = LoadEntry(archive, zoneBlob, EntryList(zoneBlob, 0x48)[sousZone]);
+        string Octets(int v) => $"{v & 0xff:x2} {(v >> 8) & 0xff:x2} {(v >> 16) & 0xff:x2} {(v >> 24) & 0xff:x2}";
+
+        int listes = a.I32(0x30);
+        int rec = a.I32(listes + section * 4);
+        int ro = rec + rang * 0x20;
+        Console.WriteLine($"enregistrement {zone}/{sousZone} section {section} rang {rang} :");
+        Console.WriteLine("  " + string.Join(" ", Enumerable.Range(0, 8).Select(k => $"{(uint)a.I32(ro + k * 4):x8}")));
+        int genre = a.U8(ro) & 3, indice = a.U8(ro + 0x1c), sousType = a.U8(ro + 0x1d);
+        Console.WriteLine($"  genre {genre} ({(genre == 0 ? "particule" : genre == 1 ? "modele fixe" : "modele trie par face")}), "
+                          + $"sous-type {sousType}, indice de modele {indice}, mot +0x1e = 0x{a.U16(ro + 0x1e):x4}, "
+                          + $"x/y/z {a.I16(ro + 4)}/{a.I16(ro + 6)}/{a.I16(ro + 8)}");
+
+        // Une particule (genre 0) : son atlas est `*(sous-zone + 0x38)[indice]` (SpawnSubAreaEntities,
+        // slot[0xf]) — EmitParticle lit l'attribut en atlas[1] (octet 2 : l'entree de texture) et
+        // l'image n en atlas[2n] (u, v, largeur, hauteur).
+        if (genre == 0)
+        {
+            int atlas = a.I32(a.I32(0x38) + indice * 4);
+            if (a.In(atlas, 8))
+            {
+                int fin = Math.Min(RegionEnd(a, atlas), atlas + 0x40);
+                Console.WriteLine($"  atlas (0x{atlas:x}) : attributs {Octets(a.I32(atlas + 4))}");
+                for (int f = 0; atlas + f * 8 + 4 <= fin && f < 8; f++)
+                {
+                    int c = a.I32(atlas + f * 8);
+                    Console.WriteLine($"    image {f} : u {c & 0xff}, v {(c >> 8) & 0xff}, l {(c >> 16) & 0xff}, h {(c >> 24) & 0xff}"
+                                      + $"   (attributs {Octets(a.I32(atlas + f * 8 + 4))})");
+                }
+            }
+        }
+
+        // Les quatre listes de morceaux : leur compte donne la base des modeles de decor.
+        int morceaux = 0;
+        for (int l = 0; l < 4; l++)
+            for (int e = a.I32(0x14 + l * 4); a.In(e, 8) && a.I32(e) != 0; e += 8) morceaux++;
+
+        int paquets = a.I32(0x24), dernier = 0, k2 = 0;
+        for (int e = paquets; a.In(e, 8) && a.I32(e) != 0; e += 8, k2++) dernier = e;
+        Console.WriteLine($"  {morceaux} morceaux de terrain ; liste +0x24 : {k2} paquet(s)");
+        if (dernier != 0)
+        {
+            var b = LoadEntryRaw(archive, a, a.I32(dernier));
+            int n = b.I32(0);
+            Console.WriteLine($"  dernier paquet : {b.Len} octets, {n} modele(s), pagination {Octets(a.I32(dernier + 4))}");
+            for (int j = 0; j < n; j++)
+                Console.WriteLine($"    modele {j} : descripteur {Octets(b.I32((n + 1 + j) * 4))}"
+                                  + $"{(j == indice ? "   <== celui-ci" : "")}");
+        }
+
+        Console.WriteLine("  textures de la sous-zone (+0x10) :");
+        int tex = a.I32(0x10), slot = 0;
+        for (int e = tex; a.In(e, 8) && a.I32(e) != 0; e += 8, slot++)
+        {
+            var t = LoadEntryRaw(archive, a, a.I32(e));
+            string s = $"    entree {slot} : {t.Len} octets, description {Octets(a.I32(e + 4))}";
+            if (t.Len >= 8)
+            {
+                int flags = t.I32(4), off = 8;
+                s += $", mode {flags & 3}";
+                if ((flags & 8) != 0 && t.In(off, 12))
+                {
+                    s += $", palette ({t.U16(off + 4)}, {t.U16(off + 6)}) {t.U16(off + 8)}x{t.U16(off + 10)}";
+                    off += t.I32(off);
+                }
+                if (t.In(off, 12)) s += $", image ({t.U16(off + 4)}, {t.U16(off + 6)}) {t.U16(off + 8)}x{t.U16(off + 10)} mots";
+            }
+            Console.WriteLine(s);
+        }
+    }
+
     // Les seuils de FUN_0053a920 : rand() % plage, compare a 0x18, 0x29, 0x38, 0x45, 0x50, 0x59,
     // 0x5f. Huit rangs, donc, et ce sont ces bornes qui donnent les pourcentages.
     // =============================================================================================

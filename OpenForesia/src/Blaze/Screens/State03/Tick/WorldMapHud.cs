@@ -175,7 +175,8 @@ public static unsafe partial class Blaze
         if (*(byte*)Mem.Camera(0x005de030) >= s_PartySize_005e9020)
         {
             Mem.s_WorldFlags_005de02c |= 2;
-            if (s_Unknown_005de518 >= s_PartySize_005e9020)
+            if (s_Unknown_005de518 >= s_PartySize_005e9020
+                && !LegacyPlus.Coutures.DefaiteEvitee())   // Couture legacy ++ (LP-012)
             {
                 s_WorldMapStep_005645f8 = -2;
                 s_GameStateId_005de510 = 9;
