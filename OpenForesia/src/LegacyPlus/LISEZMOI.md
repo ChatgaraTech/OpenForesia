@@ -33,6 +33,7 @@ src/LegacyPlus/
    BoutiqueEcran.cs         LP-008 — l'écran de la boutique (liste, pages, bourse, aperçu de l'icône)
    CatalogueObjets.cs       LP-008 — l'index nom → fiche et vignette, lu dans les fichiers du jeu
    BoutiqueAchat.cs         LP-008 — l'achat : bourse, emplacement, rangement, icône
+   HubAuberge.cs            LP-009 — la porte de la réception, le hub (la 82 vidée, sous-zone 86), le retour, la sauvegarde
    TraceCombat.cs           diagnostic, pas un tweak : le journal des coups de mêlée
    TracePosition.cs         diagnostic : la position du joueur 1 à chaque arrêt
 ```

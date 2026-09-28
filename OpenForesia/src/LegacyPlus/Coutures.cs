@@ -161,6 +161,67 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Dessin DessinSurImpression = (otBase, curseur) => curseur;
 
+    /// <summary>L'entrée d'archive d'une sous-zone, lue dans la table <c>+0x48</c> du répertoire de zone.</summary>
+    internal delegate int Repertoire(int* table, int sousZone);
+
+    /// <summary>
+    /// Couture LP-009 — dans <c>LoadWorldMapSubArea</c> (Ghidra: FUN_00516350), la lecture de
+    /// l'entrée d'archive de la sous-zone à charger. Par défaut, <c>table[sousZone]</c>.
+    /// </summary>
+    internal static Repertoire EntreeSousZone = (table, sousZone) => table[sousZone];
+
+    /// <summary>Une liste d'apparitions de 0x20 octets par enregistrement, terminée par <c>0xffffffff</c>.</summary>
+    internal delegate uint* Liste(int indice, uint* liste);
+
+    /// <summary>
+    /// Couture LP-009 — dans <c>SpawnSubAreaEntities</c> (Ghidra: FUN_005350b0), la liste que le
+    /// peuplement va parcourir. <c>indice</c> peut valoir <c>0xff</c> et la liste être quelconque :
+    /// l'original la lit avant de tester. Par défaut, la liste des données.
+    /// </summary>
+    internal static Liste ListeDApparition = (indice, liste) => liste;
+
+    /// <summary>Une entité vient de naître d'un enregistrement d'apparition.</summary>
+    internal delegate void Naissance(uint* enregistrement, uint* entite);
+
+    /// <summary>
+    /// Couture LP-009 — dans <c>SpawnSubAreaEntities</c>, juste après la pose d'une entité sur le
+    /// terrain. Un tweak peut la rendre au néant (mot d'état à zéro, comme <c>ClearEntitySlots</c>)
+    /// sans décaler le rang des suivantes. Par défaut, rien.
+    /// </summary>
+    internal static Naissance DecorNe = (enregistrement, entite) => { };
+
+    /// <summary>
+    /// Couture LP-009 — à la fin de l'opcode 17 (<c>ScriptOpTransferArea</c>, Ghidra: FUN_00515a00),
+    /// quand un script vient de poser zone, sous-zone et point d'entrée d'un changement de carte.
+    /// Par défaut, rien.
+    /// </summary>
+    internal static Action TransfertScripte = () => { };
+
+    /// <summary>Un point d'entrée de sous-zone : huit dwords, lus par le placement du groupe.</summary>
+    internal delegate uint* Point(uint* point);
+
+    /// <summary>
+    /// Couture LP-009 — dans <c>PlaceWorldMapParty</c> (Ghidra: FUN_00516350), le point d'entrée où le
+    /// groupe arrive après un rechargement. Par défaut, celui des données.
+    /// </summary>
+    internal static Point PointDEntree = point => point;
+
+    /// <summary>
+    /// Couture LP-009 — dans le même placement, l'écart tiré au hasard autour du point d'entrée
+    /// (un par axe, à chaque essai). Le tirage a lieu quoi qu'il arrive ; par défaut, l'écart tiré.
+    /// </summary>
+    internal static Func<int, int> EcartDeReprise = ecart => ecart;
+
+    /// <summary>Les quatre octets du lieu de reprise d'une sauvegarde (<c>+0x1f00..+0x1f03</c>).</summary>
+    internal delegate void Lieu(byte* entete);
+
+    /// <summary>
+    /// Couture LP-009 — aux deux écritures du lieu de reprise d'une sauvegarde : le menu
+    /// (<c>CopyGlobalBanksIntoSaveBlock</c>) et le coffre de stockage (<c>FillDepotSaveBlock</c>),
+    /// avant la somme de contrôle. Par défaut, rien.
+    /// </summary>
+    internal static Lieu LieuSauve = entete => { };
+
     static Coutures()
     {
         try
@@ -173,8 +234,13 @@ internal static unsafe class Coutures
             DeplacementEnIncantation.Installer();
             Boutique.Installer();
             Rencontres.Installer();
+            HubAuberge.Installer();
+#if DEBUG
+            // Les outils de diagnostic n'existent que dans la version Debug : la version publiée
+            // (publish-release.ps1, -c Release) ne les installe jamais, même avec la clé.
             TraceCombat.Installer();
             TracePosition.Installer();                 // en dernier : il observe les décisions des tweaks
+#endif
         }
         catch (Exception ex)
         {
@@ -195,6 +261,13 @@ internal static unsafe class Coutures
             RencontreEnAttente = attente => attente;
             RencontreBloquee = bloquee => bloquee;
             DelaiRencontre = delai => delai;
+            EntreeSousZone = (table, sousZone) => table[sousZone];
+            ListeDApparition = (indice, liste) => liste;
+            DecorNe = (enregistrement, entite) => { };
+            TransfertScripte = () => { };
+            PointDEntree = point => point;
+            EcartDeReprise = ecart => ecart;
+            LieuSauve = entete => { };
         }
     }
 }

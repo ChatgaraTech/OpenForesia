@@ -3776,6 +3776,7 @@ public static unsafe partial class Blaze
         header[1] = s_Unknown_00566c84;
         header[2] = s_Unknown_00566c88;
         header[3] = *(byte*)Mem.Camera(0x005de044);
+        LegacyPlus.Coutures.LieuSauve(header);   // Couture legacy ++ (LP-009)
 
         // Huit banques de 0x40 octets, dans l'ordre du binaire.
         for (int off = 0; off < 0x40; off += 4)

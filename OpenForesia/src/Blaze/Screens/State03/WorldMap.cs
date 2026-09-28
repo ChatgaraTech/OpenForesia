@@ -126,7 +126,7 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: DAT_005645f8 — l'etat du pas de boucle de la carte du monde. La boucle
     /// interne tourne tant qu'il vaut autre chose que -1, -2 ou -3 ; -1 relance le tour exterieur
     /// (donc reinitialise le pas), -2 et -3 rendent la main a RunGameStateTick.</summary>
-    private static sbyte s_WorldMapStep_005645f8 = 2;
+    internal static sbyte s_WorldMapStep_005645f8 = 2;   // `internal` pour LP-009 : le passage de la porte du hub
 
     /// <summary>Ghidra: &amp;DAT_00564650 — six champs contigus remis a l'etat neuf a chaque tour
     /// exterieur. Releves a 0x00564650 : 0x017c, 0, 0, 0, 0x50, 0x280. Le code y ecrit des zeros
@@ -755,7 +755,7 @@ public static unsafe partial class Blaze
         // Ghidra: FUN_0040a600() — corps vide.
 
         byte* areaDir = s_Unknown_005e97cc;
-        int subEntry = ((int*)(*(byte**)(s_Unknown_005e97c8 + 0x48)))[(uint)(byte)s_Unknown_005de52c];
+        int subEntry = LegacyPlus.Coutures.EntreeSousZone((int*)(*(byte**)(s_Unknown_005e97c8 + 0x48)), (byte)s_Unknown_005de52c);   // Couture legacy ++ (LP-009)
         s_Unknown_005e97d0 = Res.LoadResourceEntry((int*)(nint)subEntry, areaDir);
         Res.FixupResourceHeader(areaDir);
 
@@ -1357,7 +1357,7 @@ public static unsafe partial class Blaze
         // L'original lit la table AVANT de tester `subArea != 0xff` : l'index 0xff provoque donc
         // une lecture de `table[255]` dont le resultat est ensuite jete. Transcrit dans cet ordre.
         byte* spawnLists = *(byte**)(s_Unknown_005e97cc + 0x30);
-        uint* record = *(uint**)(spawnLists + subArea * 4);
+        uint* record = LegacyPlus.Coutures.ListeDApparition(subArea, *(uint**)(spawnLists + subArea * 4));   // Couture legacy ++ (LP-009)
 
         int spawned = subArea;                        // Ghidra reutilise param_1 comme compteur
 
@@ -1449,6 +1449,7 @@ public static unsafe partial class Blaze
 
                 TryPlaceEntity(*(byte**)Mem.Entity(0x005f7bc0), slot, 0x8000);
                 FinalizeEntityPlacement2(slot);
+                LegacyPlus.Coutures.DecorNe(record, slot);   // Couture legacy ++ (LP-009)
             }
         }
 
@@ -1485,7 +1486,7 @@ public static unsafe partial class Blaze
         if ((s_WorldMapStep_005645f8 & 0xff) == 2)
         {
             // Le point d'entree de la sous-zone : huit dwords a +0x40 du repertoire.
-            uint* spawn = (uint*)(*(byte**)(areaDir + 0x40) + (uint)s_Unknown_005de530 * 0x20);
+            uint* spawn = LegacyPlus.Coutures.PointDEntree((uint*)(*(byte**)(areaDir + 0x40) + (uint)s_Unknown_005de530 * 0x20));   // Couture legacy ++ (LP-009)
             uint identity = spawn[0];
             int packedX = (int)spawn[1];
             uint packedZ = spawn[2];
@@ -1507,8 +1508,8 @@ public static unsafe partial class Blaze
                 int placed;
                 do
                 {
-                    *(int*)(slot + 0x1c) = (((CrtRand() & 0x7ff) - 0x400) + x) * 0x1000;
-                    *(int*)(slot + 0x24) = (((CrtRand() & 0x7ff) - 0x400) + z) * 0x1000;
+                    *(int*)(slot + 0x1c) = (LegacyPlus.Coutures.EcartDeReprise((CrtRand() & 0x7ff) - 0x400) + x) * 0x1000;   // Couture legacy ++ (LP-009)
+                    *(int*)(slot + 0x24) = (LegacyPlus.Coutures.EcartDeReprise((CrtRand() & 0x7ff) - 0x400) + z) * 0x1000;   // Couture legacy ++ (LP-009)
                     placed = TryPlaceEntity(*(byte**)Mem.Entity(0x005f7bc0), (uint*)slot, 0xa800);
                 }
                 while (placed == 0);

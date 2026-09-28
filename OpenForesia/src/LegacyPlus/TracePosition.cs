@@ -2,7 +2,9 @@
 // Diagnostic — le relevé de position du joueur 1, `legacyplus-position.log`.
 //
 // Hors reconstruction : un outil de mise au point, pas un tweak (aucun numéro LP). Activé par
-// `[Diagnostic] TracePosition = oui` ; absent du modèle de l'installeur. Écrit pour placer le
+// `[Diagnostic] TracePosition = oui` ; absent du modèle de l'installeur, et de la version Release
+// (installé sous `#if DEBUG`, `Coutures.cs`). Chaque ligne va aussi dans la console, donc dans la
+// fenêtre d'exécution de Rider, préfixée `[POSITION]`. Écrit pour placer le
 // marchand de l'auberge (quête 0, carte 82) : on marche jusqu'à l'endroit voulu, on s'arrête une
 // seconde, et la ligne donne la position dans les unités des relevés du bestiaire (`formations.csv`,
 // `decor.csv` : la position monde décalée de 12 bits) et le cap.
@@ -10,6 +12,8 @@
 // Il lit le membre du groupe que la couture `ButinAtteint` reçoit à chaque image (le pas d'un membre,
 // `PartyMemberStep.cs`) : aucune ligne de plus dans le legacy. Il ne change aucune valeur.
 // =====================================================================
+
+using Jeu = OpenForesia.Blaze.Blaze;
 
 namespace OpenForesia.LegacyPlus;
 
@@ -82,6 +86,14 @@ internal static unsafe class TracePosition
         Ecrire(joueur, "arrêt   ", x, y, z, cap);
     }
 
-    private static void Ecrire(int joueur, string quoi, int x, int y, int z, int cap) =>
-        s_Journal?.WriteLine($"J{joueur + 1} {quoi} : x = {x}, y = {y}, z = {z}, cap = {cap}");
+    /// <summary>La ligne va dans le journal et dans la console (la fenêtre d'exécution de Rider),
+    /// avec la zone et la sous-zone chargées.</summary>
+    private static void Ecrire(int joueur, string quoi, int x, int y, int z, int cap)
+    {
+        string ligne = $"J{joueur + 1} {quoi} : zone {Jeu.Res.s_Unknown_005de528 & 0xff}, carte {Jeu.s_Unknown_005de52c}, "
+                       + $"section {*(byte*)Jeu.Mem.Camera(0x005de038)}, "
+                       + $"x = {x}, y = {y}, z = {z}, cap = {cap}";
+        s_Journal?.WriteLine(ligne);
+        Console.WriteLine($"[POSITION] {ligne}");
+    }
 }

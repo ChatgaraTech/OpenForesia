@@ -47,6 +47,9 @@ internal static class ReglagesLegacyPlus
     /// <summary>`[Butin] RamassageAuto` — `oui` : pièces et cristaux d'expérience ramassés une fois posés, sans marcher dessus (LP-005).</summary>
     internal static bool RamassageAuto { get; private set; } = false;
 
+    /// <summary>`[Auberge] Hub` — `oui` : une porte dans chaque réception de l'auberge mène au hub, la carte 82 vidée sous le numéro 86 (LP-009).</summary>
+    internal static bool Hub { get; private set; } = false;
+
     /// <summary>`[Diagnostic] TraceCombat` — `oui` : chaque coup de mêlée du groupe est journalisé dans `legacyplus-combat.log`. Outil de mise au point, absent du modèle de l'installeur.</summary>
     internal static bool TraceCombat { get; private set; } = false;
 
@@ -97,7 +100,8 @@ internal static class ReglagesLegacyPlus
             $"[LEGACY++] {FileName} lu — PvMonstres=x{Ecrire(PvMonstres)}, DegatsMonstres=x{Ecrire(DegatsMonstres)}, " +
             $"ScalingMagique={Ecrire(ScalingMagique)}, InvulnerabiliteEnnemis={(InvulnerabiliteEnnemis ? "oui" : "non")}, " +
             $"RamassageAuto={(RamassageAuto ? "oui" : "non")}, DeplacementEnIncantation={Ecrire(DeplacementEnIncantation)}, " +
-            $"Rencontres : Frequence=x{Ecrire(FrequenceRencontres)}, MonstresMax={MonstresMax}, Formations={FormationsParRencontre}");
+            $"Rencontres : Frequence=x{Ecrire(FrequenceRencontres)}, MonstresMax={MonstresMax}, Formations={FormationsParRencontre}, " +
+            $"Hub={(Hub ? "oui" : "non")}");
     }
 
     private static string Ecrire(int centiemes) =>
@@ -155,6 +159,12 @@ internal static class ReglagesLegacyPlus
         {
             if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) RamassageAuto = true;
             else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) RamassageAuto = false;
+            else Refuser(section, key, value, "oui ou non (jeu d'origine)");
+        }
+        else if (Est("Auberge", "Hub"))
+        {
+            if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) Hub = true;
+            else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) Hub = false;
             else Refuser(section, key, value, "oui ou non (jeu d'origine)");
         }
         else if (Est("Diagnostic", "TraceCombat"))

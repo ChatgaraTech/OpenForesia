@@ -4,6 +4,22 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-28
+
+- doc : le hub de l'auberge (LP-009) archivé, validé en jeu par Vincent ; spec `gameplay-inn-hub` créée (5.1, 5.6 et 5.7 non essayés en jeu)
+- feat : LP-009 — le coffre du hub est déplacé en (-1337, 886), à la demande de Vincent ; la liste de la 82 est recopiée, les rangs ne bougent pas
+- fix : LP-009 — en sortant du hub, le groupe se retrouvait perché sur l'estrade (le jeu prend une face de sol sous le point, et l'estrade passait au-dessus) ; retour en (-109, 504), juste après elle
+- feat : LP-009 — dans le hub, les collisions des meubles disparaissent (leurs faces de sol surélevées sont ramenées au plancher au chargement), plus de boîte « - Le coffre - » à l'arrivée ; arrivée et retour aux places et caps relevés par Vincent
+- feat : `OpenForesia.Tools terrain <zone> <sous-zone>` — les faces de collision d'une sous-zone en CSV (attributs, sol, étendue)
+- doc : les meubles de la 82 sont des faces de sol surélevées de son maillage de collision ; le titre d'une pièce est le script d'arrivée de son point d'entrée
+- fix : les journaux de la console partent en UTF-8 — la fenêtre d'exécution de Rider affichait « pr�s » pour « près »
+- fix : LP-009 — la porte ajoutée ne réagit plus au contact (un battant de l'auberge s'ouvre quand on le pousse, et il s'ouvrait sur le mur) ; elle se passe depuis une bande de sol devant le battant, tourné vers le mur, et non plus en visant son gond
+- feat : LP-009, le hub de l'auberge — une porte dans la salle de chaque réception mène à la sous-zone 86, la carte 82 vidée hormis porte et coffre ; sa porte ramène devant la nôtre, dans la réception d'origine ; une sauvegarde faite dans le hub reprend dans la réception ; huit coutures, `[Auberge] Hub`, à tester en jeu
+- feat : les diagnostics `TraceCombat` et `TracePosition` ne sont installés que dans la version Debug ; `TracePosition` écrit aussi dans la console (`[POSITION]`, avec zone et carte), visible dans Rider
+- doc : change `add-legacy-plus-inn-hub` (LP-009) proposé — une porte dans chaque réception de l'auberge vers un hub, la carte 82 vidée sous un numéro à nous, retour à la réception d'origine ; étape 1 = mesure
+- doc : LP-009, étape 1 — la zone 0 a 105 sous-zones ; 86 et 87 sont des emplacements vides (hub : 86) ; 88 à 104 sont dix-sept copies inutilisées de la 82 ; le coffre de stockage écrit la sauvegarde lui-même, avec la sous-zone chargée ; seul l'opcode 17 fait sortir d'une pièce
+- doc : le numéro d'une carte de l'auberge = palier de l'histoire (0, 8 … 80, `FUN_004747F0`) + pièce ; la carte 80 n'est que la réception du dernier palier, et la boutique LP-008 (carte 82) n'existerait donc qu'en fin de partie — à confirmer
+
 ## 2026-09-27
 
 - doc : la boutique de l'auberge (LP-008) archivée ; spec `gameplay-inn-shop` créée, `game-data-install` gagne le dépôt de `Boutique.ini`

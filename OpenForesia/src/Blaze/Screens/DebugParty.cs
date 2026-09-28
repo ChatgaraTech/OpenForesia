@@ -134,12 +134,13 @@ public static unsafe partial class Blaze
     // (`DAT_00566c8c != DAT_005de534`, lui-même `(char)param_4`), donc `byte`.
     // TODO(REVERSE) : 0x00566c90 et 0x00566c94 n'ont aucun autre site de lecture dans les
     // 98 000 lignes de Blaze.c ; leur largeur réelle reste à confirmer.
-    private static byte s_Unknown_00566c84 = 0xff, s_Unknown_00566c88 = 0xff, s_Unknown_00566c8c = 0xff;
+    // `internal` pour LP-009 (src/LegacyPlus/HubAuberge.cs), qui lit la zone et la sous-zone chargées.
+    internal static byte s_Unknown_00566c84 = 0xff, s_Unknown_00566c88 = 0xff, s_Unknown_00566c8c = 0xff;
     internal static byte s_Unknown_00566c90 = 1, s_Unknown_00566c94 = 1;
 
     // Ghidra: DAT_005de53c — recopie d'une entrée de la table d'emplacements
     // (`DAT_005de53c = (&DAT_005e93c8)[i]`, Blaze.c 57361), relue en `uint` plus loin. Octet.
-    private static byte s_Unknown_005de53c;
+    internal static byte s_Unknown_005de53c;   // `internal` pour LP-009 : le membre qui passe la porte du hub
 
     /// <summary>
     /// Ghidra: FUN_00536270 @ 0x00536270 — le <b>chemin A</b> de l'état de jeu 1 : l'écran de

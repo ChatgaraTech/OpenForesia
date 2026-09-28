@@ -639,6 +639,7 @@ public static unsafe partial class Blaze
         s_Unknown_005de530 = s[3];                        // sans test de 0xff — voir le resume
         s_Unknown_005de53c = ent[8];                      // le membre du groupe qui declenche
         s_WorldMapStep_005645f8 = 2;                      // rechargement, groupe repose au point d'entree
+        LegacyPlus.Coutures.TransfertScripte();           // Couture legacy ++ (LP-009)
 
         return s + 4;
     }

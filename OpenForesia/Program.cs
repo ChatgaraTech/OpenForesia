@@ -28,6 +28,10 @@ if (!Startup.ArenaClaimed)
     // Out of attempts: fall through so Blaze.entry throws the descriptive arena error.
 }
 
+// Les journaux sont en français : sans cela ils partent dans la page de code OEM, et la fenêtre
+// d'exécution de Rider, qui lit de l'UTF-8, affiche « pr�s » pour « près ».
+try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch (IOException) { }
+
 Console.WriteLine("=== OpenForesia ===");
 
 // ECHAFAUDAGE TEMPORAIRE (tâche 2.6) : vérification de bout en bout du backend Direct3D 11, sans

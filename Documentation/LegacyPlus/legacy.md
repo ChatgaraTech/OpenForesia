@@ -30,6 +30,7 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-006 | Se déplacer en lançant un sort, à une part de la vitesse de marche | `[Magie] DeplacementEnIncantation` | `VitesseEnIncantation`, le zéro de vitesse des postures d'incantation dans `ApplyGroundMotion_0051A020` | validé en jeu (2026-09-27) — `src/LegacyPlus/DeplacementEnIncantation.cs` |
 | LP-004 | Frames d'invulnérabilité des ennemis tenues par attaquant | `[Combat] InvulnerabiliteEnnemis` | `VictimeExclue` (bit `0x40`), `VictimeProtegee` (`+0x96`), `CoupPorte` dans les deux balayages (`FUN_00519940`, `FUN_00519af0`), `ImageSuivante` en tête du pas de simulation (boucle par image de `RunWorldMapTick`) | validé en jeu (2026-09-27) — `src/LegacyPlus/VerrouParAttaquant.cs` |
 | LP-008 | La boutique de l'auberge : l'armoire de la carte 82 vend le catalogue de `Boutique.ini` | `Boutique.ini` : `[Boutique] Actif`, `[Catalogue]` | `PasDuMembre` (l'ouverture), `DessinSurImpression` (l'écran) | validé en jeu (2026-09-27) — `src/LegacyPlus/Boutique*.cs`, `CatalogueObjets.cs` |
+| LP-009 | Le hub de l'auberge : une porte dans chaque réception, vers la carte 82 vidée sous le numéro 86 | `[Auberge] Hub` | `EntreeSousZone` (`LoadWorldMapSubArea`), `ListeDApparition` et `DecorNe` (`SpawnSubAreaEntities`), `PasDuMembre` (la porte), `TransfertScripte` (opcode 17), `PointDEntree` et `EcartDeReprise` (`PlaceWorldMapParty`), `LieuSauve` (menu et coffre) | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/HubAuberge.cs`, `openspec/changes/archive/2026-09-28-add-legacy-plus-inn-hub` |
 | — | Vitesse des monstres | — | — | **abandonné** par Vincent le 2026-09-27 — les vitesses sont écrites en dur dans chacun des 166 gestionnaires de comportement |
 | LP-007 | Rencontres aléatoires : cadence, chevauchement pendant un combat, plusieurs formations | `[Rencontres] Frequence`, `MonstresMax`, `Formations` | `Rencontre` (l'appel de `TrySpawnRandomEncounter`), `RencontreEnAttente` et `RencontreBloquee` (ses deux gardes), `DelaiRencontre` (les deux rechargements du minuteur) | validé en jeu (2026-09-27) — `src/LegacyPlus/Rencontres.cs` |
 
@@ -79,6 +80,83 @@ mise en scène d'un coffre, rappel `RestorePartyReactions_00530ED0`) quand un me
 120 unités de l'armoire et face à elle à 45° près, appuie sur son bouton d'action ; l'appui est
 consommé. Le programme de texte reprend les codes d'`AnnounceItem` (`labels + 0x2a8` / `+ 0x2ac`), et
 ses octets sont écrits dans `legacyplus-boutique.log` pour vérification.
+
+## LP-009, le hub de l'auberge (étape 1, mesure du 2026-09-28)
+
+Demande de Vincent (2026-09-28) : une porte dans la salle de la réception, vers une pièce à nous —
+la carte 82 « Le coffre », **vide** hormis sa porte et son coffre de stockage —, futur lieu des PNJ
+marchands et d'autres fonctions. Change : `openspec/changes/archive/2026-09-28-add-legacy-plus-inn-hub`.
+
+**Le numéro d'une carte de l'auberge = palier + pièce.** `FUN_004747F0` (`WorldMap.cs`) choisit la
+réception parmi 0, 8, 16 … 80 selon la progression ; la pièce s'ajoute (+2 = le coffre). La carte 80
+n'est que la réception du **dernier** palier ; la boutique LP-008, codée sur 82, n'existe donc qu'en
+fin de partie (lecture à confirmer en jeu).
+
+**Ce que la mesure établit :**
+
+- **La table des sous-zones de la zone 0 a 105 entrées** (`bestiaire.md`). Les pièces +6 et +7 de
+  chaque palier (6, 7, 14, 15 … **86, 87**) sont des **emplacements vides** : répertoire de 264
+  octets, rien dedans. **88 à 104** sont dix-sept **copies de la 82** (mêmes décors, plus des
+  meubles et deux monstres placés dans la pièce) qu'aucune partie n'a jamais chargées — curiosité
+  à part. **Numéro retenu pour le hub : 86** (`0x56`) — il existe dans la table (le jeu sans le
+  tweak le charge sans planter : la tournée l'a fait, `handlers-exerces.tsv`), et aucun palier ne
+  l'emploie.
+- **La pièce « coffre » est la même à tous les paliers** : répertoires de 2 244 octets de 10 à 82
+  (2 748 en 2, 2 384 en 26), mêmes décors aux mêmes places. Le hub charge le répertoire de la 82, quel
+  que soit le palier d'origine.
+- **Ce qui lit le numéro de sous-zone, en zone 0** : les tables de gestionnaires sont toujours
+  celles de l'index 0 (`Resources.cs`), le banc de sons toujours `Q00_00.snd`, aucun gestionnaire ni
+  verbe de l'auberge ne teste la sous-zone. Restent : LP-008 (`== 82`, le hub n'est donc pas une
+  boutique), la vidange de manette de `RunWorldMapFrame` (`& 7`, sans effet pour 6), la
+  **sauvegarde** et l'**étiquette des repères** du menu (ci-dessous).
+- **Les meubles à garder en 82** : 0 (porte, sous-type 2) et 1 (son échelle, 15) en (−556, 400,
+  1000) ; 15 (corps du coffre) et 16 (couvercle, `0x00450760`, script au contact) en
+  (−1400, 400/440, 1100). Tout le reste s'en va, dont l'armoire (7).
+- **Les collisions des meubles — non tranché par la lecture.** Le contact entre entités
+  (`ResolveEntityContact_00534330`) teste le maillage **de l'occupant**, donc un meuble-entité retiré
+  emporte sa collision. Mais un décor statique (`kind & 3 == 0` dans `SpawnSubAreaEntities`) reçoit
+  le bit `0x2000`, que le balayage de contact (`ApplyEntityMotion_00519DF0`) **exclut** : un tel
+  meuble ne heurte personne par ce chemin, et s'il bloque en jeu, c'est que le **terrain** de la
+  pièce le fait. `decor.csv` ne relève pas `kind`. **Réponse la moins chère : le filtre écrit, une
+  marche en jeu.** Repli si le terrain bloque : Vincent choisit (garder ces obstacles, autre pièce).
+- **La sauvegarde retient la sous-zone chargée** : `+0x1f01..+0x1f03` = zone, `DAT_00566c88`, et
+  `DAT_005de044` (le point de reprise, posé par un volume de déclenchement de type 8). **Deux
+  écrivains** : le menu (`CopyGlobalBanksIntoSaveBlock`, `WorldMapMenu.cs`) et **le coffre de
+  stockage lui-même** (`WorldMapDepot.cs`, écrit à chaque usage). Tel quel, ouvrir le coffre dans le
+  hub écrirait 86. D'où : **retenir, au départ de la réception, `00566c88` et `005de044`**, et les
+  écrire à la place quand la sous-zone chargée est le hub. Même traitement pour
+  `CurrentMarkerTag` (les repères de la page 4 du menu).
+- **Sortir de la 82 = l'opcode 17** (`ScriptOpTransferArea`) : tous les écrivains de `DAT_005de52c`
+  sont recensés, c'est le seul qui change de sous-zone depuis une carte (l'opcode 36 et la face
+  marchée restent dans la sous-zone chargée). Sa destination est un octet du script de la 82 :
+  **la couture est dans l'opcode 17**, quand la sous-zone chargée est le hub.
+- **La porte dans la salle est possible.** Modèles (`areaDir + 0x38`) et maillages (`0x005f7bc0`)
+  sont chargés **par sous-zone**, pas par section : la porte de la liste 1 (le couloir) est donc
+  valable en section 0. Les entités d'une section naissent par `SpawnSubAreaEntities(sheet[6])` à
+  chaque entrée dans la section (`PlaceWorldMapParty`, et l'opcode de script qui repeuple) : la porte
+  ajoutée doit renaître au même moment, par une couture juste après.
+
+**Tranché au premier essai (2026-09-28)** :
+
+- **Les collisions des meubles sont dans le terrain.** Le morceau 0 de la sous-zone (celui que
+  `TryPlaceEntity` reçoit) est un maillage de collision : faces de 16 octets, attributs au quatrième
+  dword, sommets de 8 octets (x, y, z ; y négatif vers le haut). Dans la 82, le plancher est à
+  y = −400 et chaque meuble y est une **face de sol surélevée** (−432 à −520) sans plancher dessous ;
+  trois faces portent le bit `0x0800` (on ne s'y tient pas). Relevé par un verbe ajouté pour
+  l'occasion : `OpenForesia.Tools terrain <zone> <sous-zone>` (CSV). Le hub ramène ces sommets au
+  plancher et efface le bit, à chaque chargement.
+- **« - Le coffre - » est le script d'arrivée** du point d'entrée (moitié haute du premier dword,
+  lancé au pas 2 par `0x005de048`) ; `0xffff` = aucun script. Le hub arrive par son propre point.
+- **Une porte de l'auberge est un battant** que le groupe pousse (0x004736D0 fait tourner `+0x32` de
+  la vitesse reçue au contact) : la porte ajoutée porte `0x2000`, écartée du contact.
+- **Son point d'ancrage est le gond** : le battant s'étend vers les z décroissants.
+- **Les places retenues** (relevés de Vincent) : porte en (−400, 0, 583), passée depuis la bande
+  z 383..583 face au mur ; arrivée dans le hub en (−695, 888), cap 3072 ; retour en (−109, 504),
+  cap 1024 — en (−236, 504) le jeu posait le groupe sur l'estrade, la face la plus haute sous le
+  point ; coffre du hub (corps et couvercle) déplacé en (−1337, 886).
+
+**Restent pour l'écriture** : le mur (relevé de Vincent, `TracePosition`) ; le point d'entrée que le
+couloir donne à l'opcode 17 pour arriver en 82 (un journal au premier passage) ; les collisions.
 
 ## Préconisations en attente
 

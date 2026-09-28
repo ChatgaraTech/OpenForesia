@@ -24,6 +24,7 @@ Le fichier à côté de l'exécutable où le joueur active les **tweaks** (regis
 | `[Rencontres] MonstresMax` | 0 à 12 | 0 | 0 : tout tuer avant la rencontre suivante ; N : une rencontre peut arriver en plein combat tant que moins de N entités de scène vivent | LP-007 |
 | `[Rencontres] Formations` | 1 à 4 | 1 | formations par rencontre, chacune tirée parmi les huit de la sous-zone et placée à part ; jamais au-delà de 12 monstres vivants | LP-007 |
 | `[Butin] RamassageAuto` | `oui`, `non` | `non` | `oui` : pièces et cristaux d'expérience ramassés une fois posés, sans marcher dessus ; pièces à tour de rôle entre les joueurs debout ; jamais les coffres | LP-005 |
+| `[Auberge] Hub` | `oui`, `non` | `non` | `oui` : une porte dans la salle de chaque réception de l'auberge mène au hub (sous-zone 86, la carte 82 vidée hormis porte et coffre) ; sa porte ramène à la réception d'origine ; une sauvegarde faite dans le hub reprend dans la réception | LP-009 |
 | `[Combat] InvulnerabiliteEnnemis` | `oui`, `non` | `oui` | `non` : un ennemi qui clignote ne refuse plus que l'attaque qui l'a touché, pas les autres | LP-004 |
 
 Pour les deux clés de difficulté, `1` = jeu d'origine, `2` = deux fois plus. Pour
@@ -45,6 +46,11 @@ deux fois. Le clignotement, le recul et l'interruption restent ceux d'origine. L
 d'invulnérabilité **du groupe** ne changent pas.
 
 ## Diagnostic (absent du modèle de l'installeur)
+
+**Version Debug seulement** : la version publiée (`publish-release.ps1`, `-c Release`) ne les
+installe jamais, même avec la clé (`#if DEBUG` dans `Coutures.cs`). `TracePosition` écrit aussi
+chaque ligne dans la console, préfixée `[POSITION]` — lancé depuis Rider, elle s'affiche dans la
+fenêtre d'exécution, avec la zone et la carte.
 
 | clé | valeurs | défaut | effet |
 |---|---|---|---|

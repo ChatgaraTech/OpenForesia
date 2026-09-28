@@ -339,6 +339,68 @@ internal static class Bestiaire
         }
     }
 
+    /// <summary>
+    /// Le verbe <c>terrain</c> : les faces des morceaux d'une sous-zone, telles que
+    /// <c>TryPlaceEntity</c> (FUN_005330d0) les lit — seize octets par face, trois ou quatre index de
+    /// sommet, un index de matiere, les attributs dans le quatrieme dword (octet <c>+0xe</c> : le
+    /// genre). Un sommet fait huit octets : x et y dans le dword de tete, z au short de <c>+4</c>.
+    /// Les champs du morceau sont des decalages relatifs a son debut (RelocateModelEntry,
+    /// FUN_00532450) : <c>+0x24</c> les matieres, <c>+0x28</c> les faces, <c>+4</c> leur nombre,
+    /// les sommets a <c>+0x40</c>. Les morceaux viennent des quatre listes <c>+0x14..+0x20</c> du
+    /// repertoire de sous-zone, dans l'ordre ou <c>LoadWorldMapSubArea</c> les empile.
+    /// </summary>
+    public static void Terrain(string dossierDonnees, int zone, int sousZone)
+    {
+        string french = Path.Combine(dossierDonnees, "French");
+        if (!Directory.Exists(french)) french = dossierDonnees;
+        byte[] archive = File.ReadAllBytes(Path.Combine(french, "BLAZE.ALL"));
+        var root = new Blob(File.ReadAllBytes(Path.Combine(french, "SYSTEM.INI")));
+        root.Fixup();
+
+        var stateDir = LoadEntry(archive, root, EntryList(root, 0x48)[3]);
+        var zoneBlob = LoadEntry(archive, stateDir, EntryList(stateDir, 0x48)[zone]);
+        var subs = EntryList(zoneBlob, 0x48);
+        var a = LoadEntry(archive, zoneBlob, subs[sousZone]);
+
+        Console.WriteLine("liste,morceau,face,sommets,genre,attributs,sol,xmin,xmax,ymin,ymax,zmin,zmax");
+        int global = 0;
+        for (int list = 0; list < 4; list++)
+        {
+            int entries = a.I32(0x14 + list * 4);
+            for (int k = 0; a.In(entries + k * 8, 8) && a.I32(entries + k * 8) != 0; k++, global++)
+            {
+                // Ghidra : `LoadResourceEntry((int*)*entry, cursor)` — le dword est un POINTEUR vers
+                // l'entree d'archive ; le second est le descripteur passe a RelocateModelEntry.
+                var c = LoadEntryRaw(archive, a, a.I32(entries + k * 8));
+                if (c.Len < 0x40) continue;
+                int count = c.U16(4);
+                int faces = c.I32(0x28), materials = c.I32(0x24);
+                for (int f = 0; f < count; f++)
+                {
+                    int fo = faces + f * 16;
+                    if (!c.In(fo, 16)) break;
+                    uint w0 = (uint)c.I32(fo), w1 = (uint)c.I32(fo + 4);
+                    uint attr = (uint)c.I32(fo + 12);
+                    int mat = c.U16(fo + 8);
+                    bool sol = c.In(materials + 2 + mat * 8, 2) && c.I16(materials + 2 + mat * 8) < 0;
+                    var idx = new List<int> { (int)(w0 & 0xffff), (int)(w0 >> 16), (int)(w1 & 0xffff) };
+                    if ((attr & 1) != 0) idx.Add((int)(w1 >> 16));
+                    int x0 = int.MaxValue, x1 = int.MinValue, y0 = int.MaxValue, y1 = int.MinValue, z0 = int.MaxValue, z1 = int.MinValue;
+                    foreach (int v in idx)
+                    {
+                        int vo = 0x40 + v * 8;
+                        if (!c.In(vo, 8)) continue;
+                        int x = c.I16(vo), y = c.I16(vo + 2), z = c.I16(vo + 4);
+                        x0 = Math.Min(x0, x); x1 = Math.Max(x1, x);
+                        y0 = Math.Min(y0, y); y1 = Math.Max(y1, y);
+                        z0 = Math.Min(z0, z); z1 = Math.Max(z1, z);
+                    }
+                    Console.WriteLine($"{list},{global},{f},{idx.Count},{c.U8(fo + 14)},0x{attr & 0xffff:x4},{(sol ? 1 : 0)},{x0},{x1},{y0},{y1},{z0},{z1}");
+                }
+            }
+        }
+    }
+
     // Les seuils de FUN_0053a920 : rand() % plage, compare a 0x18, 0x29, 0x38, 0x45, 0x50, 0x59,
     // 0x5f. Huit rangs, donc, et ce sont ces bornes qui donnent les pourcentages.
     // =============================================================================================

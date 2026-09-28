@@ -78,6 +78,16 @@ if (args[0] is "bestiaire")
     return;
 }
 
+// Les faces de terrain d'une sous-zone (CSV), lues hors jeu comme le bestiaire :
+// `terrain <zone> <sous-zone> [dossier]`. Ecrit pour le hub de l'auberge (LP-009).
+if (args[0] is "terrain" && args.Length >= 3)
+{
+    string? dossier = args.Length > 3 ? args[3] : DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Bestiaire.Terrain(dossier, int.Parse(args[1]), int.Parse(args[2]));
+    return;
+}
+
 // L'oracle du decodeur Indeo 4 en C# : chaque image d'un film du jeu decodee par ir41_32.ax (sortie
 // IF09) et par Host/Indeo4/, comparee a l'octet pres. Voir Indeo/ComparaisonIndeo.cs.
 if (args[0] is "indeo")

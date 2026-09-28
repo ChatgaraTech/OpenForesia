@@ -2276,6 +2276,7 @@ public static unsafe partial class Blaze
         player[0x1f01] = s_Unknown_00566c84;
         player[0x1f02] = s_Unknown_00566c88;
         player[0x1f03] = *(byte*)Mem.Camera(0x005de044);
+        LegacyPlus.Coutures.LieuSauve(player + 0x1f00);   // Couture legacy ++ (LP-009)
 
         // Les huit banques globales, seize dwords chacune.
         for (s_Unknown_005dff34 = 0; s_Unknown_005dff34 < 0x10; s_Unknown_005dff34++)
