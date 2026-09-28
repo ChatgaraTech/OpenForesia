@@ -8,7 +8,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 - feat : l'écran de boutique demande « Ton choix se porte sur cet objet ? Oui / Non » avant d'acheter ou de vendre (flèches, action pour valider, menu = non)
 - fix : la Voleuse tourne d'un quart de tour à droite (cap 1024 → 2048)
-- doc : Excalibur n'est pas rachetable — `generer-boutique.mjs` le classe « introuvable » (commenté dans `BoutiqueArmes.ini`) alors qu'il sort d'un coffre de la zone 10, sous-zone 4 : `coffres.csv` ne relève pas ce coffre, seul `butin.csv` porte la ligne
+- fix : `generer-boutique.mjs` compte aussi les rangées de table de butin des zones 1 à 10 (`butin.csv`) — le verbe 12 de zone et l'opcode 27 des scripts y puisent sans monstre ni coffre posé ; Excalibur (rangée 0 de la grotte scellée, obtenu en jeu), les six autres armes de ses rangées 1 à 7, la Baguette guérisseuse et le Réflector passent en vente, donc deviennent rachetables ; les tables de l'auberge (objets de test) restent exclues
+- feat : Béquille (inutile) et Debacle (ATT 999, arme de test) retirées de la boutique d'armes, et du générateur ; elles ne sortent que du coffre 235 de l'auberge
 - feat : LP-011 — la Voleuse (identité 10) se tient dans le hub, tournée vers la porte, texture dans la seconde zone libre de la VRAM (x 0, y 320) ; elle rachète l'inventaire hors équipement et le coffre, à 50 % du prix d'achat (`BoutiqueVente.ini`, `[Vente] Taux`), piles entières ; une vente depuis le coffre écrit la sauvegarde ; à tester en jeu
 - feat : l'écran de boutique a un mode rachat ; la place en VRAM devient propre à chaque marchand
 - feat : LP-010 — l'écran de boutique s'agrandit (304 × 224) et montre, pour l'objet sous le curseur, sa description et ses valeurs non nulles lues dans la fiche : ATT, DEF, MATT, MDEF, les sept caractéristiques, les huit éléments

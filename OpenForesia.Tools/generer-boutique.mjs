@@ -2,7 +2,7 @@
 //
 //   node OpenForesia.Tools/generer-boutique.mjs
 //
-// Lit Documentation/Reference/Bestiaire/{objets,butin_par_objet,coffres,modeles}.csv (écrits par
+// Lit Documentation/Reference/Bestiaire/{objets,butin,butin_par_objet,coffres,modeles}.csv (écrits par
 // `OpenForesia.Tools bestiaire`) et écrit OpenForesia.Installer/Reglages/LegacyPlus/Boutique*.ini.
 // Les fichiers produits sont un POINT DE DÉPART : Vincent y retouche les prix et les lignes à la
 // main. Ne pas relancer par-dessus des fichiers retouchés sans comparer.
@@ -26,6 +26,7 @@ function parse(l) { const o = []; let c = "", q = false; for (const ch of l) { i
 const lire = f => { const L = fs.readFileSync(B + f, "utf8").split(/\r?\n/).filter(Boolean); return { h: parse(L[0]), r: L.slice(1).map(parse) }; };
 
 const objets = lire("objets.csv"), butin = lire("butin_par_objet.csv"), coffres = lire("coffres.csv"), modeles = lire("modeles.csv");
+const tables = lire("butin.csv");
 const NOMS_ZONES = { 1: "La mine abandonnée", 2: "La montagne du dragon de feu", 3: "La forêt", 4: "La vieille tour",
   5: "Le labyrinthe des morts", 6: "Le château de l'immortel", 7: "Les ruines", 8: "La vallée d'argent",
   9: "Les ruines dans le lac", 10: "La grotte scellée" };
@@ -56,6 +57,14 @@ const noter = (nom, z) => { z = +z; if (z >= 0) (zones[nom] ??= new Set()).add(z
 for (const b of butin.r) noter(b[0], b[1]);
 const iObjet = coffres.h.indexOf("objet");
 for (const c of coffres.r) noter(c[iObjet], c[0]);
+// Toute rangée de la table de butin d'une zone, même qu'aucun monstre ni coffre posé ne désigne : le
+// verbe 12 de zone (AreaVerb_00442DB0, rangée 0, un objet par membre), l'opcode 27 des scripts
+// (ScriptOpGrantItem, rangée script[1]) et le cadeau du château y puisent directement. Excalibur,
+// rangée 0 de la grotte scellée (10/4), en sort — Vincent l'a eu en jeu le 2026-09-28. Les tables
+// de l'auberge (zone 0) n'entrent pas : elles portent les objets de test (noms illisibles, Gabriel,
+// Almader…), qu'aucune preuve ne met entre les mains d'un joueur.
+const iTable = tables.h.indexOf("objet");
+for (const t of tables.r) if (+t[0] >= 1) noter(t[iTable], t[0]);
 const premiereZone = nom => {
   if (!zones[nom]) return null;
   const hors = [...zones[nom]].filter(z => z >= 1).sort((a, b) => rang[a] - rang[b]);
@@ -87,6 +96,11 @@ for (const o of objets.r) {
   const bonus = o[8].split(";").map(Number).filter(x => x > 0).reduce((a, b) => a + b, 0);
   vus.set(nom, { nom, b13, att, def, bonus, desc: o[4], zone: premiereZone(nom) });
 }
+
+// Retirés de la vente à la demande de Vincent (2026-09-28) : écrits en commentaire, jamais remis en
+// vente par une régénération. Béquille (ATT 1) est inutile, Debacle (ATT 999, arme de test) trop
+// puissante ; toutes deux ne sortent que d'un coffre de l'auberge (n° 235, sous-zone 26).
+const RETIRES = new Map([["Béquille", "inutile"], ["Debacle", "trop puissante"]]);
 
 const categorie = e => (e.b13 & 1) ? "armes" : (e.b13 & 6) ? "armures" : (e.b13 & 8) ? "accessoires" : "objets";
 const equipement = e => categorie(e) !== "objets";
@@ -157,11 +171,13 @@ for (const b of BOUTIQUES) {
       L.push(parFamille ? `; --- ${groupe}`
         : `; --- ${NOMS_ZONES[e.zone]} (zone ${e.zone}, monstres de rang ~${rang[e.zone]}, ~${orParMonstre(e.zone).toFixed(1)} or par monstre)`);
     }
-    L.push(`${e.nom} = ${prix(e)}`.padEnd(48) + `; ${detail(e)}`);
+    L.push(RETIRES.has(e.nom)
+      ? `; ${e.nom} = ${prix(e)}`.padEnd(48) + `; ${detail(e)} — retirée (Vincent, 2026-09-28 : ${RETIRES.get(e.nom)})`
+      : `${e.nom} = ${prix(e)}`.padEnd(48) + `; ${detail(e)}`);
   }
   if (jamais.length) {
     L.push("");
-    L.push("; --- Objets qu'on ne trouve NULLE PART dans le jeu d'origine (ni coffre ni butin) : objets de");
+    L.push("; --- Objets qu'on ne trouve NULLE PART dans le jeu d'origine (dans aucune table de butin) : objets de");
     L.push("; test ou jamais distribués. Désactivés ; retirer le « ; » pour les vendre quand même. Le prix");
     L.push("; indiqué suppose la zone la plus difficile.");
     for (const e of jamais) L.push(`; ${e.nom} = ${anciens.get(e.nom) ?? calcule(e, zoneDure)}`.padEnd(48) + `; ${detail(e)}`);
