@@ -46,10 +46,10 @@ the four equipment kinds). An item listed in the wrong file SHALL NOT be offered
 - **WHEN** the armour file lists a sword
 - **THEN** the armour merchant does not offer it
 
-### Requirement: Weapons and armour are offered only to the classes that can wear them
+### Requirement: Items are offered only to the classes that can use them
 
-The weapons merchant and the armour merchant SHALL offer, to the party member who opened the shop,
-only the items whose own record lets that member's class equip them. An item the member's class
+Every merchant SHALL offer, to the party member who opened the shop, only the items whose own record
+lets that member's class equip or use them. An item the member's class
 cannot equip SHALL NOT be shown nor bought. When nothing remains, the shop screen SHALL open with a
 message saying there is nothing for that member.
 
@@ -62,6 +62,16 @@ message saying there is nothing for that member.
 
 - **WHEN** a wizard then opens the same weapons shop
 - **THEN** the list shows only the weapons a wizard can equip
+
+#### Scenario: Accessories reserved to some classes
+
+- **WHEN** a wizard opens the accessories shop
+- **THEN** the iron gauntlets, which only a warrior or a kobold can wear, are not listed
+
+#### Scenario: The hunter's herbs
+
+- **WHEN** a warrior, then a hunter, opens the usable-items shop
+- **THEN** the herbs are listed for the hunter only
 
 ### Requirement: A merchant opens its shop at the action button
 

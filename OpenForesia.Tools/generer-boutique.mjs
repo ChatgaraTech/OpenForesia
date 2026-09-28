@@ -124,8 +124,9 @@ for (const b of BOUTIQUES) {
   L.push(";");
   L.push("; Le jeu relit la catégorie de chaque objet dans sa fiche : un objet d'une autre catégorie, listé");
   L.push("; ici, n'est pas proposé.");
-  if (b.cat === "armes" || b.cat === "armures")
-    L.push("; Chaque joueur ne voit que ce que SA classe peut porter (la fiche dit quelles classes le peuvent).");
+  L.push(b.cat === "objets"
+    ? "; Chaque joueur ne voit que ce que SA classe peut utiliser (les herbes : le Chasseur seulement)."
+    : "; Chaque joueur ne voit que ce que SA classe peut porter (la fiche dit quelles classes le peuvent).");
   L.push(";");
   L.push("; Comment les prix ont été calculés (OpenForesia.Tools/generer-boutique.mjs) :");
   if (b.cat === "objets") {

@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- feat : LP-010 — le Lutin filtre aussi par la classe de l'acheteur : les sept herbes ne sont proposées qu'au Chasseur, le seul que leur fiche autorise
+- feat : LP-010 — le Voleur filtre aussi ses accessoires par la classe de l'acheteur (33 des 119 sont réservés, gantelets de fer, objets d'elfe…), à la demande de Vincent
 - doc : les marchands du hub (LP-010) archivés, validés en jeu par Vincent ; spec `gameplay-hub-merchants` créée, `gameplay-inn-shop` perd l'armoire, `game-data-install` dépose les quatre boutiques (5.5 et 5.6 non essayés en jeu)
 - feat : LP-010 — les quatre boutiques des marchands du hub : un fichier chacune dans `LegacyPlus\` (installeur compris), catégorie relue dans la fiche, armes et armures filtrées par la classe de l'acheteur (demande de Vincent), ouverture face au marchand ; à tester en jeu
 - feat : `generer-boutique.mjs` écrit les quatre catalogues — l'équipement au prix de LP-008, les objets utilisables à un barème par famille ; les prix déjà écrits sont repris

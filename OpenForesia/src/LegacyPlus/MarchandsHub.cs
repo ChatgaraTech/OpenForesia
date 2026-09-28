@@ -41,7 +41,7 @@ internal static unsafe class MarchandsHub
 
         // La boutique (LP-010) : le fichier, le titre de l'écran, la catégorie vendue (octet +0x13 de
         // la fiche : 0x01 arme, 0x02 armure, 0x04 bouclier, 0x08 accessoire ; 0 = objet utilisable),
-        // et le filtre de classe de l'acheteur (armes et armures, demande de Vincent).
+        // et le filtre de classe de l'acheteur (les quatre boutiques, demande de Vincent).
         public required string Fichier, Titre;
         public required byte Categorie;
         public required bool FiltreClasse;
@@ -55,9 +55,9 @@ internal static unsafe class MarchandsHub
     private static readonly Marchand[] s_Marchands =
     [
         new() { Nom = "Lutin", Identite = 7, X = -1301, Z = 1060, Cap = 1024,
-                Fichier = "BoutiqueObjets.ini", Titre = "LE LUTIN - OBJETS", Categorie = 0, FiltreClasse = false },
+                Fichier = "BoutiqueObjets.ini", Titre = "LE LUTIN - OBJETS", Categorie = 0, FiltreClasse = true },   // les 7 herbes : Chasseur seulement
         new() { Nom = "Voleur", Identite = 2, X = -1301, Z = 1210, Cap = 1024,
-                Fichier = "BoutiqueAccessoires.ini", Titre = "LE VOLEUR - ACCESSOIRES", Categorie = 0x08, FiltreClasse = false },
+                Fichier = "BoutiqueAccessoires.ini", Titre = "LE VOLEUR - ACCESSOIRES", Categorie = 0x08, FiltreClasse = true },   // 33 des 119 sont réservés (Vincent, 2026-09-28)
         new() { Nom = "Kobold", Identite = 6, X = -1301, Z = 1360, Cap = 1024,
                 Fichier = "BoutiqueArmures.ini", Titre = "LE KOBOLD - ARMURES", Categorie = 0x06, FiltreClasse = true },
         new() { Nom = "Sylphide", Identite = 13, X = -1301, Z = 1510, Cap = 1024,       // l'Elfe au féminin

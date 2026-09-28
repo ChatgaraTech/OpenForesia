@@ -58,7 +58,9 @@ Quatre fichiers à part, dans le dossier `LegacyPlus\` à côté de l'exécutabl
 | `[Catalogue] <nom> = <prix>` | 1 à 99 999 | — | un objet en vente, dans l'ordre du fichier ; le nom exact du jeu ; `;` devant la ligne la retire |
 
 Le jeu relit la catégorie de chaque objet dans sa fiche : un objet d'une autre catégorie n'est pas
-proposé. Chez la Sylphide et le Kobold, chaque joueur ne voit que ce que sa classe peut porter. Les
+proposé. Chez les quatre marchands, chaque joueur ne voit que ce que sa classe peut porter ou
+utiliser, d'après la fiche (33 des 119 accessoires sont réservés à certaines classes ; parmi les
+objets utilisables, seules les sept herbes le sont, au Chasseur). Les
 modèles sont générés par `node OpenForesia.Tools/generer-boutique.mjs`, qui reprend les prix déjà
 écrits. `Boutique.ini` (l'armoire, LP-008) n'est plus lu.
 
