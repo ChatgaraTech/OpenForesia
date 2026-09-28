@@ -27,15 +27,18 @@ internal static unsafe class BoutiqueEcran
 {
     private const int ParPage = 10;
 
-    // La mise en page, sur l'écran logique de 320 × 240, en police 8 × 8.
-    private const int CadreX = 16, CadreY = 32, CadreL = 288, CadreH = 176;
-    private const int MargeG = 24, MargeD = 296;
-    private const int LigneTitre = 40, LignePremier = 58, Pas = 11, LigneMessage = 174, LignePied = 190;
+    // La mise en page, sur l'écran logique de 320 × 240, en police 8 × 8. Agrandie pour LP-010 (demande
+    // de Vincent) : sous la liste, la description et les valeurs de l'objet sous le curseur.
+    private const int CadreX = 8, CadreY = 8, CadreL = 304, CadreH = 224;
+    private const int MargeG = 16, MargeD = 304;
+    private const int LigneTitre = 16, LignePremier = 32, Pas = 11, LigneMessage = 142, LignePied = 220;
+    private const int LigneDescription = 156, LigneValeurs = 188, Interligne = 10, LignesMax = 3;
+    private const int Colonnes = (MargeD - MargeG) / 8;   // 36 caractères
     private const int NomMax = 20;                      // caractères
     private const int PrixD = 232;                      // bord droit de la colonne des prix
 
     // L'aperçu : l'icône de l'objet sous le curseur, 24 × 24 agrandie deux fois, à droite de la liste.
-    private const int ApercuX = 244, ApercuY = LignePremier, Zoom = 2;
+    private const int ApercuX = 248, ApercuY = LignePremier, Zoom = 2;
 
     /// <summary>Le fond : bleu sombre (0xBBGGRR), à moitié transparent.</summary>
     private const uint Fond = 0x401808;
@@ -167,7 +170,12 @@ internal static unsafe class BoutiqueEcran
         }
 
         var objet = catalogue.Count > 0 ? CatalogueObjets.Trouver(catalogue[s_Curseur].Nom) : null;
-        if (objet != null) curseur = Apercu(otBase, curseur, objet.Vignette);
+        if (objet != null)
+        {
+            curseur = Apercu(otBase, curseur, objet.Vignette);
+            curseur = Paragraphe(otBase, curseur, LigneDescription, Description(objet.Fiche));
+            curseur = Paragraphe(otBase, curseur, LigneValeurs, Valeurs(objet.Fiche));
+        }
 
         if (s_Message.Length > 0) curseur = Ecrire(otBase, curseur, MargeG, LigneMessage, Ascii(s_Message));
         curseur = Ecrire(otBase, curseur, MargeG, LignePied, $"Page {page + 1}/{pages}");
@@ -213,6 +221,78 @@ internal static unsafe class BoutiqueEcran
     {
         byte paire = vignette[0x20 + y * 12 + (x >> 1)];
         return (x & 1) == 0 ? paire & 0xf : paire >> 4;
+    }
+
+    // ------------------------------------------------------------------ la fiche de l'objet
+
+    /// <summary>
+    /// La description : ce qui suit la barre oblique du champ <c>+0x41</c> (« nom/description »),
+    /// jusqu'au zéro ; sans barre oblique, le champ entier — la règle de <c>BuildItemDisplayName</c>,
+    /// portée depuis <c>OpenForesia.Tools bestiaire</c> (ItemDescription). Texte Latin-1.
+    /// </summary>
+    private static string Description(byte[] fiche)
+    {
+        int debut = 0x41;
+        for (int i = 0; i < 0x40 && 0x41 + i < fiche.Length; i++)
+        {
+            byte c = fiche[0x41 + i];
+            if (c == 0) break;
+            if (c == 0x2f) { debut = 0x42 + i; break; }
+        }
+        var sb = new StringBuilder();
+        for (int k = debut; k < fiche.Length && fiche[k] != 0; k++) sb.Append(fiche[k] >= 0x20 ? (char)fiche[k] : ' ');
+        return System.Text.RegularExpressions.Regex.Replace(sb.ToString(), @"\s+", " ").Trim();
+    }
+
+    private static readonly string[] s_Caracs = ["FO", "INT", "VO", "AGI", "CON", "PM", "CH"];
+    private static readonly string[] s_Elements = ["Feu", "Eau", "Terre", "Air", "Lumiere", "Tenebres", "Sacre", "Mal"];
+
+    /// <summary>
+    /// Les valeurs de la fiche, aux champs que l'écran d'objet du jeu et
+    /// <c>ApplyEquipmentStatBonuses</c> lisent (Documentation/Reference/Bestiaire/LISEZMOI.md) :
+    /// ATT <c>+0x30</c>, DEF <c>+0x32</c>, MATT <c>+0x38</c>, MDEF <c>+0x3a</c> (shorts du bloc
+    /// <c>+0x20</c>, indices 8, 9, 12, 13) ; les sept caractéristiques, indices 0 à 6 du même bloc ;
+    /// les huit éléments, octets signés de <c>+0x18</c>. Les quatre dérivées sans nom établi
+    /// (indices 10, 11, 14, 15) ne sont pas montrées. Seules les valeurs non nulles.
+    /// </summary>
+    private static string Valeurs(byte[] fiche)
+    {
+        short S(int o) => (short)(fiche[o] | (fiche[o + 1] << 8));
+        string Signe(int v) => v > 0 ? $"+{v}" : v.ToString(CultureInfo.InvariantCulture);
+        var parts = new List<string>();
+        foreach (var (nom, o) in new[] { ("ATT", 0x30), ("DEF", 0x32), ("MATT", 0x38), ("MDEF", 0x3a) })
+            if (S(o) != 0) parts.Add($"{nom} {S(o)}");
+        for (int i = 0; i < s_Caracs.Length; i++)
+            if (S(0x20 + i * 2) != 0) parts.Add($"{s_Caracs[i]} {Signe(S(0x20 + i * 2))}");
+        for (int i = 0; i < s_Elements.Length; i++)
+            if ((sbyte)fiche[0x18 + i] != 0) parts.Add($"{s_Elements[i]} {Signe((sbyte)fiche[0x18 + i])}");
+        return string.Join("  ", parts);
+    }
+
+    /// <summary>Un texte coupé aux espaces sur <see cref="Colonnes"/> caractères, au plus trois lignes.</summary>
+    private static uint* Paragraphe(uint* otBase, uint* curseur, int y, string texte)
+    {
+        var lignes = new List<string>();
+        var ligne = new StringBuilder();
+        foreach (string mot in Ascii(texte).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (ligne.Length > 0 && ligne.Length + 1 + mot.Length > Colonnes)
+            {
+                lignes.Add(ligne.ToString());
+                ligne.Clear();
+            }
+            if (ligne.Length > 0) ligne.Append(' ');
+            ligne.Append(mot.Length > Colonnes ? mot[..Colonnes] : mot);
+        }
+        if (ligne.Length > 0) lignes.Add(ligne.ToString());
+
+        for (int i = 0; i < Math.Min(lignes.Count, LignesMax); i++)
+        {
+            string l = lignes[i];
+            if (i == LignesMax - 1 && lignes.Count > LignesMax) l = (l.Length > Colonnes - 3 ? l[..(Colonnes - 3)] : l) + "...";
+            curseur = Ecrire(otBase, curseur, MargeG, y + i * Interligne, l);
+        }
+        return curseur;
     }
 
     /// <summary>Une ligne de texte, par Prims.DrawTextRun, sur la police 8×8.</summary>

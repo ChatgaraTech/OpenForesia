@@ -8,7 +8,10 @@ carried them is retired.
 ### Requirement: The shop screen lists the catalogue with prices and the buyer's purse
 
 The shop screen SHALL list the catalogue of the merchant that opened it, in file order, ten items per
-page, each with its price, and SHALL show the gold in the purse of the member who opened it. The
+page, each with its price, and SHALL show the gold in the purse of the member who opened it. Below
+the list, it SHALL show the description of the item under the cursor and its non-zero values, as the
+item's own record gives them: ATT, DEF, MATT, MDEF, the seven characteristics and the eight elements.
+The
 buyer's controller SHALL move the cursor (up and down), change page (left and right), attempt a
 purchase (action button) and leave (the button that opens the game's menu). A purchase the purse
 does not cover SHALL be refused with a message.
@@ -17,6 +20,11 @@ does not cover SHALL be refused with a message.
 
 - **WHEN** the shop is open and the buyer presses down twice, then right
 - **THEN** the cursor moves two items down, then to the next page
+
+#### Scenario: What the item does
+
+- **WHEN** the cursor is on Gulwick in the weapons shop
+- **THEN** the screen shows its description and « ATT 146  Terre +25 »
 
 #### Scenario: Not enough gold
 
