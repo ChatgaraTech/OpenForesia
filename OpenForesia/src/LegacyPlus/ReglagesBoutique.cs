@@ -3,10 +3,11 @@
 // l'exécutable (LP-010 ; avant lui `Boutique.ini`, la boutique de l'armoire, LP-008, retirée).
 //
 // Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-28-add-legacy-plus-hub-merchants). Même contrat que
-// `LegacyPlus.ini` : lu une fois, jamais écrit ; fichier absent ou `Actif = non` : pas de marchand.
+// `LegacyPlus.ini` : lu une fois, jamais écrit. Le marchand est là dès que le hub l'est
+// (`[Auberge] Hub = oui`) ; fichier absent ou illisible : catalogue vide. La clé `[Boutique] Actif`
+// des premiers fichiers est retirée (Vincent, 2026-09-28) : encore présente chez un joueur, ignorée.
 // Les modèles sont générés par `OpenForesia.Tools/generer-boutique.mjs` et retouchés à la main.
 //
-//   [Boutique]   Actif = oui | non
 //   [Catalogue]  <nom exact de l'objet> = <prix en pièces d'or>      ; un « ; » retire la ligne
 // =====================================================================
 
@@ -18,7 +19,6 @@ internal sealed class ReglagesBoutique
     internal const string Dossier = "LegacyPlus";
 
     internal string Fichier { get; }
-    internal bool Actif { get; private set; }
 
     /// <summary>`[Vente] Taux` — la Voleuse (LP-011) rachète au taux de ce pourcentage du prix d'achat ; 50 par défaut.</summary>
     internal int Taux { get; private set; } = 50;
@@ -30,7 +30,7 @@ internal sealed class ReglagesBoutique
 
     private ReglagesBoutique(string fichier) => Fichier = fichier;
 
-    /// <summary>Lit `LegacyPlus\<paramref name="fichier"/>` ; absent ou illisible : boutique inactive.</summary>
+    /// <summary>Lit `LegacyPlus\<paramref name="fichier"/>` ; absent ou illisible : catalogue vide.</summary>
     internal static ReglagesBoutique Lire(string fichier)
     {
         var r = new ReglagesBoutique(fichier);
@@ -40,14 +40,14 @@ internal sealed class ReglagesBoutique
         {
             if (!File.Exists(path))
             {
-                Console.Error.WriteLine($"[BOUTIQUE] {Dossier}\\{fichier} absent — pas de marchand");
+                Console.Error.WriteLine($"[BOUTIQUE] {Dossier}\\{fichier} absent — catalogue vide");
                 return r;
             }
             lines = File.ReadAllLines(path);
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[BOUTIQUE] {Dossier}\\{fichier} illisible ({ex.Message}) — pas de marchand");
+            Console.Error.WriteLine($"[BOUTIQUE] {Dossier}\\{fichier} illisible ({ex.Message}) — catalogue vide");
             return r;
         }
 
@@ -71,14 +71,7 @@ internal sealed class ReglagesBoutique
             string key = line[..equals].Trim();
             string value = line[(equals + 1)..].Trim();
 
-            if (section.Equals("Boutique", StringComparison.OrdinalIgnoreCase)
-                && key.Equals("Actif", StringComparison.OrdinalIgnoreCase))
-            {
-                if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)) r.Actif = true;
-                else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)) r.Actif = false;
-                else Console.Error.WriteLine($"[BOUTIQUE] {fichier} : valeur refusée, Actif = {value} (attendu : oui ou non)");
-            }
-            else if (section.Equals("Vente", StringComparison.OrdinalIgnoreCase)
+            if (section.Equals("Vente", StringComparison.OrdinalIgnoreCase)
                      && key.Equals("Taux", StringComparison.OrdinalIgnoreCase))
             {
                 if (int.TryParse(value, System.Globalization.NumberStyles.None,
@@ -102,7 +95,7 @@ internal sealed class ReglagesBoutique
             }
         }
 
-        Console.Error.WriteLine($"[BOUTIQUE] {Dossier}\\{fichier} lu — {(r.Actif ? "active" : "inactive")}, {r._catalogue.Count} objets au catalogue");
+        Console.Error.WriteLine($"[BOUTIQUE] {Dossier}\\{fichier} lu — {r._catalogue.Count} objets au catalogue");
         return r;
     }
 }

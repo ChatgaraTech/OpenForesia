@@ -89,12 +89,8 @@ internal static unsafe class MarchandsHub
     {
         if (!ReglagesLegacyPlus.Hub) return;
 
+        // Le hub actif, les cinq marchands sont là (Vincent, 2026-09-28 : plus de clé Actif par boutique).
         foreach (Marchand m in s_Marchands) m.Boutique = ReglagesBoutique.Lire(m.Fichier);
-        if (!s_Marchands.Any(m => m.Boutique!.Actif))
-        {
-            Journal("aucune boutique active dans LegacyPlus\\ — pas de marchand");
-            return;
-        }
 
         StreamWriter? journal = null;
         try
@@ -148,7 +144,6 @@ internal static unsafe class MarchandsHub
             for (int k = 0; k < s_Marchands.Length; k++)
             {
                 Marchand m = s_Marchands[k];
-                if (m.Boutique is not { Actif: true }) continue;   // boutique inactive : pas de marchand
                 if (m.Modele == null) ChargerPaquets(m);
                 EnvoyerTexture(m);
             }
@@ -302,15 +297,15 @@ internal static unsafe class MarchandsHub
 
     /// <summary>
     /// Le catalogue d'un marchand, filtré par catégorie (design D6), calculé à la première
-    /// ouverture. L'index des objets est construit une fois, pour les noms de toutes les boutiques
-    /// actives : il relit les fichiers du jeu, et c'est la seule lecture lente.
+    /// ouverture. L'index des objets est construit une fois, pour les noms des quatre boutiques
+    /// qui vendent : il relit les fichiers du jeu, et c'est la seule lecture lente.
     /// </summary>
     private static List<(string Nom, int Prix)> Vente(Marchand m)
     {
         if (m.Vente != null) return m.Vente;
         if (!CatalogueObjets.Construit)
         {
-            var noms = s_Marchands.Where(x => x.Boutique is { Actif: true }).SelectMany(x => x.Boutique!.Catalogue.Select(o => o.Nom));
+            var noms = s_Marchands.Where(x => !x.Rachat).SelectMany(x => x.Boutique!.Catalogue.Select(o => o.Nom));
             CatalogueObjets.Construire(noms, s_Journal);
         }
 
@@ -330,7 +325,7 @@ internal static unsafe class MarchandsHub
     private static Dictionary<string, int>? s_PrixDAchat;
 
     /// <summary>
-    /// Le prix d'achat de chaque objet dans l'une des quatre boutiques (actives ou non : c'est le
+    /// Le prix d'achat de chaque objet dans l'une des quatre boutiques (c'est le
     /// fichier qui fait foi) — la base du rachat (LP-011). Un objet absent n'est pas racheté.
     /// </summary>
     private static Dictionary<string, int> PrixDAchat()

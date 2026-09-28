@@ -200,6 +200,7 @@ public static unsafe partial class Blaze
     private static bool s_LowClaimsDone;
 
     private static byte* s_DisplayListArena;   // the base of our allocation, not MainMem itself
+    private static uint s_BassinUtilise;       // LB-056 : ce qui est déjà pris dans le bassin du lanceur
 
     /// <summary>
     /// Places the display-list arena in low memory and points winsys3d's exported
@@ -293,6 +294,22 @@ public static unsafe partial class Blaze
     {
         if (s_DisplayListArena != null) return;
 
+        // Écart legacy ++ (LB-056) : le lanceur a peut-être déjà réservé la place dans ce processus,
+        // avant que le runtime ne démarre (Host/ReserveBasse.cs). Il suffit alors de l'engager —
+        // pas de recherche, pas de course. La recherche ci-dessous reste le repli.
+        ReserveBasse.Lire();
+        var recue = ReserveBasse.Recue;
+        if (recue.Arene != 0)
+        {
+            byte* engagee = (byte*)Win32.VirtualAlloc((void*)recue.Arene, recue.TailleArene, MEM_COMMIT, PAGE_READWRITE);
+            if (engagee != null)
+            {
+                InstallDisplayListArena(engagee, recue.Origine ? engagee + MainMemOffsetInArena : engagee);
+                return;
+            }
+            Console.Error.WriteLine($"[RESERVE] engagement de l'arene refuse ({Marshal.GetLastWin32Error()}) — recherche ordinaire");
+        }
+
         // Reserve BEFORE loading winsys3d.dll. The DLL is an 8.3 MB image and, once relocated out
         // of its preferred base, is itself the strongest competitor for the same low window â€”
         // loading it first made this placement fail roughly one run in four.
@@ -327,6 +344,11 @@ public static unsafe partial class Blaze
             }
         }
 
+        InstallDisplayListArena(arena, mainMem);
+    }
+
+    private static void InstallDisplayListArena(byte* arena, byte* mainMem)
+    {
         s_DisplayListArena = arena;
 
         // Only now bring the library in, and point its exported pointer at the arena we secured.
@@ -747,6 +769,19 @@ public static unsafe partial class Blaze
         EnsureDisplayListArena();
 
         nuint rounded = (size + 0xFFFu) & ~0xFFFu;
+
+        // Écart legacy ++ (LB-056) : le bassin que le lanceur a réservé, engagé page par page. La
+        // mémoire engagée sort à zéro, comme VirtualAlloc ci-dessous. Bassin épuisé : la recherche.
+        var recue = ReserveBasse.Recue;
+        if (recue.Bassin != 0 && s_BassinUtilise + rounded <= recue.TailleBassin)
+        {
+            byte* bloc = (byte*)Win32.VirtualAlloc((void*)(recue.Bassin + s_BassinUtilise), rounded, MEM_COMMIT, PAGE_READWRITE);
+            if (bloc != null)
+            {
+                s_BassinUtilise += (uint)rounded;
+                return bloc;
+            }
+        }
 
         // Downward from the top of the window, for the same reason: keep the low span contiguous.
         for (uint address = (DisplayListCeiling - AllocationGranularity) & ~(AllocationGranularity - 1);

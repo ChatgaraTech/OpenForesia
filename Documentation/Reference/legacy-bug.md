@@ -2395,3 +2395,32 @@ que le jeu filtrait le sont dans le shader, sans halo de couleur-clé ni débord
 (`SampleKeyed`). Le rendu d'avant se retrouve par `Rendu = origine`. La première version exposait
 résolution interne (×1 à ×8), MSAA 1 à 8 et deux filtrages forcés ; retirés le même jour
 (`simplify-display-settings`) : au-delà de la taille affichée, rien ne se voyait.
+
+---
+
+## LB-056 — Le port perdait parfois, trois fois de suite, la place sous 16 Mo que la liste d'affichage exige
+
+**Statut** : `Contourné` le 2026-09-28 (legacy ++, dépendance à l'environnement de 1998, demande de
+Vincent). Désactivable par `OPENFORESIA_SANS_RESERVE=1`, pour comparer.
+
+**Ce que faisait l'original** : la liste d'affichage de `winsys3d.dll` est chaînée sur 24 bits
+(`ClearOTagR`/`DrawOTag` masquent par `0xffffff`), donc tout ce qu'elle désigne vit sous
+`0x01000000`. En 1998 c'était gratuit : la DLL, chargée à son adresse préférée, portait l'arène en
+globale (`MainMem = 0x00B6DBD8`), et les descripteurs d'interface étaient des globales de
+`Blaze.exe`, basé en `0x00400000`.
+
+**Ce que faisait le port** : il cherchait au démarrage 0x280000 octets d'un seul tenant sous
+16 Mo, en concurrence avec le runtime .NET et l'ASLR, et relançait un processus neuf quand il
+perdait — trois essais au plus. Les trois pouvaient échouer : « No free block of 0x280000 bytes
+was available below 0x00D80000 — the largest free region there was 0x130000 bytes », le jeu ne
+s'ouvrait pas (observateur d'événements, Vincent, 2026-09-28).
+
+**Contournement** (`src/Host/ReserveBasse.cs`, `Program.cs`, `Platform/Winsys3d.cs`) : le processus
+lancé par le joueur devient un lanceur. Il crée le jeu **suspendu** — la fenêtre basse n'y porte
+alors que l'exécutable et ntdll —, y réserve l'arène (en `0x00B60000` si possible, la disposition
+de 1998) et un bassin de 0x40000 octets pour les descripteurs, publie les adresses dans une section
+nommée d'après le PID du jeu, le réveille et l'attend. Le jeu **engage** ces réservations
+(`EnsureDisplayListArena`, `AllocLowZeroed`) au lieu de chercher. Un job « tué à la fermeture »
+lie les deux processus. Si la réserve échoue, le lanceur joue lui-même par l'ancien chemin, relance
+comprise ; sous débogueur, pas de lanceur. La contrainte des 24 bits reste entière — la supprimer
+demanderait de reprendre chaque endroit du jeu qui suit une adresse masquée (à chiffrer).

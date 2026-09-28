@@ -30,7 +30,7 @@ src/LegacyPlus/
    DeplacementEnIncantation.cs  LP-006
    Rencontres.cs            LP-007
    MarchandsHub.cs          LP-010 — les quatre marchands du hub : classes chargées, dessin, collision, ouverture, filtres
-   ReglagesBoutique.cs      LP-010 — un fichier de boutique de LegacyPlus\ (Actif, catalogue)
+   ReglagesBoutique.cs      LP-010 — un fichier de boutique de LegacyPlus\ (catalogue, taux de rachat)
    BoutiqueEcran.cs         LP-008, repris par LP-010 — l'écran de la boutique (liste, pages, bourse, aperçu de l'icône)
    CatalogueObjets.cs       LP-008, repris — l'index nom → fiche et vignette, lu dans les fichiers du jeu
    BoutiqueAchat.cs         LP-008, repris — l'achat : bourse, emplacement, rangement, icône

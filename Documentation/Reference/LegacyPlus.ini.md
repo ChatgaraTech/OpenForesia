@@ -47,14 +47,16 @@ d'invulnérabilité **du groupe** ne changent pas.
 
 ## Les boutiques des marchands du hub — `LegacyPlus\Boutique*.ini` (LP-010)
 
-Quatre fichiers à part, dans le dossier `LegacyPlus\` à côté de l'exécutable, un par marchand du hub
-(`[Auberge] Hub = oui` requis) : `BoutiqueObjets.ini` (le Lutin, objets utilisables),
-`BoutiqueAccessoires.ini` (le Voleur), `BoutiqueArmures.ini` (le Kobold, armures et boucliers),
+Quatre fichiers à part, dans le dossier `LegacyPlus\` à côté de l'exécutable, un par marchand du hub :
+`BoutiqueObjets.ini` (le Lutin, objets utilisables), `BoutiqueAccessoires.ini` (le Voleur), `BoutiqueArmures.ini` (le Kobold, armures et boucliers),
 `BoutiqueArmes.ini` (la Sylphide). Même contrat : lus une fois, jamais écrits.
+
+**Le hub actif (`[Auberge] Hub = oui`), les cinq marchands sont là**, sans autre réglage. La clé
+`[Boutique] Actif` des premiers fichiers est retirée depuis le 2026-09-28 : encore présente dans un
+ancien fichier, elle est ignorée. Un fichier absent laisse son marchand avec un catalogue vide.
 
 | clé | valeurs | défaut | effet |
 |---|---|---|---|
-| `[Boutique] Actif` | `oui`, `non` | `non` | `oui` : le marchand se tient dans le hub et vend ; `non` : pas de marchand |
 | `[Catalogue] <nom> = <prix>` | 1 à 99 999 | — | un objet en vente, dans l'ordre du fichier ; le nom exact du jeu ; `;` devant la ligne la retire |
 
 Le jeu relit la catégorie de chaque objet dans sa fiche : un objet d'une autre catégorie n'est pas
@@ -64,9 +66,9 @@ objets utilisables, seules les sept herbes le sont, au Chasseur). Les
 modèles sont générés par `node OpenForesia.Tools/generer-boutique.mjs`, qui reprend les prix déjà
 écrits. `Boutique.ini` (l'armoire, LP-008) n'est plus lu.
 
-**`BoutiqueVente.ini` — la Voleuse, qui rachète (LP-011).** `[Boutique] Actif` comme les autres, et
+**`BoutiqueVente.ini` — la Voleuse, qui rachète (LP-011).** Une seule clé,
 `[Vente] Taux` (1 à 100, défaut 50) : le pourcentage du prix d'achat payé au joueur. Pas de
-catalogue : un objet se revend s'il figure dans l'une des quatre boutiques (active ou non), au prix
+catalogue : un objet se revend s'il figure dans l'une des quatre boutiques, au prix
 qu'il y a. Elle rachète l'inventaire du joueur sauf ce qu'il porte, et son coffre ; une pile se vend
 en entier. **Vendre depuis le coffre écrit la sauvegarde du personnage tout de suite** (l'objet sort
 du coffre, l'or entre dans la bourse enregistrée).

@@ -132,7 +132,7 @@ for (const b of BOUTIQUES) {
   L.push(`; OpenForesia — la boutique de ${b.marchand}, dans le hub de l'auberge (« legacy ++ », LP-010)`);
   L.push(";");
   L.push(`; ${b.marchand[0].toUpperCase()}${b.marchand.slice(1)} vend ${b.quoi}. On lui parle en se tenant devant lui, tourné vers`);
-  L.push("; lui, avec le bouton d'action. Le hub s'active dans LegacyPlus.ini ([Auberge] Hub = oui).");
+  L.push("; lui, avec le bouton d'action. Il est là dès que le hub l'est : LegacyPlus.ini, [Auberge] Hub = oui.");
   L.push("; Ce fichier est lu par le jeu, jamais écrit : vos modifications sont conservées, y compris quand");
   L.push("; vous réinstallez. Le joueur qui achète paie avec SA bourse et reçoit l'objet, identifié.");
   L.push(";");
@@ -155,10 +155,6 @@ for (const b of BOUTIQUES) {
   L.push(";");
   L.push("; Pour retirer un objet de la vente : mettre « ; » devant sa ligne. Pour changer un prix :");
   L.push("; changer le nombre. Le nom doit rester exactement celui du jeu.");
-  L.push("");
-  L.push("[Boutique]");
-  L.push(`; oui = ${b.marchand} se tient dans le hub et vend ; non = pas de marchand.`);
-  L.push("Actif = non");
   L.push("");
   L.push("[Catalogue]");
   L.push("; Nom de l'objet = prix en pièces d'or");
@@ -191,8 +187,8 @@ for (const b of BOUTIQUES) {
 fs.writeFileSync(SORTIE + "BoutiqueVente.ini", [
   "; OpenForesia — la Voleuse, dans le hub de l'auberge : elle RACHÈTE (« legacy ++ », LP-011)",
   ";",
-  "; On lui parle en se tenant devant elle, tourné vers elle, avec le bouton d'action. Le hub s'active",
-  "; dans LegacyPlus.ini ([Auberge] Hub = oui). Ce fichier est lu par le jeu, jamais écrit.",
+  "; On lui parle en se tenant devant elle, tourné vers elle, avec le bouton d'action. Elle est là dès",
+  "; que le hub l'est : LegacyPlus.ini, [Auberge] Hub = oui. Ce fichier est lu par le jeu, jamais écrit.",
   ";",
   "; Elle rachète ce que le joueur porte sur lui, SAUF ce qu'il a équipé, et ce qu'il a laissé dans",
   "; son coffre. Le prix : le taux ci-dessous, en pourcentage du prix d'achat de l'objet dans l'une des",
@@ -202,10 +198,6 @@ fs.writeFileSync(SORTIE + "BoutiqueVente.ini", [
   ";",
   "; Vendre un objet du coffre modifie tout de suite la sauvegarde du personnage (l'objet sort du",
   "; coffre, l'or entre dans la bourse enregistrée).",
-  "",
-  "[Boutique]",
-  "; oui = la Voleuse se tient dans le hub et rachète ; non = pas de Voleuse.",
-  "Actif = non",
   "",
   "[Vente]",
   "; Pourcentage du prix d'achat payé au joueur : de 1 à 100.",

@@ -1,6 +1,16 @@
 using System.Runtime.CompilerServices;
 using OpenForesia.Blaze;
 
+// Écart legacy ++ (LB-056) : le processus lancé par le joueur ne joue pas. Il crée le jeu suspendu,
+// lui réserve sa place sous 0x01000000 avant que le runtime ne s'y installe, et l'attend
+// (Host/ReserveBasse.cs). S'il n'y parvient pas, il joue lui-même par le chemin ci-dessous.
+if (ReserveBasse.EstLanceur)
+{
+    int? code = ReserveBasse.Lancer();
+    if (code is int c) return c;
+    Startup.ClaimDisplayListArenaNow();
+}
+
 // The arena has to be claimed before anything else allocates; the module initializer below did
 // that. If it lost the race for low memory, a fresh process is a genuine second chance, because
 // the address-space layout differs run to run. Bounded by an attempt counter in the environment:
@@ -78,6 +88,18 @@ internal static class Startup
     /// winnable at all: measured 2 failures in 5 runs when it was claimed from a static field
     /// initializer instead, and roughly 1 in 4 from here. See Blaze.EnsureDisplayListArena.
     /// </summary>
+    /// <remarks>
+    /// Le lanceur (LB-056) ne réclame rien : ce n'est pas lui qui joue, et la place qu'il prendrait
+    /// dans SA mémoire ne servirait à personne. S'il doit jouer quand même, il réclame par
+    /// <see cref="ClaimDisplayListArenaNow"/>, plus tard que d'habitude — c'est le repli.
+    /// </remarks>
     [ModuleInitializer]
-    internal static void ClaimDisplayListArena() => ArenaClaimed = Blaze.TryPrepareDisplayListArena();
+    internal static void ClaimDisplayListArena()
+    {
+        if (ReserveBasse.EstLanceur) return;
+        ArenaClaimed = Blaze.TryPrepareDisplayListArena();
+    }
+
+    /// <summary>Le repli du lanceur quand la réserve n'a pas pu être posée.</summary>
+    internal static void ClaimDisplayListArenaNow() => ArenaClaimed = Blaze.TryPrepareDisplayListArena();
 }

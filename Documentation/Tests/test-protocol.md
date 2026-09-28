@@ -683,6 +683,16 @@ device synthétique n'a pas déplacé la valeur.
 
 ---
 
+## Deux processus `OpenForesia` : le lanceur et le jeu (2026-09-28, LB-056)
+
+Depuis LB-056, le processus lancé (celui de `Start-Process`, donc `$p` dans `playtest.ps1`) est un
+**lanceur** : il crée le jeu suspendu, lui réserve sa place sous 16 Mo, le réveille et l'attend. Le
+jeu est donc un **processus fils** qui porte la fenêtre — `playtest.ps1` la trouve déjà par sa classe
+et tue tous les `OpenForesia` à la fin, comme pour une relance. Ses journaux arrivent dans les mêmes
+fichiers (le lanceur lui passe ses redirections). `[RESERVE] recue : arene 0x00B60000 …` dans
+`stderr` dit que la réserve a servi ; `OPENFORESIA_SANS_RESERVE=1` revient à l'ancien chemin. Sous
+débogueur (Rider, Visual Studio), pas de lanceur : le jeu tourne dans le processus débogué.
+
 ## « No free block ... below 0x01000000 » : relancer, ce n'est pas une régression (2026-08-19)
 
 Un run peut échouer sur :

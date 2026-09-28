@@ -8,23 +8,23 @@ selling one kind of item from a catalogue the player controls; disabled, the hub
 
 The game SHALL read four shop files from a `LegacyPlus` folder beside the executable, once, and MUST
 NOT write them: one for usable items, one for accessories, one for armour and shields, one for
-weapons. In each, section `[Boutique]` key `Actif` SHALL accept `oui` or `non`, default `non`, and
-section `[Catalogue]` SHALL list items as `name = price`. A merchant SHALL be present only when the
-hub is enabled and its file exists with `Actif = oui`.
+weapons. In each, section `[Catalogue]` SHALL list items as `name = price`. Every merchant SHALL be
+present whenever the hub is enabled; a missing or unreadable file SHALL leave that merchant with an
+empty catalogue. A `[Boutique] Actif` key left in an older file SHALL be ignored.
 
 #### Scenario: No shop files
 
 - **WHEN** the hub is enabled and the `LegacyPlus` folder holds no shop file
-- **THEN** the hub is empty, as without this change
+- **THEN** the five merchants stand in the hub, each with nothing to sell
 
-#### Scenario: One merchant enabled
+#### Scenario: An older file still says Actif = non
 
-- **WHEN** the hub is enabled and only the weapons file sets `Actif = oui`
-- **THEN** only the weapons merchant stands in the hub
+- **WHEN** the hub is enabled and the weapons file still carries `[Boutique] Actif = non`
+- **THEN** the weapons merchant stands in the hub and sells its catalogue
 
 ### Requirement: Four merchants stand in the hub, idle, as playable classes
 
-Each enabled merchant SHALL stand in the hub along its west wall, facing into the room, playing the
+Each merchant SHALL stand in the hub along its west wall, facing into the room, playing the
 idle animation of the playable class it wears, without moving: the usable-items merchant as the
 Lutin, the accessories merchant as the Voleur, the armour merchant as the Kobold, the weapons
 merchant as the Sylphide. The merchants SHALL be visible whatever the classes in the player's party,
@@ -75,7 +75,7 @@ message saying there is nothing for that member.
 
 ### Requirement: The Voleuse buys back what the player carries and stores
 
-With the hub enabled and `LegacyPlus\BoutiqueVente.ini` setting `Actif = oui`, a fifth merchant, the
+With the hub enabled, a fifth merchant, the
 Voleuse (the playable Voleur class, female), SHALL stand in the hub and, when spoken to, SHALL list
 the items of the speaker's inventory that are not equipped and the items of the speaker's storage
 chest. An item SHALL be listed only if one of the four shop files sells it, at `[Vente] Taux` percent

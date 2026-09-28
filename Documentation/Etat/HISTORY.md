@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- fix : LB-056 — le jeu ne s'ouvrait parfois pas (« No free block of 0x280000 bytes … below 0x01000000 », trois essais perdus) ; le processus lancé devient un lanceur qui crée le jeu suspendu, lui réserve l'arène et le bassin des descripteurs sous 16 Mo avant que le runtime ne démarre, puis l'attend ; l'ancienne recherche reste le repli ; à tester en jeu
+- feat : plus de clé `[Boutique] Actif` dans les `Boutique*.ini` — `[Auberge] Hub = oui` suffit, les cinq marchands sont là ; un ancien fichier qui la porte encore est lu, la clé ignorée ; fichier absent : catalogue vide
 - feat : l'écran de boutique demande « Ton choix se porte sur cet objet ? Oui / Non » avant d'acheter ou de vendre (flèches, action pour valider, menu = non)
 - fix : la Voleuse tourne d'un quart de tour à droite (cap 1024 → 2048)
 - fix : `generer-boutique.mjs` compte aussi les rangées de table de butin des zones 1 à 10 (`butin.csv`) — le verbe 12 de zone et l'opcode 27 des scripts y puisent sans monstre ni coffre posé ; Excalibur (rangée 0 de la grotte scellée, obtenu en jeu), les six autres armes de ses rangées 1 à 7, la Baguette guérisseuse et le Réflector passent en vente, donc deviennent rachetables ; les tables de l'auberge (objets de test) restent exclues
