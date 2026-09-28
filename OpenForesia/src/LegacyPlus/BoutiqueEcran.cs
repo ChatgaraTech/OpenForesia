@@ -77,13 +77,11 @@ internal static unsafe class BoutiqueEcran
 
     private static uint* s_Atlas;                       // la police 8×8 : {0x40803000, 0x02300000}, comme s_GlyphAtlas_00566c28
     private static byte* s_Texte;                       // une ligne, en octets, terminée par un zéro
-    private static StreamWriter? s_Journal;
 
     internal static bool Ouvert => s_Ouvert;
 
-    internal static void Installer(StreamWriter? journal)
+    internal static void Installer()
     {
-        s_Journal = journal;
         s_Atlas = (uint*)NativeMemory.Alloc(8);
         s_Atlas[0] = 0x40803000;
         s_Atlas[1] = 0x02300000;
@@ -134,14 +132,14 @@ internal static unsafe class BoutiqueEcran
         s_Question = false;
         s_Message = lignes.Count == 0 ? siVide : "";
         Jeu.FreezeAllEntities();
-        s_Journal?.WriteLine($"ouverte par J{s_Joueur + 1} ({titre}), bourse {Bourse}");
+        Journal($"ouverte par J{s_Joueur + 1} ({titre}), bourse {Bourse}");
     }
 
     private static void Fermer()
     {
         s_Ouvert = false;
         Jeu.UnfreezeAllEntities();
-        s_Journal?.WriteLine("fermée");
+        Journal("fermée");
     }
 
     private static int Bourse => *(int*)(s_PerChar + 0x26c);
@@ -194,7 +192,7 @@ internal static unsafe class BoutiqueEcran
             s_Message = s_Vendre(vendue);
             s_Lignes = s_Lister!();
             if (s_Curseur >= s_Lignes.Count) s_Curseur = Math.Max(0, s_Lignes.Count - 1);
-            s_Journal?.WriteLine($"vente : {vendue.Affiche} ({vendue.Prix}) — bourse {bourseAvant} → {Bourse} : {s_Message}");
+            Journal($"vente : {vendue.Affiche} ({vendue.Prix}) — bourse {bourseAvant} → {Bourse} : {s_Message}");
             return;
         }
 
@@ -208,7 +206,7 @@ internal static unsafe class BoutiqueEcran
             BoutiqueAchat.Resultat.InventairePlein => "Inventaire plein.",
             _ => "Objet introuvable dans les donnees du jeu.",
         };
-        s_Journal?.WriteLine($"{resultat} : {nom} ({prix}) — bourse {avant} → {Bourse}");
+        Journal($"{resultat} : {nom} ({prix}) — bourse {avant} → {Bourse}");
     }
 
     // ------------------------------------------------------------------ le dessin
@@ -416,4 +414,6 @@ internal static unsafe class BoutiqueEcran
         }
         return sb.ToString();
     }
+
+    private static void Journal(string message) => Console.Error.WriteLine($"[BOUTIQUE] {message}");
 }

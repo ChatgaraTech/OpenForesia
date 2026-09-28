@@ -35,7 +35,7 @@ internal static class CatalogueObjets
     internal static bool Construit => s_Index != null;
 
     /// <summary>Construit l'index des noms demandés ; rend le nombre trouvé. Une erreur de lecture laisse un index vide.</summary>
-    internal static int Construire(IEnumerable<string> noms, StreamWriter? journal)
+    internal static int Construire(IEnumerable<string> noms, TextWriter? journal)
     {
         s_Index = new Dictionary<string, Objet>();
         var voulus = new HashSet<string>(noms);

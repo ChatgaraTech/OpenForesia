@@ -81,7 +81,9 @@ le bouton d'action.
 mise en scène d'un coffre, rappel `RestorePartyReactions_00530ED0`) quand un membre debout, à moins de
 120 unités de l'armoire et face à elle à 45° près, appuie sur son bouton d'action ; l'appui est
 consommé. Le programme de texte reprend les codes d'`AnnounceItem` (`labels + 0x2a8` / `+ 0x2ac`), et
-ses octets sont écrits dans `legacyplus-boutique.log` pour vérification.
+ses octets étaient écrits dans `legacyplus-boutique.log` pour vérification (fichier supprimé le
+2026-09-28 : les marchands et l'écran de boutique écrivent leurs lignes `[MARCHANDS]` et
+`[BOUTIQUE]` sur la sortie d'erreurs).
 
 ## LP-009, le hub de l'auberge (étape 1, mesure du 2026-09-28)
 

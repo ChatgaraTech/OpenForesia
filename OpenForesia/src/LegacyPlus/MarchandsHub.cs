@@ -81,9 +81,6 @@ internal static unsafe class MarchandsHub
 
     private static byte* s_Etat1;               // le répertoire de l'état 1, relu une fois
     private static byte* s_Tampon;              // la texture le temps de l'envoi
-    private static StreamWriter? s_Journal;
-
-    internal const string JournalFileName = "legacyplus-boutique.log";
 
     internal static void Installer()
     {
@@ -92,18 +89,7 @@ internal static unsafe class MarchandsHub
         // Le hub actif, les cinq marchands sont là (Vincent, 2026-09-28 : plus de clé Actif par boutique).
         foreach (Marchand m in s_Marchands) m.Boutique = ReglagesBoutique.Lire(m.Fichier);
 
-        StreamWriter? journal = null;
-        try
-        {
-            journal = new StreamWriter(Path.Combine(AppContext.BaseDirectory, JournalFileName), append: false) { AutoFlush = true };
-            journal.WriteLine("# OpenForesia — les marchands du hub");
-        }
-        catch (Exception ex)
-        {
-            Journal($"{JournalFileName} impossible à ouvrir ({ex.Message})");
-        }
-        s_Journal = journal;
-        BoutiqueEcran.Installer(journal);
+        BoutiqueEcran.Installer();
 
         Coutures.Liste liste = Coutures.ListeDApparition;
         Coutures.ListeDApparition = (indice, l) =>
@@ -280,7 +266,7 @@ internal static unsafe class MarchandsHub
             {
                 var prix = PrixDAchat();
                 int taux = m.Boutique!.Taux;
-                s_Journal?.WriteLine($"J{p[8] + 1} parle à la {m.Nom} (rachat à {taux} %)");
+                Journal($"J{p[8] + 1} parle à la {m.Nom} (rachat à {taux} %)");
                 BoutiqueEcran.OuvrirVente(membre, perChar, m.Titre,
                     () => BoutiqueVente.Lister(perChar, prix, taux),
                     ligne => BoutiqueVente.Vendre(membre, perChar, ligne));
@@ -289,7 +275,7 @@ internal static unsafe class MarchandsHub
 
             int classe = perChar[0x150] & 7;
             var vente = Vente(m).Where(o => !m.FiltreClasse || PeutPorter(o.Nom, classe)).ToList();
-            s_Journal?.WriteLine($"J{p[8] + 1} (classe {classe}) parle au {m.Nom} : {vente.Count} objets sur {m.Vente!.Count}");
+            Journal($"J{p[8] + 1} (classe {classe}) parle au {m.Nom} : {vente.Count} objets sur {m.Vente!.Count}");
             BoutiqueEcran.Ouvrir(membre, perChar, m.Titre, vente);
             return;
         }
@@ -306,18 +292,18 @@ internal static unsafe class MarchandsHub
         if (!CatalogueObjets.Construit)
         {
             var noms = s_Marchands.Where(x => !x.Rachat).SelectMany(x => x.Boutique!.Catalogue.Select(o => o.Nom));
-            CatalogueObjets.Construire(noms, s_Journal);
+            CatalogueObjets.Construire(noms, Console.Error);
         }
 
         m.Vente = new();
         foreach (var o in m.Boutique!.Catalogue)
         {
             var objet = CatalogueObjets.Trouver(o.Nom);
-            if (objet == null) { s_Journal?.WriteLine($"{m.Fichier} : « {o.Nom} » introuvable dans les données du jeu, écarté"); continue; }
+            if (objet == null) { Journal($"{m.Fichier} : « {o.Nom} » introuvable dans les données du jeu, écarté"); continue; }
             byte genre = (byte)(objet.Fiche[0x13] & 0x0f);
             bool vendu = m.Categorie == 0 ? genre == 0 : (genre & m.Categorie) != 0;
             if (vendu) m.Vente.Add(o);
-            else s_Journal?.WriteLine($"{m.Fichier} : « {o.Nom} » n'est pas de cette catégorie (octet +0x13 = 0x{objet.Fiche[0x13]:x2}), écarté");
+            else Journal($"{m.Fichier} : « {o.Nom} » n'est pas de cette catégorie (octet +0x13 = 0x{objet.Fiche[0x13]:x2}), écarté");
         }
         return m.Vente;
     }
