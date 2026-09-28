@@ -34,6 +34,7 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-009 | Le hub de l'auberge : une porte dans chaque réception, vers la carte 82 vidée sous le numéro 86 | `[Auberge] Hub` | `EntreeSousZone` (`LoadWorldMapSubArea`), `ListeDApparition` et `DecorNe` (`SpawnSubAreaEntities`), `PasDuMembre` (la porte), `TransfertScripte` (opcode 17), `PointDEntree` et `EcartDeReprise` (`PlaceWorldMapParty`), `LieuSauve` (menu et coffre) | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/HubAuberge.cs`, `openspec/changes/archive/2026-09-28-add-legacy-plus-inn-hub` |
 | LP-012 | L'arène du hub : un téléporteur, un menu (mode, palier 1 à 10 : PV et dégâts × palier), la salle du boss de la vieille tour (4/9) vidée pour un combat rejouable ; fin native (cinématique, portail vers le hub, deux coffres), défaite = retour au hub | aucune : suit `[Auberge] Hub` | `PasDuMembre` (la question), `DessinSurImpression` (le menu), `EntreeSousZone`, `PointDEntree`, `DecorNe`, `Rencontre`, `LieuSauve`, `ImageSuivante` (directeur, fin, journal Debug), `PvALaNaissance`, `DegatsSubis`, `ListeDApparition` (les coffres), et trois coutures neuves : `VolumesTus` (`TriggerVolumes.cs`), `DefaiteEvitee` (`WorldMapHud.cs`, le passage à l'état 9) et `ScriptTu` (`RunEntityScript`, aucun script de la sous-zone en arène) | validé en jeu (2026-09-28) — `src/LegacyPlus/AreneTeleporteur.cs`, `Arene.cs`, `AreneDirecteur.cs` ; `openspec/changes/archive/2026-09-28-add-legacy-plus-arena` |
 | LP-011 | Le rachat : la Voleuse du hub rachète l'inventaire (hors équipement) et le coffre du joueur, à un taux du prix d'achat des quatre boutiques ; un objet absent des catalogues ne se revend pas ; une pile se vend en entier | `LegacyPlus\BoutiqueVente.ini` : `[Vente] Taux` (50) | celles de LP-010 | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/BoutiqueVente.cs`, `MarchandsHub.cs` ; une vente depuis le coffre écrit la sauvegarde (emplacement vidé, or crédité, sommes refaites) |
+| LP-013 | Les boss greffés de l'arène : un monstre d'une autre sous-zone combat dans 4/9 comme chez lui ; premier programme, MECHANT OURS — le combat de boss de la forêt entier (3/5, formation 0 : le Méchant ours et ses deux Grizzlys) | aucune : suit `[Auberge] Hub` | `ListeDApparition` (l'installation), `PvALaNaissance` et `DegatsSubis` (le palier, par le directeur de LP-012), et trois coutures neuves : `EffetCoupe` (`SpawnEffectEntity`), `SonPositionnel` (`PlayPositionalSound`), `ButinNe` (`DespawnSceneEntity_0051a740`) | écrit le 2026-09-28, à tester en jeu (lot 1 : le souffle de l'ours coupé) — `src/LegacyPlus/AreneGreffe.cs` ; `openspec/changes/add-legacy-plus-boss-graft` |
 | — | Vitesse des monstres | — | — | **abandonné** par Vincent le 2026-09-27 — les vitesses sont écrites en dur dans chacun des 166 gestionnaires de comportement |
 | LP-007 | Rencontres aléatoires : cadence, chevauchement pendant un combat, plusieurs formations | `[Rencontres] Frequence`, `MonstresMax`, `Formations` | `Rencontre` (l'appel de `TrySpawnRandomEncounter`), `RencontreEnAttente` et `RencontreBloquee` (ses deux gardes), `DelaiRencontre` (les deux rechargements du minuteur) | validé en jeu (2026-09-27) — `src/LegacyPlus/Rencontres.cs` |
 
@@ -256,6 +257,57 @@ Grizzly (`add-legacy-plus-boss-graft`), puis tous les boss l'un après l'autre.
 
 Coutures nouvelles dans `src/Blaze/` : deux, une ligne chacune — l'entrée des volumes de
 déclenchement et le passage à l'état 9.
+
+## LP-013, les boss greffés de l'arène (étape 1, mesure du 2026-09-28)
+
+Demande de Vincent (2026-09-28) : « ajouter le Grizzly comme boss affrontable dans l'arène ». Change :
+`openspec/changes/add-legacy-plus-boss-graft`. Mesure refaisable hors jeu :
+`OpenForesia.Tools greffe <zone> <sous-zone>` (espèces, fiches, maillages et leur pagination,
+animations, textures et leur place en VRAM, sons de niveau, tables `0x0056ad48` et `0x0056b0c8`).
+
+**Ce que la mesure établit :**
+
+- **Le « Grizzly boss » du design n'existait pas tel quel.** En 3/5 « Le lieu de coupe », la
+  formation 1 (espèce 3, seule) est une Abeille tueuse « simple » (IA 19 = `0x004A5F10`, fiche 1).
+  **Le combat de boss de la forêt est la formation 0** : le **Méchant ours** (espèce 0 : maillage 0,
+  IA 16 = `0x004A4AE0`, fiche 0 — 300 PV, rang 38) flanqué de **deux Grizzlys** (espèce 4 :
+  maillage 2, IA 4 = `0x004A4270`, fiche 3 — 80 PV, rang 25). Vincent a choisi le combat entier.
+- **Le son 3 et l'effet 0x39 du Grizzly ne dépendent pas de la zone.** Un son d'id < 60 vient du banc
+  commun (`Base.snd`) ; un effet de sous-type < `0xc0` passe par la table **statique**
+  `0x00551c30` (l'éclat d'impact `0x00447280`, le même partout). Rien à traduire pour le Grizzly.
+- **Le Méchant ours a deux références de zone** : le son **`0x3f`** (id ≥ 60, banc de niveau
+  `Q03_05.snd` : 16 004 octets ; dans 4/9 le même id est un autre son) et **le souffle**, un
+  sous-type `0xc0 + octet 9 du premier bloc de +0xcc` (`0x1e` en 3/5, `0` en 4/9) — la table par
+  sous-zone `0x0056b0c8`. En 3/5 c'est `0x00413330`, le voile rouge, qui fait naître quatorze
+  anneaux `0xde` (`0x004134C0`, table `0x0056b1c8`) dessinés avec deux modèles de décor de 3/5
+  (7 et `0x30`), et joue un son de la table `+0xa8`. Dans 4/9, le même calcul désignerait un
+  créneau vide : un effet qui ne ferait rien et ne mourrait jamais.
+- **La mort** : `DespawnSceneEntity_0051a740` tire le butin dans la table `+0xb4` de la sous-zone
+  **courante**, au rang `espèce[5]` — dans la tour, un objet de la tour. Les éclats d'expérience
+  n'en dépendent pas.
+- **La place dans 4/9** : trois espèces, trois fiches, trois maillages (rangs 0..2 des tables
+  `0x005e96a0` / `0x005e9640`) ; IA occupées 2, 4, 8, 9, 10, 13, 14, 15 (16 et 17 libres) ; sons de
+  niveau 60..68 (69..76 libres, le banc occupe 160 136 octets sur 260 000). Le relevé VRAM de 4/9
+  (`legacyplus-vram-z4-s9.txt`, 2026-09-28) montre libres x 128..255 × y 16..223 (une page 8 bits
+  en (128, 0)) et les lignes 288..319 en x 0..255 (des palettes) ; l'entrée `0xe8` et suivantes de
+  `0x005e8f00` sont libres.
+
+**Le plan retenu, lot 1 (`AreneGreffe.cs`, nom validé par Vincent) :**
+
+| Espèce | Maillage (4/9) | IA | Texture (3/5 → 4/9) | Palette | Entrée | Sons |
+|---|---|---|---|---|---|---|
+| Méchant ours (espèce 0) | rang 3 | `0x004A4AE0` | entrée 5, 60 × 48 mots → (128, 128), bande V `0x80` | ligne 288 | `0xe8` | `0x3f` → 69 |
+| Grizzly (espèce 4) | rang 4 | `0x004A4270` | entrée 7, 128 × 64 mots → (128, 64), bande V `0x40` | ligne 289 | `0xec` | — |
+
+Espèces et fiches prennent les rangs 16 et 17 de tables recopiées, sur lesquelles le répertoire de
+4/9 est repointé jusqu'au prochain chargement. Pour une créature greffée : un son de niveau non
+traduit est coupé, un effet `>= 0xc0` est coupé (**le souffle, lot 2**), le butin est éteint (ni
+objet ni pièces, décision de Vincent : la récompense de l'arène, ce sont les coffres). Chaque coupure
+est écrite une fois au journal `[GREFFE]`.
+
+**Lot 2, le souffle** : greffer `0x00413330` et `0x004134C0` dans deux créneaux libres de
+`0x0056b0c8` / `0x0056b1c8`, les modèles de décor 7 et `0x30` de 3/5 et leur texture, le son de la
+table `+0xa8` ; traduire les deux sous-types.
 
 ## Préconisations en attente
 

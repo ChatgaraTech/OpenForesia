@@ -1,7 +1,8 @@
 ## Purpose
 
 Lets a boss from another zone of the game fight in the hub arena exactly as it does at home, starting
-with the Grizzly of the forest, so that later modes can chain bosses from every zone.
+with the forest's boss fight — the Méchant ours and its two Grizzlys — so that later modes can chain
+bosses from every zone.
 
 ## ADDED Requirements
 
@@ -14,35 +15,57 @@ SHALL be left out rather than substituted.
 
 #### Scenario: The Grizzly's grab
 
-- **WHEN** the Grizzly grabs a party member in the arena
+- **WHEN** a Grizzly grabs a party member in the arena
 - **THEN** the grab plays the same sound and the same visual effect as in the forest
+
+#### Scenario: The Méchant ours roars
+
+- **WHEN** the Méchant ours attacks in the arena
+- **THEN** it plays the forest's sound, not the tower's sound of the same number
 
 #### Scenario: Nothing from the tower leaks in
 
-- **WHEN** the Grizzly fights in the arena
+- **WHEN** a grafted creature fights in the arena
 - **THEN** no creature, sound or effect belonging to the tower appears as a result of its actions
 
-### Requirement: The GRIZZLY mode
+#### Scenario: The breath, first lot
 
-The arena menu SHALL list a mode named GRIZZLY. Choosing it SHALL pit the party against the
-forest's Grizzly boss alone, at the chosen difficulty, with the arena's usual ending and defeat.
+- **WHEN** the Méchant ours uses its breath before the breath is grafted
+- **THEN** it makes the gesture and its sounds, and no effect is born
 
-#### Scenario: Grizzly at difficulty 3
+### Requirement: Grafted creatures drop nothing
 
-- **WHEN** player 1 picks GRIZZLY at difficulty 3 and confirms
-- **THEN** the party faces the Grizzly boss with 240 hit points, dealing three times its original damage
+A creature brought into the arena from another zone SHALL drop neither item nor coins when it dies;
+its experience crystals SHALL drop as usual. The arena's reward is its two chests.
 
-#### Scenario: Victory over the Grizzly
+#### Scenario: The Méchant ours dies
 
-- **WHEN** the Grizzly dies in the arena
-- **THEN** the tower's ending cinematic plays, and the portal and two chests appear at the centre
+- **WHEN** a grafted creature dies in the arena
+- **THEN** no item and no coins appear, and its experience crystals do
+
+### Requirement: The MECHANT OURS mode
+
+The arena menu SHALL list a mode named MECHANT OURS next to ENCHANTERESSE. Choosing it SHALL pit the
+party against the forest's boss fight — the Méchant ours and its two Grizzlys, in one wave — at the
+chosen difficulty, with the arena's usual ending and defeat.
+
+#### Scenario: Méchant ours at difficulty 3
+
+- **WHEN** player 1 picks MECHANT OURS at difficulty 3 and confirms
+- **THEN** the party faces the Méchant ours with 900 hit points and two Grizzlys with 240 each, all
+  dealing three times their original damage
+
+#### Scenario: Victory over the Méchant ours
+
+- **WHEN** the Méchant ours and both Grizzlys are dead
+- **THEN** the tower's ending cinematic plays, and the portal and two chests appear
 
 ### Requirement: The forest is untouched
 
-Bringing the Grizzly into the arena MUST NOT change the forest: its Grizzly, its story and its other
-creatures SHALL behave as in the original game, before and after any arena fight.
+Bringing forest creatures into the arena MUST NOT change the forest: its bear fight, its story and
+its other creatures SHALL behave as in the original game, before and after any arena fight.
 
 #### Scenario: The forest after the arena
 
-- **WHEN** the party beats the Grizzly in the arena, then walks into the forest's boss clearing through the story
-- **THEN** the forest's own Grizzly fight happens as in the original game
+- **WHEN** the party beats the Méchant ours in the arena, then walks into the forest's boss clearing through the story
+- **THEN** the forest's own bear fight happens as in the original game

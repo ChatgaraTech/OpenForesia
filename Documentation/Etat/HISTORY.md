@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-28
 
+- feat : LP-013, lot 1 — le mode MECHANT OURS de l'arène : le combat de boss de la forêt (le Méchant ours et ses deux Grizzlys, 3/5) greffé dans la salle de la tour — maillages, animations, textures, fiches, IA et son de niveau venus de 3/5 (`AreneGreffe.cs`) ; trois coutures neuves (`EffetCoupe`, `SonPositionnel`, `ButinNe`) ; le souffle de l'ours coupé en attendant le lot 2, ni objet ni pièces à la mort ; à tester en jeu
+- feat : `OpenForesia.Tools greffe <zone> <sous-zone>` — ce qu'une greffe de monstre demande, lu hors jeu (espèces, maillages et pagination, textures et VRAM, sons de niveau, tables d'IA et d'effets)
+- doc : LP-013, mesure — le « Grizzly boss » de 3/5 était une Abeille tueuse ; le son 3 et l'effet 0x39 du Grizzly sont communs à toutes les zones, le son 0x3f et le souffle de l'ours ne le sont pas (`legacy.md`)
 - doc : LP-012, l'arène du hub, validée en jeu par Vincent ; le changement `add-legacy-plus-arena` est archivé
 - fix : `EcranMenu` laissait le monde gelé en se fermant par menu ou par Non — `Retour()` retirait la dernière page puis appelait `Fermer()`, qui ne fait rien sur une pile vide (garde `!Ouvert`) : ni dégel ni « fermé » au journal, seule la caméra répondait (boutiques du hub quittées par F2, Non au téléporteur ; trouvé au journal de Vincent). La dernière page est désormais fermée avant d'être retirée ; revenir sur une page de question la repose
 - fix : `RestorePartyReactions_00530ED0` réarmait la manette au mauvais endroit — le binaire écrit l'octet `+4` du bloc de 0x10 octets de la manette (`shl ecx,4`), la transcription faisait un pas de 4 octets (identique pour la manette 0, faux pour les autres)

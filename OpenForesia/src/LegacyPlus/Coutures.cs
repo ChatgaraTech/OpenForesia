@@ -247,6 +247,36 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Script ScriptTu = (indice, appelant) => false;
 
+    /// <summary>Un effet sur le point de naître : sa source et son sous-type.</summary>
+    internal delegate bool Effet(byte* source, byte sousType);
+
+    /// <summary>
+    /// Couture LP-013 — en tête de <c>SpawnEffectEntity</c> (Ghidra: FUN_0047a9d0), avant la prise
+    /// d'un emplacement : vrai, l'effet ne naît pas et l'appel rend 0, comme quand la table est
+    /// pleine. Par défaut, faux.
+    /// </summary>
+    internal static Effet EffetCoupe = (source, sousType) => false;
+
+    /// <summary>Un son positionnel : son identifiant et la position où il est joué.</summary>
+    internal delegate int Son(int identifiant, int* position);
+
+    /// <summary>
+    /// Couture LP-013 — en tête de <c>PlayPositionalSound</c> (Ghidra: FUN_0053db20) : l'identifiant
+    /// à jouer. La position est le plus souvent <c>entite + 0x1c</c>, ce qui désigne qui joue le son.
+    /// Par défaut, le même identifiant.
+    /// </summary>
+    internal static Son SonPositionnel = (identifiant, position) => identifiant;
+
+    /// <summary>Le butin qu'une entité de scène vient de lâcher en mourant : elle, puis lui.</summary>
+    internal delegate void Butin(byte* entite, byte* butin);
+
+    /// <summary>
+    /// Couture LP-013 — dans <c>DespawnSceneEntity_0051a740</c> (Ghidra: FUN_0051a740), l'objet ou
+    /// les pièces tout juste posés, avant les éclats d'expérience. Tous les tirages ont eu lieu. Par
+    /// défaut, rien.
+    /// </summary>
+    internal static Butin ButinNe = (entite, butin) => { };
+
     static Coutures()
     {
         try
@@ -263,6 +293,7 @@ internal static unsafe class Coutures
             AreneTeleporteur.Installer();
             Arene.Installer();
             AreneDirecteur.Installer();
+            AreneGreffe.Installer();
 #if DEBUG
             // Les outils de diagnostic n'existent que dans la version Debug : la version publiée
             // (publish-release.ps1, -c Release) ne les installe jamais, même avec la clé.
@@ -300,6 +331,9 @@ internal static unsafe class Coutures
             VolumesTus = () => false;
             DefaiteEvitee = () => false;
             ScriptTu = (indice, appelant) => false;
+            EffetCoupe = (source, sousType) => false;
+            SonPositionnel = (identifiant, position) => identifiant;
+            ButinNe = (entite, butin) => { };
         }
     }
 }

@@ -2,13 +2,16 @@
 
 Voir `proposal.md` pour le pourquoi, et `add-legacy-plus-arena/design.md` pour l'arène elle-même.
 
-- **Le Grizzly boss** est l'espèce 3 de 3/5 « Le lieu de coupe » (formation 1, seule, en
-  (−300, 0, −1300)), modèle 3 : 80 PV, rang 25. Son IA est `0x0049B840`
-  (`Ai/Forest/Grizzly.cs`, 582 lignes, déjà transcrite) ; `0x004A4270` en est une copie identique.
-- **Ses références qui dépendent de la zone**, par appel direct : le son **3**
-  (`Grizzly.cs:249`, `:332`, à la frappe et à la prise) et l'effet de sous-type **0x39**
-  (`Grizzly.cs:358`, `SpawnEffectEntity`). En zone 4, ces numéros désignent un autre son (banc de
-  sons de la zone) et un autre gestionnaire (table d'effets installée par zone).
+- **Correction de la mesure (2026-09-28).** L'« espèce 3 de 3/5, formation 1 » que ce paragraphe
+  désignait est une Abeille tueuse « simple » (IA 19, `0x004A5F10`). **Le combat de boss de la forêt
+  est la formation 0 de 3/5** : le Méchant ours (espèce 0, IA 16 = `0x004A4AE0`, 300 PV, rang 38)
+  et deux Grizzlys (espèce 4, IA 4 = `0x004A4270`, 80 PV, rang 25). Vincent a choisi le combat
+  entier. Détail et plan : `Documentation/LegacyPlus/legacy.md`, LP-013.
+- **Le son 3 et l'effet 0x39 du Grizzly sont communs** : id < 60 = banc `Base.snd` ; sous-type
+  < `0xc0` = table statique `0x00551c30`. **Le Méchant ours** a deux références de zone : le son de
+  niveau `0x3f` et le souffle (sous-type `0xc0 + bloc[9]`, table par sous-zone `0x0056b0c8`, une
+  chaîne de trois gestionnaires, deux modèles de décor et un son de la table `+0xa8`).
+- **La mort** tire le butin dans la table `+0xb4` de la sous-zone courante.
 - **Ce qui sait déjà charger hors zone** : `MarchandsHub` relit le répertoire de l'état 1 dans
   l'archive (`LireEtat1`), charge et reloge un paquet de modèle et un paquet d'animations
   (`RelocateModelBundle`, `RelocateAnimationBundle`), envoie une texture en VRAM à une place libre
@@ -22,7 +25,8 @@ Voir `proposal.md` pour le pourquoi, et `add-legacy-plus-arena/design.md` pour l
 **Goals :** une greffe générique (une espèce d'une zone, dans l'arène) ; le Grizzly qui combat comme
 dans la forêt ; le recensement qui chiffre les boss suivants.
 
-**Non-Goals :** les autres boss — ils viendront **l'un après l'autre** (Vincent, 2026-09-28), chacun
+**Non-Goals :** le souffle de l'ours au lot 1 (coupé, greffé au lot 2) ; le butin des créatures
+greffées (éteint) ; les autres boss — ils viendront **l'un après l'autre** (Vincent, 2026-09-28), chacun
 un programme de plus, dans l'ordre que le recensement (G5) rendra le moins cher ; un boss rush
 (plusieurs vagues de zones différentes) — rendu possible, pas livré ; les boss à plusieurs corps ou à
 script de carte ; greffer un décor.

@@ -42,8 +42,12 @@ internal static unsafe class AreneDirecteur
     /// la sous-zone. Une <paramref name="Place"/> la déplace (x, z, cap) : l'enregistrement perd alors
     /// ses deux faces de sol (<c>-1</c>), et <c>SpawnEntityFormation</c> pose la créature au sol par
     /// <c>TryPlaceEntity</c> — comme le banc d'essai.
+    /// <para>Une créature <paramref name="Greffe"/> (LP-013) vient d'une autre sous-zone : la formation
+    /// et le rang sont ceux de SA sous-zone, l'espèce devient celle que la greffe lui a prêtée dans
+    /// 4/9, et elle naît à la hauteur du sol de l'arène.</para>
     /// </summary>
-    internal sealed record Creature(int Formation, int Rang, (short X, short Z, short Cap)? Place = null);
+    internal sealed record Creature(int Formation, int Rang, (short X, short Z, short Cap)? Place = null,
+                                    AreneGreffe.Espece? Greffe = null);
 
     /// <summary>Une vague : les créatures qui naissent ensemble.</summary>
     internal sealed record Vague(Creature[] Creatures);
@@ -57,11 +61,23 @@ internal static unsafe class AreneDirecteur
     /// −2200), cap 2048), sans ses deux Ténébreux. Elle prend la place d'arrivée du groupe, (100,
     /// −2900), tournée vers lui (cap 0), et le groupe la sienne (Vincent, 2026-09-28 ;
     /// <c>Arene.cs</c>). Elle reste au menu quand les boss greffés arrivent.
+    /// <para>Le Méchant ours (LP-013) : le combat de boss de la forêt entier, la formation 0 de 3/5 —
+    /// l'ours au rang 0, ses deux Grizzlys aux rangs 1 et 2, à 200 unités de part et d'autre comme
+    /// dans la forêt (formations.csv), à la place du boss de la tour.</para>
     /// </summary>
     internal static readonly Programme[] Programmes =
     [
         new("ENCHANTERESSE", [new Vague([new Creature(0, 0, (100, -2900, 0))])]),
+        new("MECHANT OURS", [new Vague([
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.MechantOurs),
+            new Creature(0, 1, (-100, -2900, 0), AreneGreffe.Grizzly),
+            new Creature(0, 2, (300, -2900, 0), AreneGreffe.Grizzly),
+        ])]),
     ];
+
+    /// <summary>La hauteur du sol de la salle du boss (formations.csv, 4/9 : y = 200) : une créature
+    /// greffée y naît, et <c>TryPlaceEntity</c> la pose sur la face qui est dessous.</summary>
+    private const short HauteurArene = 200;
 
     internal const int PalierMax = 10;
 
@@ -123,6 +139,7 @@ internal static unsafe class AreneDirecteur
         s_Vague = 0;
         s_Attente = Delai;
         s_EnCours = Choix != null;
+        AreneGreffe.Commencer(Choix?.Programme);
         if (Choix is not { } choix) { Journal("aucun programme choisi : l'arène reste vide"); return; }
 
         s_Programme = choix.Programme;
@@ -183,12 +200,28 @@ internal static unsafe class AreneDirecteur
             int n = 0;
             foreach (Creature c in vague.Creatures)
             {
-                int* source = formations[c.Formation];
+                int** table = formations;
+                if (c.Greffe != null)
+                {
+                    if (!AreneGreffe.Prete(c.Greffe)) { Abandonner($"{c.Greffe.Nom} n'a pas pu être greffé"); return; }
+                    table = AreneGreffe.Formations(c.Greffe);
+                }
+                int* source = table[c.Formation];
                 int rang = 0;
                 while (rang < c.Rang && source[rang * Enregistrement] != -1) rang++;
                 if (source[rang * Enregistrement] == -1) { Abandonner($"formation {c.Formation} sans rang {c.Rang}"); return; }
                 int* r = liste + n * Enregistrement;
                 for (int k = 0; k < Enregistrement; k++) r[k] = source[rang * Enregistrement + k];
+                if (c.Greffe != null)
+                {
+                    // Le mot 0 n'est pas que l'espèce : octet 0 l'espèce, octet 1 le genre (10 : script au
+                    // coup reçu, 11 : à la mort), octets 2-3 le script (+0x0e de l'entité). Seule
+                    // l'espèce change ; genre et script sont gardés — l'arène tait tous les scripts.
+                    byte* mot = (byte*)r;
+                    if (mot[0] != c.Greffe.Indice) { Abandonner($"formation {c.Formation}, rang {c.Rang} : espèce {mot[0]}, pas {c.Greffe.Nom}"); return; }
+                    mot[0] = (byte)c.Greffe.Rang;
+                    *(short*)((byte*)r + 6) = HauteurArene;
+                }
                 if (c.Place is { } place)
                 {
                     *(short*)((byte*)r + 4) = place.X;           // la hauteur (+6) est gardée

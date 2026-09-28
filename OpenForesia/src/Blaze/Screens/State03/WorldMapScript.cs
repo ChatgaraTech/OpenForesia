@@ -1300,6 +1300,8 @@ public static unsafe partial class Blaze
     /// conditionnelle de la fonction.</param>
     private static uint SpawnEffectEntity(byte* source, byte param2, byte param3, int param4)
     {
+        if (LegacyPlus.Coutures.EffetCoupe(source, param2)) return 0;   // Couture legacy ++ (LP-013)
+
         int index = AllocEntitySlot((ushort*)Mem.Entity(0x005fa5a0));
         if (index < 0)
         {

@@ -1226,6 +1226,8 @@ public static unsafe partial class Blaze
             }
         }
 
+        LegacyPlus.Coutures.ButinNe(record, drop);   // Couture legacy ++ (LP-013)
+
         // ---- les eclats ----
         uint sparkles = (uint)CrtRand() & 3;
 

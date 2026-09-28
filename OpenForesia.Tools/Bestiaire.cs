@@ -533,6 +533,130 @@ internal static class Bestiaire
         }
     }
 
+    /// <summary>
+    /// Le verbe <c>greffe</c> : tout ce qu'il faut savoir d'une sous-zone pour en faire venir un
+    /// monstre ailleurs, ou pour en recevoir un (LP-013). Les especes (<c>+0x4c</c>), le compte des
+    /// fiches (<c>+0x98</c>), chaque paquet de modele (<c>+0x2c</c> : taille, pagination, entrees de
+    /// decodage que ses parties designent) et d'animation (<c>+0x7c</c>), les textures (<c>+0x10</c>
+    /// et leur place en VRAM), le premier bloc de <c>+0xcc</c>, le banc de sons de niveau
+    /// (<c>Snd\Qzz_ss.snd</c>, ids 60 a 76) et les deux tables de gestionnaires qu'une IA
+    /// atteint : <c>0x0056ad48</c> (l'IA, <c>espece[1]</c>) et <c>0x0056b0c8</c> (un sous-type
+    /// <c>&gt;= 0xc0</c> ne dans une table d'effets).
+    /// </summary>
+    public static void Greffe(string dossierDonnees, int zone, int sousZone)
+    {
+        string french = Path.Combine(dossierDonnees, "French");
+        if (!Directory.Exists(french)) french = dossierDonnees;
+        byte[] archive = File.ReadAllBytes(Path.Combine(french, "BLAZE.ALL"));
+        var root = new Blob(File.ReadAllBytes(Path.Combine(french, "SYSTEM.INI")));
+        root.Fixup();
+
+        var stateDir = LoadEntry(archive, root, EntryList(root, 0x48)[3]);
+        var zoneBlob = LoadEntry(archive, stateDir, EntryList(stateDir, 0x48)[zone]);
+        var a = LoadEntry(archive, zoneBlob, EntryList(zoneBlob, 0x48)[sousZone]);
+        string Octets(int v) => $"{v & 0xff:x2} {(v >> 8) & 0xff:x2} {(v >> 16) & 0xff:x2} {(v >> 24) & 0xff:x2}";
+
+        Console.WriteLine($"=== sous-zone {zone}/{sousZone} : repertoire de {a.Len} octets");
+
+        int especes = a.I32(0x4c);
+        Console.WriteLine($"especes (+0x4c) :");
+        for (int o = especes, i = 0; o + 8 <= RegionEnd(a, especes); o += 8, i++)
+            Console.WriteLine($"  {i} : maillage {a.U8(o)}, IA {a.U8(o + 1)}, octets 2-3 {a.U8(o + 2):x2} {a.U8(o + 3):x2}, "
+                              + $"fiche {a.U8(o + 4)}, butin {a.U8(o + 5)}, drapeaux 0x{a.U16(o + 6):x4}");
+        int fiches = a.I32(0x98);
+        Console.WriteLine($"fiches (+0x98) : {(RegionEnd(a, fiches) - fiches) / 0x60}");
+
+        // Le mot 0 d'un enregistrement de formation : octet 0 l'espece, octet 1 le genre (10 : script
+        // au coup recu, 11 : a la mort), octets 2-3 le script (+0x0e de l'entite).
+        Console.WriteLine("formations (+0x34) :");
+        int formations = a.I32(0x34);
+        // La table de pointeurs s'arrete ou commence la plus proche des listes qu'elle designe.
+        int finTable = RegionEnd(a, formations);
+        for (int f = 0; a.In(formations + f * 4, 4) && formations + f * 4 < finTable; f++)
+        {
+            int liste = a.I32(formations + f * 4);
+            if (!a.In(liste, 4) || liste <= formations) break;
+            finTable = Math.Min(finTable, liste);
+            for (int r = 0; a.In(liste + r * 0x20, 4) && a.I32(liste + r * 0x20) != -1 && r < 16; r++)
+            {
+                int o = liste + r * 0x20;
+                Console.WriteLine($"  {f}.{r} : espece {a.U8(o)}, genre {a.U8(o + 1)}, script {a.U16(o + 2)}, "
+                                  + $"x/y/z {a.I16(o + 4)}/{a.I16(o + 6)}/{a.I16(o + 8)}");
+            }
+        }
+
+        int bloc = a.I32(a.I32(0xcc));
+        if (a.In(bloc, 16))
+            Console.WriteLine($"premier bloc de +0xcc : {string.Join(" ", Enumerable.Range(0, 16).Select(k => a.U8(bloc + k).ToString("x2")))}");
+
+        Console.WriteLine("modeles (+0x2c) :");
+        int k2 = 0;
+        for (int e = a.I32(0x2c); a.In(e, 8) && a.I32(e) != 0; e += 8, k2++)
+        {
+            var b = LoadEntryRaw(archive, a, a.I32(e));
+            int n = b.I32(0);
+            var entrees = new SortedSet<int>();
+            for (int j = 0; j < n; j++) entrees.Add((b.I32((n + 1 + j) * 4) | a.I32(e + 4)) >> 16 & 0xff);
+            Console.WriteLine($"  {k2} : {b.Len} octets, {n} partie(s), pagination {Octets(a.I32(e + 4))}, "
+                              + $"entrees de decodage {string.Join("/", entrees)}");
+        }
+
+        Console.WriteLine("animations (+0x7c) :");
+        k2 = 0;
+        for (int e = a.I32(0x7c); a.In(e, 4) && a.I32(e) != 0; e += 4, k2++)
+        {
+            var b = LoadEntryRaw(archive, a, a.I32(e));
+            Console.WriteLine($"  {k2} : {b.Len} octets, {b.I32(0)} clip(s)");
+        }
+
+        Console.WriteLine("textures (+0x10) :");
+        int slot = 0;
+        for (int e = a.I32(0x10); a.In(e, 8) && a.I32(e) != 0; e += 8, slot++)
+        {
+            var t = LoadEntryRaw(archive, a, a.I32(e));
+            int meta = a.I32(e + 4);
+            string s = $"  entree {slot} : {t.Len} octets, description {Octets(meta)}";
+            if (t.Len >= 8)
+            {
+                int flags = t.I32(4), off = 8, mode = flags & 3;
+                s += $", mode {mode}";
+                if ((flags & 8) != 0 && t.In(off, 12))
+                {
+                    s += $", palette {t.U16(off + 8)}x{t.U16(off + 10)} -> ligne {(meta >> 8 & 0xff) + 0x1c0}";
+                    off += t.I32(off);
+                }
+                // DecodeResourceChunk : x = (meta[0] & 0xf) * 64, y = ((meta[0] & 0x10) + meta[2] * 4) * 16.
+                int x = (meta & 0xf) << 6, y = ((meta & 0x10) + (meta >> 16 & 0xff) * 4) << 4;
+                if (t.In(off, 12)) s += $", image {t.U16(off + 8)}x{t.U16(off + 10)} mots en ({x}, {y})";
+            }
+            Console.WriteLine(s);
+        }
+
+        string snd = Path.Combine(dossierDonnees, "Snd", $"Q{zone:D2}_{(zone == 0 ? 0 : sousZone):D2}.snd");
+        if (File.Exists(snd))
+        {
+            byte[] f = File.ReadAllBytes(snd);
+            Console.WriteLine($"sons de niveau ({Path.GetFileName(snd)}, {f.Length - 0x88} octets de banque) :");
+            for (int id = 0; id < 17; id++)
+            {
+                int off = BitConverter.ToInt32(f, id * 8), len = BitConverter.ToInt32(f, id * 8 + 4);
+                if (len != 0) Console.WriteLine($"  id {60 + id} (0x{60 + id:x2}) : {len} octets en {off}");
+            }
+        }
+
+        if (LoadBlazeExe())
+        {
+            int index = zone == 0 ? 0 : zone * 0x10 + sousZone;
+            foreach ((uint selecteur, int entrees, string nom) in new[] { (0x00566d98u, 0x20, "0x0056ad48 (IA)"), (0x00567898u, 0x40, "0x0056b0c8 (>= 0xc0)") })
+            {
+                uint blocVt = ExeU32(selecteur + (uint)index * 4);
+                var pleins = Enumerable.Range(0, entrees).Select(i => (i, h: ExeU32(blocVt + (uint)i * 4))).Where(p => p.h != 0x00401FA0).ToList();
+                Console.WriteLine($"table {nom}, bloc 0x{blocVt:x8} : " + (pleins.Count == 0 ? "vide"
+                    : string.Join(", ", pleins.Select(p => $"{p.i} = 0x{p.h:x8}"))));
+            }
+        }
+    }
+
     public static void DecorModele(string dossierDonnees, int zone, int sousZone, int section, int rang)
     {
         string french = Path.Combine(dossierDonnees, "French");

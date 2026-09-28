@@ -98,6 +98,16 @@ if (args[0] is "decor-modele" && args.Length >= 5)
     return;
 }
 
+// Ce qu'une greffe de monstre demande (LP-013, les boss de l'arene), lu hors jeu :
+// `greffe <zone> <sous-zone> [dossier]`.
+if (args[0] is "greffe" && args.Length >= 3)
+{
+    string? dossier = args.Length > 3 ? args[3] : DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Bestiaire.Greffe(dossier, int.Parse(args[1]), int.Parse(args[2]));
+    return;
+}
+
 // Les points d'entree d'une sous-zone (LP-012, l'arene), lus hors jeu :
 // `entrees <zone> <sous-zone> [dossier]`.
 if (args[0] is "entrees" && args.Length >= 3)

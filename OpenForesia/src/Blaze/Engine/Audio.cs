@@ -1612,6 +1612,7 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
     /// </summary>
     internal void PlayPositionalSound(int soundId, int pitch, int gain, int* position)
     {
+        soundId = LegacyPlus.Coutures.SonPositionnel(soundId, position);   // Couture legacy ++ (LP-013)
         int gains = gain;
         if (ComputePositionalSoundGains(position, gain, (short*)&gains) != 0)
         {
