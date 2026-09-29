@@ -1,5 +1,5 @@
 // =====================================================================
-// LP-012 — le mode arène : l'aller vers 4/9, la salle vidée, la fin (scénette, coffres, portail),
+// LP-012 — le mode arène : l'aller vers 4/9, la salle vidée, la fin (scénette, bourse, portail),
 // la défaite, la sauvegarde.
 //
 // Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-arena, design D1, D2, D6, D7).
@@ -35,13 +35,11 @@
 //   1. la scénette de sortie reçoit l'état 1, le monde gelé comme un script le ferait : c'est la
 //      cinématique du jeu — caméra, portail qui grandit et s'écrase, flash, musique ; à son état 0x63
 //      elle a tout rendu et le portail reste debout, À SA PLACE D'ORIGINE (100, −2700) ;
-//   2. deux coffres apparaissent. Ce sont des copies du coffre de 4/9 (liste 3, rangs 0 et 1 : le
-//      coffre et son corps), ajoutées à la liste 0 au peuplement, nées puis mises de côté (leurs 0x9c
-//      octets gardés, l'emplacement rendu libre) et remises en place à ce moment. Leur contenu est
-//      celui du coffre d'origine — un tirage dans la rangée 0 de la table de butin de 4/9 —, en
-//      attendant la table de l'arène. Leurs numéros, 510 et 511, ne sont ceux d'aucun coffre du jeu
-//      (coffres.csv : 0 à 302) ; ces deux bits de la banque 0x005e96e0 (« déjà ouvert ») sont remis à
-//      zéro à chaque entrée et rendus à leur valeur d'avant à la sortie ;
+//   2. la bourse du programme (AreneDirecteur.Bourse : ses pièces × le palier) est versée au groupe,
+//      répartie à parts égales entre TOUS ses membres, debout ou non — le reste de la division, une
+//      pièce chacun aux premiers —, chaque bourse bornée à 99 999 comme au ramassage d'origine
+//      (PartyMemberStep). Le premier membre debout qui fait un pas reçoit le message. Plus de
+//      coffres (Vincent, 2026-09-29 : « supprime tout compte fait pour les boss les coffres ») ;
 //   3. un membre debout qui entre dans le portail se voit demander « Bon, on s'fait la malle ? » ;
 //      Oui ramène le groupe au hub (HubAuberge.RetourDArene).
 //
@@ -50,7 +48,7 @@
 // retour au hub, et à l'arrivée « Ouille, nom d'un panda à la sauce tomate, j'ai mal à la tête ».
 //
 // Journal [ARENE] ; en Debug, chaque écriture dans les huit banques d'état pendant le mode arène
-// (D6 : zéro attendu, hors les deux bits des coffres de l'arène).
+// (D6 : zéro attendu).
 // Ne tire aucun nombre aléatoire.
 // =====================================================================
 
@@ -85,21 +83,16 @@ internal static unsafe class Arene
         47, 48, 49,     // les gonds de la tour (0x0045FFA0, 0x00460080, 0x00460140) — verrous persistants
     ];
 
-    private const byte SousTypeScenette = 22, SousTypeCoffre = 28;
+    private const byte SousTypeScenette = 22;
     private const int EtatScenetteFinie = 0x63;
 
-    // Les coffres de l'arène : copiés de la liste 3 (le coffre au rang 0, son corps au rang 1), posés
-    // de part et d'autre de l'arrivée du groupe. TODO(LP-012) : places à ajuster au relevé de Vincent.
-    private const int ListeCoffre = 3, RangCoffre = 0, RangCorps = 1;
-    private static readonly (short X, short Z, short Numero)[] s_Coffres = [(-100, -2200, 510), (300, -2200, 511)];
+    private const int BourseMax = 99999;             // la borne du ramassage d'origine (PartyMemberStep)
     private const int RayonPortail = 90, RayonPortailSortie = RayonPortail + 30;
     private const string QuestionPortail = "Bon, on s'fait la malle ?";
 
     /// <summary>Par membre (0 à 3) : déjà questionné au portail, et pas encore ressorti du rayon.</summary>
     private static readonly bool[] s_Questionne = new bool[4];
 
-    private const int Enregistrement = 8;              // dwords par enregistrement d'apparition
-    private const int MaxEnregistrements = 0x80;
     private const int TailleEntite = 0x9c;
 
     private const string Panda = "Ouille, nom d'un panda à la sauce tomate, j'ai mal à la tête";
@@ -112,16 +105,10 @@ internal static unsafe class Arene
     internal static bool Actif { get; private set; }
 
     private static uint* s_Point;                    // le point d'entrée recopié, sans script d'arrivée
-    private static uint* s_Liste0;                   // la liste 0 de 4/9, plus les coffres
-    private static int s_RangAjout = -1;             // rang du premier enregistrement ajouté dans s_Liste0
-    private static byte* s_Reserve;                  // les entités des coffres, mises de côté
-    private static uint*[] s_Places = new uint*[4];  // leurs emplacements
-    private static int s_NbReserve;
-
     private static byte* s_Scenette;                 // la scénette de sortie née dans l'arène
     private static bool s_Fin;                       // la dernière vague est tombée
-    private static bool s_Portail;                   // la cinématique est finie : les coffres sont là, le portail ouvert
-    private static byte s_BitsAvant;                 // les deux bits des coffres, avant l'entrée
+    private static bool s_Portail;                   // la cinématique est finie : la bourse versée, le portail ouvert
+    private static string? s_Annonce;                // le message de la bourse, pas encore montré
 #if DEBUG
     private static readonly HashSet<(uint, string)> s_ScriptsTus = new();
 #endif
@@ -131,8 +118,6 @@ internal static unsafe class Arene
         if (!ReglagesLegacyPlus.Hub) return;
 
         s_Point = (uint*)NativeMemory.AllocZeroed(8, sizeof(uint));
-        s_Liste0 = (uint*)NativeMemory.AllocZeroed((nuint)((MaxEnregistrements + 5) * Enregistrement), sizeof(uint));
-        s_Reserve = (byte*)NativeMemory.AllocZeroed((nuint)(4 * TailleEntite));
 
         Coutures.Repertoire repertoire = Coutures.EntreeSousZone;
         Coutures.EntreeSousZone = (table, sousZone) =>
@@ -151,13 +136,6 @@ internal static unsafe class Arene
             if (s_Ecarts <= 0) return e;
             s_Ecarts--;
             return 0;
-        };
-
-        Coutures.Liste liste = Coutures.ListeDApparition;
-        Coutures.ListeDApparition = (indice, l) =>
-        {
-            l = liste(indice, l);
-            return Actif && indice == 0 && l != null ? AjouterCoffres(l) : l;
         };
 
         Coutures.Naissance naissance = Coutures.DecorNe;
@@ -283,9 +261,7 @@ internal static unsafe class Arene
             s_Scenette = null;
             s_Fin = s_Portail = false;
             Array.Clear(s_Questionne);
-            s_NbReserve = 0;
-            s_RangAjout = -1;
-            PreparerBitsCoffres();
+            s_Annonce = null;
 #if DEBUG
             s_ScriptsTus.Clear();
             PhotographierDrapeaux();
@@ -299,9 +275,9 @@ internal static unsafe class Arene
         {
             Journal($"mode arène baissé : chargement de {zone}/{sousZone}");
             AreneDirecteur.Arreter();
-            RendreBitsCoffres();
         }
         Actif = false;
+        s_Annonce = null;
         s_Arrivee = false;
         s_Ecarts = 0;
         s_CapMembres = 0;
@@ -347,69 +323,9 @@ internal static unsafe class Arene
 
     // ---- la salle ----------------------------------------------------------------------------------
 
-    /// <summary>
-    /// La liste 0 de 4/9, recopiée, et à sa suite deux fois le coffre de la liste 3 et son corps,
-    /// déplacés, le coffre renuméroté. Les rangs d'origine ne bougent pas.
-    /// </summary>
-    private static uint* AjouterCoffres(uint* liste)
-    {
-        byte* repertoire = Jeu.s_Unknown_005e97cc;
-        uint* source = *(uint**)(*(byte**)(repertoire + 0x30) + ListeCoffre * 4);
-        if (source == null) { Journal("coffres : la liste 3 manque"); return liste; }
-
-        byte* coffre = (byte*)(source + RangCoffre * Enregistrement);
-        byte* corps = (byte*)(source + RangCorps * Enregistrement);
-        if (coffre[0x1d] != SousTypeCoffre)
-        {
-            Journal($"coffres : le rang {RangCoffre} de la liste 3 est le sous-type {coffre[0x1d]}, pas un coffre — aucun ajout");
-            return liste;
-        }
-
-        int n = 0;
-        while (n < MaxEnregistrements && liste[n * Enregistrement] != 0xffffffff) n++;
-        long octets = (long)n * Enregistrement * 4;
-        Buffer.MemoryCopy(liste, s_Liste0, octets, octets);
-
-        int k = n;
-        foreach (var (x, z, numero) in s_Coffres)
-        {
-            Poser((byte*)(s_Liste0 + k++ * Enregistrement), coffre, x, z);
-            *(short*)((byte*)(s_Liste0 + (k - 1) * Enregistrement) + 0xa) = numero;
-            Poser((byte*)(s_Liste0 + k++ * Enregistrement), corps, x, z);
-        }
-        s_Liste0[k * Enregistrement] = 0xffffffff;
-        s_RangAjout = n;
-
-        Journal($"coffres : copie du coffre n° {*(short*)(coffre + 0xa)} (contenu 0x{*(ushort*)(coffre + 0xe):x4}), " +
-                $"rangs {n} à {k - 1} de la liste 0");
-        return s_Liste0;
-    }
-
-    private static void Poser(byte* dest, byte* source, short x, short z)
-    {
-        for (int i = 0; i < Enregistrement * 4; i++) dest[i] = source[i];
-        *(short*)(dest + 4) = x;
-        *(short*)(dest + 8) = z;
-    }
-
-    /// <summary>
-    /// À la naissance : le décor qui agit retourne au néant (D2) ; la scénette est notée ; les
-    /// coffres ajoutés sont mis de côté jusqu'à la fin, leur emplacement rendu libre.
-    /// </summary>
+    /// <summary>À la naissance : le décor qui agit retourne au néant (D2) ; la scénette est notée.</summary>
     private static void Vider(uint* enregistrement, uint* entite)
     {
-        if (s_RangAjout >= 0 && enregistrement >= s_Liste0 + s_RangAjout * Enregistrement
-            && enregistrement < s_Liste0 + (s_RangAjout + 4) * Enregistrement)
-        {
-            if (s_NbReserve < 4)
-            {
-                Buffer.MemoryCopy(entite, s_Reserve + s_NbReserve * TailleEntite, TailleEntite, TailleEntite);
-                s_Places[s_NbReserve++] = entite;
-            }
-            *entite = 0;
-            return;
-        }
-
         byte sousType = ((byte*)enregistrement)[0x1d];
         if (sousType == SousTypeScenette && s_Scenette == null) { s_Scenette = (byte*)entite; return; }
         if (Array.IndexOf(s_Retires, sousType) < 0) return;
@@ -426,7 +342,7 @@ internal static unsafe class Arene
 
         if (s_Scenette == null || *(ushort*)(s_Scenette + 0x10) != 0)
         {
-            Journal("victoire : pas de scénette de sortie au repos — coffres et portail tout de suite");
+            Journal("victoire : pas de scénette de sortie au repos — bourse et portail tout de suite");
             OuvrirLePortail();
             return;
         }
@@ -441,7 +357,7 @@ internal static unsafe class Arene
         Journal($"victoire : la scénette de sortie reçoit l'état 1 (mot 0x{*(uint*)s_Scenette:x8})");
     }
 
-    /// <summary>À chaque image : la cinématique finie, les coffres et le portail.</summary>
+    /// <summary>À chaque image : la cinématique finie, la bourse et le portail.</summary>
     private static void SuivreLaFin()
     {
         if (!s_Fin || s_Portail || s_Scenette == null) return;
@@ -452,21 +368,58 @@ internal static unsafe class Arene
     private static void OuvrirLePortail()
     {
         s_Portail = true;
-        for (int i = 0; i < s_NbReserve; i++)
-            Buffer.MemoryCopy(s_Reserve + i * TailleEntite, s_Places[i], TailleEntite, TailleEntite);
-        Journal($"fin : {s_NbReserve} entité(s) de coffre remises en place, portail ouvert" +
-                (s_NbReserve > 0 ? $" (mot du premier coffre 0x{*s_Places[0]:x8})" : ""));
+        Recompenser();
+        Journal("fin : portail ouvert");
+    }
+
+    /// <summary>
+    /// La bourse du programme, répartie entre tous les membres du groupe : la part entière à chacun,
+    /// puis une pièce de plus aux premiers tant qu'il en reste — la somme versée est exactement la
+    /// bourse, hors borne de 99 999. La fiche du membre i est celle que <c>PartyMemberStep</c>
+    /// crédite : mémoire principale + <c>0xf0000 + i × 0x2000</c>, l'or en <c>+0x26c</c>.
+    /// </summary>
+    private static void Recompenser()
+    {
+        int bourse = AreneDirecteur.Bourse;
+        int membres = Jeu.s_PartySize_005e9020;
+        if (bourse <= 0 || membres <= 0) return;
+
+        byte* memoire = Jeu.GetMainMemPtr();
+        int part = bourse / membres, reste = bourse % membres;
+        var parts = new List<string>();
+        for (int i = 0; i < membres; i++)
+        {
+            int gain = part + (i < reste ? 1 : 0);
+            int* or = (int*)(memoire + 0xf0000 + i * 0x2000 + 0x26c);
+            *or = Math.Min(BourseMax, *or + gain);
+            parts.Add($"J{i + 1} +{gain} ({*or})");
+        }
+
+        s_Annonce = $"Le groupe remporte {bourse} pièces d'or";
+        Journal($"bourse : {bourse} pièces, {string.Join(", ", parts)}");
     }
 
     /// <summary>
     /// Un membre debout, sans boîte ouverte, qui entre dans le rayon du portail : la question « Bon,
-    /// on s'fait la malle ? » (Vincent, 2026-09-28 : sans elle, on partait en laissant les coffres).
-    /// Oui ramène au hub ; Non ou menu la ferment, et elle ne se repose qu'une fois le membre
-    /// ressorti du rayon, de quelques unités de plus — la forme du téléporteur du hub.
+    /// on s'fait la malle ? » (Vincent, 2026-09-28 : sans elle, on partait trop vite). Oui ramène au
+    /// hub ; Non ou menu la ferment, et elle ne se repose qu'une fois le membre ressorti du rayon, de
+    /// quelques unités de plus — la forme du téléporteur du hub. Avant elle, au premier pas d'un membre
+    /// debout, le message de la bourse.
     /// </summary>
     private static void Portail(uint* membre, byte* perChar, byte* descripteur)
     {
         if (!s_Portail || s_Scenette == null) return;
+
+        if (s_Annonce != null)
+        {
+            if ((*membre & 0x80000000) == 0 || (*membre & 0x50000000) != 0) return;
+            if ((*membre & 0x10000) != 0) return;   // un compagnon piloté par le jeu
+            if ((descripteur[0x8c7] & 1) != 0 || EcranMenu.Ouvert || s_Boite) return;
+            string annonce = s_Annonce;
+            s_Annonce = null;
+            OuvrirLaBoite(membre, perChar, descripteur, annonce, null);
+            return;
+        }
 
         byte* m = (byte*)membre;
         int rang = m[8] & 3;
@@ -631,33 +584,6 @@ internal static unsafe class Arene
         if (reponse == 0) siOui();
     }
 
-    // ---- les deux bits des coffres (D6) --------------------------------------------------------------
-
-    private static byte* OctetCoffres => Jeu.Mem.s_StateBank0_005e96e0 + (s_Coffres[0].Numero >> 3);
-
-    private static byte MasqueCoffres
-    {
-        get
-        {
-            byte masque = 0;
-            foreach (var c in s_Coffres) masque |= (byte)(1 << (c.Numero & 7));
-            return masque;
-        }
-    }
-
-    /// <summary>À l'entrée : la valeur d'avant retenue, les bits remis à zéro.</summary>
-    private static void PreparerBitsCoffres()
-    {
-        s_BitsAvant = (byte)(*OctetCoffres & MasqueCoffres);
-        *OctetCoffres &= (byte)~MasqueCoffres;
-    }
-
-    /// <summary>À la sortie : les bits rendus à leur valeur d'avant l'entrée.</summary>
-    private static void RendreBitsCoffres()
-    {
-        *OctetCoffres = (byte)(*OctetCoffres & ~MasqueCoffres | s_BitsAvant);
-    }
-
     // ---- la sauvegarde ---------------------------------------------------------------------------
 
     /// <summary>
@@ -703,9 +629,7 @@ internal static unsafe class Arene
             {
                 byte avant = s_Photo[b * TailleBanque + i];
                 if (banque[i] == avant) continue;
-                bool coffres = b == 0 && i == s_Coffres[0].Numero >> 3 && ((banque[i] ^ avant) & ~MasqueCoffres) == 0;
-                Journal($"écriture de drapeau en arène : banque 0x{s_Banques[b]:x8} + 0x{i:x2}, {avant:x2} → {banque[i]:x2}" +
-                        (coffres ? " (un coffre de l'arène, attendu)" : ""));
+                Journal($"écriture de drapeau en arène : banque 0x{s_Banques[b]:x8} + 0x{i:x2}, {avant:x2} → {banque[i]:x2}");
                 s_Photo[b * TailleBanque + i] = banque[i];
             }
         }

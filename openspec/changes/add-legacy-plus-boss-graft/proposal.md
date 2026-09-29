@@ -21,8 +21,13 @@ combattre dans l'arène comme chez lui (legacy ++, LP-013).
 - **Le mode MECHANT OURS** au menu de l'arène : une vague, le Méchant ours (300 PV, rang 38) et ses
   deux Grizzlys (80 PV, rang 25) greffés à la place du boss de la tour, palier 1 à 10 (PV et dégâts
   × palier). **Lot 1** : le souffle de l'ours est coupé ; **lot 2** : il est greffé.
+- **Le mode BEHEMOTH** (Vincent, 2026-09-29) : une vague, le Behemoth de 3/9 « La grotte
+  souterraine » (2 160 PV, rang 150) seul. Ses sons et ses sorts sont communs à toutes les zones ;
+  seul l'effet de l'atterrissage de son bond dépend de la sous-zone — coupé comme le souffle de l'ours.
 - **Le butin** : une créature greffée ne lâche ni objet ni pièces (la table de butin est celle de la
-  sous-zone courante) ; la récompense de l'arène, ce sont ses deux coffres (Vincent, 2026-09-28).
+  sous-zone courante). **La récompense de l'arène devient une bourse** (Vincent, 2026-09-29 : les
+  coffres sont supprimés) : des pièces d'or par programme, selon la force du boss — MECHANT OURS 40,
+  ENCHANTERESSE 150, BEHEMOTH 300 —, × le palier, réparties entre tous les membres du groupe.
 - **Un outil de recensement** (`OpenForesia.Tools`) qui, pour chaque IA de monstre, liste ses
   références dépendantes de sa zone (effets, sons, sous-entités, textures) — le devis de chaque boss
   pour les boss rush à venir, comme `Zone<N>ParComplexite.md` pour les lots d'IA.
@@ -32,12 +37,12 @@ combattre dans l'arène comme chez lui (legacy ++, LP-013).
 ### New Capabilities
 
 - `gameplay-arena-bosses` : un boss venu d'une autre zone combat dans l'arène comme chez lui (aspect,
-  comportement, sons, effets), et le mode MECHANT OURS.
+  comportement, sons, effets), et les modes MECHANT OURS et BEHEMOTH.
 
 ### Modified Capabilities
 
-(aucune — `gameplay-hub-arena` n'existe qu'après l'archivage de `add-legacy-plus-arena` ; ce
-changement s'y ajoute par une capacité à part et n'en change aucune exigence)
+- `gameplay-hub-arena` : la fin d'un combat d'arène verse la bourse du programme au groupe au lieu
+  de faire apparaître deux coffres (2026-09-29).
 
 ## Impact
 

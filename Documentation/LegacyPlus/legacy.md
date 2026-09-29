@@ -32,9 +32,9 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-008 | La boutique de l'auberge : l'armoire de la carte 82 vend le catalogue de `Boutique.ini` | `Boutique.ini` : `[Boutique] Actif`, `[Catalogue]` | `PasDuMembre` (l'ouverture), `DessinSurImpression` (l'écran) | **retiré** le 2026-09-28, remplacé par LP-010 — l'écran (`BoutiqueEcran.cs`), l'achat (`BoutiqueAchat.cs`) et l'index (`CatalogueObjets.cs`) servent aux marchands |
 | LP-010 | Les marchands du hub : Lutin (objets), Voleur (accessoires), Kobold (armures, boucliers), Sylphide (armes), sous des modèles de classe ; les quatre catalogues filtrés par la classe de l'acheteur | `LegacyPlus\Boutique{Objets,Accessoires,Armures,Armes}.ini` : `[Catalogue]` — présents dès que le hub l'est (`[Boutique] Actif` retiré le 2026-09-28) | `ListeDApparition` (le chargement), `DessinSurImpression` (le dessin, l'écran), `PasDuMembre` (la collision, l'ouverture) | validé en jeu (2026-09-28) — `src/LegacyPlus/MarchandsHub.cs` |
 | LP-009 | Le hub de l'auberge : une porte dans chaque réception, vers la carte 82 vidée sous le numéro 86 | `[Auberge] Hub` | `EntreeSousZone` (`LoadWorldMapSubArea`), `ListeDApparition` et `DecorNe` (`SpawnSubAreaEntities`), `PasDuMembre` (la porte), `TransfertScripte` (opcode 17), `PointDEntree` et `EcartDeReprise` (`PlaceWorldMapParty`), `LieuSauve` (menu et coffre) | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/HubAuberge.cs`, `openspec/changes/archive/2026-09-28-add-legacy-plus-inn-hub` |
-| LP-012 | L'arène du hub : un téléporteur, un menu (mode, palier 1 à 10 : PV et dégâts × palier), la salle du boss de la vieille tour (4/9) vidée pour un combat rejouable ; fin native (cinématique, portail vers le hub, deux coffres), défaite = retour au hub | aucune : suit `[Auberge] Hub` | `PasDuMembre` (la question), `DessinSurImpression` (le menu), `EntreeSousZone`, `PointDEntree`, `DecorNe`, `Rencontre`, `LieuSauve`, `ImageSuivante` (directeur, fin, journal Debug), `PvALaNaissance`, `DegatsSubis`, `ListeDApparition` (les coffres), et trois coutures neuves : `VolumesTus` (`TriggerVolumes.cs`), `DefaiteEvitee` (`WorldMapHud.cs`, le passage à l'état 9) et `ScriptTu` (`RunEntityScript`, aucun script de la sous-zone en arène) | validé en jeu (2026-09-28) — `src/LegacyPlus/AreneTeleporteur.cs`, `Arene.cs`, `AreneDirecteur.cs` ; `openspec/changes/archive/2026-09-28-add-legacy-plus-arena` |
+| LP-012 | L'arène du hub : un téléporteur, un menu (mode, palier 1 à 10 : PV et dégâts × palier), la salle du boss de la vieille tour (4/9) vidée pour un combat rejouable ; fin native (cinématique, portail vers le hub) et une bourse en pièces d'or pour le groupe — les deux coffres du début retirés le 2026-09-29 —, défaite = retour au hub | aucune : suit `[Auberge] Hub` | `PasDuMembre` (la question), `DessinSurImpression` (le menu), `EntreeSousZone`, `PointDEntree`, `DecorNe`, `Rencontre`, `LieuSauve`, `ImageSuivante` (directeur, fin, journal Debug), `PvALaNaissance`, `DegatsSubis`, et trois coutures neuves : `VolumesTus` (`TriggerVolumes.cs`), `DefaiteEvitee` (`WorldMapHud.cs`, le passage à l'état 9) et `ScriptTu` (`RunEntityScript`, aucun script de la sous-zone en arène) | validé en jeu (2026-09-28) — `src/LegacyPlus/AreneTeleporteur.cs`, `Arene.cs`, `AreneDirecteur.cs` ; `openspec/changes/archive/2026-09-28-add-legacy-plus-arena` |
 | LP-011 | Le rachat : la Voleuse du hub rachète l'inventaire (hors équipement) et le coffre du joueur, à un taux du prix d'achat des quatre boutiques ; un objet absent des catalogues ne se revend pas ; une pile se vend en entier | `LegacyPlus\BoutiqueVente.ini` : `[Vente] Taux` (50) | celles de LP-010 | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/BoutiqueVente.cs`, `MarchandsHub.cs` ; une vente depuis le coffre écrit la sauvegarde (emplacement vidé, or crédité, sommes refaites) |
-| LP-013 | Les boss greffés de l'arène : un monstre d'une autre sous-zone combat dans 4/9 comme chez lui ; premier programme, MECHANT OURS — le combat de boss de la forêt entier (3/5, formation 0 : le Méchant ours et ses deux Grizzlys) | aucune : suit `[Auberge] Hub` | `ListeDApparition` (l'installation), `PvALaNaissance` et `DegatsSubis` (le palier, par le directeur de LP-012), et trois coutures neuves : `EffetCoupe` (`SpawnEffectEntity`), `SonPositionnel` (`PlayPositionalSound`), `ButinNe` (`DespawnSceneEntity_0051a740`) | écrit le 2026-09-28, à tester en jeu (lot 1 : le souffle de l'ours coupé) — `src/LegacyPlus/AreneGreffe.cs` ; `openspec/changes/add-legacy-plus-boss-graft` |
+| LP-013 | Les boss greffés de l'arène : un monstre d'une autre sous-zone combat dans 4/9 comme chez lui ; programmes MECHANT OURS — le combat de boss de la forêt entier (3/5, formation 0 : le Méchant ours et ses deux Grizzlys) — , BEHEMOTH (3/9, seul), SYLPHIDE (4/7, avec le Wybarn), FOUGRE (8/1, avec deux Grifons) et GROS POILU (10/12) — 2026-09-29 ; le menu trié par PV du combat | aucune : suit `[Auberge] Hub` | `ListeDApparition` (l'installation), `PvALaNaissance` et `DegatsSubis` (le palier, par le directeur de LP-012), et trois coutures neuves : `EffetCoupe` (`SpawnEffectEntity`), `SonPositionnel` (`PlayPositionalSound`), `ButinNe` (`DespawnSceneEntity_0051a740`) | écrit le 2026-09-28, à tester en jeu (lot 1 : le souffle de l'ours et le bond du Behemoth coupés) — `src/LegacyPlus/AreneGreffe.cs` ; `openspec/changes/add-legacy-plus-boss-graft` |
 | — | Vitesse des monstres | — | — | **abandonné** par Vincent le 2026-09-27 — les vitesses sont écrites en dur dans chacun des 166 gestionnaires de comportement |
 | LP-007 | Rencontres aléatoires : cadence, chevauchement pendant un combat, plusieurs formations | `[Rencontres] Frequence`, `MonstresMax`, `Formations` | `Rencontre` (l'appel de `TrySpawnRandomEncounter`), `RencontreEnAttente` et `RencontreBloquee` (ses deux gardes), `DelaiRencontre` (les deux rechargements du minuteur) | validé en jeu (2026-09-27) — `src/LegacyPlus/Rencontres.cs` |
 
@@ -199,7 +199,7 @@ jouable (Lutin 7, Voleur 2, Kobold 6, Sylphide 13), une boutique par catégorie 
 
 Demande de Vincent (2026-09-28) : depuis le hub, un téléporteur vers une arène — la salle du boss
 de la vieille tour, 4/9 « Parmi les Elus » —, un boss à un palier de 1 à 10 (PV et dégâts × palier),
-la cinématique de fin du jeu, un portail vers le hub, deux coffres ; la défaite ramène au hub. Change :
+la cinématique de fin du jeu, un portail vers le hub, deux coffres (remplacés le 2026-09-29 par une bourse, voir LP-013) ; la défaite ramène au hub. Change :
 `openspec/changes/add-legacy-plus-arena`. Validée d'abord sur l'Enchanteresse (native), puis le
 Grizzly (`add-legacy-plus-boss-graft`), puis tous les boss l'un après l'autre.
 
@@ -253,7 +253,7 @@ Grizzly (`add-legacy-plus-boss-graft`), puis tous les boss l'un après l'autre.
 | `EcranMenu.cs` | l'écran de menu générique tiré de `BoutiqueEcran` (liste, pas, question Oui / Non) ; la boutique et le rachat passent dessus |
 | `AreneTeleporteur.cs` | le téléporteur du hub, la question « …dangereux, on y va ? », le menu en trois pas |
 | `Arene.cs` | le mode arène : l'interrupteur, l'aller, la salle vidée, les volumes tus, la sauvegarde, la défaite |
-| `AreneDirecteur.cs` | les programmes et leurs vagues, la naissance, le palier, la fin (scénette, portail, coffres) |
+| `AreneDirecteur.cs` | les programmes et leurs vagues, la naissance, le palier, la fin (scénette, portail, bourse) |
 
 Coutures nouvelles dans `src/Blaze/` : deux, une ligne chacune — l'entrée des volumes de
 déclenchement et le passage à l'état 9.
@@ -302,12 +302,111 @@ animations, textures et leur place en VRAM, sons de niveau, tables `0x0056ad48` 
 Espèces et fiches prennent les rangs 16 et 17 de tables recopiées, sur lesquelles le répertoire de
 4/9 est repointé jusqu'au prochain chargement. Pour une créature greffée : un son de niveau non
 traduit est coupé, un effet `>= 0xc0` est coupé (**le souffle, lot 2**), le butin est éteint (ni
-objet ni pièces, décision de Vincent : la récompense de l'arène, ce sont les coffres). Chaque coupure
+objet ni pièces, décision de Vincent : la récompense de l'arène, ce sont les coffres — puis, le 2026-09-29, la bourse). Chaque coupure
 est écrite une fois au journal `[GREFFE]`.
 
 **Lot 2, le souffle** : greffer `0x00413330` et `0x004134C0` dans deux créneaux libres de
 `0x0056b0c8` / `0x0056b1c8`, les modèles de décor 7 et `0x30` de 3/5 et leur texture, le son de la
 table `+0xa8` ; traduire les deux sous-types.
+
+### Le Behemoth et la bourse (2026-09-29)
+
+Demande de Vincent (2026-09-29) : ajouter le Behemoth ; supprimer « tout compte fait » les coffres de
+l'arène au profit d'une somme d'argent, « moins pour les boss faibles, plus pour les boss forts »
+(le Méchant ours à 40 pièces), répartie entre tous les membres du groupe.
+
+**Le Behemoth** (`OpenForesia.Tools greffe 3 9`) : 3/9 « La grotte souterraine », formation 0 seule
+(espèce 0 : maillage 0, IA 17 = `0x004A54E0`, fiche 0 — 2 160 PV, 400 PM, rang 150). Il est **moins
+cher à greffer que l'ours** : ses sons (3, `0x20`, `0x35`) sont tous du banc commun, son lancement
+de sort (`0xbd`) et son éclat (`0x39`) de la table statique, et ses sorts (famille 0, indices
+13/19/23) sont des fiches du répertoire d'état, les mêmes partout. **Une seule référence de zone** :
+l'atterrissage de son bond, sous-type `0xc0 + octet 2 du premier bloc de +0xcc` (`0xdf` en 3/9 =
+`0x00483650`) — coupé comme le souffle de l'ours. Sa texture (entrée 5, 92 × 48 mots, 8 bits) prend
+**la place du Méchant ours** — (128, 128), bande de V `0x80`, palette 288, entrée `0xe8` — : la VRAM
+libre de 4/9 n'a plus de bande de 48 lignes entière à côté de l'ours et du Grizzly, et les deux boss
+ne sont jamais dans le même programme. Un boss rush qui les mettrait ensemble devra lui trouver une
+autre place.
+
+**La bourse** (`Arene.Recompenser`) : à l'ouverture du portail, la bourse du programme × le palier
+est versée au groupe, part égale pour **tous** les membres, debout ou non, le reste de la division à
+raison d'une pièce aux premiers, chaque bourse bornée à 99 999 comme au ramassage d'origine. Un
+message « Le groupe remporte N pièces d'or » s'ouvre au premier pas d'un membre debout. Montants :
+MECHANT OURS **40** (Vincent), ENCHANTERESSE **150** et BEHEMOTH **300** (proposés à l'échelle des
+PV et du rang, confirmés par Vincent). Validé en jeu le 2026-09-29. Les deux coffres (copies du coffre de la liste 3, numéros 510 et 511,
+et leurs bits de la banque `0x005e96e0`) sont retirés ; le coffre natif de la salle reste rendu au
+néant.
+
+### Les boss restants (relevé du 2026-09-29)
+
+Demande de Vincent (2026-09-29) : « tous les autres boss ». Relevé hors jeu :
+`OpenForesia.Tools greffe <z> <s>` sur chaque sous-zone, puis lecture des fichiers `Ai/` des IA. Un
+boss est ici le chef d'une formation à script de mort (genre 11) de forte fiche, avec son escorte.
+**Les dix-huit IA sont écrites et ont été vues en jeu** (`GestionnairesEntites.md`) : aucune
+transcription ne bloque. Ce qui coûte, c'est ce que chaque boss emprunte à SA sous-zone.
+
+Légende des colonnes :
+- **Effets** : les naissances de sous-type `>= 0xc0`, prises dans la table par sous-zone
+  `0x0056b0c8` au rang que donne le premier bloc de `+0xcc`. En lot 1, on les coupe.
+- **Sons** : les sons de niveau (id ≥ 60) ; la table `+0xa8` est signalée à part.
+- **Texture** : la place qu'elle prend en VRAM, en mots.
+
+| # | Boss (sous-zone) | Escorte | PV du combat | PV / rang du boss | IA | Effets par sous-zone | Sons de niveau | Textures (mots) | Bourse | État |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Jeune dragon (1/4) | — | 700 | 700 / 40 | `0x004944E0` | 2 (`0x00483b50`, `0x00409e40`) | `0x41` | 96×48 | 100 | à faire |
+| 2 | Loup-garou et Tigre (6/5) | les deux ensemble | 968 | 468 + 500 | `0x004D7200`, `0x004D80D0` | 1 chacun (`0xde` = `0x0042a440`) | table `+0xa8` (`[0x2c]`) | 60×48 + 128×64 | 140 | à faire |
+| 3 | Nocturio (6/11) | 2 Sacubas (form. 1) | 1 220 | 840 / 150 | `0x004DACC0`, `0x004D9D90` | 2 (`0x00429a20`, `0x0042a920`) | — | 116×64 + 128×64 | 170 | à faire |
+| 4 | Sylphide (4/7, form. 1) | Wybarn | 1 263 | 563 / 100 (Wybarn 700) | `0x004B4570`, `0x004B7540` | Sylphide : aucun (des sorts). Wybarn : 1 (`0x00483930`), coupé | Wybarn : `0x47`, greffé | 128×64 + 128×64 | 180 | **écrit** (lot 1) |
+| 5 | Fougre (8/1) | 2 Grifons | 1 272 | 1 030 / 180 | `0x004E20F0`, `0x004E1380` | 1 (`0xc4` = `0x0042f2a0`), coupé | — | 104×64 + 112×48 | 180 | **écrit** (lot 1) |
+| 6 | Durahan (5/4) | 3 Sanguinaires | 1 531 | 808 / 80 | `0x004C4F90`, `0x004C2770` | 2 (`0x00422d50` et un rang variable `+0x14`) | `0x47` | 104×64 + 128×64 | 220 | à faire |
+| 7 | Troll (1/9) | 2 Géants verts | 1 650 | 850 / 130 | `0x004965B0`, `0x00495C90` | 1 (`0x00409e40`) | `0x40` | 128×64 + 128×64 | 230 | à faire |
+| 8 | Le gros poilu (10/12) | — | 2 300 | 2 300 / 218 | `0x00500E10` | 1, rang variable (`+0x16`), coupé | — | 96×64 | 330 | **écrit** (lot 1) |
+| 9 | L'Ange noir (10/14) | — | 2 391 | 2 391 / 238 | `0x00502210` | 3 + la pluie (`BlackAngelRainSubtype`) | — | 128×64 | 340 | à faire |
+| 10 | Eifridt (10/11) | — | 2 400 | 2 400 / 212 | `0x005003E0` | 1 (`0x0043c380`) | — | 128×128 | 340 | à faire |
+| 11 | Kraaken (9/0–9/1, form. 2) | bras ×2, pieds ×6 | 2 601 | corps 1 / 200 | `0x004E40E0`, `0x004E4890`, `0x004E4F20` | 1 (octet `0x0a`) | — | corps **4 bits 64×256** + 48×64 + 24×64 | 400 | à faire |
+| 12 | Roi-zombie (5/9) | Durahan-noir, Revenant, Ombre rouge (×2 chacun) | 2 726 | 1 350 / 150 | `0x004C7240` + 3 | 4 (octets 9, `0x0b`, `0x0f`, variable) | — | **4 textures** | 330 | à faire |
+| 13 | Lordémon (10/13) | — | 2 763 | 2 763 / 235 | `0x00501840` | 3 (octets 8, `0x0e`, `0x12`) | — | 120×64 | 400 | à faire |
+| 14 | Cerbère (10/9) | 4 Groklebs | 2 812 | 2 100 / 200 | `0x004F7980`, `0x004F5630` | 4 (octets `0x0d`, `0x0e`, `0x14`, `0x15`) | — | 128×64 + 128×64 | 400 | à faire |
+| 15 | Belzébuth (10/15) | — | 3 000 | 3 000 / 320 | `0x00502CD0` | 4 (octets 3 à 7) | `0x3c` | **128×192** | 430 | à faire |
+| 16 | Dragon zombie (10/4) | 2 Maudites | 5 438 | 4 400 / 180 | `0x004F6740`, `0x004F4FD0` | 3 (octets `0x0b`, `0x19`, variable) | `0x42` | **120×96** + 128×64 | 780 | à faire |
+| 17 | Dragon rouge (2/0) | 2 Salamandres feu | 8 480 | 8 000 / 306 | `0x00499140`, `0x00497EF0` | 2 (octets `0x0e`, `0x13`) | `0x45` | 128×64 + 128×64 | 1 200 | à faire |
+
+Trié par **PV du combat** au palier 1, boss et escorte compris (Vincent, 2026-09-29). L'ordre de
+travail, lui, est plus bas.
+
+Hors liste : le Cristal maudit de 4/8 (900 PV, rang 255, IA 30) est un décor d'événement que des
+scripts « au coup reçu » (genre 10) animent, pas un combat. Or l'arène coupe tous les scripts.
+
+**Le travail commun, avant les boss :**
+
+1. **La VRAM par programme.** Les places fixes ne suffisent plus. La page (128, 0) de 4/9 offre trois
+   bandes de V libres de 128 × 64 mots (`0x40`, `0x80`, `0xC0`). Le relevé montre aussi y 224..255
+   libre, à revérifier sur une tour sans greffe. Il faut donc attribuer les bandes à chaque entrée
+   dans l'arène, les textures de plus de 64 lignes sur des bandes contiguës. Belzébuth prend les
+   trois (y 64..255). Le Roi-zombie avec toute son escorte (4 textures) et le corps 4 bits du Kraaken
+   (64 × 256) n'y tiennent pas : il faut une autre place, ou une escorte réduite.
+2. **La greffe des effets par sous-zone.** C'est le lot 2 de l'ours, généralisé. On copie le
+   gestionnaire dans un créneau libre de `0x0056b0c8` de 4/9 et on traduit le sous-type. On greffe
+   aussi ce que l'effet charge de sa sous-zone : modèles de décor, textures, sons `+0xa8`. Quinze
+   boss sur dix-sept en dépendent. Sans elle, on ne peut que couper l'effet, et le souffle du Dragon
+   rouge ou la pluie de l'Ange noir disparaîtraient.
+3. **La table de sons `+0xa8`** : le Loup-garou, le Tigre et le souffle de l'ours la lisent.
+4. **Le recensement (tâche 6)**, en suivant les appelées : les effets greffés font eux-mêmes naître
+   d'autres effets. L'outil `greffe` doit aussi imprimer le premier bloc de `+0xcc` au-delà de
+   16 octets, car les octets `0x12` à `0x19` servent au Dragon rouge, au Cerbère, au Lordémon, à
+   l'Ange noir et au Dragon zombie.
+5. **Les scripts.** L'arène les coupe tous. Or le geste 2 de Belzébuth lance le script
+   `0x00553278` : il faut décider, boss par boss, lesquels laisser passer.
+
+**L'ordre proposé**, du moins cher au plus cher :
+
+- **Sans le travail commun** (effets coupés en lot 1, comme le Behemoth ; **écrits le 2026-09-29**) : Sylphide et Wybarn, le
+  gros poilu, Fougre.
+- **Après la VRAM par programme et la greffe des effets** : Jeune dragon, Troll, Durahan,
+  Loup-garou et Tigre (plus `+0xa8`), Nocturio, Eifridt, Lordémon, l'Ange noir, Cerbère, Dragon
+  rouge.
+- **En dernier, un à un** : Belzébuth (toute la VRAM, un script), le Dragon zombie (texture de
+  96 lignes), le Roi-zombie (quatre textures, des invocations), le Kraaken (plusieurs corps, eau,
+  texture 4 bits).
 
 ## Préconisations en attente
 

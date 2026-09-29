@@ -36,7 +36,7 @@ SHALL be left out rather than substituted.
 ### Requirement: Grafted creatures drop nothing
 
 A creature brought into the arena from another zone SHALL drop neither item nor coins when it dies;
-its experience crystals SHALL drop as usual. The arena's reward is its two chests.
+its experience crystals SHALL drop as usual. The arena's reward is the purse paid at victory.
 
 #### Scenario: The Méchant ours dies
 
@@ -58,7 +58,7 @@ chosen difficulty, with the arena's usual ending and defeat.
 #### Scenario: Victory over the Méchant ours
 
 - **WHEN** the Méchant ours and both Grizzlys are dead
-- **THEN** the tower's ending cinematic plays, and the portal and two chests appear
+- **THEN** the tower's ending cinematic plays, the portal appears and the party is paid 40 coins times the difficulty
 
 ### Requirement: The forest is untouched
 
@@ -69,3 +69,20 @@ its other creatures SHALL behave as in the original game, before and after any a
 
 - **WHEN** the party beats the Méchant ours in the arena, then walks into the forest's boss clearing through the story
 - **THEN** the forest's own bear fight happens as in the original game
+
+### Requirement: The BEHEMOTH mode
+
+The arena menu SHALL list a mode named BEHEMOTH after MECHANT OURS. Choosing it SHALL pit the party
+against the Behemoth of the underground cave (zone 3, sub-area 9), alone, in one wave, at the chosen
+difficulty, with the arena's usual ending and defeat. It SHALL cast its spells as at home; the effect
+its jump's landing spawns in its own sub-area SHALL be left out until it is grafted.
+
+#### Scenario: Behemoth at difficulty 2
+
+- **WHEN** player 1 picks BEHEMOTH at difficulty 2 and confirms
+- **THEN** the party faces the Behemoth with 4 320 hit points, dealing twice its original damage
+
+#### Scenario: The Behemoth lands its jump
+
+- **WHEN** the Behemoth lands after its jump in the arena
+- **THEN** no effect is born, and nothing from the tower appears

@@ -11,7 +11,7 @@
 //      créature a donc son IA, sa fiche, ses collisions, exactement comme d'origine ;
 //   2. suit les emplacements de la table de scène (0x005ecaa0) nés de cet appel, et passe à la vague
 //      suivante quand tous sont morts (le bit 0x80000000 du mot d'état est tombé) ;
-//   3. après la dernière, passe la main à Arene.Victoire : la cinématique, les coffres, le portail.
+//   3. après la dernière, passe la main à Arene.Victoire : la cinématique, la bourse, le portail.
 //
 // LE PALIER (D4), sur deux coutures existantes :
 //   - PvALaNaissance (LP-002) : pendant la naissance d'une vague, et pendant elle seule, les PV
@@ -52,8 +52,12 @@ internal static unsafe class AreneDirecteur
     /// <summary>Une vague : les créatures qui naissent ensemble.</summary>
     internal sealed record Vague(Creature[] Creatures);
 
-    /// <summary>Un programme de l'arène : le nom que le menu affiche, et ses vagues dans l'ordre.</summary>
-    internal sealed record Programme(string Nom, Vague[] Vagues);
+    /// <summary>
+    /// Un programme de l'arène : le nom que le menu affiche, la bourse de la victoire (pièces d'or au
+    /// palier 1, réparties entre les membres du groupe — <c>Arene.Recompenser</c>), et ses vagues dans
+    /// l'ordre.
+    /// </summary>
+    internal sealed record Programme(string Nom, int Pieces, Vague[] Vagues);
 
     /// <summary>
     /// Les programmes, dans l'ordre du menu. L'Enchanteresse, boss natif de 4/9, valide la mécanique :
@@ -64,15 +68,37 @@ internal static unsafe class AreneDirecteur
     /// <para>Le Méchant ours (LP-013) : le combat de boss de la forêt entier, la formation 0 de 3/5 —
     /// l'ours au rang 0, ses deux Grizzlys aux rangs 1 et 2, à 200 unités de part et d'autre comme
     /// dans la forêt (formations.csv), à la place du boss de la tour.</para>
+    /// <para>Le Behemoth (LP-013) : seul, la formation 0 de 3/9 « La grotte souterraine » (2 160 PV,
+    /// rang 150), à la place du boss de la tour.</para>
+    /// <para>La bourse suit la force du boss (Vincent, 2026-09-29 : moins pour les boss faibles, plus
+    /// pour les forts ; le Méchant ours à 40 pièces). Celles de l'Enchanteresse (910 PV, rang 140) et
+    /// du Behemoth, à cette échelle, confirmées par Vincent le 2026-09-29.</para>
+    /// <para>Sylphide, Fougre et le gros poilu (LP-013, 2026-09-29) : la Sylphide et le Wybarn de la
+    /// formation 1 de 4/7 (au même point dans la tour, ici à 200 unités l'un de l'autre) ; le Fougre
+    /// et ses deux Grifons de la formation 0 de 8/1 (à 100 unités devant et derrière lui dans le nid,
+    /// ici de part et d'autre comme les Grizzlys) ; le gros poilu seul, formation 0 de 10/12.</para>
+    /// <para>L'ordre du menu : les PV du combat entier au palier 1, boss et escorte, croissants
+    /// (Vincent, 2026-09-29) — 460, 910, 1 263, 1 272, 2 160, 2 300.</para>
     /// </summary>
     internal static readonly Programme[] Programmes =
     [
-        new("ENCHANTERESSE", [new Vague([new Creature(0, 0, (100, -2900, 0))])]),
-        new("MECHANT OURS", [new Vague([
+        new("MECHANT OURS", 40, [new Vague([                                    // 300 + 2 × 80
             new Creature(0, 0, (100, -2900, 0), AreneGreffe.MechantOurs),
             new Creature(0, 1, (-100, -2900, 0), AreneGreffe.Grizzly),
             new Creature(0, 2, (300, -2900, 0), AreneGreffe.Grizzly),
         ])]),
+        new("ENCHANTERESSE", 150, [new Vague([new Creature(0, 0, (100, -2900, 0))])]),   // 910
+        new("SYLPHIDE", 180, [new Vague([                                       // 563 + 700
+            new Creature(1, 0, (0, -2900, 0), AreneGreffe.Sylphide),
+            new Creature(1, 1, (200, -2900, 0), AreneGreffe.Wybarn),
+        ])]),
+        new("FOUGRE", 180, [new Vague([                                         // 1 030 + 2 × 121
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.Fougre),
+            new Creature(0, 1, (-100, -2900, 0), AreneGreffe.Grifon),
+            new Creature(0, 2, (300, -2900, 0), AreneGreffe.Grifon),
+        ])]),
+        new("BEHEMOTH", 300, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Behemoth)])]),   // 2 160
+        new("GROS POILU", 330, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.GrosPoilu)])]),  // 2 300
     ];
 
     /// <summary>La hauteur du sol de la salle du boss (formations.csv, 4/9 : y = 200) : une créature
@@ -108,6 +134,9 @@ internal static unsafe class AreneDirecteur
     private static int s_Attente;
     private static bool s_EnCours;
     private static bool s_Naissance;                     // SpawnEntityFormation tourne pour le directeur
+
+    /// <summary>La bourse de la victoire du programme en cours, palier compris ; 0 sans programme.</summary>
+    internal static int Bourse => s_Programme == null ? 0 : s_Programme.Pieces * s_Palier;
     private static uint s_Suivis;                        // emplacements de scène de la vague, en masque
 
     internal static void Installer()
@@ -139,6 +168,7 @@ internal static unsafe class AreneDirecteur
         s_Vague = 0;
         s_Attente = Delai;
         s_EnCours = Choix != null;
+        s_Programme = null;
         AreneGreffe.Commencer(Choix?.Programme);
         if (Choix is not { } choix) { Journal("aucun programme choisi : l'arène reste vide"); return; }
 

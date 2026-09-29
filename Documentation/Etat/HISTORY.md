@@ -4,6 +4,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-29
+
+- feat : LP-013 — trois boss de plus dans l'arène, en lot 1 (effets de leur sous-zone coupés) : SYLPHIDE (la Sylphide et le Wybarn de la vieille tour, 4/7), FOUGRE (et ses deux Grifons, 8/1), GROS POILU (10/12) ; le menu de l'arène et le relevé des boss triés par PV du combat ; à tester en jeu
+
+- doc : LP-013 — le relevé des boss restants pour l'arène (17 boss, leurs IA toutes écrites, ce que chacun emprunte à sa sous-zone, le travail commun et l'ordre proposé) — `legacy.md`, tâches 8 du change `add-legacy-plus-boss-graft`
+
+- feat : LP-013 — le mode BEHEMOTH de l'arène : le Behemoth de la grotte souterraine (3/9, 2 160 PV) greffé dans la salle de la tour, à la place VRAM du Méchant ours ; ses sons et ses sorts sont communs, seul l'atterrissage de son bond (effet par sous-zone) est coupé ; à tester en jeu
+- feat : LP-012 — la fin d'un combat d'arène verse une bourse au lieu de deux coffres : pièces d'or par programme (MECHANT OURS 40, ENCHANTERESSE 150, BEHEMOTH 300) × palier, réparties entre tous les membres du groupe, avec un message ; les coffres de l'arène sont retirés
+
 ## 2026-09-28
 
 - feat : LP-013, lot 1 — le mode MECHANT OURS de l'arène : le combat de boss de la forêt (le Méchant ours et ses deux Grizzlys, 3/5) greffé dans la salle de la tour — maillages, animations, textures, fiches, IA et son de niveau venus de 3/5 (`AreneGreffe.cs`) ; trois coutures neuves (`EffetCoupe`, `SonPositionnel`, `ButinNe`) ; le souffle de l'ours coupé en attendant le lot 2, ni objet ni pièces à la mort ; à tester en jeu

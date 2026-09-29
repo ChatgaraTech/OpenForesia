@@ -24,10 +24,12 @@
 // La traduction (G3), par deux coutures, pour les seules créatures greffées :
 //   - SonPositionnel : un son de niveau traduit vers son id greffé ; sans traduction, coupé ;
 //   - EffetCoupe : un effet de sous-type >= 0xc0 (table par sous-zone) coupé — lot 1 : le souffle
-//     du Méchant ours (0xc0 + octet 9 du premier bloc de +0xcc) n'est pas encore greffé. Sous 0xc0,
+//     du Méchant ours (0xc0 + octet 9 du premier bloc de +0xcc) et l'atterrissage du bond du
+//     Behemoth (octet 2) ne sont pas encore greffés. Sous 0xc0,
 //     la table est statique, la même partout : l'éclat d'impact 0x39 passe tel quel.
-//   - ButinNe : ni objet ni pièces (Vincent, 2026-09-28 : la récompense de l'arène, ce sont les
-//     coffres) ; les éclats d'expérience restent.
+//   - ButinNe : ni objet ni pièces tombés au sol (Vincent, 2026-09-29 : la récompense de l'arène,
+//     c'est la bourse du programme, versée au groupe à la victoire — Arene.Recompenser) ; les éclats
+//     d'expérience restent.
 // Journal [GREFFE] ; toute référence coupée y est écrite une fois par chargement.
 //
 // Ne tire aucun nombre aléatoire.
@@ -102,7 +104,85 @@ internal static unsafe class AreneGreffe
         TexX = 128, TexY = 64, Palette = 289, Entree = 0xec,
     };
 
-    private const int PremierRang = 16;          // rang de la première espèce greffée dans 4/9
+    private static readonly Source s_GrotteSouterraine = new(3, 9);
+
+    /// <summary>
+    /// Le Behemoth de 3/9 « La grotte souterraine », espèce 0 : maillage 0, IA 17 = 0x004A54E0, fiche 0
+    /// (2 160 PV, rang 150). Ses sons (3, 0x20, 0x35) sont du banc commun, son lancement de sort
+    /// (0xbd) et son éclat (0x39) de la table statique ; seul l'atterrissage de son bond (0xc0 +
+    /// octet 2 du premier bloc de +0xcc : 0xdf en 3/9, 0x00483650) dépend de la sous-zone — coupé.
+    /// Sa texture, l'entrée 5 de 3/9 (92 × 48 mots, 8 bits), prend la place de celle du Méchant ours,
+    /// (128, 128), bande de V 0x80, palette 288, entrée 0xe8 : les deux ne sont jamais dans le même
+    /// programme, et chaque entrée dans l'arène renvoie la texture du sien.
+    /// </summary>
+    internal static readonly Espece Behemoth = new()
+    {
+        Nom = "Behemoth", Source = s_GrotteSouterraine, Indice = 0, Ia = 0x004A54E0, SonsDeNiveau = [],
+        TexX = 128, TexY = 128, Palette = 288, Entree = 0xe8,
+    };
+
+    // Les trois boss de 2026-09-29 (legacy.md, LP-013, « Les boss restants ») : leurs sons sont du banc
+    // commun, sauf le cri du Wybarn (0x47, greffé) ; leurs effets par sous-zone sont coupés (lot 1).
+    // Deux textures au plus par programme : la place du Grizzly, (128, 64), bande 0x40, palette 289,
+    // entrée 0xec ; celle du Méchant ours, (128, 128), bande 0x80, palette 288, entrée 0xe8.
+
+    private static readonly Source s_VieilleTour = new(4, 7);
+    private static readonly Source s_SalleDesDemons = new(10, 12);
+    private static readonly Source s_NidDesMonstres = new(8, 1);
+
+    /// <summary>
+    /// La Sylphide de 4/7 « La vieille tour », espèce 1 : maillage 1, IA 8 = 0x004B4570, fiche 1 (563 PV,
+    /// rang 100). Des sorts et le son 3, rien de sa sous-zone. Texture : l'entrée 4, 128 × 64 mots.
+    /// </summary>
+    internal static readonly Espece Sylphide = new()
+    {
+        Nom = "Sylphide", Source = s_VieilleTour, Indice = 1, Ia = 0x004B4570, SonsDeNiveau = [],
+        TexX = 128, TexY = 64, Palette = 289, Entree = 0xec,
+    };
+
+    /// <summary>
+    /// Le Wybarn de 4/7, espèce 2 : maillage 2, IA 14 = 0x004B7540, fiche 2 (700 PV, rang 96). Son cri
+    /// 0x47 (Q04_07.snd, 7 100 octets) est greffé ; son effet 0xc0 + octet 0x0c du premier bloc de
+    /// +0xcc (0xdf = 0x00483930 en 4/7) est coupé. Texture : l'entrée 5, 128 × 64 mots.
+    /// </summary>
+    internal static readonly Espece Wybarn = new()
+    {
+        Nom = "Wybarn", Source = s_VieilleTour, Indice = 2, Ia = 0x004B7540, SonsDeNiveau = [0x47],
+        TexX = 128, TexY = 128, Palette = 288, Entree = 0xe8,
+    };
+
+    /// <summary>
+    /// Le gros poilu de 10/12 « La salle des démons », espèce 0 : maillage 0, IA 19 = 0x00500E10, fiche 0
+    /// (2 300 PV, rang 218). Sons 2, 3, 0x24, 0x25, communs ; son effet 0xc0 + octet (+0x16) du premier
+    /// bloc de +0xcc est coupé. Texture : l'entrée 4, 96 × 64 mots.
+    /// </summary>
+    internal static readonly Espece GrosPoilu = new()
+    {
+        Nom = "Le gros poilu", Source = s_SalleDesDemons, Indice = 0, Ia = 0x00500E10, SonsDeNiveau = [],
+        TexX = 128, TexY = 128, Palette = 288, Entree = 0xe8,
+    };
+
+    /// <summary>
+    /// Le Fougre de 8/1 « Nid des monstres », espèce 1 : maillage 1, IA 3 = 0x004E20F0, fiche 1 (1 030 PV,
+    /// rang 180). Son effet 0xc4 (0x0042f2a0 en 8/1) est coupé. Texture : l'entrée 4, 104 × 64 mots.
+    /// </summary>
+    internal static readonly Espece Fougre = new()
+    {
+        Nom = "Fougre", Source = s_NidDesMonstres, Indice = 1, Ia = 0x004E20F0, SonsDeNiveau = [],
+        TexX = 128, TexY = 64, Palette = 289, Entree = 0xec,
+    };
+
+    /// <summary>
+    /// Le Grifon de 8/1, espèce 0 : maillage 0, IA 2 = 0x004E1380, fiche 0 (121 PV, rang 65). Son 3 et
+    /// éclat 0x39, communs. Texture : l'entrée 3, 112 × 48 mots.
+    /// </summary>
+    internal static readonly Espece Grifon = new()
+    {
+        Nom = "Grifon", Source = s_NidDesMonstres, Indice = 0, Ia = 0x004E1380, SonsDeNiveau = [],
+        TexX = 128, TexY = 128, Palette = 288, Entree = 0xe8,
+    };
+
+    private const int PremierRang = 16;        // rang de la première espèce greffée dans 4/9
     private const int PremierMaillage = 3;       // rang du premier maillage greffé (4/9 en a trois)
     private const int PremierSon = 69;           // premier id de son de niveau libre dans 4/9 (0x45)
     private const int FinSons = 0x4c;            // dernier id de son de niveau (PlaySoundEffect)

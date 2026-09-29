@@ -34,7 +34,7 @@ src/LegacyPlus/
    EcranMenu.cs             l'écran de menu : une pile de pages, liste à curseur, question Oui / Non, aperçu d'objet
    BoutiqueEcran.cs         LP-008, repris par LP-010 — les pages de boutique et de rachat, sur l'écran de menu
    AreneTeleporteur.cs      LP-012 — le téléporteur du hub : la question à son approche, le menu (mode, palier)
-   Arene.cs                 LP-012 — le mode arène : l'aller vers 4/9, la salle vidée, la fin (scénette, coffres, portail), la défaite, la sauvegarde
+   Arene.cs                 LP-012 — le mode arène : l'aller vers 4/9, la salle vidée, la fin (scénette, bourse, portail), la défaite, la sauvegarde
    AreneDirecteur.cs        LP-012 — les programmes de l'arène, leurs vagues, la naissance et le palier (PV, dégâts)
    AreneGreffe.cs           LP-013 — la greffe : un monstre d'une autre sous-zone dans l'arène (maillage, texture, espèce, IA, sons), ses coupures
    CatalogueObjets.cs       LP-008, repris — l'index nom → fiche et vignette, lu dans les fichiers du jeu
