@@ -944,9 +944,11 @@ public static unsafe partial class Blaze
                     {
                         PublishSceneEntityToGlobals(record);
 
+                        LegacyPlus.Coutures.AvantGestionnaire(record);   // Couture legacy ++ (LP-013)
                         DispatchEntityHandler(
                             Res.ResolveEntityHandler(0x0056ad48, record[5]), record,
                             $"FUN_0050e680, table 0x005ecaa0 entree {i}, sous-type {record[5]}");
+                        LegacyPlus.Coutures.ApresGestionnaire(record);   // Couture legacy ++ (LP-013)
 
                         *(uint*)record |= 0x600;
 

@@ -1485,6 +1485,7 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
     /// </summary>
     internal void PlaySoundEffect(int soundId, int pitch, int gainLeft, int gainRight)
     {
+        soundId = LegacyPlus.Coutures.SonJoue(soundId);   // Couture legacy ++ (LP-013)
         gainLeft >>= 1;
         gainRight >>= 1;
 

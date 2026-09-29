@@ -9,7 +9,8 @@ fallen, any remainder going one coin each to the first members, and no purse exc
 message SHALL tell the party how much it won. No chest SHALL appear. Walking into the portal SHALL
 bring the whole party to the centre of the hub.
 
-The purse follows the boss's strength: MECHANT OURS 40 coins, ENCHANTERESSE 150, BEHEMOTH 300.
+The purse follows the boss's strength, from 40 coins for MECHANT OURS to 1 200 for DRAGON ROUGE; each
+mode's purse is listed with the modes themselves (`gameplay-arena-bosses`).
 
 #### Scenario: Victory
 

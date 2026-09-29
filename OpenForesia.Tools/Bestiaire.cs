@@ -23,7 +23,7 @@ using System.Text;
 /// <c>+0xb4</c> les tables de butin (8 rangs par classe, FUN_0053a920).
 /// </para>
 /// </summary>
-internal static class Bestiaire
+internal static partial class Bestiaire
 {
     // Ghidra: DAT_0056aca8, recopie tel quel depuis Engine/Resources.cs — l'octet bas est un index
     // dans les 60 dwords deja relocalises, l'octet haut le pas de parcours de la liste qu'il ouvre.

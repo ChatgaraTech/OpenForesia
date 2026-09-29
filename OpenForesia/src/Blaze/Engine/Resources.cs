@@ -226,6 +226,27 @@ internal sealed unsafe partial class Resources(GameMemory mem, Primitives2d prim
             "EntityVTables.cs. Regenerer avec OpenForesia.Tools/dump-entity-vtables.sh.");
     }
 
+    /// <summary>
+    /// Hors reconstruction (legacy ++, LP-013, <c>src/LegacyPlus/AreneGreffe.cs</c>) : le gestionnaire
+    /// qu'une AUTRE sous-zone installerait pour l'indice <paramref name="index"/> (<c>&gt;= 0xc0</c>)
+    /// d'une passe d'effets — la resolution de <see cref="ResolveEntityHandler"/>, sur les tables de
+    /// <paramref name="subAreaIndex"/> (<c>zone * 0x10 + sous-zone</c>) au lieu des tables actives.
+    /// Lecture seule : aucune table active n'est touchee.
+    /// </summary>
+    internal uint SubAreaEffectHandler(int subAreaIndex, int installedTableVa, int index)
+    {
+        uint[] selector = installedTableVa switch
+        {
+            0x0056adc8 => s_VtPtr_00567898,
+            0x0056aec8 => s_VtPtr_00567b58,
+            0x0056afc8 => s_VtPtr_00567e18,
+            _ => throw new ArgumentOutOfRangeException(nameof(installedTableVa), $"0x{installedTableVa:x8} n'est pas une table de passe d'effets"),
+        };
+        var table = new uint[0x40];
+        CopyEntityVTable(selector[subAreaIndex], table);
+        return table[index - 0xc0];
+    }
+
     /// <summary>L'appel indirect a travers une des sept tables. Comme
     /// <see cref="CallAreaHandler"/> : <c>FUN_00401FA0</c> a un corps vide, tout le reste leve.</summary>
     internal void CallEntityHandler(uint[] table, int slot, string name)

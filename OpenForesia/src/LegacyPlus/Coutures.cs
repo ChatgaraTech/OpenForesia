@@ -267,6 +267,12 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Son SonPositionnel = (identifiant, position) => identifiant;
 
+    /// <summary>
+    /// Couture LP-013 — en tête de <c>PlaySoundEffect</c> (Ghidra: FUN_0053cea0), l'entrée de tous les
+    /// sons, positionnels ou non : l'identifiant à jouer. Par défaut, le même identifiant.
+    /// </summary>
+    internal static Func<int, int> SonJoue = identifiant => identifiant;
+
     /// <summary>Le butin qu'une entité de scène vient de lâcher en mourant : elle, puis lui.</summary>
     internal delegate void Butin(byte* entite, byte* butin);
 
@@ -276,6 +282,28 @@ internal static unsafe class Coutures
     /// défaut, rien.
     /// </summary>
     internal static Butin ButinNe = (entite, butin) => { };
+
+    /// <summary>Une entité dont le gestionnaire va tourner, ou vient de tourner.</summary>
+    internal delegate void Gestionnaire(byte* entite);
+
+    /// <summary>
+    /// Couture LP-013 — juste avant l'appel du gestionnaire d'une entité, dans la passe de scène
+    /// (<c>FUN_0050e680</c>) et dans les trois passes d'effets (<c>CallIndexedEntityHandler</c> :
+    /// <c>FUN_0047aa70</c>, <c>FUN_0047ab70</c>, <c>FUN_0047acf0</c>). Par défaut, rien.
+    /// </summary>
+    internal static Gestionnaire AvantGestionnaire = entite => { };
+
+    /// <summary>Couture LP-013 — juste après ce même appel. Par défaut, rien.</summary>
+    internal static Gestionnaire ApresGestionnaire = entite => { };
+
+    /// <summary>Le gestionnaire qu'une passe d'effets a résolu pour un indice <c>&gt;= 0xc0</c>.</summary>
+    internal delegate uint Resolution(byte* entite, int table, int indice, uint gestionnaire);
+
+    /// <summary>
+    /// Couture LP-013 — dans <c>CallIndexedEntityHandler</c>, le gestionnaire d'un indice
+    /// <c>&gt;= 0xc0</c>, pris dans la table que la sous-zone a installée. Par défaut, le même.
+    /// </summary>
+    internal static Resolution GestionnaireInstalle = (entite, table, indice, gestionnaire) => gestionnaire;
 
     static Coutures()
     {
@@ -333,7 +361,11 @@ internal static unsafe class Coutures
             ScriptTu = (indice, appelant) => false;
             EffetCoupe = (source, sousType) => false;
             SonPositionnel = (identifiant, position) => identifiant;
+            SonJoue = identifiant => identifiant;
             ButinNe = (entite, butin) => { };
+            AvantGestionnaire = entite => { };
+            ApresGestionnaire = entite => { };
+            GestionnaireInstalle = (entite, table, indice, gestionnaire) => gestionnaire;
         }
     }
 }

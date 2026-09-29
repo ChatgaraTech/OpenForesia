@@ -250,10 +250,14 @@ public static unsafe partial class Blaze
                     "l'enregistrement, en __cdecl."),
             };
 
+            LegacyPlus.Coutures.AvantGestionnaire(record);   // Couture legacy ++ (LP-013)
             DispatchEntityHandler(staticTable[index], record, where);
+            LegacyPlus.Coutures.ApresGestionnaire(record);   // Couture legacy ++ (LP-013)
             return;
         }
 
-        DispatchEntityHandler(Res.ResolveEntityHandler(installedTableVa, index), record, where);
+        LegacyPlus.Coutures.AvantGestionnaire(record);   // Couture legacy ++ (LP-013)
+        DispatchEntityHandler(LegacyPlus.Coutures.GestionnaireInstalle(record, installedTableVa, index, Res.ResolveEntityHandler(installedTableVa, index)), record, where);   // Couture legacy ++ (LP-013)
+        LegacyPlus.Coutures.ApresGestionnaire(record);   // Couture legacy ++ (LP-013)
     }
 }

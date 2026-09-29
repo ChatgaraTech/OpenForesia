@@ -36,7 +36,7 @@ src/LegacyPlus/
    AreneTeleporteur.cs      LP-012 — le téléporteur du hub : la question à son approche, le menu (mode, palier)
    Arene.cs                 LP-012 — le mode arène : l'aller vers 4/9, la salle vidée, la fin (scénette, bourse, portail), la défaite, la sauvegarde
    AreneDirecteur.cs        LP-012 — les programmes de l'arène, leurs vagues, la naissance et le palier (PV, dégâts)
-   AreneGreffe.cs           LP-013 — la greffe : un monstre d'une autre sous-zone dans l'arène (maillage, texture, espèce, IA, sons), ses coupures
+   AreneGreffe.cs           LP-013 — la greffe : un monstre d'une autre sous-zone dans l'arène (maillage, texture et sa place en VRAM, espèce, IA, sons), et le contexte de sa sous-zone pour ses effets
    CatalogueObjets.cs       LP-008, repris — l'index nom → fiche et vignette, lu dans les fichiers du jeu
    BoutiqueAchat.cs         LP-008, repris — l'achat : bourse, emplacement, rangement, icône
    BoutiqueVente.cs         LP-011 — le rachat de la Voleuse : inventaire hors équipement, coffre (écrit la sauvegarde)

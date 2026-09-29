@@ -76,9 +76,23 @@ internal static unsafe class AreneDirecteur
     /// <para>Sylphide, Fougre et le gros poilu (LP-013, 2026-09-29) : la Sylphide et le Wybarn de la
     /// formation 1 de 4/7 (au même point dans la tour, ici à 200 unités l'un de l'autre) ; le Fougre
     /// et ses deux Grifons de la formation 0 de 8/1 (à 100 unités devant et derrière lui dans le nid,
-    /// ici de part et d'autre comme les Grizzlys) ; le gros poilu seul, formation 0 de 10/12.</para>
+    /// ici de part et d'autre comme les Grizzlys) ; le gros poilu seul, formation 0 de 10/12 ; le Jeune
+    /// dragon seul, formation 0 de 1/4 ; le Loup-garou et le Tigre, formation 0 de 6/5, à 340 unités
+    /// l'un de l'autre comme au château ; le Nocturio et ses deux Sacubas, formation 1 de 6/11, les
+    /// Sacubas de part et d'autre comme les Grizzlys ; le Durahan et ses trois Sanguinaires,
+    /// formation 0 de 5/4, deux de part et d'autre, le troisième derrière lui ; le Troll et ses deux
+    /// Géants verts, formation 0 de 1/9, les Géants de part et d'autre ; l'Ange noir seul, formation 0
+    /// de 10/14 ; Eifridt seul, formation 0 de 10/11 ; le Lordémon seul, formation 0 de 10/13 ;
+    /// le Cerbère et ses quatre Groklebs, formation 0 de 10/9, deux devant lui et deux derrière comme
+    /// dans la grotte ; le Dragon rouge et ses deux Salamandres feu, formation 0 de 2/0, les Salamandres
+    /// de part et d'autre, à 350 unités pour laisser la place au dragon ; Belzébuth seul, formation 0 de
+    /// 10/15 ; le Dragon zombie et ses deux Maudites, formation 0 de 10/4, les Maudites de part et
+    /// d'autre ; le Roi-zombie et sa cour, formation 0 de 5/9 : les Durahans noirs à ses côtés, les
+    /// Revenants devant, les Ombres rouges — qui volent à 600 dans le labyrinthe — plus loin sur les
+    /// flancs, posées au sol de l'arène (2026-09-29).</para>
     /// <para>L'ordre du menu : les PV du combat entier au palier 1, boss et escorte, croissants
-    /// (Vincent, 2026-09-29) — 460, 910, 1 263, 1 272, 2 160, 2 300.</para>
+    /// (Vincent, 2026-09-29) — 460, 700, 910, 968, 1 220, 1 263, 1 272, 1 531, 1 650, 2 160, 2 300,
+    /// 2 391, 2 400, 2 726, 2 763, 2 812, 3 000, 5 438, 8 480.</para>
     /// </summary>
     internal static readonly Programme[] Programmes =
     [
@@ -87,7 +101,17 @@ internal static unsafe class AreneDirecteur
             new Creature(0, 1, (-100, -2900, 0), AreneGreffe.Grizzly),
             new Creature(0, 2, (300, -2900, 0), AreneGreffe.Grizzly),
         ])]),
+        new("JEUNE DRAGON", 100, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.JeuneDragon)])]),   // 700
         new("ENCHANTERESSE", 150, [new Vague([new Creature(0, 0, (100, -2900, 0))])]),   // 910
+        new("LOUP-GAROU ET TIGRE", 140, [new Vague([                                     // 468 + 500
+            new Creature(0, 0, (-70, -2900, 0), AreneGreffe.LoupGarou),
+            new Creature(0, 1, (270, -2900, 0), AreneGreffe.Tigre),
+        ])]),
+        new("NOCTURIO", 170, [new Vague([                                       // 840 + 2 × 190
+            new Creature(1, 0, (100, -2900, 0), AreneGreffe.Nocturio),
+            new Creature(1, 1, (-100, -2900, 0), AreneGreffe.Sacuba),
+            new Creature(1, 2, (300, -2900, 0), AreneGreffe.Sacuba),
+        ])]),
         new("SYLPHIDE", 180, [new Vague([                                       // 563 + 700
             new Creature(1, 0, (0, -2900, 0), AreneGreffe.Sylphide),
             new Creature(1, 1, (200, -2900, 0), AreneGreffe.Wybarn),
@@ -97,8 +121,49 @@ internal static unsafe class AreneDirecteur
             new Creature(0, 1, (-100, -2900, 0), AreneGreffe.Grifon),
             new Creature(0, 2, (300, -2900, 0), AreneGreffe.Grifon),
         ])]),
+        new("DURAHAN", 220, [new Vague([                                        // 808 + 3 × 241
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.Durahan),
+            new Creature(0, 1, (-150, -2900, 0), AreneGreffe.Sanguinaire),
+            new Creature(0, 2, (350, -2900, 0), AreneGreffe.Sanguinaire),
+            new Creature(0, 3, (100, -3150, 0), AreneGreffe.Sanguinaire),
+        ])]),
+        new("TROLL", 230, [new Vague([                                          // 850 + 2 × 400
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.Troll),
+            new Creature(0, 1, (-100, -2900, 0), AreneGreffe.GeantVert),
+            new Creature(0, 2, (300, -2900, 0), AreneGreffe.GeantVert),
+        ])]),
         new("BEHEMOTH", 300, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Behemoth)])]),   // 2 160
         new("GROS POILU", 330, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.GrosPoilu)])]),  // 2 300
+        new("ANGE NOIR", 340, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.AngeNoir)])]),    // 2 391
+        new("EIFRIDT", 340, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Eifridt)])]),       // 2 400
+        new("ROI-ZOMBIE", 330, [new Vague([                                     // 1 350 + 2 × (358 + 190 + 140)
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.RoiZombie),
+            new Creature(0, 1, (-100, -2900, 0), AreneGreffe.DurahanNoir),
+            new Creature(0, 2, (300, -2900, 0), AreneGreffe.DurahanNoir),
+            new Creature(0, 3, (-100, -2600, 0), AreneGreffe.Revenant),
+            new Creature(0, 4, (300, -2600, 0), AreneGreffe.Revenant),
+            new Creature(0, 5, (-300, -2750, 0), AreneGreffe.OmbreRouge),
+            new Creature(0, 6, (500, -2750, 0), AreneGreffe.OmbreRouge),
+        ])]),
+        new("LORDEMON", 400, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Lordemon)])]),    // 2 763
+        new("CERBERE", 400, [new Vague([                                        // 2 100 + 4 × 178
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.Cerbere),
+            new Creature(0, 1, (0, -2650, 0), AreneGreffe.Groklebs),
+            new Creature(0, 2, (200, -2650, 0), AreneGreffe.Groklebs),
+            new Creature(0, 3, (0, -3150, 0), AreneGreffe.Groklebs),
+            new Creature(0, 4, (200, -3150, 0), AreneGreffe.Groklebs),
+        ])]),
+        new("BELZEBUTH", 430, [new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Belzebuth)])]),  // 3 000
+        new("DRAGON ZOMBIE", 780, [new Vague([                                  // 4 400 + 2 × 519
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.DragonZombie),
+            new Creature(0, 1, (-100, -2900, 0), AreneGreffe.Maudite),
+            new Creature(0, 2, (300, -2900, 0), AreneGreffe.Maudite),
+        ])]),
+        new("DRAGON ROUGE", 1200, [new Vague([                                  // 8 000 + 2 × 240
+            new Creature(0, 0, (100, -2900, 0), AreneGreffe.DragonRouge),
+            new Creature(0, 1, (-250, -2900, 0), AreneGreffe.SalamandreFeu),
+            new Creature(0, 2, (450, -2900, 0), AreneGreffe.SalamandreFeu),
+        ])]),
     ];
 
     /// <summary>La hauteur du sol de la salle du boss (formations.csv, 4/9 : y = 200) : une créature

@@ -108,6 +108,22 @@ if (args[0] is "greffe" && args.Length >= 3)
     return;
 }
 
+// Ce que chaque boss de l'arene emprunte a sa sous-zone (LP-013, 8.1.4), lu hors jeu :
+// `effets-boss [--sortie fichier.md] [dossier]`.
+if (args[0] is "effets-boss")
+{
+    string? sortie = null, dossierArg = null;
+    for (int i = 1; i < args.Length; i++)
+    {
+        if (args[i] is "--sortie" && i + 1 < args.Length) sortie = args[++i];
+        else dossierArg = args[i];
+    }
+    string? dossier = dossierArg ?? DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Bestiaire.EffetsBoss(dossier, sortie);
+    return;
+}
+
 // Les points d'entree d'une sous-zone (LP-012, l'arene), lus hors jeu :
 // `entrees <zone> <sous-zone> [dossier]`.
 if (args[0] is "entrees" && args.Length >= 3)

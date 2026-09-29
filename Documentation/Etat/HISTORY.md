@@ -6,6 +6,30 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-29
 
+- doc : change `add-legacy-plus-boss-graft` archivé (`openspec/changes/archive/2026-09-29-add-legacy-plus-boss-graft`) ; specs fusionnées — nouvelle capacité `gameplay-arena-bosses` (les dix-neuf modes, leurs bourses, l'ordre par PV), et la victoire de `gameplay-hub-arena` paie la bourse au lieu des coffres
+- doc : clôture du change `add-legacy-plus-boss-graft` — `legacy.md` (LP-013 : dix-huit programmes greffés, validés en jeu), `LISEZMOI.md` à jour, `publish-release.ps1` passe (installeur de 16,1 Mo) ; reste l'essai 4.4 (la forêt intacte après l'arène) avant l'archivage
+- doc : le Kraaken est retiré de la liste des boss de l'arène (Vincent) ; le Roi-zombie validé en jeu — les 16 boss du relevé sont dans l'arène
+- feat : LP-013 — le mode ROI-ZOMBIE de l'arène : le Roi-zombie et sa cour (5/9 : deux Durahans noirs, deux Revenants, deux Ombres rouges ; 2 726 PV, bourse 330), ses sorts et ses treize effets ; la VRAM des boss greffés passe à cinq bandes, deux de plus dans la page (128, 256) ; à tester en jeu
+- doc : la texture en plus que `effets-boss` prêtait au Roi-zombie est une lecture trop longue de la planche `0x00550460` (quatre images, toutes sur l'entrée commune)
+- feat : LP-013 — le mode DRAGON ZOMBIE de l'arène : le Dragon zombie et ses deux Maudites (10/4, 5 438 PV, bourse 780), son cri et ses effets de la grotte scellée ; texture de 96 lignes sur deux bandes, les Maudites sur la troisième ; à tester en jeu
+- feat : LP-013 — le mode BELZEBUTH de l'arène : Belzébuth de la salle des démons (10/15, 3 000 PV, bourse 430), son cri, ses sorts et ses onze effets ; sa texture de 128 × 192 prend les trois bandes de VRAM ; à tester en jeu
+- doc : le « script » du geste 2 de Belzébuth (`0x00553278`) est un script de sons différés, pas un script de carte — l'arène n'a rien à laisser passer (tâche 8.1.5 close)
+- feat : LP-013 — le mode DRAGON ROUGE de l'arène : le Dragon rouge et ses deux Salamandres feu (2/0, 8 480 PV, bourse 1 200), son cri, ses sorts et ses sept effets de la montagne ; PV bornés à 65 535 dès le palier 9 ; à tester en jeu
+- feat : LP-013 — le mode CERBERE de l'arène : le Cerbère et ses quatre Groklebs (10/9, 2 812 PV, bourse 400), ses neuf effets de la grotte scellée ; à tester en jeu
+- feat : LP-013 — le mode LORDEMON de l'arène : le Lordémon de la salle des démons (10/13, 2 763 PV, bourse 400), ses sorts et ses six effets ; à tester en jeu
+- feat : LP-013 — le mode EIFRIDT de l'arène : Eifridt de la salle des démons (10/11, 2 400 PV, bourse 340), ses sorts et ses deux effets ; première texture sur deux bandes de VRAM (128 × 128) ; à tester en jeu
+- feat : LP-013 — le mode ANGE NOIR de l'arène : l'Ange noir de la salle des démons (10/14, 2 391 PV, bourse 340), ses sorts et ses huit effets, la pluie comprise ; à tester en jeu
+- feat : LP-013 — le mode TROLL de l'arène : le Troll et ses deux Géants verts (1/9, 1 650 PV, bourse 230), son cri et son éclair des ruines souterraines ; à tester en jeu
+- feat : LP-013 — le mode DURAHAN de l'arène : le Durahan et ses trois Sanguinaires (5/4, 1 531 PV, bourse 220), son cri et son effet du Labyrinthe des morts ; à tester en jeu
+- feat : LP-013 — le mode NOCTURIO de l'arène : le Nocturio et ses deux Sacubas (6/11, formation 1, 1 220 PV, bourse 170), ses sorts et ses sept effets du château ; à tester en jeu
+- feat : LP-013 — le mode LOUP-GAROU ET TIGRE de l'arène : le combat du château de l'immortel (6/5, 968 PV, bourse 140), avec son effet `0xde` et son son de zone ; la couture `SonJoue` (en tête de `PlaySoundEffect`) traduit aussi les sons de zone joués sans position ; à tester en jeu
+- feat : LP-013 — le mode JEUNE DRAGON de l'arène : le Jeune dragon de la mine abandonnée (1/4, 700 PV, bourse 100), son cri et ses effets de la mine (l'éclair et ses onze enfants, `0x00483b50` et son enfant) ; à tester en jeu
+- feat : LP-013 — les effets de leur sous-zone pour tous les boss greffés de l'arène (le souffle de l'ours validé en jeu) : l'atterrissage du bond du Behemoth, l'effet du Wybarn, celui du Fougre ; à tester en jeu
+- feat : LP-013, 8.1.2 — le souffle du Méchant ours dans l'arène : pendant le gestionnaire d'une créature greffée et de ses effets, le jeu lit les catalogues d'effets, la table de sons et les tables de gestionnaires de la sous-zone d'origine (trois coutures : `AvantGestionnaire`, `ApresGestionnaire`, `GestionnaireInstalle`) ; ouvert pour l'ours seul ; à tester en jeu
+- feat : LP-013, 8.1.4 — `OpenForesia.Tools effets-boss` : pour 19 combats de boss, ce que chacun emprunte à sa sous-zone (effets par sous-zone suivis dans toute leur descendance, trois catalogues `+0xcc`/`+0xd0`/`+0xd4`, sons, textures), lu dans le binaire — `Documentation/Etat/EffetsDesBoss.md`
+- doc : les effets des boss ne dessinent qu'avec des textures communes ; les anneaux du souffle de l'ours emploient des modèles de l'état 3, pas de 3/5 — la couture du rendu n'est pas nécessaire en l'état
+- feat : LP-013, 8.1.1 — la place en VRAM des boss greffés n'est plus fixe : chaque entrée dans l'arène donne aux textures du programme trois bandes de 128 × 64 mots (y 64, 128, 192), une texture haute sur des bandes qui se suivent ; le maillage est relogé quand sa place change ; à tester en jeu
+
 - feat : LP-013 — trois boss de plus dans l'arène, en lot 1 (effets de leur sous-zone coupés) : SYLPHIDE (la Sylphide et le Wybarn de la vieille tour, 4/7), FOUGRE (et ses deux Grifons, 8/1), GROS POILU (10/12) ; le menu de l'arène et le relevé des boss triés par PV du combat ; à tester en jeu
 
 - doc : LP-013 — le relevé des boss restants pour l'arène (17 boss, leurs IA toutes écrites, ce que chacun emprunte à sa sous-zone, le travail commun et l'ordre proposé) — `legacy.md`, tâches 8 du change `add-legacy-plus-boss-graft`
