@@ -63,7 +63,12 @@ internal static unsafe class AreneDirecteur
     /// palier 1, réparties entre les membres du groupe — <c>Arene.Recompenser</c>), et ses vagues dans
     /// l'ordre.
     /// </summary>
-    internal sealed record Programme(string Nom, int Pieces, Vague[] Vagues);
+    /// <remarks>
+    /// <paramref name="Pause"/> : les millisecondes entre la disparition de la dernière créature d'une vague et
+    /// la naissance de la suivante. <paramref name="Challenge"/> : un boss rush (LP-014), que le menu
+    /// range à part, sur une page ouverte par le premier.
+    /// </remarks>
+    internal sealed record Programme(string Nom, int Pieces, Vague[] Vagues, int Pause = PauseParDefaut, bool Challenge = false);
 
     /// <summary>
     /// Les programmes, dans l'ordre du menu. L'Enchanteresse, boss natif de 4/9, valide la mécanique :
@@ -170,6 +175,47 @@ internal static unsafe class AreneDirecteur
             new Creature(0, 1, (-250, -2900, 0), AreneGreffe.SalamandreFeu),
             new Creature(0, 2, (450, -2900, 0), AreneGreffe.SalamandreFeu),
         ])]),
+
+        // ---- les boss rush (LP-014, Vincent, 2026-09-30) ----------------------------------------
+        // Chaque boss de son combat seul, sans escorte, une vague chacun ; cinq secondes entre la
+        // disparition d'un boss et la naissance du suivant. La bourse : la somme des combats seuls,
+        // + 25 %, arrondie à la dizaine quand elle ne tombe pas juste.
+        new("[CHALLENGE] - Boss Rush 1", 750, [                                  // (40+100+150+140+170) × 1,25
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.MechantOurs)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.JeuneDragon)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0))]),                         // l'Enchanteresse, native
+            new Vague([
+                new Creature(0, 0, (-70, -2900, 0), AreneGreffe.LoupGarou),
+                new Creature(0, 1, (270, -2900, 0), AreneGreffe.Tigre),
+            ]),
+            new Vague([new Creature(1, 0, (100, -2900, 0), AreneGreffe.Nocturio)]),
+        ], PauseChallenge, Challenge: true),
+        new("[CHALLENGE] - Boss Rush 2", 1390, [                                 // (180+180+220+230+300) × 1,25 = 1 387,5
+            new Vague([new Creature(1, 0, (100, -2900, 0), AreneGreffe.Sylphide)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Fougre)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Durahan)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Troll)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Behemoth)]),
+        ], PauseChallenge, Challenge: true),
+        new("[CHALLENGE] - Boss Rush 3", 2290, [                                 // (330+330+400+340+430) × 1,25 = 2 287,5
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.GrosPoilu)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.RoiZombie)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Cerbere)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Eifridt)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Belzebuth)]),
+        ], PauseChallenge, Challenge: true),
+        new("[CHALLENGE] - Ultimate", 5875, [                                    // (400+340+780+780+1200+1200) × 1,25
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.Lordemon)]),
+            new Vague([new Creature(0, 0, (100, -2900, 0), AreneGreffe.AngeNoir)]),
+            new Vague([
+                new Creature(0, 0, (-150, -2900, 0), AreneGreffe.DragonZombie),
+                new Creature(0, 0, (350, -2900, 0), AreneGreffe.DragonZombie),
+            ]),
+            new Vague([
+                new Creature(0, 0, (-150, -2900, 0), AreneGreffe.DragonRouge),
+                new Creature(0, 0, (350, -2900, 0), AreneGreffe.DragonRouge),
+            ]),
+        ], PauseChallenge, Challenge: true),
     ];
 
     /// <summary>La hauteur du sol de la salle du boss (formations.csv, 4/9 : y = 200) : une créature
@@ -210,8 +256,15 @@ internal static unsafe class AreneDirecteur
 
     // ---- le déroulé ------------------------------------------------------------------------------
 
-    /// <summary>Images entre l'arrivée et la première vague, puis entre deux vagues.</summary>
+    /// <summary>Images entre l'arrivée et la première vague.</summary>
     private const int Delai = 30;
+
+    /// <summary>
+    /// Millisecondes entre la disparition d'une vague et la naissance de la suivante, en temps réel :
+    /// compter des images allongeait la pause dès que le jeu passait sous 60 images par seconde
+    /// (Vincent, 2026-09-30 : « plus que 5 secondes »). Par défaut, et pour un boss rush.
+    /// </summary>
+    private const int PauseParDefaut = 500, PauseChallenge = 5000;
 
     private const int Enregistrement = 8;                // ints par enregistrement de formation
     private const int TailleScene = 0x9c, PlacesScene = 0x20;
@@ -228,6 +281,9 @@ internal static unsafe class AreneDirecteur
     /// <summary>La bourse de la victoire du programme en cours, palier compris ; 0 sans programme.</summary>
     internal static int Bourse => s_Programme == null ? 0 : s_Programme.Pieces * s_Palier.Pv;
     private static uint s_Suivis;                        // emplacements de scène de la vague, en masque
+    private static uint s_Morts;                         // ceux dont la mort (0x40000000) est vue, pour le journal
+    private static long s_DerniereMort, s_Disparition;   // Environment.TickCount64
+    private static long s_Reprise;                       // quand la vague suivante naît ; 0 : pas de pause en cours
 
     internal static void Installer()
     {
@@ -258,7 +314,8 @@ internal static unsafe class AreneDirecteur
     /// <summary>Le mode arène vient d'être levé : le programme choisi repart de sa première vague.</summary>
     internal static void Commencer()
     {
-        s_Suivis = 0;
+        s_Suivis = s_Morts = 0;
+        s_DerniereMort = s_Reprise = 0;
         s_Vague = 0;
         s_Attente = Delai;
         s_EnCours = Choix != null;
@@ -284,23 +341,33 @@ internal static unsafe class AreneDirecteur
 
         if (s_Suivis == 0)
         {
-            if (--s_Attente > 0) return;
+            if (--s_Attente > 0 || Environment.TickCount64 < s_Reprise) return;
+            if (s_Reprise != 0)
+                Journal($"pause de {Environment.TickCount64 - s_Disparition} ms entre la disparition et la vague {s_Vague + 1}");
+            s_Reprise = 0;
             Naitre(s_Programme.Vagues[s_Vague]);
             return;
         }
 
         // Un emplacement suivi qui n'est plus vivant ne l'est plus jamais pour nous : réutilisé,
-        // il porterait autre chose.
+        // il porterait autre chose. Le bit 0x40000000 (PV à zéro, WorldSimulationStep) date la mort,
+        // pour le journal : la disparition du corps vient après.
         byte* table = Jeu.Mem.Entity(PoolScene);
         for (int i = 0; i < PlacesScene; i++)
         {
             uint bit = 1u << i;
-            if ((s_Suivis & bit) != 0 && (*(uint*)(table + i * TailleScene) & 0x80000000) == 0) s_Suivis &= ~bit;
+            if ((s_Suivis & bit) == 0) continue;
+            uint mot = *(uint*)(table + i * TailleScene);
+            if ((mot & 0x80000000) == 0) s_Suivis &= ~bit;
+            else if ((mot & 0x40000000) != 0 && (s_Morts & bit) == 0) { s_Morts |= bit; s_DerniereMort = Environment.TickCount64; }
         }
         if (s_Suivis != 0) return;
 
-        Journal($"vague {s_Vague + 1} vaincue");
-        if (++s_Vague < s_Programme.Vagues.Length) { s_Attente = Delai; return; }
+        s_Disparition = Environment.TickCount64;
+        Journal($"vague {s_Vague + 1} vaincue" + (s_DerniereMort != 0 ? $" — {s_Disparition - s_DerniereMort} ms entre la dernière mort et la disparition" : ""));
+        s_Morts = 0;
+        s_DerniereMort = 0;
+        if (++s_Vague < s_Programme.Vagues.Length) { s_Reprise = s_Disparition + s_Programme.Pause; return; }
 
         s_EnCours = false;
         Journal($"programme {s_Programme.Nom} terminé");
@@ -317,6 +384,7 @@ internal static unsafe class AreneDirecteur
         byte* repertoire = Jeu.s_Unknown_005e97cc;
         int** formations = repertoire == null ? null : *(int***)(repertoire + 0x34);
         if (formations == null) { Abandonner("la sous-zone n'a pas de table de formations"); return; }
+        if (!AreneGreffe.PreparerVague(vague)) { Abandonner($"vague {s_Vague + 1} : ses espèces greffées n'ont pas pu prendre place en VRAM"); return; }
 
         int* liste = (int*)NativeMemory.AllocZeroed((nuint)((vague.Creatures.Length + 1) * Enregistrement), sizeof(int));
         try

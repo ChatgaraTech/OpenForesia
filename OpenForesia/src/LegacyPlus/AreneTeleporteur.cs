@@ -282,7 +282,11 @@ internal static unsafe class AreneTeleporteur
     private static EcranMenu.Page PageModes() => new()
     {
         Titre = "LE TELEPORTEUR - ARENE",
-        Lister = () => AreneDirecteur.Programmes.Select(p => new EcranMenu.Ligne(p.Nom, "", p)).ToList(),
+        // Les boss rush (LP-014) sur une page à eux : le premier l'ouvre.
+        Lister = () => AreneDirecteur.Programmes
+            .Select((p, i) => new EcranMenu.Ligne(p.Nom, "", p,
+                NouvellePage: p.Challenge && (i == 0 || !AreneDirecteur.Programmes[i - 1].Challenge)))
+            .ToList(),
         SiVide = "Aucun combat n'est pret.",
         Valider = l => new EcranMenu.Suite(Suivante: PagePaliers((AreneDirecteur.Programme)l.Donnee!)),
     };

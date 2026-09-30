@@ -31,9 +31,9 @@ internal static unsafe class EcranMenu
 {
     /// <summary>
     /// Une ligne : le libellé, le texte de la colonne de droite (un prix, un multiplicateur), et ce
-    /// que l'appelant veut retrouver en validant.
+    /// que l'appelant veut retrouver en validant ; <c>NouvellePage</c> : la ligne ouvre une page.
     /// </summary>
-    internal sealed record Ligne(string Affiche, string Droite = "", object? Donnee = null);
+    internal sealed record Ligne(string Affiche, string Droite = "", object? Donnee = null, bool NouvellePage = false);
 
     /// <summary>Ce qu'une validation décide : un message, une page de plus, ou la sortie.</summary>
     internal sealed record Suite(string Message = "", Page? Suivante = null, bool Fermer = false);
@@ -87,7 +87,8 @@ internal static unsafe class EcranMenu
     private const int LigneTitre = 16, LignePremier = 32, Pas = 11, LigneMessage = 142, LignePied = 220;
     private const int LigneDescription = 156, LigneValeurs = 188, Interligne = 10, LignesMax = 3;
     private const int Colonnes = (MargeD - MargeG) / 8;   // 36 caractères
-    private const int NomMax = 20;                      // caractères
+    private const int NomMax = 20;                      // caractères, à côté de la colonne de droite
+    private const int NomPleineLargeur = (MargeD - MargeG - 10) / 8;   // 34 : sans colonne de droite
     private const int PrixD = 232;                      // bord droit de la colonne de droite
 
     // La question seule : un bandeau au milieu de l'écran.
@@ -220,8 +221,15 @@ internal static unsafe class EcranMenu
         if (n == 0) return;
         if ((appuis & Haut) != 0) etage.Curseur = (etage.Curseur - 1 + n) % n;
         if ((appuis & Bas) != 0) etage.Curseur = (etage.Curseur + 1) % n;
-        if ((appuis & Gauche) != 0) etage.Curseur = Math.Max(0, etage.Curseur - ParPage);
-        if ((appuis & Droite) != 0) etage.Curseur = Math.Min(n - 1, etage.Curseur + ParPage);
+        if ((appuis & (Gauche | Droite)) != 0)
+        {
+            // De page en page, à la même hauteur si la page d'arrivée l'a, sur sa dernière ligne sinon.
+            var debuts = Debuts(etage.Lignes);
+            int p = PageDe(debuts, etage.Curseur);
+            int cible = (appuis & Gauche) != 0 ? Math.Max(0, p - 1) : Math.Min(debuts.Count - 1, p + 1);
+            int hauteur = etage.Curseur - debuts[p];
+            etage.Curseur = Math.Min(debuts[cible] + hauteur, FinDePage(debuts, cible, n) - 1);
+        }
         if ((appuis & (Haut | Bas | Gauche | Droite)) != 0) s_Message = "";
         if (valider)
         {
@@ -261,7 +269,9 @@ internal static unsafe class EcranMenu
     {
         Page page = etage.Page;
         var lignes = etage.Lignes;
-        int numero = etage.Curseur / ParPage, pages = Math.Max(1, (lignes.Count + ParPage - 1) / ParPage);
+        var debuts = Debuts(lignes);
+        int numero = PageDe(debuts, etage.Curseur), pages = debuts.Count;
+        int debut = debuts[numero], fin = FinDePage(debuts, numero, lignes.Count);
 
         curseur = Ecrire(otBase, curseur, MargeG, LigneTitre, Ascii(page.Titre));
         if (page.EnTete != null)
@@ -270,16 +280,15 @@ internal static unsafe class EcranMenu
             curseur = Ecrire(otBase, curseur, MargeD - entete.Length * 8, LigneTitre, entete);
         }
 
-        for (int i = 0; i < ParPage; i++)
+        for (int k = debut; k < fin; k++)
         {
-            int k = numero * ParPage + i;
-            if (k >= lignes.Count) break;
-            int y = LignePremier + i * Pas;
+            int y = LignePremier + (k - debut) * Pas;
             string nom = Ascii(lignes[k].Affiche);
-            if (nom.Length > NomMax) nom = nom[..NomMax];
+            string droite = Ascii(lignes[k].Droite);
+            int max = droite.Length == 0 ? NomPleineLargeur : NomMax;   // sans colonne de droite, toute la largeur
+            if (nom.Length > max) nom = nom[..max];
             if (k == etage.Curseur) curseur = Ecrire(otBase, curseur, MargeG, y, ">");
             curseur = Ecrire(otBase, curseur, MargeG + 10, y, nom);
-            string droite = Ascii(lignes[k].Droite);
             curseur = Ecrire(otBase, curseur, PrixD - droite.Length * 8, y, droite);
         }
 
@@ -309,6 +318,28 @@ internal static unsafe class EcranMenu
         // premier, donc sous le texte.
         return Rectangle(otBase, curseur, CadreX, CadreY, CadreL, CadreH, Fond, 0x62);
     }
+
+    /// <summary>
+    /// Les débuts de page : une page s'ouvre toutes les <see cref="ParPage"/> lignes, et sur une ligne
+    /// <see cref="Ligne.NouvellePage"/> (les challenges de l'arène, LP-014). Toujours au moins une page.
+    /// </summary>
+    private static List<int> Debuts(IReadOnlyList<Ligne> lignes)
+    {
+        var debuts = new List<int> { 0 };
+        for (int i = 1; i < lignes.Count; i++)
+            if (i - debuts[^1] >= ParPage || lignes[i].NouvellePage) debuts.Add(i);
+        return debuts;
+    }
+
+    private static int PageDe(List<int> debuts, int ligne)
+    {
+        int p = 0;
+        while (p + 1 < debuts.Count && debuts[p + 1] <= ligne) p++;
+        return p;
+    }
+
+    private static int FinDePage(List<int> debuts, int page, int lignes) =>
+        page + 1 < debuts.Count ? debuts[page + 1] : lignes;
 
     private static uint* DessinerQuestion(uint* otBase, uint* curseur, Etage etage)
     {

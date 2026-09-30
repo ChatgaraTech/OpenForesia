@@ -14,8 +14,9 @@
 //     ils prennent les rangs 3 et suivants des tables 0x005e96a0 / 0x005e9640,
 //     que 4/9 (trois maillages) laisse libres ;
 //   - la TEXTURE (+0x10, l'entrée que la pagination d'origine désigne) est envoyée en VRAM à la place
-//     que Placer donne dans ce programme (trois bandes de 128 × 64 mots, 8.1.1), et l'entrée de
-//     décodage écrite ;
+//     que Placer donne dans la VAGUE de l'espèce (cinq bandes de 128 × 64 mots, 8.1.1), juste avant
+//     qu'elle naisse (PreparerVague, LP-014 : un boss rush enchaîne plus de boss que les cinq bandes
+//     n'en portent), et l'entrée de décodage écrite ; tout le reste est installé au peuplement ;
 //   - l'ESPÈCE et la FICHE : les tables +0x4c et +0x98 du répertoire de 4/9 sont recopiées dans une
 //     mémoire à nous, avec les espèces greffées au rang 16 et suivants ; le répertoire est repointé
 //     sur elles jusqu'au prochain chargement ;
@@ -100,6 +101,7 @@ internal static unsafe class AreneGreffe
 
         // Ce que chaque entrée dans l'arène donne.
         public int Rang;                        // son rang dans la table d'espèces de 4/9
+        public int Maillage;                    // son rang dans les tables 0x005e96a0 / 0x005e9640
     }
 
     // ---- les monstres greffés (mesures : legacy.md, LP-013) ------------------------------------
@@ -548,13 +550,12 @@ internal static unsafe class AreneGreffe
                 if (e.Source.Repertoire == null) LireRepertoire(e.Source);
                 if (e.Ligne == null) Charger(e);
             }
-            Placer(s_Greffees);
 
+            // En mémoire seulement : la VRAM (texture, palette, entrée de décodage, maillage relogé
+            // pour sa place) attend la vague de l'espèce — PreparerVague (LP-014, design D2).
             int k = 0;
             foreach (Espece e in s_Greffees)
             {
-                ChargerModele(e);
-                EnvoyerTexture(e);
                 Installer(e, repertoire, PremierRang + k, PremierMaillage + k);
                 k++;
             }
@@ -673,7 +674,7 @@ internal static unsafe class AreneGreffe
     /// <summary>Les bandes libres : leur y, et leur page (0 : (128, 0), 1 : (128, 256)).</summary>
     private static readonly (int Y, int Page)[] s_Bandes = [(64, 0), (128, 0), (192, 0), (320, 1), (384, 1)];
 
-    /// <summary>Une place pour chaque espèce du programme, dans l'ordre du programme.</summary>
+    /// <summary>Une place pour chaque espèce de la vague, dans l'ordre de la vague.</summary>
     private static void Placer(List<Espece> especes)
     {
         var prises = new bool[s_Bandes.Length];
@@ -767,10 +768,49 @@ internal static unsafe class AreneGreffe
         finally { NativeMemory.Free(tampon); }
     }
 
-    /// <summary>L'espèce au rang <paramref name="rang"/> de 4/9, son maillage et ses animations, son IA, ses sons.</summary>
+    /// <summary>
+    /// Avant la naissance d'une vague (LP-014, design D2) : les espèces greffées de CETTE vague seules
+    /// prennent les cinq bandes de VRAM — leur texture et leur palette envoyées, leur entrée de
+    /// décodage écrite, leur maillage relogé si sa place a changé et remis dans la table des maillages.
+    /// Les espèces des vagues passées perdent leur place : leurs créatures ont disparu. Faux si la
+    /// vague ne peut pas être installée (le directeur abandonne alors le programme).
+    /// </summary>
+    internal static bool PreparerVague(AreneDirecteur.Vague vague)
+    {
+        var especes = vague.Creatures.Select(c => c.Greffe).OfType<Espece>().Distinct().ToList();
+        if (especes.Count == 0) return true;
+        if (!s_Pret || especes.Any(e => !s_Greffees.Contains(e))) return false;
+
+        try
+        {
+            Placer(especes);
+            foreach (Espece e in especes)
+            {
+                ChargerModele(e);
+                EnvoyerTexture(e);
+                ((byte**)Jeu.Mem.Arena(0x005e96a0))[e.Maillage] = e.Modele;
+                Journal($"{e.Nom} : texture en ({e.TexX}, {e.TexY}), palette ligne {e.Palette}, entrée +0x{e.Entree:x}, maillage {e.Maillage}");
+            }
+
+            int restes = s_Lignees.Sum(pool => pool.Count(l => l != null && !especes.Contains(l)));
+            if (restes > 0) Journal($"vague : {restes} entité(s) d'une vague passée encore vivante(s) à la bascule de VRAM");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Journal($"vague impossible à installer ({ex.GetType().Name} : {ex.Message})");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// L'espèce au rang <paramref name="rang"/> de 4/9 : sa fiche, son IA, ses animations, ses sons,
+    /// et le rang de son maillage — que <see cref="PreparerVague"/> remplit, sa place connue.
+    /// </summary>
     private static void Installer(Espece e, byte* repertoire, int rang, int maillage)
     {
         e.Rang = rang;
+        e.Maillage = maillage;
 
         int creneau = PremierCreneauIa;
         uint[] ia = Jeu.Res.s_Vt_0056ad48;
@@ -786,13 +826,11 @@ internal static unsafe class AreneGreffe
         ligne[5] = 0;                            // le butin : jamais lu, ButinNe l'éteint
         NativeMemory.Copy(e.Fiche, s_TableFiches + rang * 0x60, 0x60);
 
-        ((byte**)Jeu.Mem.Arena(0x005e96a0))[maillage] = e.Modele;
         ((byte**)Jeu.Mem.s_AnimationTable_005e9640)[maillage] = e.Animations;
 
         foreach (int id in e.SonsDeNiveau) GrefferSon(e.Source, id);
 
-        Journal($"{e.Nom} : rang {rang}, maillage {maillage}, IA 0x{e.Ia:x8} au créneau {creneau}, "
-                + $"texture en ({e.TexX}, {e.TexY}), palette ligne {e.Palette}, entrée +0x{e.Entree:x}");
+        Journal($"{e.Nom} : rang {rang}, maillage {maillage}, IA 0x{e.Ia:x8} au créneau {creneau}");
     }
 
 

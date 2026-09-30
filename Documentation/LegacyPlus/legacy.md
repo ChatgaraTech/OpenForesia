@@ -35,6 +35,7 @@ Les clés et leurs bornes : `Documentation/Reference/LegacyPlus.ini.md`.
 | LP-012 | L'arène du hub : un téléporteur, un menu (mode, puis palier Normal / Difficile / Très difficile / Impossible : PV × 1 à 4, dégâts × 1 à 2,5, bourse × 1 à 4 — les paliers 1 à 10 jusqu'au 2026-09-30), la salle du boss de la vieille tour (4/9) vidée pour un combat rejouable ; fin native (cinématique, portail vers le hub) et une bourse en pièces d'or pour le groupe — les deux coffres du début retirés le 2026-09-29 —, défaite = retour au hub | aucune : suit `[Auberge] Hub` | `PasDuMembre` (l'ouverture du menu), `DessinSurImpression` (le menu), `EntreeSousZone`, `PointDEntree`, `DecorNe`, `Rencontre`, `LieuSauve`, `ImageSuivante` (directeur, fin, journal Debug), `PvALaNaissance`, `DegatsSubis`, et trois coutures neuves : `VolumesTus` (`TriggerVolumes.cs`), `DefaiteEvitee` (`WorldMapHud.cs`, le passage à l'état 9) et `ScriptTu` (`RunEntityScript`, aucun script de la sous-zone en arène) | validé en jeu (2026-09-28) — `src/LegacyPlus/AreneTeleporteur.cs`, `Arene.cs`, `AreneDirecteur.cs` ; `openspec/changes/archive/2026-09-28-add-legacy-plus-arena` |
 | LP-011 | Le rachat : la Voleuse du hub rachète l'inventaire (hors équipement) et le coffre du joueur, à un taux du prix d'achat des quatre boutiques ; un objet absent des catalogues ne se revend pas ; une pile se vend en entier | `LegacyPlus\BoutiqueVente.ini` : `[Vente] Taux` (50) | celles de LP-010 | écrit le 2026-09-28, à tester en jeu — `src/LegacyPlus/BoutiqueVente.cs`, `MarchandsHub.cs` ; une vente depuis le coffre écrit la sauvegarde (emplacement vidé, or crédité, sommes refaites) |
 | LP-013 | Les boss greffés de l'arène : un monstre d'une autre sous-zone combat dans 4/9 comme chez lui ; dix-huit programmes greffés (plus ENCHANTERESSE, native), chacun le combat de boss d'une sous-zone avec son escorte, ses sons et ses effets : MECHANT OURS, JEUNE DRAGON, LOUP-GAROU ET TIGRE, NOCTURIO, SYLPHIDE, FOUGRE, DURAHAN, TROLL, BEHEMOTH, GROS POILU, ANGE NOIR, EIFRIDT, ROI-ZOMBIE, LORDEMON, CERBERE, BELZEBUTH, DRAGON ZOMBIE, DRAGON ROUGE (le Kraaken abandonné) ; le menu trié par PV du combat ; la VRAM attribuée par programme (cinq bandes) ; les effets par le contexte de la sous-zone d'origine | aucune : suit `[Auberge] Hub` | `ListeDApparition` (l'installation), `PvALaNaissance` et `DegatsSubis` (le palier, par le directeur de LP-012), et sept coutures neuves : `EffetCoupe` (`SpawnEffectEntity`), `SonPositionnel` (`PlayPositionalSound`), `SonJoue` (`PlaySoundEffect`), `ButinNe` (`DespawnSceneEntity_0051a740`), `AvantGestionnaire` et `ApresGestionnaire` (autour du gestionnaire, passe de scène et `CallIndexedEntityHandler`), `GestionnaireInstalle` (`CallIndexedEntityHandler`) | validé en jeu (2026-09-29, chaque programme) — `src/LegacyPlus/AreneGreffe.cs` ; `openspec/changes/archive/2026-09-29-add-legacy-plus-boss-graft` |
+| LP-014 | Les boss rush de l'arène : quatre challenges sur une page à eux — Boss Rush 1 (Méchant ours, Jeune dragon, Enchanteresse, Loup-garou et Tigre, Nocturio), Boss Rush 2 (Sylphide, Fougre, Durahan, Troll, Behemoth), Boss Rush 3 (Gros poilu, Roi-zombie, Cerbère, Eifridt, Belzébuth), Ultimate (Lordémon, Ange noir, deux Dragons zombies, deux Dragons rouges) ; un boss par vague sans escorte, cinq secondes après la disparition du précédent ; bourse = somme des combats seuls + 25 % | aucune : suit `[Auberge] Hub` | celles de LP-012 et LP-013, aucune nouvelle | validé en jeu (2026-09-30) — `AreneDirecteur.cs`, `AreneGreffe.cs` (la VRAM par vague), `EcranMenu.cs` (le saut de page) ; `openspec/changes/archive/2026-09-30-add-legacy-plus-boss-rush` |
 | — | Vitesse des monstres | — | — | **abandonné** par Vincent le 2026-09-27 — les vitesses sont écrites en dur dans chacun des 166 gestionnaires de comportement |
 | LP-007 | Rencontres aléatoires : cadence, chevauchement pendant un combat, plusieurs formations | `[Rencontres] Frequence`, `MonstresMax`, `Formations` | `Rencontre` (l'appel de `TrySpawnRandomEncounter`), `RencontreEnAttente` et `RencontreBloquee` (ses deux gardes), `DelaiRencontre` (les deux rechargements du minuteur) | validé en jeu (2026-09-27) — `src/LegacyPlus/Rencontres.cs` |
 
@@ -497,6 +498,39 @@ scripts « au coup reçu » (genre 10) animent, pas un combat. Or l'arène coupe
 - **En dernier, un à un** : Belzébuth (toute la VRAM, un script), le Dragon zombie (texture de
   96 lignes), le Roi-zombie (quatre textures, des invocations), le Kraaken (plusieurs corps, eau,
   texture 4 bits).
+
+## LP-014, les boss rush de l'arène (validés en jeu le 2026-09-30)
+
+Demande de Vincent (2026-09-30) : des challenges qui enchaînent plusieurs boss dans un même passage
+dans l'arène, sans escorte, cinq secondes après la disparition de chacun ; mêmes paliers ; bourse =
+somme des combats seuls + 25 %. Change : `openspec/changes/archive/2026-09-30-add-legacy-plus-boss-rush`.
+
+**Ce que la mesure établit :**
+
+- **Le directeur savait déjà enchaîner des vagues** ; une vague finit quand ses emplacements suivis
+  ont perdu `0x80000000` — le corps a disparu, pas seulement « mort ». Il manquait une pause par
+  programme (`Programme.Pause`, en millisecondes de temps réel : 5 000 pour un challenge, 500 par défaut — 300 images au premier essai duraient plus de cinq secondes).
+- **La place en VRAM**, en bandes de 128 × 64, boss seuls : Boss Rush 1, 2 et Ultimate en veulent 5
+  pour tout le challenge, **Boss Rush 3 en veut 8** (Eifridt 2, Belzébuth 3) — plus que les cinq
+  bandes libres de 4/9. Par vague, jamais plus de 3. D'où **la greffe par vague** : au peuplement,
+  la mémoire seulement (espèce, fiche, IA, animations, sons, rang de maillage) ; juste avant chaque
+  vague (`AreneGreffe.PreparerVague`), ses seules espèces prennent les cinq bandes — texture,
+  palette, entrée de décodage, maillage relogé si sa place change. Un combat seul fait la même chose
+  qu'avant, au moment de naître plutôt qu'au peuplement.
+- **Le menu** : la liste pagine par dix ; les dix-neuf combats prennent les pages 1 et 2. Une ligne
+  peut désormais ouvrir une page (`EcranMenu.Ligne.NouvellePage`) : le premier challenge ouvre la
+  page 3. Un nom sans colonne de droite a toute la largeur (34 caractères) — « [CHALLENGE] - Boss
+  Rush 1 » en fait 25.
+- **Les bourses** (arrondies à la dizaine quand le compte ne tombe pas juste) : 600 → **750**,
+  1 110 → **1 390**, 1 830 → **2 290**, 4 700 → **5 875** (Ultimate : 400 + 340 + 2 × 780 +
+  2 × 1 200).
+- **Les couples** : Loup-garou et Tigre comme dans leur combat ; les deux Dragons zombies et les deux
+  Dragons rouges en x = −150 et 350, 500 unités entre eux.
+
+**À vérifier en jeu** : l'Enchanteresse, boss natif de 4/9, au milieu du Boss Rush 1 — sa mort ne
+doit pas lancer la fin de la tour avant la dernière vague ; les textures de Belzébuth après
+Eifridt (Boss Rush 3) ; le journal `[GREFFE]`, qui signale à chaque bascule les entités d'une vague
+passée encore vivantes.
 
 ## Préconisations en attente
 

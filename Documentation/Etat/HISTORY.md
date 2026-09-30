@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-30
 
+- doc : change `add-legacy-plus-boss-rush` archivé (`openspec/changes/archive/2026-09-30-add-legacy-plus-boss-rush`) ; nouvelle spec `gameplay-arena-boss-rush` — LP-014 validé en jeu
+- fix : LP-014 — la pause entre deux boss d'un boss rush durait plus de cinq secondes : comptée en images, elle s'allongeait sous 60 images par seconde ; comptée désormais en temps réel (5 000 ms), et le journal `[ARENE]` donne le temps entre la mort et la disparition du boss
+- feat : LP-014 — les boss rush de l'arène : Boss Rush 1, 2, 3 et Ultimate sur la page 3 du menu, un boss par vague sans escorte, cinq secondes après la disparition du précédent, bourse = somme des combats seuls + 25 % ; la greffe place désormais les textures en VRAM par vague (Boss Rush 3 demande 8 bandes pour 5 libres) ; l'écran de menu sait ouvrir une page sur une ligne ; à tester en jeu
 - fix : LP-012 — passer le portail de l'arène versait la bourse une seconde fois : le Oui refermait le portail, et l'image suivante, avant le chargement du hub, le rouvrait et repayait ; la bourse est désormais versée une fois par combat
 - feat : LP-012 — la description des paliers de l'arène passe sur trois lignes (PV, dégâts, pièces d'or) ; l'écran de menu passe à la ligne sur un `\n`
 - feat : LP-012 — les paliers 1 à 10 de l'arène deviennent Normal, Difficile, Très difficile, Impossible : PV × 1 à 4 (30 000 au plus), dégâts reçus × 1 / 1,5 / 2 / 2,5, bourse × 1 à 4 ; l'écran des paliers décrit sous la liste les multiplicateurs et les pièces gagnées
