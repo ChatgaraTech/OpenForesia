@@ -120,6 +120,16 @@ internal sealed unsafe partial class FenetreInvite : IDisposable
         new ReadOnlySpan<byte>(bgra, taille).CopyTo(_image);
         _largeurImage = largeur;
         _hauteurImage = hauteur;
+        if (Ecran is { Ouvert: true }) return;                  // gardée pour la fermeture de l'écran de la manette
+        Redessiner();
+    }
+
+    /// <summary>L'écran de configuration de la manette, ouvert par F1 par-dessus l'image.</summary>
+    internal EcranManette? Ecran { get; set; }
+
+    /// <summary>Dessine tout de suite, sans attendre WM_PAINT.</summary>
+    internal void Redessiner()
+    {
         IntPtr hdc = GetDC(_hwnd);
         try { Dessiner(hdc); }
         finally { ReleaseDC(_hwnd, hdc); }
@@ -141,6 +151,11 @@ internal sealed unsafe partial class FenetreInvite : IDisposable
     {
         Rect r;
         GetClientRect(_hwnd, &r);
+        if (Ecran is { Ouvert: true })
+        {
+            Ecran.Dessiner(hdc, r.Droite, r.Bas);
+            return;
+        }
         IntPtr noir = GetStockObject(NoirStock);
         SetBkMode(hdc, 1);
 
@@ -227,6 +242,16 @@ internal sealed unsafe partial class FenetreInvite : IDisposable
                 IntPtr hdc = BeginPaint(hwnd, ps);
                 f.Dessiner(hdc);
                 EndPaint(hwnd, ps);
+                return IntPtr.Zero;
+            case Win32.WM_KEYDOWN when f?.Ecran != null && (int)w == 0x70 && ((long)l & 0x40000000) == 0:   // F1, sans la répétition
+                f.Ecran.Basculer();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return IntPtr.Zero;
+            case 0x0201 or 0x0204 when f?.Ecran is { Ouvert: true }:     // WM_LBUTTONDOWN, WM_RBUTTONDOWN
+                Rect zone;
+                GetClientRect(hwnd, &zone);
+                f.Ecran.Clic((short)((long)l & 0xFFFF), (short)(((long)l >> 16) & 0xFFFF), zone.Droite, zone.Bas, droit: msg == 0x0204);
+                if (f.Ecran.AChange || !f.Ecran.Ouvert) { f.Ecran.AChange = false; f.Redessiner(); }
                 return IntPtr.Zero;
             case Win32.WM_SYSKEYDOWN when f != null && (int)w == 0x0D:        // Alt+Entrée
                 f.BasculerPleinEcran();

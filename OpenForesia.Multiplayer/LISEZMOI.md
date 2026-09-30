@@ -19,8 +19,11 @@ Lancé sans rien (le raccourci « OpenForesia Multijoueur ») : l'**accueil**.
   un bouton « Copier ». On choisit la **qualité de l'image** (Haute, Normale, Économe — le débit
   montant par ami), puis « Lancer la partie ». La fenêtre reste ouverte pendant la partie et dit
   qui est connecté ; elle referme le port à la fin.
-- **Rejoindre** : on colle le code reçu, on configure sa manette la première fois (« appuie sur le
-  bouton qui sera CROIX… », Échap pour aucun), et l'on joue. Alt+Entrée : plein écran.
+- **Rejoindre** : on colle le code reçu ; la première fois, l'écran de la manette s'ouvre et enchaîne les
+  quatorze boutons (« Continuer » quand c'est fini), et l'on joue. Alt+Entrée : plein écran.
+  **F1**, à tout moment, ouvre l'écran de la manette façon émulateur : une manette PlayStation
+  dessinée, une case par bouton — clic pour changer, clic droit pour effacer, « Tout reconfigurer »,
+  et ce qu'on presse s'allume. Pendant qu'il est ouvert, le personnage de l'ami ne reçoit rien.
 
 Deux limites à connaître : **la fenêtre du jeu doit rester au premier plan chez l'hôte** (les amis
 sont mis en pause sinon), et une box derrière une autre (double NAT : 4G, certaines fibres) ne peut
@@ -73,6 +76,7 @@ Aucun ne lance le jeu ; `Program.cs` décrit leurs options.
 |---|---|
 | `--mesurer-touches` | quelles touches fantômes passent de `SendInput` à DirectInput sans caractère (simule des frappes dans sa fenêtre) |
 | `--essai-image [--qualite …]` | capture, encodage, morceaux, décodage d'une mire ; durées, retard des codecs, dernière image en BMP |
+| `--manette` | l'écran de la manette seul (celui de F1), sans réseau : pour le voir, ou configurer sa manette hors partie |
 | `--essai-son` | une note de 440 Hz jouée puis retrouvée par la capture de processus (fréquence, niveau) |
 | `--essai-diffusion` | un hôte qui diffuse la mire et la note, jamais au premier plan (aucune touche simulée) ; il affiche le code à donner à `--rejoindre … --sans-manette --duree <s>` |
 | `--essai-upnp` | trouve la box, ouvre le port, lit l'adresse publique, **referme** le port |

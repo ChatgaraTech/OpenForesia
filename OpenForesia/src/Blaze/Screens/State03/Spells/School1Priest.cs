@@ -4442,7 +4442,7 @@ public static unsafe partial class Blaze
                 ushort buttons = *(ushort*)(Inp.s_InputStateBase_00604a20
                                          + Inp.s_PlayerSlots_005e9188[slot * 0x4c] * 0x10);
 
-                if ((*(ushort*)(sheet + 0x1fc4) & buttons) == 0)
+                if ((Input.CombatMask(*(ushort*)(sheet + 0x1fc4)) & buttons) == 0)
                 {
                     *(short*)(e + 0x10) = 3;
                     *caster &= 0xffffff7f;
@@ -4796,7 +4796,7 @@ public static unsafe partial class Blaze
                 ushort buttons = *(ushort*)(Inp.s_InputStateBase_00604a20
                                             + Inp.s_PlayerSlots_005e9188[slot * 0x4c] * 0x10);
 
-                if ((*(ushort*)(sheet + 0x1fc4) & buttons) == 0)
+                if ((Input.CombatMask(*(ushort*)(sheet + 0x1fc4)) & buttons) == 0)
                 {
                     *(short*)(e + 0x10) = 3;
                     *caster &= 0xffffff7f;
@@ -8025,7 +8025,7 @@ public static unsafe partial class Blaze
                 int pad = Inp.s_PlayerSlots_005e9188[slot * 0x4c];
                 ushort held = *(ushort*)(Inp.s_InputStateBase_00604a20 + pad * 0x10);
 
-                if ((*(ushort*)(character + 0x1fc4) & held) == 0)
+                if ((Input.CombatMask(*(ushort*)(character + 0x1fc4)) & held) == 0)
                 {
                     *(short*)(e + 0x12) = 0x46;
                     *(short*)(e + 0x10) = 3;

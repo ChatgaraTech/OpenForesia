@@ -87,7 +87,7 @@ autour d'un sprite.
 | `-Seconds <n>` | durée d'observation après validation (défaut 25) |
 | `-Shot` | capture la fenêtre en PNG à la fin |
 | `-Build` | reconstruit la solution d'abord |
-| `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT` `LCTRL` `START` `SELECT` `LALT` ; `TYPE:texte` et `KBENTER` pour la frappe clavier ; `HOLD:x`/`FREE:x` pour enfoncer et relâcher ; `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
+| `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT` `LCTRL` `START` `SELECT` `LALT` `LSHIFT` ; `TYPE:texte` et `KBENTER` pour la frappe clavier ; `HOLD:x`/`FREE:x` pour enfoncer et relâcher ; `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
 | `-Hold <jeton>` | touche maintenue **de la prise de focus jusqu'à la fin du run**, navigation du menu comprise. Indispensable pour les conditions que le jeu lit sur l'état *tenu* à un instant précoce : `-Then` ne démarre qu'après la validation du menu, et certains écrans sont atteints avant |
 | `-Maximize` | clique « agrandir » **dès que la fenêtre existe**, donc pendant l'écran-titre, avant le passage au menu. C'est le seul instant où ça teste quelque chose : c'est ce passage qui redimensionne la fenêtre (changement de mode d'affichage de `3dhelp`). Le verdict imprime la géométrie de fin de run, `[agrandie]` compris |
 | `-Trace A,B` | pose `OPENFORESIA_TRACE_A=1`, `OPENFORESIA_TRACE_B=1` (voir plus bas) |
@@ -196,8 +196,9 @@ Précédents : `Ordinal_795`, `FUN_0052a1e0`, `FUN_0052a280`.
 
 | jeton | action | masque manette | scancode | touche |
 |---|---|---|---|---|
-| `LCTRL` / `ENTER` | 7 | `0x8000` carré | 29 / 28 | Ctrl gauche, Entrée |
-| `ESC` / `LALT` | 6 | `0x4000` croix | 1 / 56 | **Échap**, Alt gauche |
+| `LCTRL` / `ENTER` | 7 | `0x8000` carré — `0x2000` depuis LB-058 | 29 / 28 | Ctrl gauche, Entrée — **plus rien dans un menu** depuis LB-058 |
+| `ESC` / `LALT` | 6 | `0x4000` croix — `0x8000` depuis LB-058 | 1 / 56 | **Échap**, Alt gauche — **valide** dans un menu depuis LB-058 |
+| `LSHIFT` | 5 | `0x2000` rond — `0x4000` depuis LB-057 | 42 | Maj gauche — **revient** dans un menu depuis LB-057 |
 | `SELECT` | 8 | `0x0001` select | 59 | F1 |
 | `START` | 11 | `0x0008` start | 60 | F2 |
 | `UP`/`RIGHT`/`DOWN`/`LEFT` | 12–15 | `0x10`/`0x20`/`0x40`/`0x80` | 72/77/80/75 | flèches |
@@ -211,6 +212,18 @@ avance, à PageUp. Ajoutées le 2026-08-25 pour atteindre les pages 1 à 5 du me
 Chaque action a deux liaisons clavier, la primaire dans `K00xx` et la secondaire dans `K01xx` — d'où
 les deux touches sur les deux premières lignes. **Préférer `ESC` à `LALT` pour la croix** : les deux
 donnent le même masque manette, mais Alt fait perdre le focus (voir le piège ci-dessus).
+
+**Depuis LB-057 (2026-09-30), croix et rond sont échangés dans le jeu** (`Engine/Input.cs`, sans
+interrupteur) : le mot de la manette porte `0x2000` pour la liaison croix et `0x4000` pour la
+liaison rond. Pour **revenir** dans un menu — le rôle de la croix d'origine —, c'est donc `LSHIFT`
+qu'il faut jouer, plus `ESC`. Les séquences plus bas qui ressortent par `ESC` datent d'avant l'échange.
+
+**Depuis LB-058 (même jour), la croix valide dans les menus** : carré et rond sont échangés à leur
+tour dans le mot de la manette, si bien que la liaison croix y porte `0x8000`. Dans un menu, **`ESC`
+valide, `LSHIFT` revient, `ENTER` et `LCTRL` ne font plus rien** ; la validation en boucle fermée
+de `-Entry` tape donc Échap. En combat rien ne bouge : les boutons de la fiche du personnage sont
+repassés par le même échange (`Input.CombatMask`). Les séquences plus bas qui valident par `ENTER`
+datent d'avant.
 
 Le tableau est **vérifié en jeu** : une trace posée sur le mot « tenu » (`0x604a20`) montre
 `0x0001` avec F1 enfoncé, `0x0008` avec F2, `0x8000` avec Entrée, `0x0040` avec Bas. Refaire cette

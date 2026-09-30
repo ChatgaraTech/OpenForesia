@@ -41,8 +41,21 @@ internal readonly record struct Entree(Source Source, int Appareil, int Element)
         0xA4 => "Alt", 0xA5 => "Alt Gr",
         >= 0x60 and <= 0x69 => $"pavé {vk - 0x60}",
         >= 0x70 and <= 0x87 => $"F{vk - 0x6F}",
-        _ => $"0x{vk:X2}",
+        _ => NomSelonLeClavier(vk) ?? $"0x{vk:X2}",
     };
+
+    /// <summary>
+    /// Le nom que Windows donne à la touche sur la disposition du clavier (« ù », « $ », « ^ »… en
+    /// AZERTY) : les touches de ponctuation n'ont pas de nom fixe. Null s'il n'en donne pas.
+    /// </summary>
+    private static unsafe string? NomSelonLeClavier(int vk)
+    {
+        uint scan = Natif.Win32.MapVirtualKey((uint)vk, 0);            // MAPVK_VK_TO_VSC
+        if (scan == 0) return null;
+        char* nom = stackalloc char[32];
+        int n = Natif.Win32.GetKeyNameText((int)(scan << 16), nom, 32);
+        return n > 0 ? new string(nom, 0, n) : null;
+    }
 
     private static readonly string[] BoutonsXInput =
         ["haut", "bas", "gauche", "droite", "Start", "Back", "stick gauche", "stick droit",

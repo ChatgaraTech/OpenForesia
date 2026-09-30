@@ -28,6 +28,9 @@
 //       un hote qui diffuse la mire et une note au lieu du jeu, toujours en pause (aucune touche
 //       simulee) ; il affiche le code a donner a --rejoindre
 //
+//   --manette [--duree <s>]
+//       l'ecran de configuration de la manette seul (celui de F1 en partie), sans reseau
+//
 //   --essai-upnp [--port <n>]
 //       trouve la box, lui fait ouvrir le port UDP, lit l'adresse publique, referme le port
 //
@@ -77,6 +80,8 @@ internal static class Program
             case "--essai-diffusion":
                 return EssaiDiffusion.Executer(args.Length > 1 && int.TryParse(args[1], out int d) ? d : 10,
                                                int.TryParse(Option(args, "--port"), out int p) ? p : Protocole.PortParDefaut);
+            case "--manette":
+                return EssaiManette.Executer(int.TryParse(Option(args, "--duree"), out int dm) ? dm : null);
             case "--essai-upnp":
                 return EssaiUpnp.Executer(int.TryParse(Option(args, "--port"), out int pu) ? pu : Protocole.PortParDefaut);
             case "--essai-son":

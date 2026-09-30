@@ -76,6 +76,8 @@ internal static unsafe partial class Win32
     [LibraryImport("user32.dll", EntryPoint = "LoadCursorW")] internal static partial IntPtr LoadCursor(IntPtr instance, IntPtr nom);
     [LibraryImport("user32.dll", SetLastError = true)] internal static partial uint SendInput(uint nombre, INPUT* entrees, int taille);
     [LibraryImport("user32.dll", EntryPoint = "GetKeyboardLayout")] internal static partial IntPtr GetKeyboardLayout(uint thread);
+    [LibraryImport("user32.dll", EntryPoint = "MapVirtualKeyW")] internal static partial uint MapVirtualKey(uint code, uint genre);
+    [LibraryImport("user32.dll", EntryPoint = "GetKeyNameTextW")] internal static partial int GetKeyNameText(int parametre, char* nom, int taille);
 
     [LibraryImport("kernel32.dll", EntryPoint = "GetModuleHandleW")] internal static partial IntPtr GetModuleHandle(IntPtr nom);
 

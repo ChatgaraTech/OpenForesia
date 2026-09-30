@@ -2107,7 +2107,7 @@ public static unsafe partial class Blaze
                     int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                     ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                    if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+                    if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
                     {
                         *(uint*)e |= 0x2000000;               // le bouton est relache
                     }
@@ -2541,7 +2541,7 @@ public static unsafe partial class Blaze
                     int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                     ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                    if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+                    if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
                     {
                         *(uint*)e |= 0x2000000;               // le bouton est relache
                     }
@@ -3544,7 +3544,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }
@@ -4154,7 +4154,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }
@@ -4388,7 +4388,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }
@@ -4581,7 +4581,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }

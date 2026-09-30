@@ -309,7 +309,7 @@ public static unsafe partial class Blaze
                     *slot = (*slot & 0xfeffffff) | 4;
                 }
 
-                if ((*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) == 0 && (*slot & 0x2000000) != 0)
+                if ((*(ushort*)pad & Input.CombatMask(*(ushort*)(perChar + 0x1fc4))) == 0 && (*slot & 0x2000000) != 0)
                 {
                     *slot &= 0xfffffffb;
                 }
@@ -350,7 +350,7 @@ public static unsafe partial class Blaze
                         return;
                     }
 
-                    if ((*(ushort*)(perChar + 0x1fc4) & *(ushort*)(pad + 2)) == 0) return;
+                    if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & *(ushort*)(pad + 2)) == 0) return;
                     if (s_Unknown_00566c84 == 0) return;
 
                     *(uint*)(s + 0x18) = 5;
@@ -407,7 +407,7 @@ public static unsafe partial class Blaze
                     }
                     else
                     {
-                        if ((*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) == 0)
+                        if ((*(ushort*)pad & Input.CombatMask(*(ushort*)(perChar + 0x1fc4))) == 0)
                         {
                             *slot = (held & 0xfffffffb) | 0x1000000;
                             *(uint*)(s + 0x18) = 0;
@@ -519,8 +519,8 @@ public static unsafe partial class Blaze
             // ------------------------------------------------ l'objet consommable
             case 4:
                 if ((*slot & 0x44) == 0
-                    && (*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) != 0
-                    && (*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc4)) != 0
+                    && (*(ushort*)pad & Input.CombatMask(*(ushort*)(perChar + 0x1fc4))) != 0
+                    && (*(ushort*)(pad + 2) & Input.CombatMask(*(ushort*)(perChar + 0x1fc4))) != 0
                     && s_Unknown_00566c84 != 0
                     && (*(uint*)(perChar + 0x140) & 0x400003c0) == 0)
                 {

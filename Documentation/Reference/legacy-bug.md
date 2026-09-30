@@ -2424,3 +2424,62 @@ nommée d'après le PID du jeu, le réveille et l'attend. Le jeu **engage** ces 
 lie les deux processus. Si la réserve échoue, le lanceur joue lui-même par l'ancien chemin, relance
 comprise ; sous débogueur, pas de lanceur. La contrainte des 24 bits reste entière — la supprimer
 demanderait de reprendre chaque endroit du jeu qui suit une adresse masquée (à chiffrer).
+
+## LB-057 — Croix et rond : leurs rôles inversés par rapport aux liaisons du joueur
+
+**Statut** : `Corrigé` le 2026-09-30 (legacy ++, confort du joueur, demande de Vincent). **Sans
+interrupteur**, par choix explicite de Vincent (« dans le jeu, point barre »).
+
+**Ce que faisait l'original** : `FoldKeyboardIntoPadState` écrit le bit `0x4000` pour ce qui est lié
+à l'action « croix » et `0x2000` pour « rond » (`s_PadButtonMasks_00564f18`, le format du pad
+PlayStation). Constat de Vincent, en jeu et en multijoueur : croix et rond agissent à l'inverse de
+ce qu'il a lié. Ce que le code établit par ailleurs : dans les menus, **carré valide et croix
+revient** (`test-protocol.md`, `WorldMapMenu.cs`), et rond fait avancer certains curseurs ; en jeu,
+les actions (attaque, saut, magie, action) sont **attribuées par personnage** aux mots `+0x1fc0` à
+`+0x1fca`, fixés à la création — la cause exacte de l'inversion ressentie n'est pas établie.
+
+**Correction** (`Engine/Input.cs`, `FoldKeyboardIntoPadState`, `SwapCrossAndCircle`) : le mot de
+manette de chaque joueur est écrit avec les bits `0x4000` et `0x2000` échangés, après le cumul des
+trois tables de liaisons (clavier principal, clavier secondaire, boutons de manette). Ce qui est lié
+à « croix » agit comme le rond de l'original, et inversement — partout où le jeu lit la manette :
+menus, combat, les quatre joueurs, les touches fantômes du multijoueur comprises. Les liaisons
+elles-mêmes (`[Controls]`, l'écran des touches des Options) ne changent pas.
+
+**Conséquence pour les essais** : le jeton `ESC` de `playtest.ps1` (lié à croix) donne désormais
+`0x2000`, et un jeton lié à rond donnerait `0x4000` — « revenir » dans un menu passe par la touche
+liée à rond. La validation (carré, `ENTER`) n'est pas touchée.
+
+## LB-058 — La croix valide dans les menus, comme sur PlayStation
+
+**Statut** : `Corrigé` le 2026-09-30 (legacy ++, confort du joueur, demande de Vincent). **Sans
+interrupteur**, comme LB-057 ; **les menus seulement**, choix explicite de Vincent : le combat ne
+bouge pas.
+
+**Ce que faisait l'original** : les menus lisent leurs boutons **en dur** dans le mot de manette —
+`0x8000` (carré) valide, `0x4000` (croix) revient (`WorldMapMenu.cs`, `QuickMenu.cs`,
+`UiWindow.cs`, `SaveSlots.cs`, `Inventory.cs`, `WorldMapDepot.cs`, les dialogues de
+`WorldMapScript.cs`…, des dizaines de sites, certains en lecture d'octet). Le combat, lui, ne lit
+jamais un bit en dur : il croise le mot avec les **masques de la fiche du personnage** — `+0x1fc0`
+attaque (carré par défaut), `+0x1fc2` saut (croix), `+0x1fc4` action et magie (rond), `+0x1fca` menu
+rapide (triangle). Sur PlayStation, la croix valide.
+
+**Correction** (`Engine/Input.cs`) : après l'échange de LB-057, `SwapSquareAndCircle` échange à son
+tour les bits `0x8000` et `0x2000` du mot de chaque joueur. Au total, dans les menus : la liaison
+croix porte `0x8000` et **valide**, la liaison rond porte `0x4000` et **revient**, la liaison carré
+porte `0x2000`. Pour que le combat n'en voie rien, **chaque lecture d'un masque de la fiche** passe
+par `Input.CombatMask`, le même échange : un échange étant son propre inverse,
+`mot & CombatMask(masque)` vaut exactement ce que donnait LB-057 seul. La fiche n'est jamais
+modifiée (les sauvegardes restent celles de l'original). Les sites : `grep -rn CombatMask` — les
+Écoles de magie, `SpellCasting.cs`, `PartyMemberStep.cs`, `QuickMenu.cs`, et les deux écrans
+legacy ++ qui lisent le bouton d'action (`EcranMenu.cs`, `MarchandsHub.cs`). Les seules écritures
+restantes des masques (`WorldMapMenu.cs`, remappage inatteignable ; la création ; `DebugParty.cs`)
+écrivent des valeurs de fiche, pas des lectures, et restent telles quelles. Les tests en dur qui
+masquent `0xa000` (tenir une porte) ou `0xf000` (n'importe quel bouton de face) sont invariants par
+l'échange.
+
+**Au clavier** : avec les liaisons par défaut, **Échap (croix) valide** désormais dans les menus,
+Maj gauche (rond) revient, et **Entrée (carré) n'y fait plus rien**. À revoir si un joueur au
+clavier doit être servi : il suffirait de changer les liaisons par défaut, pas le code.
+
+**Conséquence pour les essais** : `playtest.ps1` valide `-Entry` en tapant Échap ; dans `-Then`,
+`ESC` valide et `LSHIFT` revient (`test-protocol.md`).

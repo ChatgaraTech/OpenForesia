@@ -18,7 +18,6 @@ internal static unsafe partial class ModeInvite
     [LibraryImport("winmm.dll")] private static partial uint timeEndPeriod(uint ms);
 
     private const long PasManette = 1000 / 120, PasBonjour = 500, PasPresence = 1000, PasDemandeCle = 250, SilenceHote = 3000;
-    private const int Echap = 0x1B;
 
     /// <summary>
     /// Les options de l'invité. Les trois dernières servent aux essais sans personne devant : aucune
@@ -42,12 +41,12 @@ internal static unsafe partial class ModeInvite
         using var fenetre = new FenetreInvite("OpenForesia — invité");
         try
         {
-            ConfigManette? config = options.SansManette ? new ConfigManette()
-                                  : options.Reconfigurer ? null : ConfigManette.Charger();
-            if (config == null)
+            ConfigManette? chargee = options.SansManette ? new ConfigManette() : ConfigManette.Charger();
+            bool premiere = chargee == null;
+            ConfigManette config = chargee ?? new ConfigManette();
+            if (!options.SansManette && (premiere || options.Reconfigurer))
             {
-                config = Configurer(fenetre);
-                if (config == null) return 0;                    // fenêtre fermée pendant la configuration
+                if (!Configurer(fenetre, config, toutEnchainer: premiere)) return 0;   // fenêtre fermée
                 config.Enregistrer();
             }
             using var connexion = new Connexion(invitation);
@@ -62,56 +61,30 @@ internal static unsafe partial class ModeInvite
     // ---- la configuration ------------------------------------------------------------------------
 
     /// <summary>
-    /// Les quatorze boutons, un par un : l'entrée qui s'active (et n'était pas active juste avant) est
-    /// retenue. Échap laisse le bouton sans entrée. Une entrée déjà prise par un autre bouton est
-    /// ignorée. Rend null si la fenêtre est fermée.
+    /// L'écran de la manette (celui de F1), avant de rejoindre : à la première connexion, il enchaîne
+    /// les quatorze boutons (« Tout reconfigurer ») ; pour une reconfiguration, il s'ouvre sur la
+    /// configuration existante. On continue en le fermant (« Continuer » ou F1). Faux si la fenêtre a
+    /// été fermée.
     /// </summary>
-    private static ConfigManette? Configurer(FenetreInvite fenetre)
+    private static bool Configurer(FenetreInvite fenetre, ConfigManette config, bool toutEnchainer)
     {
-        var config = new ConfigManette();
-        var avant = new HashSet<Entree>();
+        var ecran = new EcranManette(config, libelleFermer: "Continuer");
+        fenetre.Ecran = ecran;
+        ecran.Basculer();
+        if (toutEnchainer) ecran.ToutReconfigurer();
+        fenetre.Redessiner();
+
         var actives = new HashSet<Entree>();
-
-        for (int i = 0; i < Pad.Boutons.Length; i++)
+        while (ecran.Ouvert)
         {
-            Pad.Bouton b = Pad.Boutons[i];
-            fenetre.Texte($"Configuration de la manette — {i + 1} / {Pad.Boutons.Length}\n\n"
-                        + $"Appuie sur le bouton qui sera\n{b.Nom}\n\n(Échap : aucun)");
-
-            Entree? choisie = null;
-            bool aucun = false;
-            Entrees.Relever(avant, fenetre.Handle);
-            var auRepos = new HashSet<Entree>(avant);           // ce qui était actif avant tout appui (un axe décentré au repos)
-            while (choisie == null && !aucun)
-            {
-                if (!fenetre.Pomper()) return null;
-                Thread.Sleep(5);
-                Entrees.Relever(actives, fenetre.Handle);
-                Entree? nouvelle = actives.Where(e => !avant.Contains(e))
-                                          .OrderBy(e => e.Source switch { Source.XInput => 0, Source.Joystick => 1, _ => 2 })
-                                          .Cast<Entree?>().FirstOrDefault();
-                avant.Clear();
-                avant.UnionWith(actives);
-                if (nouvelle is not { } e) continue;
-                if (e.Source == Source.Clavier && e.Element == Echap) aucun = true;
-                else if (!config.Liaisons.ContainsValue(e)) choisie = e;
-            }
-
-            if (choisie is { } c)
-            {
-                config.Liaisons[b.Nom] = c;
-                fenetre.Texte($"{b.Nom} = {c.Libelle}");
-            }
-
-            // Attendre que tout soit revenu au repos, pour qu'un appui ne serve pas deux boutons.
-            do
-            {
-                if (!fenetre.Pomper()) return null;
-                Thread.Sleep(5);
-                Entrees.Relever(actives, fenetre.Handle);
-            } while (actives.Any(e => !auRepos.Contains(e)));
+            if (!fenetre.Pomper()) return false;
+            Entrees.Relever(actives, fenetre.Handle);
+            ecran.Tour(actives);
+            if (ecran.AChange) { ecran.AChange = false; fenetre.Redessiner(); }
+            Thread.Sleep(8);
         }
-        return config;
+        fenetre.Ecran = null;
+        return true;
     }
 
     // ---- le jeu ----------------------------------------------------------------------------------
@@ -119,6 +92,8 @@ internal static unsafe partial class ModeInvite
     private static int Jouer(FenetreInvite fenetre, ConfigManette config, Connexion connexion, Options options)
     {
         using var decodeur = new DecodeurH264();
+        var ecran = new EcranManette(config);
+        fenetre.Ecran = ecran;
         SortieSon? son = null;
         try { son = new SortieSon(); }
         catch (Exception e) { Console.Error.WriteLine($"[INVITÉ] pas de sortie son ({e.Message}) : le jeu sera muet"); }
@@ -214,7 +189,10 @@ internal static unsafe partial class ModeInvite
                 prochaineManette = t + PasManette;
                 Entrees.Relever(actives, fenetre.Handle);
                 Array.Copy(historique, 0, historique, 1, 3);
-                historique[0] = config.Mot(actives);
+                // L'écran de la manette ouvert (F1) : il voit les entrées, le jeu ne reçoit que des boutons relâchés.
+                ecran.Tour(actives);
+                historique[0] = ecran.Ouvert ? (ushort)0 : config.Mot(actives);
+                if (ecran.AChange) { ecran.AChange = false; fenetre.Redessiner(); }
                 for (int i = 0; i < 4; i++) BinaryPrimitives.WriteUInt16LittleEndian(mots[(2 * i)..], historique[i]);
                 connexion.Envoyer(Genre.Manette, mots);
             }
@@ -236,7 +214,7 @@ internal static unsafe partial class ModeInvite
             if (image)
                 fenetre.Etat(perdu ? $"Joueur {joueur} — connexion perdue, reconnexion…"
                            : pause ? $"Joueur {joueur} — en pause : la fenêtre du jeu n'est plus au premier plan chez l'hôte"
-                           : $"Joueur {joueur}" + (latence >= 0 ? $" — {latence} ms" : ""),
+                           : $"Joueur {joueur}" + (latence >= 0 ? $" — {latence} ms" : "") + "   ·   F1 : manette",
                     alerte: pause || perdu);
 
             Thread.Sleep(1);

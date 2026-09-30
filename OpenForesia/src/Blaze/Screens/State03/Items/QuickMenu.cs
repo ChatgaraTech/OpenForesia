@@ -91,7 +91,7 @@ public static unsafe partial class Blaze
         byte state = perChar[0x2be];
         int kind = (sbyte)s_SpeechIconIndex_0056a851[(state & 0xf) + (perChar[0x150] & 7) * 9];
 
-        ushort openMask = *(ushort*)(perChar + 0x1fca);
+        ushort openMask = Input.CombatMask(*(ushort*)(perChar + 0x1fca));
         byte* target = pad;                    // Ghidra: puVar7 / eax, l'emplacement qu'on equipera
         bool close = false;                    // Ghidra: LAB_005304f7, atteint des deux etages
 
@@ -407,7 +407,7 @@ public static unsafe partial class Blaze
         }
 
         // ------------------------------------------------------ la queue : le curseur de categorie
-        ushort menuHeld = (ushort)(*(ushort*)pad & *(ushort*)(perChar + 0x1fca));
+        ushort menuHeld = (ushort)(*(ushort*)pad & Input.CombatMask(*(ushort*)(perChar + 0x1fca)));
 
         // On ne change de categorie que si le bouton est tenu, ou si l'anneau n'est pas ouvert.
         if (menuHeld != 0 || (perChar[0x2be] & 0x80) == 0)
