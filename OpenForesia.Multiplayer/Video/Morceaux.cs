@@ -49,6 +49,9 @@ internal sealed class Recolleur
     /// <summary>Vrai depuis une perte, jusqu'à la prochaine image clé complète : il faut en demander une.</summary>
     internal bool AttendCle => _attendCle;
 
+    /// <summary>Les images restées incomplètes (un morceau perdu en route), depuis le début.</summary>
+    internal int Perdues { get; private set; }
+
     /// <summary>Ajoute un morceau ; rend l'image complète quand c'en est le dernier, et qu'elle peut être décodée.</summary>
     internal byte[]? Ajouter(ReadOnlySpan<byte> contenu)
     {
@@ -61,7 +64,7 @@ internal sealed class Recolleur
         if (numero != _numero || _morceaux.Count == 0)
         {
             if ((int)(numero - _numero) < 0 && _morceaux.Count > 0) return null;       // une image plus ancienne, en retard
-            if (_morceaux.Count > 0 && _recus < _total) _attendCle = true;               // la précédente restera incomplète
+            if (_morceaux.Count > 0 && _recus < _total) { _attendCle = true; Perdues++; }  // la précédente restera incomplète
             _numero = numero;
             _total = total;
             _cle = cle;

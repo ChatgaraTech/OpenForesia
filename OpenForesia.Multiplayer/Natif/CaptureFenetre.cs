@@ -222,21 +222,68 @@ internal sealed unsafe partial class CaptureFenetre : IDisposable
         return true;
     }
 
-    /// <summary>Le rectangle client de la fenêtre dans l'image capturée, borné à l'image.</summary>
+    /// <summary>
+    /// Le rectangle client de la fenêtre dans l'image capturée, borné à l'image.
+    ///
+    /// Tout se mesure en pixels physiques, ceux de la capture et du cadre DWM. Le jeu ne déclare
+    /// aucune conscience de la résolution : sur un écran à 125 ou 150 %, Windows l'étire, et
+    /// GetClientRect rend ses coordonnées à lui (logiques), plus petites que la capture. Le premier
+    /// jet les mélangeait aux coordonnées physiques du cadre, et la zone ne tombait plus sur l'image
+    /// du jeu. Les deux coins du client passent donc par ClientToScreen, sur un fil déclaré
+    /// « par moniteur » le temps de l'appel : Windows convertit alors en pixels physiques.
+    /// Une fenêtre sans cadre (le jeu en plein écran ou sans bordure) n'a rien à retirer : toute
+    /// l'image est la zone client.
+    /// </summary>
     private bool ZoneClient(Taille contenu, out Boite zone)
     {
         zone = default;
         Rect cadre, client;
-        Point origine = default;
+        Point origine = default, coin;
         if (DwmGetWindowAttribute(Fenetre, CadreEtendu, &cadre, (uint)sizeof(Rect)) < 0) return false;
-        if (!GetClientRect(Fenetre, &client) || !ClientToScreen(Fenetre, &origine)) return false;
 
-        int x = Math.Max(0, origine.X - cadre.Gauche), y = Math.Max(0, origine.Y - cadre.Haut);
-        int droite = Math.Min(contenu.Largeur, x + client.Droite), bas = Math.Min(contenu.Hauteur, y + client.Bas);
+        int x, y, droite, bas;
+        if ((GetWindowLongW(Fenetre, GwlStyle) & (WsCaption | WsThickFrame)) == 0)
+        {
+            (x, y, droite, bas) = (0, 0, contenu.Largeur, contenu.Hauteur);
+        }
+        else
+        {
+            IntPtr avant = SetThreadDpiAwarenessContext(ParMoniteurV2);
+            try
+            {
+                if (!GetClientRect(Fenetre, &client)) return false;
+                coin = new Point { X = client.Droite, Y = client.Bas };
+                if (!ClientToScreen(Fenetre, &origine) || !ClientToScreen(Fenetre, &coin)) return false;
+                if (DwmGetWindowAttribute(Fenetre, CadreEtendu, &cadre, (uint)sizeof(Rect)) < 0) return false;
+            }
+            finally { if (avant != IntPtr.Zero) SetThreadDpiAwarenessContext(avant); }
+            x = Math.Max(0, origine.X - cadre.Gauche);
+            y = Math.Max(0, origine.Y - cadre.Haut);
+            droite = Math.Min(contenu.Largeur, coin.X - cadre.Gauche);
+            bas = Math.Min(contenu.Hauteur, coin.Y - cadre.Haut);
+        }
         if (droite - x < 16 || bas - y < 16) return false;                 // réduite, ou pas encore dessinée
         zone = new Boite { Gauche = (uint)x, Haut = (uint)y, Avant = 0, Droite = (uint)droite, Bas = (uint)bas, Arriere = 1 };
+
+        // Au journal, une fois par géométrie : de quoi comprendre une image mal cadrée chez l'ami.
+        var releve = (contenu.Largeur, contenu.Hauteur, x, y, droite, bas);
+        if (releve != _dernierReleve)
+        {
+            _dernierReleve = releve;
+            Console.Out.WriteLine($"[HÔTE] capture : image {contenu.Largeur} × {contenu.Hauteur}, cadre DWM "
+                + $"({cadre.Gauche}, {cadre.Haut}, {cadre.Droite}, {cadre.Bas}), zone gardée ({x}, {y}) – ({droite}, {bas}), "
+                + $"style 0x{GetWindowLongW(Fenetre, GwlStyle):X8}, {GetDpiForWindow(Fenetre)} ppp pour le jeu");
+        }
         return true;
     }
+
+    private (int, int, int, int, int, int) _dernierReleve;
+
+    [LibraryImport("user32.dll")] private static partial int GetWindowLongW(IntPtr hwnd, int index);
+    [LibraryImport("user32.dll")] private static partial IntPtr SetThreadDpiAwarenessContext(IntPtr contexte);
+    [LibraryImport("user32.dll")] private static partial uint GetDpiForWindow(IntPtr hwnd);
+    private const int GwlStyle = -16, WsCaption = 0x00C00000, WsThickFrame = 0x00040000;
+    private static readonly IntPtr ParMoniteurV2 = -4;                  // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 
     private static void Fermer(void* objet)
     {

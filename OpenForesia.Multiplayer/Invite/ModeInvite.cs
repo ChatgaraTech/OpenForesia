@@ -99,6 +99,9 @@ internal static unsafe partial class ModeInvite
         catch (Exception e) { Console.Error.WriteLine($"[INVITÉ] pas de sortie son ({e.Message}) : le jeu sera muet"); }
         uint dernierSon = 0;
         var recolleur = new Recolleur();
+        var stats = new Statistiques();
+        fenetre.Statistiques = stats;
+        long dernierRafraichissement = 0;
         byte[]? bgra = null;
         bool image = false;                              // une image est déjà arrivée
         long derniereDemandeCle = long.MinValue / 2;
@@ -141,9 +144,11 @@ internal static unsafe partial class ModeInvite
                         if (son.Jouer(p.Contenu[4..])) sonsJoues++; else sonsJetes++;
                         break;
                     case Genre.Image when joueur > 0:
+                        stats.Recu(p.Contenu.Length);
                         byte[]? h264 = recolleur.Ajouter(p.Contenu);
                         if (h264 == null) break;
                         recues++;
+                        double debutDecodage = montre.Elapsed.TotalMilliseconds;
                         decodeur.Decoder(h264, (nv12, l, h) =>
                         {
                             if (bgra == null || bgra.Length != l * h * 4) bgra = new byte[l * h * 4];
@@ -154,6 +159,10 @@ internal static unsafe partial class ModeInvite
                             }
                             image = true;
                             decodees++;
+                            double fin = montre.Elapsed.TotalMilliseconds;
+                            stats.Image(fin, fin - debutDecodage);
+                            stats.LargeurFlux = l;
+                            stats.HauteurFlux = h;
                         });
                         break;
                 }
@@ -214,8 +223,23 @@ internal static unsafe partial class ModeInvite
             if (image)
                 fenetre.Etat(perdu ? $"Joueur {joueur} — connexion perdue, reconnexion…"
                            : pause ? $"Joueur {joueur} — en pause : la fenêtre du jeu n'est plus au premier plan chez l'hôte"
-                           : $"Joueur {joueur}" + (latence >= 0 ? $" — {latence} ms" : "") + "   ·   F1 : manette",
+                           : $"Joueur {joueur}" + (latence >= 0 ? $" — {latence} ms" : "")
+                             + "   ·   F1 : manette   ·   F2 : statistiques   ·   F3 : masquer ce bandeau",
                     alerte: pause || perdu);
+
+            // F2 : les chiffres du flux. Redessinés aussi quand l'image se fige, pour qu'ils le montrent.
+            stats.Tour(montre.Elapsed.TotalMilliseconds);
+            stats.Latence = latence;
+            stats.Perdues = recolleur.Perdues;
+            stats.DemandesCle = demandesCle;
+            stats.SonsJoues = sonsJoues;
+            stats.SonsJetes = sonsJetes;
+            stats.Reconnexions = reconnexions;
+            if (image && fenetre.StatistiquesVisibles && t - dernierRafraichissement >= 250 && fenetre.Ecran is not { Ouvert: true })
+            {
+                dernierRafraichissement = t;
+                fenetre.Redessiner();
+            }
 
             Thread.Sleep(1);
         }

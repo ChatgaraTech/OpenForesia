@@ -16,7 +16,7 @@ Lancé sans rien (le raccourci « OpenForesia Multijoueur ») : l'**accueil**.
 
 - **Héberger** : la fenêtre de l'hôte cherche la box (UPnP, à cocher) et lui fait ouvrir le port
   UDP 47200, affiche l'adresse publique et deux **codes d'invitation** (internet, réseau local) avec
-  un bouton « Copier ». On choisit la **qualité de l'image** (Haute, Normale, Économe — le débit
+  un bouton « Copier ». On choisit la **qualité de l'image** (Haute par défaut, Normale, Économe — le débit
   montant par ami), puis « Lancer la partie ». La fenêtre reste ouverte pendant la partie et dit
   qui est connecté ; elle referme le port à la fin.
 - **Rejoindre** : on colle le code reçu ; la première fois, l'écran de la manette s'ouvre et enchaîne les
@@ -24,6 +24,9 @@ Lancé sans rien (le raccourci « OpenForesia Multijoueur ») : l'**accueil**.
   **F1**, à tout moment, ouvre l'écran de la manette façon émulateur : une manette PlayStation
   dessinée, une case par bouton — clic pour changer, clic droit pour effacer, « Tout reconfigurer »,
   et ce qu'on presse s'allume. Pendant qu'il est ouvert, le personnage de l'ami ne reçoit rien.
+  **F2** montre la qualité du flux : images par seconde et pire écart, débit, ping, taille du flux,
+  durée du décodage, pertes, son, et deux courbes (l'écart entre deux images sur 3 s, le débit sur
+  30 s). **F3** cache le bandeau du haut — il revient de lui-même pour une pause ou une coupure.
 
 Deux limites à connaître : **la fenêtre du jeu doit rester au premier plan chez l'hôte** (les amis
 sont mis en pause sinon), et une box derrière une autre (double NAT : 4G, certaines fibres) ne peut
@@ -50,6 +53,10 @@ pas héberger pour internet.
   enfants**.
 - **L'image** (D3) : l'encodeur H.264 logiciel de Windows, synchrone, basse latence — un
   **booléen COM** (`VT_BOOL`), réglé **avant** les formats, sans quoi il garde six images en réserve.
+  Avant l'encodage, la capture est **recadrée** au 4:3 du flux (en fenêtre sans bordure, la
+  fenêtre du jeu fait tout l'écran, 16:9, bandes noires comprises) puis **réduite par un filtre
+  triangle** (`Video/Conversion.cs`) — au plus proche voisin, les traits fins des textes sautaient.
+  Chez l'ami, la fenêtre s'ouvre à la taille exacte du flux (1:1, la seule image parfaitement nette).
 - **Le son** (D4) : réserve de 40 ms chez l'ami, bornée à 80 ms.
 - **Le réseau** (D5, D6) : un protocole UDP à nous (`Commun/Protocole.cs`), chaque paquet scellé en
   AES-GCM (`Commun/Chiffrement.cs`), le nonce unique par un seul compteur pour tous les fils de

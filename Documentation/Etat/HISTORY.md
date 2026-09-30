@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-30
 
+- feat : multijoueur — qualité d’image « Haute » (1280 × 960, 8 Mbit/s par ami) par défaut, au lieu de « Normale »
+
+- fix : multijoueur — la zone capturée chez l'hôte mêlait les pixels physiques du cadre DWM et les coordonnées logiques du jeu (qui ne déclare aucune conscience de la résolution, et que Windows étire à 125/150 %) ; les deux coins passent par `ClientToScreen` sur un fil « par moniteur », une fenêtre sans cadre est prise entière, et la géométrie retenue s'écrit au journal (`[HÔTE] capture : …`)
+- fix : multijoueur — l'image de l'invité était floue et mal cadrée : l'hôte envoyait tout l'écran 16:9 (le jeu 4:3 n'occupait que 720 × 540 du flux 960 × 720), réduit au plus proche voisin (les traits fins des textes sautaient) avec une chrominance prise sur un pixel sur quatre ; désormais recadrage au 4:3, filtre triangle, chrominance moyennée. Chez l'invité, zone cliente exactement à la taille du flux (elle était un peu plus petite, cadre compris), réduction en HALFTONE
+- feat : multijoueur — F2 chez l'invité : la qualité du flux (images/s, pire écart, débit, ping, décodage, pertes, son) et deux courbes ; F3 cache le bandeau du haut. Tout se compose en mémoire avant l'écran (plus de clignotement)
 - feat : LB-058 — la croix valide dans les menus, comme sur PlayStation (rond revient), sans interrupteur ; le combat ne bouge pas : chaque lecture des boutons de la fiche du personnage repasse par le même échange (`Input.CombatMask`). `playtest.ps1` valide désormais par Échap
 - fix : LB-057 — croix et rond échangés dans le jeu, sans interrupteur (demande de Vincent : leurs rôles étaient inversés par rapport à ses liaisons) ; `playtest.ps1` gagne le jeton `LSHIFT` (rond), qui revient désormais dans un menu à la place d'`ESC`
 - feat : multijoueur — la première configuration de la manette passe par l'écran façon émulateur (il enchaîne les quatorze boutons, « Continuer » quand c'est fini) ; « Reconfigurer ma manette » l'ouvre sur la configuration existante. L'ancien déroulé en texte est retiré
