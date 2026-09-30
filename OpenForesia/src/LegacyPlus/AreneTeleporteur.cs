@@ -1,14 +1,15 @@
 // =====================================================================
-// LP-012 — le téléporteur du hub : son dessin, la question à son approche, puis le menu de l'arène.
+// LP-012 — le téléporteur du hub : son dessin, et le menu de l'arène à son approche.
 //
 // Hors reconstruction (legacy ++, openspec/changes/add-legacy-plus-arena, design D5 et D8). Le
 // téléporteur se tient en (−766, 1235) dans le hub (relevé de Vincent, 2026-09-28). Un membre debout
-// qui entre dans son rayon se voit demander « Ce téléporteur semble dangereux, on y va ? » ; la
-// question ne se repose qu'une fois le membre ressorti du rayon (de quelques unités de plus : pas de
-// question en boucle au bord). Oui ouvre le menu, tenu par CE membre seul :
+// qui entre dans son rayon ouvre le menu (sans question préalable depuis le 2026-09-30, Vincent) ;
+// il ne se rouvre qu'une fois le membre ressorti du rayon (de quelques unités de plus : pas de
+// menu en boucle au bord). Le menu est tenu par CE membre seul :
 //
 //   1. le mode — un programme de l'arène (AreneDirecteur.Programmes) ;
-//   2. le palier, de 1 à 10 — PV et dégâts du boss × palier ;
+//   2. le palier — Normal, Difficile, Très difficile, Impossible : PV × 1 à 4, dégâts reçus × 1 à 2,5,
+//      bourse × 1 à 4 (AreneDirecteur.Paliers), décrit sous la liste ;
 //   3. la confirmation, par la question de la page 2.
 //
 // Menu revient d'une page, puis ferme.
@@ -27,11 +28,15 @@
 //
 //   page entière en (960, 256) — à droite des marchands     palette ligne 276     entrée 0xe0
 //
+// Les réceptions de l'auberge dessinent le même modèle (LP-009, le téléporteur vers le hub), avec la
+// même page, la même palette et la même entrée : libres dans le relevé VRAM de la réception 0.
+//
 // La hauteur suit celle de 5/9 au-dessus du sol : 55 de plus que les piliers, posés au sol (400).
 //
 // Ne tire aucun nombre aléatoire.
 // =====================================================================
 
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Jeu = OpenForesia.Blaze.Blaze;
 using Resources = OpenForesia.Blaze.Resources;
@@ -44,12 +49,10 @@ internal static unsafe class AreneTeleporteur
     /// <summary>La place du téléporteur dans le hub, en unités de formations.csv (relevé de Vincent).</summary>
     internal const int X = -766, Z = 1235;
 
-    /// <summary>Le rayon de la question, et celui qu'il faut repasser pour qu'elle se repose.</summary>
+    /// <summary>Le rayon du déclenchement, et celui qu'il faut repasser pour qu'il se réarme.</summary>
     private const int Rayon = 80, RayonSortie = Rayon + 30;
 
-    private const string Question = "Ce teleporteur semble dangereux, on y va ?";
-
-    /// <summary>Par membre (0 à 3) : déjà questionné, et pas encore ressorti du rayon.</summary>
+    /// <summary>Par membre (0 à 3) : déjà déclenché, et pas encore ressorti du rayon.</summary>
     private static readonly bool[] s_Questionne = new bool[4];
 
     internal static void Installer()
@@ -68,7 +71,7 @@ internal static unsafe class AreneTeleporteur
         Coutures.ListeDApparition = (indice, l) =>
         {
             uint* r = liste(indice, l);
-            if (indice != 0xff && EstLeHub()) Preparer();
+            if (indice != 0xff && EstLeHub()) PreparerGreffe();
             return r;
         };
 
@@ -76,7 +79,7 @@ internal static unsafe class AreneTeleporteur
         Coutures.DessinSurImpression = (otBase, curseur) =>
         {
             curseur = dessin(otBase, curseur);
-            return EstLeHub() && s_Pret ? Dessiner(otBase, curseur) : curseur;
+            return EstLeHub() && s_Pret ? Dessiner(otBase, curseur, s_Placement) : curseur;
         };
 
         Console.Error.WriteLine($"[ARENE] téléporteur en ({X}, {Z}), {AreneDirecteur.Programmes.Length} programme(s)");
@@ -90,7 +93,10 @@ internal static unsafe class AreneTeleporteur
     private const int ZoneSource = 5, SousZoneSource = 9;
     private const int IndiceModele = 6, TextureModele = 1;
     private const uint ParametreModele = 0x000c;              // mot +0x1e de l'enregistrement : la palette 12
-    private const int Sol = 400, Hauteur = 55;                // le sol du hub ; le téléporteur, comme en 5/9
+    private const int Sol = 400;                              // le sol du hub
+
+    /// <summary>La hauteur du téléporteur au-dessus du sol, comme en 5/9 (aussi dans les réceptions, LP-009).</summary>
+    internal const int Hauteur = 55;
     private const int AvanceOt = 4;                           // emplacements d'ordering table, vers la caméra
 
     private const int PageX = 960, PageY = 256, Palette = 276, Entree = 0xe0;
@@ -100,12 +106,15 @@ internal static unsafe class AreneTeleporteur
     private static int* s_Placement;       // son bloc de placement
     private static bool s_Pret;
 
-    /// <summary>À chaque peuplement du hub : le répertoire et le modèle une fois, la texture chaque fois.</summary>
-    private static void Preparer()
+    /// <summary>
+    /// À chaque peuplement du hub — et d'une réception, dont le téléporteur mène au hub (LP-009) : le
+    /// répertoire et le modèle une fois, la texture chaque fois. Vrai si le modèle peut être dessiné.
+    /// </summary>
+    internal static bool PreparerGreffe()
     {
         try
         {
-            if (s_SousZone == null && !Charger()) return;
+            if (s_SousZone == null && !Charger()) return false;
             EnvoyerTexture();
             s_Pret = true;
         }
@@ -114,6 +123,21 @@ internal static unsafe class AreneTeleporteur
             s_Pret = false;
             Console.Error.WriteLine($"[ARENE] téléporteur impossible à greffer ({ex.GetType().Name} : {ex.Message}) — pas de dessin");
         }
+        return s_Pret;
+    }
+
+    /// <summary>Un bloc de placement du modèle en (x, y, z), unités de formations.csv, sans rotation.</summary>
+    internal static int* NouveauPlacement(int x, int y, int z)
+    {
+        int* placement = (int*)NativeMemory.AllocZeroed(0x20);
+        placement[0] = x << 12;
+        placement[1] = y << 12;
+        placement[2] = z << 12;
+        ((ushort*)placement)[6] = 0x1000;                        // +0x0c..0x10 : échelles
+        ((ushort*)placement)[7] = 0x1000;
+        ((ushort*)placement)[8] = 0x1000;
+        placement[7] = 0xffffff;                                 // +0x1c : la couleur
+        return placement;
     }
 
     private static byte* Lire(int* entree)
@@ -148,14 +172,7 @@ internal static unsafe class AreneTeleporteur
         s_Modele = ((byte**)modeles)[IndiceModele];
         s_Modele[0x3e] = Entree / 4;
 
-        s_Placement = (int*)NativeMemory.AllocZeroed(0x20);
-        s_Placement[0] = X << 12;
-        s_Placement[1] = (Sol + Hauteur) << 12;
-        s_Placement[2] = Z << 12;
-        ((ushort*)s_Placement)[6] = 0x1000;                      // +0x0c..0x10 : échelles
-        ((ushort*)s_Placement)[7] = 0x1000;
-        ((ushort*)s_Placement)[8] = 0x1000;
-        s_Placement[7] = 0xffffff;                               // +0x1c : la couleur
+        s_Placement = NouveauPlacement(X, Sol + Hauteur, Z);
 
         s_SousZone = sousZone;
         Console.Error.WriteLine($"[ARENE] téléporteur : répertoire de {ZoneSource}/{SousZoneSource} relu, {n} modèles, modèle {IndiceModele} 0x{*(uint*)(s_Modele + 0x3c):x8}");
@@ -207,56 +224,60 @@ internal static unsafe class AreneTeleporteur
     /// d'affichage APRÈS le décor, il passerait sinon sous le sol à profondeur égale (le dernier entré
     /// dans un emplacement est dessiné le premier).
     /// </summary>
-    private static uint* Dessiner(uint* otBase, uint* curseur)
+    internal static uint* Dessiner(uint* otBase, uint* curseur, int* placement)
     {
         int avant = Jeu.Mem.s_Unknown_00564a4c;
         Jeu.Mem.s_Unknown_00564a4c = 1;
-        curseur = Jeu.Mdl.DrawDepthSortedModel(otBase - AvanceOt, curseur, s_Modele, s_Placement, ParametreModele);
+        curseur = Jeu.Mdl.DrawDepthSortedModel(otBase - AvanceOt, curseur, s_Modele, placement, ParametreModele);
         Jeu.Mem.s_Unknown_00564a4c = avant;
         return curseur;
     }
 
-    // ---- la question -------------------------------------------------------------------------------
+    // ---- l'approche -------------------------------------------------------------------------------
 
     /// <summary>
-    /// Un membre debout, sans boîte ouverte, qui entre dans le rayon : la question. La même forme
-    /// que la porte du hub et les marchands (membre debout, aucune boîte), sans bouton à presser.
+    /// Un membre du hub qui entre dans le rayon du téléporteur : le menu de l'arène, directement.
+    /// Jusqu'au 2026-09-29, une question le précédait (« Ce teleporteur semble dangereux, on y va ? ») ;
+    /// retirée à la demande de Vincent (2026-09-30).
     /// </summary>
     private static void Approcher(uint* membre, byte* perChar, byte* descripteur)
     {
+        if (!EntreDansLeRayon(membre, descripteur, X, Z, s_Questionne)) return;
+        Console.Error.WriteLine($"[ARENE] J{(((byte*)membre)[8] & 3) + 1} approche du téléporteur");
+        EcranMenu.Ouvrir(membre, perChar, PageModes());
+    }
+
+    /// <summary>
+    /// Un membre debout, sans boîte ouverte, qui entre dans le rayon d'un téléporteur en (x, z) : vrai
+    /// une seule fois, jusqu'à ce qu'il ressorte du rayon (<paramref name="questionne"/>, un drapeau
+    /// par membre). La même forme que les marchands (membre debout, aucune boîte), sans bouton à
+    /// presser. Sert aussi au téléporteur des réceptions (LP-009).
+    /// </summary>
+    internal static bool EntreDansLeRayon(uint* membre, byte* descripteur, int x, int z, bool[] questionne)
+    {
         byte* p = (byte*)membre;
         int rang = p[8] & 3;
-        int dx = X - (*(int*)(p + 0x1c) >> 12), dz = Z - (*(int*)(p + 0x24) >> 12);
+        int dx = x - (*(int*)(p + 0x1c) >> 12), dz = z - (*(int*)(p + 0x24) >> 12);
         int d2 = dx * dx + dz * dz;
 
-        if (d2 > RayonSortie * RayonSortie) { s_Questionne[rang] = false; return; }
-        if (s_Questionne[rang] || d2 > Rayon * Rayon) return;
-        if (EcranMenu.Ouvert) return;
-        if ((*membre & 0x80000000) == 0 || (*membre & 0x50000000) != 0) return;
+        if (d2 > RayonSortie * RayonSortie) { questionne[rang] = false; return false; }
+        if (questionne[rang] || d2 > Rayon * Rayon) return false;
+        if (EcranMenu.Ouvert) return false;
+        if ((*membre & 0x80000000) == 0 || (*membre & 0x50000000) != 0) return false;
 
         // Un membre tenu par un joueur seulement : 0x10000 est le compagnon que le jeu pilote
         // (PrepareLeaderAndPartyFlags, WorldMapHud.cs, ne compte comme jouable que celui qui ne le
         // porte pas). Sans cette garde, le compagnon qui suivait le joueur dans le rayon rouvrait la
         // question pour lui-même, sur une manette qui n'existe pas : plus rien ne répondait après un
         // Non (Vincent, 2026-09-28).
-        if ((*membre & 0x10000) != 0) return;
-        if ((descripteur[0x8c7] & 1) != 0) return;
+        if ((*membre & 0x10000) != 0) return false;
+        if ((descripteur[0x8c7] & 1) != 0) return false;
 
-        s_Questionne[rang] = true;
-        Console.Error.WriteLine($"[ARENE] J{rang + 1} approche du téléporteur");
-        EcranMenu.Ouvrir(membre, perChar, PageQuestion());
+        questionne[rang] = true;
+        return true;
     }
 
     // ---- les pages -------------------------------------------------------------------------------
-
-    private static EcranMenu.Page PageQuestion() => new()
-    {
-        Titre = Question,
-        QuestionSeule = true,
-        Question = _ => Question,
-        Lister = () => Array.Empty<EcranMenu.Ligne>(),
-        Valider = _ => new EcranMenu.Suite(Suivante: PageModes()),
-    };
 
     private static EcranMenu.Page PageModes() => new()
     {
@@ -269,12 +290,20 @@ internal static unsafe class AreneTeleporteur
     private static EcranMenu.Page PagePaliers(AreneDirecteur.Programme programme) => new()
     {
         Titre = $"ARENE - {programme.Nom}",
-        Lister = () => Enumerable.Range(1, AreneDirecteur.PalierMax)
-            .Select(n => new EcranMenu.Ligne($"Palier {n}", $"x{n}", n)).ToList(),
-        Question = l => $"Palier {(int)l.Donnee!} : on y va ?",
+        Lister = () => AreneDirecteur.Paliers
+            .Select(p => new EcranMenu.Ligne(p.Nom, $"PV x{p.Pv}", p)).ToList(),
+        Description = l =>
+        {
+            var p = (AreneDirecteur.Palier)l.Donnee!;
+            string degats = (p.Degats / 100.0).ToString("0.##", CultureInfo.GetCultureInfo("fr-FR"));
+            return $"PV des monstres : x{p.Pv}\n" +
+                   $"Degats des monstres : x{degats}\n" +
+                   $"Pieces d'or : {programme.Pieces * p.Pv}";
+        },
+        Question = l => $"{((AreneDirecteur.Palier)l.Donnee!).Nom} : on y va ?",
         Valider = l =>
         {
-            AreneDirecteur.Choisir(programme, (int)l.Donnee!);
+            AreneDirecteur.Choisir(programme, (AreneDirecteur.Palier)l.Donnee!);
             return new EcranMenu.Suite(Fermer: true);
         },
     };

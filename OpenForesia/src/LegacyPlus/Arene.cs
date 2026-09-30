@@ -108,6 +108,7 @@ internal static unsafe class Arene
     private static byte* s_Scenette;                 // la scénette de sortie née dans l'arène
     private static bool s_Fin;                       // la dernière vague est tombée
     private static bool s_Portail;                   // la cinématique est finie : la bourse versée, le portail ouvert
+    private static bool s_Paye;                      // la bourse de ce combat est versée — une fois par arène
     private static string? s_Annonce;                // le message de la bourse, pas encore montré
 #if DEBUG
     private static readonly HashSet<(uint, string)> s_ScriptsTus = new();
@@ -259,7 +260,7 @@ internal static unsafe class Arene
         {
             Actif = true;
             s_Scenette = null;
-            s_Fin = s_Portail = false;
+            s_Fin = s_Portail = s_Paye = false;
             Array.Clear(s_Questionne);
             s_Annonce = null;
 #if DEBUG
@@ -360,7 +361,10 @@ internal static unsafe class Arene
     /// <summary>À chaque image : la cinématique finie, la bourse et le portail.</summary>
     private static void SuivreLaFin()
     {
-        if (!s_Fin || s_Portail || s_Scenette == null) return;
+        // s_Paye, pas seulement s_Portail : le Oui du portail remet s_Portail à faux, et l'image
+        // suivante — avant le chargement du hub — rouvrait le portail et versait la bourse une
+        // seconde fois (Vincent, 2026-09-30).
+        if (!s_Fin || s_Portail || s_Paye || s_Scenette == null) return;
         if (*(ushort*)(s_Scenette + 0x10) != EtatScenetteFinie) return;
         OuvrirLePortail();
     }
@@ -380,6 +384,9 @@ internal static unsafe class Arene
     /// </summary>
     private static void Recompenser()
     {
+        if (s_Paye) return;
+        s_Paye = true;
+
         int bourse = AreneDirecteur.Bourse;
         int membres = Jeu.s_PartySize_005e9020;
         if (bourse <= 0 || membres <= 0) return;

@@ -3,8 +3,9 @@
 // Les multiplicateurs arrivent en centièmes (`ReglagesLegacyPlus`) : 100 = ×1, 250 = ×2,5.
 //
 // Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-27-add-legacy-plus-tweaks-difficulty, design D3-D4).
-// Ne tire aucun nombre aléatoire. Les bornes [1, 32767] tiennent au type : PV et dégâts sont des
-// `short` signés partout où le jeu les compare, et le jeu ne fait jamais zéro dégât.
+// Ne tire aucun nombre aléatoire. Les bornes tiennent au type : PV et dégâts sont des `short` signés
+// partout où le jeu les compare, et le jeu ne fait jamais zéro dégât — dégâts dans [1, 32767], PV
+// dans [1, 32000] (une marge pour les soins, voir PvMax).
 //
 // S'applique PAR-DESSUS la difficulté du jeu de 1998 (`s_DifficultyBonus_0056d2c0`), qui n'est pas
 // touchée.
@@ -39,10 +40,18 @@ internal static unsafe class Difficulte
             Coutures.PvALaNaissance = (stats, p) =>
             {
                 p = precedent(stats, p);
-                return (ushort)Borner(p * pv / 100);
+                return (ushort)Math.Clamp(p * pv / 100, 1, PvMax);
             };
         }
     }
+
+    /// <summary>
+    /// Les PV d'un monstre au plus. Pas 32 767 : un soin ou une régénération ajoute AVANT de ramener
+    /// au maximum (WorldSimulationStep, StatusEffects), et un PV qui déborde le <c>short</c> passe
+    /// négatif — le bit de mort est posé sans la séquence de mort, le monstre reste figé et
+    /// intouchable (le Dragon rouge de l'arène, 2026-09-30). Un nombre rond, lisible pour le joueur.
+    /// </summary>
+    private const int PvMax = 32000;
 
     private static int Borner(int valeur) => Math.Clamp(valeur, 1, short.MaxValue);
 }

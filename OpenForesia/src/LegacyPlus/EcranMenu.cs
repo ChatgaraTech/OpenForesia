@@ -65,6 +65,10 @@ internal static unsafe class EcranMenu
 
         /// <summary>L'objet dont la ligne montre l'icône, la description et les valeurs ; <c>null</c> : rien.</summary>
         public Func<Ligne, CatalogueObjets.Objet?>? Objet;
+
+        /// <summary>Un texte sous la liste pour la ligne courante, à la place de la description d'un
+        /// objet (trois lignes au plus) ; <c>null</c> : rien.</summary>
+        public Func<Ligne, string>? Description;
     }
 
     private sealed class Etage
@@ -287,6 +291,10 @@ internal static unsafe class EcranMenu
             if (!s_Question) curseur = Paragraphe(otBase, curseur, LigneDescription, Description(objet.Fiche));
             curseur = Paragraphe(otBase, curseur, LigneValeurs, Valeurs(objet.Fiche));
         }
+        else if (courante != null && page.Description != null && !s_Question)
+        {
+            curseur = Paragraphe(otBase, curseur, LigneDescription, page.Description(courante));
+        }
 
         if (s_Question && courante != null)
         {
@@ -402,22 +410,29 @@ internal static unsafe class EcranMenu
         return string.Join("  ", parts);
     }
 
-    /// <summary>Un texte coupé aux espaces sur <see cref="Colonnes"/> caractères, au plus trois lignes.</summary>
+    /// <summary>
+    /// Un texte coupé aux espaces sur <see cref="Colonnes"/> caractères, au plus trois lignes. Un
+    /// <c>\n</c> force le passage à la ligne.
+    /// </summary>
     private static uint* Paragraphe(uint* otBase, uint* curseur, int y, string texte)
     {
         var lignes = new List<string>();
         var ligne = new StringBuilder();
-        foreach (string mot in Ascii(texte).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        foreach (string morceau in texte.Split('\n'))
         {
-            if (ligne.Length > 0 && ligne.Length + 1 + mot.Length > Colonnes)
+            foreach (string mot in Ascii(morceau).Split(' ', StringSplitOptions.RemoveEmptyEntries))
             {
-                lignes.Add(ligne.ToString());
-                ligne.Clear();
+                if (ligne.Length > 0 && ligne.Length + 1 + mot.Length > Colonnes)
+                {
+                    lignes.Add(ligne.ToString());
+                    ligne.Clear();
+                }
+                if (ligne.Length > 0) ligne.Append(' ');
+                ligne.Append(mot.Length > Colonnes ? mot[..Colonnes] : mot);
             }
-            if (ligne.Length > 0) ligne.Append(' ');
-            ligne.Append(mot.Length > Colonnes ? mot[..Colonnes] : mot);
+            if (ligne.Length > 0) lignes.Add(ligne.ToString());
+            ligne.Clear();
         }
-        if (ligne.Length > 0) lignes.Add(ligne.ToString());
 
         for (int i = 0; i < Math.Min(lignes.Count, LignesMax); i++)
         {

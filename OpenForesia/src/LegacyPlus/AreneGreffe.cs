@@ -359,8 +359,8 @@ internal static unsafe class AreneGreffe
 
     /// <summary>
     /// Le Dragon rouge de 2/0 « La montagne du dragon de feu », espèce 0 : maillage 0, IA 1 =
-    /// 0x00499140, fiche 0 (8 000 PV, rang 306 — au palier 9 et au-delà, ses PV butent sur les
-    /// 65 535 d'un ushort). Son cri 0x45 (Q02_00.snd) est greffé ; des sorts, et sept effets par
+    /// 0x00499140, fiche 0 (8 000 PV, rang 306 — en Impossible, ses PV butent sur les 30 000 de
+    /// AreneDirecteur.PvMax). Son cri 0x45 (Q02_00.snd) est greffé ; des sorts, et sept effets par
     /// sous-zone (EffetsDesBoss.md : 0x0040CDA0, 0x0040D560, 0x004830F0 et leurs enfants). Texture :
     /// l'entrée 4, 128 × 64 mots.
     /// </summary>

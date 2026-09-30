@@ -55,10 +55,10 @@ its experience crystals SHALL drop as usual. The arena's reward is the purse pai
 The arena menu SHALL list one mode per boss fight below, each pitting the party against that fight —
 the boss and its escort from the fight's formation, in one wave — at the chosen difficulty, with the
 arena's usual ending and defeat. The menu SHALL list the modes by the total hit points of the fight at
-difficulty 1, boss and escort together, in increasing order; ENCHANTERESSE, the tower's own boss, takes
+Normal, boss and escort together, in increasing order; ENCHANTERESSE, the tower's own boss, takes
 its place in that order. Each mode pays its purse at victory.
 
-| Mode | Fight (zone / sub-area) | Hit points at difficulty 1 | Purse |
+| Mode | Fight (zone / sub-area) | Hit points at Normal | Purse |
 |---|---|---|---|
 | MECHANT OURS | the Méchant ours and two Grizzlys (3/5) | 460 | 40 |
 | JEUNE DRAGON | the Jeune dragon (1/4) | 700 | 100 |
@@ -82,21 +82,21 @@ its place in that order. Each mode pays its purse at victory.
 
 The Kraaken of the lake ruins is not offered.
 
-#### Scenario: Méchant ours at difficulty 3
+#### Scenario: Méchant ours at Très difficile
 
-- **WHEN** player 1 picks MECHANT OURS at difficulty 3 and confirms
+- **WHEN** player 1 picks MECHANT OURS at Très difficile and confirms
 - **THEN** the party faces the Méchant ours with 900 hit points and two Grizzlys with 240 each, all
-  dealing three times their original damage
+  dealing twice their original damage
 
 #### Scenario: Victory over the Méchant ours
 
 - **WHEN** the Méchant ours and both Grizzlys are dead
-- **THEN** the tower's ending cinematic plays, the portal appears and the party is paid 40 coins times the difficulty
+- **THEN** the tower's ending cinematic plays, the portal appears and the party is paid 40 coins times 3
 
-#### Scenario: Behemoth at difficulty 2
+#### Scenario: Behemoth at Difficile
 
-- **WHEN** player 1 picks BEHEMOTH at difficulty 2 and confirms
-- **THEN** the party faces the Behemoth with 4 320 hit points, dealing twice its original damage
+- **WHEN** player 1 picks BEHEMOTH at Difficile and confirms
+- **THEN** the party faces the Behemoth with 4 320 hit points, dealing 1.5 times its original damage
 
 #### Scenario: The Behemoth lands its jump
 
@@ -105,8 +105,8 @@ The Kraaken of the lake ruins is not offered.
 
 #### Scenario: A boss too strong for its hit points
 
-- **WHEN** player 1 picks DRAGON ROUGE at difficulty 10
-- **THEN** the Dragon rouge has 65 535 hit points, the most a creature can hold, not 80 000
+- **WHEN** player 1 picks DRAGON ROUGE at Impossible
+- **THEN** the Dragon rouge has 30 000 hit points, not 32 000 — the game reads hit points as a signed 16-bit value, and a margin is kept for heals that add before clamping to the maximum
 
 #### Scenario: The menu order
 

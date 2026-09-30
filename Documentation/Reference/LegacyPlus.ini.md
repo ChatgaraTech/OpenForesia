@@ -95,8 +95,9 @@ d'origine), `TOUCHÉ`, ou `RATÉ` (hors de portée, ou paré ; le journal dit si
   distingue pas un monstre d'un tonneau à cet endroit.
 - **`DegatsMonstres` ne touche que les coups.** Les dégâts en pourcentage des PV (`FUN_005397b0`), le
   poison et les ponctions de `WorldSimulationStep` ne changent pas.
-- **Bornes** : le résultat est ramené entre 1 et 32 767. PV et dégâts sont des `short` signés dans le
-  jeu, et au-delà un monstre naîtrait avec des PV négatifs, donc mort. Le plancher à 1 garde la règle
-  d'origine : un coup ne fait jamais zéro.
+- **Bornes** : les dégâts sont ramenés entre 1 et 32 767, les PV entre 1 et **32 000**. PV et dégâts
+  sont des `short` signés dans le jeu, et au-delà un monstre naîtrait avec des PV négatifs, donc
+  figé et intouchable. Les PV gardent une marge sous 32 767 parce qu'un soin ajoute avant de
+  ramener au maximum. Le plancher à 1 garde la règle d'origine : un coup ne fait jamais zéro.
 - **La difficulté du jeu de 1998** (`s_DifficultyBonus_0056d2c0`, +0 à +30 % sur huit
   caractéristiques des entités marquées) reste en place ; les tweaks s'appliquent par-dessus.

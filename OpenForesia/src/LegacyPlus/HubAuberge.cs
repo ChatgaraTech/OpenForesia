@@ -1,18 +1,20 @@
 // =====================================================================
-// LP-009 — le hub de l'auberge : une porte dans chaque réception, vers la carte 82 vidée.
+// LP-009 — le hub de l'auberge : un téléporteur dans chaque réception, vers la carte 82 vidée.
 //
 // Hors reconstruction (legacy ++, openspec/changes/archive/2026-09-28-add-legacy-plus-inn-hub). Contenu nouveau,
 // demandé par Vincent : un lieu à nous, futur hôte des marchands et d'autres fonctions. Le hub est
 // la sous-zone 86 de la zone 0 — un emplacement vide de la table (étape 1, legacy.md) — chargée avec
 // le répertoire de la 82 « Le coffre », dont seuls la porte et le coffre de stockage restent.
 //
-//   - la porte : un enregistrement d'apparition ajouté à la liste de la réception qui porte déjà la
-//     porte de la 82 (même modèle, même orientation, autre place) ; face à elle, bouton d'action :
-//     on part pour le hub, la réception d'origine est retenue (design D4) ;
+//   - le téléporteur : dans une réception qui porte la porte de la 82, le téléporteur rouge du hub
+//     (la greffe de décor de LP-012, AreneTeleporteur) est dessiné près du mur ouest ; qui entre
+//     dans son rayon part aussitôt pour le hub, la réception d'origine est retenue (design D4). Il
+//     remplace depuis le 2026-09-30 une PORTE ajoutée contre ce mur (le modèle de la porte de la 82,
+//     bouton d'action face au mur) — demande de Vincent ;
 //   - le hub : l'entrée d'archive de la 82 sous le numéro 86 (D2), les meubles rendus au néant dès
 //     leur naissance, sans décaler le rang des entités gardées (D3) ;
 //   - le retour : le transfert scripté qui sort du hub est renvoyé vers la réception d'origine, et le
-//     groupe y est posé devant la porte ajoutée (D5) ;
+//     groupe y est posé à côté du téléporteur (D5) ;
 //   - la sauvegarde : dans le hub, le lieu de reprise écrit est celui de la réception d'origine (D6).
 //
 // Tout ce que le tweak décide est écrit dans la console, préfixé [HUB] — lisible dans Rider.
@@ -43,25 +45,19 @@ internal static unsafe class HubAuberge
     // La porte de la 82 dans la liste de la réception : sous-types 2 (la porte) et 15 (son échelle).
     private const short SourceX = -556, SourceZ = 1000;
 
-    // La porte ajoutée, contre le mur ouest de la salle (relevé de Vincent, 2026-09-28 : debout face
-    // au mur en x = -389, z = 583, cap 3072). Premier essai à -430 : la porte était DERRIÈRE le mur —
-    // le plan du mur est donc entre -389 et -430. TODO : PorteX à ajuster au second essai.
-    // Second essai à -400 : visible côté salle (Vincent, 2026-09-28).
-    private const short PorteX = -400, PorteY = 0, PorteZ = 583;
-
-    // Le point d'ancrage de la porte est son GOND : le battant s'étend vers les z décroissants, et
-    // Vincent, debout devant la porte, était en (-397, 483). On passe donc la porte depuis une bande
-    // de sol devant le mur, centrée sur z = 483, en regardant le mur (vers les x décroissants).
-    private const int DevantZ = 483, DemiLargeur = 100;   // z de 383 à 583 : du milieu du battant au gond
-    private const int DevantXMin = -20, DevantXMax = 100; // écart au plan de la porte, côté salle
-    private const int CapMur = 3072;                      // regarder vers les x décroissants
-    private const int DemiAngle = 0x200;                  // 45°, en 4096e de tour
+    // Le téléporteur de la réception, là où se tenait la porte ajoutée jusqu'au 2026-09-29 : le mur
+    // ouest est entre x = -389 et -430 (la porte en -400 était visible côté salle, en -430 derrière
+    // le mur), et Vincent, debout devant cette porte, était en (-397, 483). Premier essai en
+    // (-310, 483) : le téléporteur était dans le mur ; il est à la place relevée par Vincent
+    // (2026-09-30, TracePosition : carte 80, y = 0). Le sol y est à 0 (`OpenForesia.Tools terrain 0 0`).
+    private const int TeleporteurX = -182, TeleporteurZ = 606, TeleporteurSol = 0;
 
     // Où le groupe revient dans la réception, et où il arrive dans le hub, avec son cap (relevés de
     // Vincent, 2026-09-28).
     // Le retour ne précise pas de hauteur : le jeu prend une face de sol sous (x, z). En (-236, 504),
     // l'estrade passe au-dessus et le groupe s'y retrouvait perché ; (-109, 504) est juste après elle.
-    private const short RetourX = -109, RetourZ = 504, RetourCap = 1024;
+    // Depuis le 2026-09-30 : (24, 599), relevé de Vincent, à l'écart du téléporteur (-182, 606).
+    private const short RetourX = 24, RetourZ = 599, RetourCap = 1024;
     private const short HubX = -695, HubZ = 888, HubCap = 3072;
 
     // Le coffre du hub (corps 15 et couvercle 16), déplacé depuis (-1400, 1100) à la place relevée
@@ -78,24 +74,25 @@ internal static unsafe class HubAuberge
     // Ce qui survit d'un chargement à l'autre.
     private static byte s_Origine = 0xff;               // la réception d'où l'on est parti
     private static byte s_RepriseOrigine;               // son point de reprise (0x005de044) au départ
-    private static bool s_Retour;                       // le prochain placement pose le groupe devant la porte
+    private static bool s_Retour;                       // le prochain placement pose le groupe dans la réception
     private static bool s_Aller;                        // le prochain placement pose le groupe dans le hub
     private static short s_Cap;                         // le cap à donner aux membres après un placement
     private static int s_CapMembres;                    // les membres (bits 0..3) qui ne l'ont pas encore reçu
     private static int s_Ecarts;                        // écarts de placement encore à annuler (x puis z)
     private static uint* s_ListeHub;                    // la liste du hub en cours de peuplement
-    private static int s_RangPorte, s_NbPorte;          // où la porte ajoutée est rangée dans s_ListeReception
+    private static byte s_Reception = 0xff;             // la réception chargée qui a son téléporteur dessiné
+    private static readonly bool[] s_Declenche = new bool[4]; // par membre : déjà parti, pas encore ressorti du rayon
 
     // Mémoire native gardée tant que le jeu tourne.
-    private static uint* s_ListeReception;
     private static uint* s_ListeHubCopie;
     private static uint* s_PointRetour;
+    private static int* s_PlacementTeleporteur;
 
     internal static void Installer()
     {
         if (!ReglagesLegacyPlus.Hub) return;
 
-        s_ListeReception = (uint*)NativeMemory.AllocZeroed((nuint)((MaxEnregistrements + 3) * Enregistrement), sizeof(uint));
+        s_PlacementTeleporteur = AreneTeleporteur.NouveauPlacement(TeleporteurX, TeleporteurSol + AreneTeleporteur.Hauteur, TeleporteurZ);
         s_ListeHubCopie = (uint*)NativeMemory.AllocZeroed((nuint)((MaxEnregistrements + 1) * Enregistrement), sizeof(uint));
         s_PointRetour = (uint*)NativeMemory.AllocZeroed(Enregistrement, sizeof(uint));
 
@@ -118,7 +115,14 @@ internal static unsafe class HubAuberge
         {
             pas(membre, pad, perChar, descripteur);
             if (s_CapMembres != 0) Orienter(membre);
-            Porte(membre, pad, perChar, descripteur);
+            Teleporteur(membre, descripteur);
+        };
+
+        Coutures.Dessin dessin = Coutures.DessinSurImpression;
+        Coutures.DessinSurImpression = (otBase, curseur) =>
+        {
+            curseur = dessin(otBase, curseur);
+            return TeleporteurIci() ? AreneTeleporteur.Dessiner(otBase, curseur, s_PlacementTeleporteur) : curseur;
         };
 
         Action transfert = Coutures.TransfertScripte;
@@ -147,10 +151,14 @@ internal static unsafe class HubAuberge
             Sauvegarde(entete);
         };
 
-        Journal($"actif — porte en ({PorteX}, {PorteY}, {PorteZ}), hub = sous-zone {Hub} (contenu de la {Coffre})");
+        Journal($"actif — téléporteur en ({TeleporteurX}, {TeleporteurZ}), hub = sous-zone {Hub} (contenu de la {Coffre})");
     }
 
     private static bool ZoneAuberge() => (Jeu.Res.s_Unknown_005de528 & 0xff) == 0;
+
+    /// <summary>La sous-zone chargée est une réception dont le téléporteur a été préparé.</summary>
+    private static bool TeleporteurIci() =>
+        s_Reception != 0xff && ZoneAuberge() && Jeu.s_Unknown_00566c88 == s_Reception;
 
     /// <summary>Une réception : la pièce 0 d'un palier, de 0 à 80.</summary>
     private static bool EstReception(byte sousZone) => sousZone % 8 == 0 && sousZone <= 80;
@@ -158,15 +166,16 @@ internal static unsafe class HubAuberge
     // ---- le peuplement --------------------------------------------------------------------------
 
     /// <summary>
-    /// Dans une réception, la liste qui porte la porte de la 82 reçoit la porte du hub (D4), copiée à
-    /// la suite : les rangs d'origine ne bougent pas. Dans le hub, la liste est notée pour
-    /// <see cref="Naitre"/>.
+    /// Dans une réception, la liste qui porte la porte de la 82 décide du téléporteur vers le hub
+    /// (D4) : sa greffe est préparée (la page de texture renvoyée en VRAM à chaque peuplement), la
+    /// liste n'est pas touchée. Dans le hub, la liste est notée pour <see cref="Naitre"/>.
     /// </summary>
     private static uint* Liste(int indice, uint* liste)
     {
         if (indice == 0xff || liste == null || !ZoneAuberge()) return liste;
 
         byte chargee = Jeu.s_Unknown_00566c88;
+        if (s_Reception != chargee) s_Reception = 0xff;
         if (chargee == Hub)
         {
             Aplanir();
@@ -176,28 +185,21 @@ internal static unsafe class HubAuberge
         s_ListeHub = null;
         if (!EstReception(chargee)) return liste;
 
-        int n = 0;
-        uint* porte = null, echelle = null;
-        for (; n < MaxEnregistrements && liste[n * Enregistrement] != 0xffffffff; n++)
+        bool porte = false;
+        for (int n = 0; n < MaxEnregistrements && liste[n * Enregistrement] != 0xffffffff; n++)
         {
             byte* r = (byte*)(liste + n * Enregistrement);
-            if (*(short*)(r + 4) != SourceX || *(short*)(r + 8) != SourceZ) continue;
-            if (r[0x1d] == 2) porte = (uint*)r;
-            else if (r[0x1d] == 15) echelle = (uint*)r;
+            if (*(short*)(r + 4) == SourceX && *(short*)(r + 8) == SourceZ && r[0x1d] == 2) porte = true;
         }
-        if (porte == null || n + 2 > MaxEnregistrements) return liste;
+        if (!porte) return liste;
 
-        uint* copie = s_ListeReception;
-        Buffer.MemoryCopy(liste, copie, (long)n * Enregistrement * 4, (long)n * Enregistrement * 4);
-        int ajout = n;
-        Poser(copie + ajout++ * Enregistrement, porte);
-        if (echelle != null) Poser(copie + ajout++ * Enregistrement, echelle);
-        copie[ajout * Enregistrement] = 0xffffffff;
-        s_RangPorte = n;
-        s_NbPorte = ajout - n;
-
-        Journal($"réception {chargee}, liste {indice} : porte du hub ajoutée (rang {n}, {ajout - n} enregistrement(s))");
-        return copie;
+        bool nouveau = s_Reception != chargee;
+        s_Reception = AreneTeleporteur.PreparerGreffe() ? chargee : (byte)0xff;
+        if (nouveau)
+            Journal(s_Reception == chargee
+                ? $"réception {chargee}, liste {indice} : téléporteur vers le hub en ({TeleporteurX}, {TeleporteurZ})"
+                : $"réception {chargee} : téléporteur impossible à greffer, pas de passage vers le hub");
+        return liste;
     }
 
     /// <summary>
@@ -263,35 +265,9 @@ internal static unsafe class HubAuberge
         return s_ListeHubCopie;
     }
 
-    /// <summary>Recopie un enregistrement de porte à la place de la porte du hub.</summary>
-    private static void Poser(uint* dest, uint* source)
-    {
-        for (int i = 0; i < Enregistrement; i++) dest[i] = source[i];
-        byte* r = (byte*)dest;
-        *(short*)(r + 4) = PorteX;
-        *(short*)(r + 6) = PorteY;
-        *(short*)(r + 8) = PorteZ;
-    }
-
-    /// <summary>
-    /// Dans une réception, la porte ajoutée ne réagit pas au contact : une porte de l'auberge est un
-    /// battant que le groupe pousse en marchant dedans (le gestionnaire 0x004736D0 fait tourner
-    /// <c>+0x32</c> de la vitesse reçue), et la nôtre, contre un mur plein, s'ouvrirait sur le mur. Le
-    /// bit <c>0x2000</c> est celui que <c>ApplyEntityMotion_00519DF0</c> écarte du contact. Dans le
-    /// hub, tout ce qui n'est ni la porte ni le coffre retourne au néant (D3).
-    /// </summary>
+    /// <summary>Dans le hub, tout ce qui n'est ni la porte ni le coffre retourne au néant (D3).</summary>
     private static void Naitre(uint* enregistrement, uint* entite)
     {
-        if (s_NbPorte > 0 && EstReception(Jeu.s_Unknown_00566c88)
-            && enregistrement >= s_ListeReception + s_RangPorte * Enregistrement
-            && enregistrement < s_ListeReception + (s_RangPorte + s_NbPorte) * Enregistrement)
-        {
-            byte* e = (byte*)entite;
-            *entite |= 0x2000;
-            Journal($"porte ajoutée née : sous-type {e[5]}, état +0x14 = {*(short*)(e + 0x14)}, +0x16 = {*(short*)(e + 0x16)}, mot 0x{*entite:x8}");
-            return;
-        }
-
         if (s_ListeHub == null || Jeu.s_Unknown_00566c88 != Hub) return;
 
         long rang = (enregistrement - s_ListeHub) / Enregistrement;
@@ -303,45 +279,30 @@ internal static unsafe class HubAuberge
 
     // ---- l'aller ---------------------------------------------------------------------------------
 
-    /// <summary>Face à la porte ajoutée, bouton d'action : le passage vers le hub (D4).</summary>
-    private static void Porte(uint* membre, byte* pad, byte* perChar, byte* descripteur)
+    /// <summary>
+    /// Le téléporteur de la réception : un membre qui entre dans son rayon (la même règle que celui de
+    /// l'arène, <see cref="AreneTeleporteur.EntreDansLeRayon"/>) part aussitôt pour le hub. Une
+    /// question le précédait jusqu'au 2026-09-29 ; retirée à la demande de Vincent (2026-09-30).
+    /// </summary>
+    private static void Teleporteur(uint* membre, byte* descripteur)
     {
-        if (!ZoneAuberge()) return;
+        if (!TeleporteurIci()) return;
+        if (!AreneTeleporteur.EntreDansLeRayon(membre, descripteur, TeleporteurX, TeleporteurZ, s_Declenche)) return;
+        Journal($"J{(((byte*)membre)[8] & 3) + 1} entre dans le téléporteur de la réception {s_Reception}");
+        Passer(membre);
+    }
+
+    /// <summary>Le passage vers le hub (D4), depuis la réception chargée.</summary>
+    private static void Passer(uint* membre)
+    {
         byte chargee = Jeu.s_Unknown_00566c88;
-        if (!EstReception(chargee)) return;
-
-        ushort action = *(ushort*)(perChar + 0x1fc4);
-        if ((*(ushort*)(pad + 2) & action) == 0) return;
-
         if (Jeu.s_Unknown_005de52c != chargee)   // un passage est déjà engagé
         {
-            Journal($"appui ignoré : un passage est engagé (sous-zone chargée {chargee}, demandée {Jeu.s_Unknown_005de52c})");
+            Journal($"téléporteur ignoré : un passage est engagé (sous-zone chargée {chargee}, demandée {Jeu.s_Unknown_005de52c})");
             return;
         }
 
-        // Un appui près de la porte qui n'ouvre rien dit pourquoi, dans la console.
         byte* m = (byte*)membre;
-        int x = *(int*)(m + 0x1c) >> 12, z = *(int*)(m + 0x24) >> 12;
-        int devant = x - PorteX;                        // > 0 : côté salle
-        int cote = z - DevantZ;
-        int cap = *(short*)(m + 0x32) & 0xfff;
-        int ecart = (CapMur - cap) & 0xfff;
-        if (ecart > 0x800) ecart = 0x1000 - ecart;
-
-        string? refus =
-            devant < DevantXMin || devant > DevantXMax || Math.Abs(cote) > DemiLargeur
-                ? $"pas devant la porte (x = {x}, z = {z} ; attendu x de {PorteX + DevantXMin} à {PorteX + DevantXMax}, z de {DevantZ - DemiLargeur} à {DevantZ + DemiLargeur})" :
-            ecart > DemiAngle ? $"pas tourné vers le mur (cap {cap}, attendu {CapMur} à 45° près)" :
-            (*membre & 0x80000000) == 0 || (*membre & 0x50000000) != 0 ? $"pas debout (mot 0x{*membre:x8})" :
-            (descripteur[0x8c7] & 1) != 0 ? "une boîte est ouverte" :
-            null;
-        if (refus != null)
-        {
-            if (Math.Abs(devant) <= 250 && Math.Abs(cote) <= 250) Journal($"J{m[8] + 1} appuie près de la porte, refusé : {refus}");
-            return;
-        }
-
-        *(ushort*)(pad + 2) &= (ushort)~action;   // l'appui est consommé
 
         // Le geste de l'opcode 17 (ScriptOpTransferArea), zone inchangée.
         *(ushort*)(m + 0x12) += 1;
@@ -356,13 +317,13 @@ internal static unsafe class HubAuberge
         Jeu.s_Unknown_005de53c = m[8];
         Jeu.s_WorldMapStep_005645f8 = 2;
 
-        Journal($"J{m[8] + 1} passe la porte : réception {chargee} (reprise {s_RepriseOrigine}) → hub, entrée {EntreeCoffre}");
+        Journal($"J{m[8] + 1} prend le téléporteur : réception {chargee} (reprise {s_RepriseOrigine}) → hub, entrée {EntreeCoffre}");
     }
 
     /// <summary>
     /// L'arène (LP-012) renvoie le groupe au hub : le prochain placement est une arrivée dans le hub,
-    /// comme par la porte — même place, même cap, aucun script d'arrivée. La réception d'origine,
-    /// retenue au passage de la porte, reste celle où mène la sortie du hub.
+    /// comme par le téléporteur de la réception — même place, même cap, aucun script d'arrivée. La
+    /// réception d'origine, retenue au départ, reste celle où mène la sortie du hub.
     /// </summary>
     internal static void RetourDArene()
     {

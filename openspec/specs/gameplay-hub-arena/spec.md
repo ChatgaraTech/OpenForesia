@@ -2,8 +2,8 @@
 
 ## Purpose
 Offers, from the inn hub, a replayable boss fight in an arena room: a teleporter, a menu choosing the
-mode and a difficulty from 1 to 10, the fight, and a way back to the hub whether the party wins or
-falls — without ever touching the story or the save.
+mode and a difficulty (Normal, Difficile, Très difficile, Impossible), the fight, and a way back to
+the hub whether the party wins or falls — without ever touching the story or the save.
 
 ## Requirements
 
@@ -23,29 +23,35 @@ exactly as without this change.
 - **WHEN** `[Auberge] Hub = oui` and the party enters the hub
 - **THEN** the arena teleporter stands in the hub
 
-### Requirement: A teleporter in the hub asks before anything happens
+### Requirement: A teleporter in the hub opens the arena menu
 
 The hub SHALL hold one teleporter, looking like the one at the entrance of the Labyrinth of the Dead,
-at x = −766, z = 1235. When a standing party member comes near it, the game SHALL ask « Ce
-téléporteur semble dangereux, on y va ? » with the choices Oui and Non, for that member only. Non, or
-the menu button, SHALL close the question and leave the party where it is.
+at x = −766, z = 1235. When a standing party member comes near it, the arena menu SHALL open at once
+for that member only, with no question first (since 2026-09-30). The menu button SHALL close it and
+leave the party where it is.
 
 #### Scenario: Declining
 
-- **WHEN** player 2 walks up to the teleporter and answers Non
-- **THEN** the question closes, nothing else opens, and player 2 can walk away and come back to be asked again
+- **WHEN** player 2 walks up to the teleporter and presses the menu button
+- **THEN** the menu closes, and player 2 can walk away and come back to open it again
 
 ### Requirement: The arena menu chooses a mode and a difficulty
 
-After Oui, a menu SHALL open for the member who answered, in the look of the shop screen. It SHALL
-list the available modes by name; after a mode is picked, it SHALL offer a difficulty from 1 to 10,
-then a final confirmation. The menu button SHALL go back one step, and close the menu from the first
-step. Only the member who touched the teleporter controls the menu.
+The menu SHALL open in the look of the shop screen. It SHALL list the available modes by name; after
+a mode is picked, it SHALL offer four difficulties — Normal, Difficile, Très difficile, Impossible —
+each showing, under the list, its hit-point and damage multipliers and the purse it pays, then a
+final confirmation. The menu button SHALL go back one step, and close the menu from the first step.
+Only the member who touched the teleporter controls the menu.
 
 #### Scenario: Choosing a fight
 
-- **WHEN** player 1 answers Oui, picks the listed boss, picks difficulty 4 and confirms
-- **THEN** the whole party is sent to the arena, where the boss fights at difficulty 4
+- **WHEN** player 1 picks the listed boss, picks Très difficile and confirms
+- **THEN** the whole party is sent to the arena, where the boss fights at Très difficile
+
+#### Scenario: Reading a difficulty
+
+- **WHEN** the cursor is on Difficile for a mode whose purse is 330 coins
+- **THEN** the screen reads that monsters have twice their hit points, deal 1.5 times their damage, and that victory pays 660 gold coins
 
 #### Scenario: Backing out
 
@@ -54,19 +60,20 @@ step. Only the member who touched the teleporter controls the menu.
 
 ### Requirement: Difficulty multiplies the boss's hit points and damage
 
-At difficulty *n* (1 to 10), the arena boss SHALL be born with *n* times the hit points of its
-original sheet and SHALL deal *n* times its original damage. Difficulty 1 SHALL be the original game.
-Nothing else in the fight SHALL change, and no other creature SHALL be affected.
+The creatures of the mode SHALL be born with their original hit points times 1, 2, 3 or 4 (Normal,
+Difficile, Très difficile, Impossible), never above 30 000, and SHALL deal their original damage to
+the party times 1, 1.5, 2 or 2.5. Normal SHALL be the original game. Nothing else in the fight SHALL
+change, and no other creature SHALL be affected.
 
-#### Scenario: Difficulty 1
+#### Scenario: Normal
 
-- **WHEN** the boss is fought at difficulty 1
+- **WHEN** the boss is fought at Normal
 - **THEN** its hit points and damage are those of the original game
 
-#### Scenario: Difficulty 10
+#### Scenario: Impossible
 
-- **WHEN** a boss whose sheet gives 910 hit points is fought at difficulty 10
-- **THEN** it is born with 9 100 hit points and its blows deal ten times their original damage
+- **WHEN** a boss whose sheet gives 910 hit points is fought at Impossible
+- **THEN** it is born with 3 640 hit points and its blows deal 2.5 times their original damage
 
 ### Requirement: The arena is the tower boss room, emptied
 
@@ -83,7 +90,7 @@ mode, that room MUST stay exactly as in the original game, story included.
 
 When every creature of the mode is dead, the game SHALL play the tower's own end-of-boss cinematic,
 then a portal SHALL stand at the centre of the room, and the mode's purse SHALL be paid to the party:
-its gold coins times the chosen difficulty, split evenly between every party member, standing or
+its gold coins times the difficulty's hit-point multiplier (1 to 4), split evenly between every party member, standing or
 fallen, any remainder going one coin each to the first members, and no purse exceeding 99 999. A
 message SHALL tell the party how much it won. No chest SHALL appear. Walking into the portal SHALL
 bring the whole party to the centre of the hub.
@@ -98,12 +105,12 @@ mode's purse is listed with the modes themselves (`gameplay-arena-bosses`).
 
 #### Scenario: The Méchant ours's purse, four members
 
-- **WHEN** a party of four beats MECHANT OURS at difficulty 1
+- **WHEN** a party of four beats MECHANT OURS at Normal
 - **THEN** each member's purse grows by 10 gold coins, and the message says the party won 40 coins
 
 #### Scenario: A split with a remainder
 
-- **WHEN** a party of three beats MECHANT OURS at difficulty 1
+- **WHEN** a party of three beats MECHANT OURS at Normal
 - **THEN** the first member gets 14 coins and the two others 13 each
 
 ### Requirement: A party wipe in the arena returns to the hub

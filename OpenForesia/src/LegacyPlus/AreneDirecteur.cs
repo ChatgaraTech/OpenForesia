@@ -13,10 +13,16 @@
 //      suivante quand tous sont morts (le bit 0x80000000 du mot d'état est tombé) ;
 //   3. après la dernière, passe la main à Arene.Victoire : la cinématique, la bourse, le portail.
 //
-// LE PALIER (D4), sur deux coutures existantes :
+// LE PALIER (D4) — Normal, Difficile, Très difficile, Impossible (Paliers ; les paliers 1 à 10 jusqu'au
+// 2026-09-30) — sur deux coutures existantes :
 //   - PvALaNaissance (LP-002) : pendant la naissance d'une vague, et pendant elle seule, les PV
-//     maximum et courants × palier, bornés à 65 535 (des ushort ; 910 × 10 tient) ;
-//   - DegatsSubis (LP-001) : un coup porté À UN MEMBRE DU GROUPE par une créature suivie × palier,
+//     maximum et courants × 1 à 4, bornés à PvMax = 30 000. Pas 65 535 : le jeu range les PV en
+//     ushort mais les lit en short SIGNÉ (WorldSimulationStep, chaque image : « PV < 1 » pose le bit
+//     de mort 0x40000000 sans la séquence de mort). Le Dragon rouge (8 000 PV) au palier 5 naissait à
+//     40 000 = −25 536 : figé, intouchable, modèle en place (Vincent, 2026-09-30). Et pas 32 767 non
+//     plus : un soin ou une régénération ajoute AVANT de ramener au maximum, un boss à 32 000 PV
+//     débordait avec plus de 767 PV rendus. La marge de 2 767 couvre ces ajouts ;
+//   - DegatsSubis (LP-001) : un coup porté À UN MEMBRE DU GROUPE par une créature suivie × 1 à 2,5,
 //     borné à 32 767. L'attaquant d'un sort est souvent l'entité du projectile, pas la créature : pour
 //     un attaquant né dans l'une des deux tables d'effets (0x005ff400, 0x005edee0), on suit ses deux
 //     pointeurs vers une entité source, +0x74 (le lanceur) et +0x6c (SpawnEffectEntity y range sa
@@ -170,16 +176,35 @@ internal static unsafe class AreneDirecteur
     /// greffée y naît, et <c>TryPlaceEntity</c> la pose sur la face qui est dessous.</summary>
     private const short HauteurArene = 200;
 
-    internal const int PalierMax = 10;
+    /// <summary>
+    /// Un palier de l'arène : les PV des créatures × <paramref name="Pv"/> (la bourse aussi), les
+    /// coups qu'elles portent au groupe × <paramref name="Degats"/> centièmes.
+    /// </summary>
+    internal sealed record Palier(string Nom, int Pv, int Degats);
+
+    /// <summary>
+    /// Les quatre paliers (Vincent, 2026-09-30) ; ils remplacent les paliers 1 à 10, où PV, dégâts et
+    /// bourse étaient × le numéro du palier.
+    /// </summary>
+    internal static readonly Palier[] Paliers =
+    [
+        new("Normal", 1, 100),
+        new("Difficile", 2, 150),
+        new("Tres difficile", 3, 200),
+        new("Impossible", 4, 250),
+    ];
+
+    /// <summary>Les PV d'une créature de l'arène, palier compris, au plus (voir l'en-tête).</summary>
+    private const ushort PvMax = 30000;
 
     /// <summary>Le dernier choix confirmé au menu ; <c>null</c> tant qu'aucun départ n'a été demandé.</summary>
-    internal static (Programme Programme, int Palier)? Choix { get; private set; }
+    internal static (Programme Programme, Palier Palier)? Choix { get; private set; }
 
     /// <summary>Le joueur a confirmé : l'arène part avec ce programme, à ce palier.</summary>
-    internal static void Choisir(Programme programme, int palier)
+    internal static void Choisir(Programme programme, Palier palier)
     {
         Choix = (programme, palier);
-        Journal($"départ demandé : {programme.Nom}, palier {palier}");
+        Journal($"départ demandé : {programme.Nom}, {palier.Nom}");
         Arene.Partir();
     }
 
@@ -194,14 +219,14 @@ internal static unsafe class AreneDirecteur
     private static readonly (int Base, int Places)[] s_PoolsEffets = [(0x005ff400, 0x20), (0x005edee0, 0x80)];
 
     private static Programme? s_Programme;
-    private static int s_Palier = 1;
+    private static Palier s_Palier = Paliers[0];
     private static int s_Vague;
     private static int s_Attente;
     private static bool s_EnCours;
     private static bool s_Naissance;                     // SpawnEntityFormation tourne pour le directeur
 
     /// <summary>La bourse de la victoire du programme en cours, palier compris ; 0 sans programme.</summary>
-    internal static int Bourse => s_Programme == null ? 0 : s_Programme.Pieces * s_Palier;
+    internal static int Bourse => s_Programme == null ? 0 : s_Programme.Pieces * s_Palier.Pv;
     private static uint s_Suivis;                        // emplacements de scène de la vague, en masque
 
     internal static void Installer()
@@ -212,7 +237,11 @@ internal static unsafe class AreneDirecteur
         Coutures.PvALaNaissance = (stats, valeur) =>
         {
             valeur = pv(stats, valeur);
-            return s_Naissance ? (ushort)Math.Min(ushort.MaxValue, valeur * s_Palier) : valeur;
+            if (!s_Naissance) return valeur;
+            int voulu = valeur * s_Palier.Pv;
+            if (voulu <= PvMax) return (ushort)voulu;
+            Journal($"PV {valeur} × {s_Palier.Pv} ({s_Palier.Nom}) = {voulu} : bornés à {PvMax}");
+            return PvMax;
         };
 
         Coutures.Degats degats = Coutures.DegatsSubis;
@@ -238,8 +267,8 @@ internal static unsafe class AreneDirecteur
         if (Choix is not { } choix) { Journal("aucun programme choisi : l'arène reste vide"); return; }
 
         s_Programme = choix.Programme;
-        s_Palier = Math.Clamp(choix.Palier, 1, PalierMax);
-        Journal($"programme {s_Programme.Nom}, palier {s_Palier}, {s_Programme.Vagues.Length} vague(s)");
+        s_Palier = choix.Palier;
+        Journal($"programme {s_Programme.Nom}, {s_Palier.Nom} (PV × {s_Palier.Pv}, dégâts × {s_Palier.Degats / 100.0:0.##}), {s_Programme.Vagues.Length} vague(s)");
     }
 
     /// <summary>Le mode arène vient d'être baissé.</summary>
@@ -337,7 +366,7 @@ internal static unsafe class AreneDirecteur
             s_Suivis = Vivants() & ~avant;
 
             if (s_Suivis == 0) { Abandonner($"vague {s_Vague + 1} : aucune créature n'a pu naître"); return; }
-            Journal($"vague {s_Vague + 1} : {nes} créature(s) née(s), PV × {s_Palier}, emplacements 0x{s_Suivis:x8}");
+            Journal($"vague {s_Vague + 1} : {nes} créature(s) née(s), PV × {s_Palier.Pv}, emplacements 0x{s_Suivis:x8}");
         }
         finally { NativeMemory.Free(liste); }
     }
@@ -365,7 +394,9 @@ internal static unsafe class AreneDirecteur
         if (!Arene.Actif || victime == null || (*victime & 0xfc0000) != 0x800000) return montant;
 
         bool suivi = s_EnCours && DeLaVague((byte*)attaquant);
-        short rendu = suivi && montant > 0 ? (short)Math.Min(short.MaxValue, montant * s_Palier) : montant;
+        short rendu = suivi && montant > 0
+            ? (short)Math.Clamp(montant * s_Palier.Degats / 100, 1, short.MaxValue)
+            : montant;
 #if DEBUG
         Journal($"J{((byte*)victime)[8] + 1} touché par {Nommer((byte*)attaquant)}{(suivi ? " (suivi)" : "")} : {montant} → {rendu}");
 #endif

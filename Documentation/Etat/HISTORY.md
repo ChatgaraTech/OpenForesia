@@ -4,6 +4,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-30
+
+- fix : LP-012 — passer le portail de l'arène versait la bourse une seconde fois : le Oui refermait le portail, et l'image suivante, avant le chargement du hub, le rouvrait et repayait ; la bourse est désormais versée une fois par combat
+- feat : LP-012 — la description des paliers de l'arène passe sur trois lignes (PV, dégâts, pièces d'or) ; l'écran de menu passe à la ligne sur un `\n`
+- feat : LP-012 — les paliers 1 à 10 de l'arène deviennent Normal, Difficile, Très difficile, Impossible : PV × 1 à 4 (30 000 au plus), dégâts reçus × 1 / 1,5 / 2 / 2,5, bourse × 1 à 4 ; l'écran des paliers décrit sous la liste les multiplicateurs et les pièces gagnées
+- fix : LP-002 — les PV des monstres réglés par `PvMonstres` sont bornés à 32 000 au lieu de 32 767 : une marge pour les soins, qui ajoutent avant de ramener au maximum et pouvaient faire déborder le `short`
+- fix : LP-012 — le Dragon rouge restait figé et intouchable aux hauts paliers : l'arène bornait les PV à 65 535 alors que le jeu les lit en `short` signé (8 000 × 5 = 40 000 = −25 536, bit de mort posé à la première image) ; bornés à 30 000, avec une marge pour les soins qui ajoutent avant de ramener au maximum
+- feat : LP-009 / LP-012 — plus de question aux téléporteurs : celui de la réception envoie au hub dès qu'on y entre, celui du hub ouvre directement la liste des boss (la confirmation du palier reste) ; le retour du hub pose le groupe en (24, 599), relevé de Vincent
+- feat : LP-009 — la porte des réceptions vers le hub est remplacée par le téléporteur rouge du hub (la greffe de LP-012, en (−182, 606) relevé par Vincent — le premier essai en (−310, 483) était dans le mur ; sol à 0) ; la question « Ce teleporteur mene au hub, on y va ? » à l'approche, Oui = le passage ; place et VRAM à confirmer en jeu
+
 ## 2026-09-29
 
 - doc : change `add-legacy-plus-boss-graft` archivé (`openspec/changes/archive/2026-09-29-add-legacy-plus-boss-graft`) ; specs fusionnées — nouvelle capacité `gameplay-arena-bosses` (les dix-neuf modes, leurs bourses, l'ordre par PV), et la victoire de `gameplay-hub-arena` paie la bourse au lieu des coffres
