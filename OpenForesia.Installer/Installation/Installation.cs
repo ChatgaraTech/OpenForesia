@@ -17,6 +17,10 @@ internal static class Installation
 {
     internal const string NomJeu = "OpenForesia";
     internal const string Executable = "OpenForesia.exe";
+
+    /// <summary>Le multijoueur (openspec/changes/add-multiplayer-streaming), dans le zip du jeu d'une release.</summary>
+    internal const string ExecutableMultijoueur = "OpenForesiaMultiplayer.exe";
+    internal const string NomMultijoueur = "OpenForesia Multijoueur";
     internal const string CleDesinstallation = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenForesia";
 
     /// <summary>Au-dela, un chemin du jeu risquerait de depasser les 260 caracteres de Windows.</summary>
@@ -155,6 +159,18 @@ internal static class Installation
             {
                 journal.NoterFichier(raccourci);
                 Raccourcis.Creer(raccourci, exe, "", dossier, "Blaze & Blade, reconstruit", exe);
+            }
+
+            // Le multijoueur, s'il est livré avec le jeu (une release ; pas une build de développement).
+            string multijoueur = Path.Combine(dossier, ExecutableMultijoueur);
+            if (File.Exists(multijoueur))
+            {
+                string bureauMulti = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NomMultijoueur + ".lnk");
+                foreach (string raccourci in new[] { bureauMulti, Path.Combine(menu, NomMultijoueur + ".lnk") })
+                {
+                    journal.NoterFichier(raccourci);
+                    Raccourcis.Creer(raccourci, multijoueur, "", dossier, "Jouer à plusieurs à distance : héberger ou rejoindre une partie", exe);
+                }
             }
 
             string desinstaller = Path.Combine(menu, "Désinstaller OpenForesia.lnk");

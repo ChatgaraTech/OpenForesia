@@ -129,6 +129,35 @@ Deux autres tables du binaire portent les mêmes valeurs, pour la remise aux val
 - `DAT_00564a68`, 20 entiers — la table manette, celle que la page de configuration des boutons
   recopie sur sa dernière ligne (`s_JoyBindingDefaults_00564a68`).
 
+## Les touches fantômes du multijoueur
+
+`OpenForesiaMultiplayer.exe` (`openspec/changes/add-multiplayer-streaming`, design D2) pilote les
+joueurs 2 à 4 en réécrivant **leur table 0** avec des touches qu'aucun clavier ne porte, puis en
+simulant leur appui (`SendInput`, `KEYEVENTF_SCANCODE`). La table du joueur 1 n'est jamais écrite ;
+celles des joueurs 2 à 4 sont remises à la fin de la session.
+
+**Mesure du 2026-09-30** (`OpenForesiaMultiplayer.exe --mesurer-touches`, disposition AZERTY
+`0x040C040C`) : un clavier DirectInput ouvert exactement comme le jeu l'ouvre (version 5, format de
+`0x00546f60`, `DISCL_FOREGROUND | DISCL_NONEXCLUSIVE`) et les `WM_CHAR` d'une fenêtre, source de la
+saisie du nom. Sur 90 candidats, **87 passent** : vus sous leur seul code, relâchés, sans caractère.
+Rejetés : `0x59` (tape « 5 »), `0x7C` (tabulation), `E0 45` (arrive en `0x45`, Verr Num).
+
+**Retenus : les 42 premiers codes étendus sans touche virtuelle** (VK `0xFF`) — invisibles pour
+toutes les autres applications de l'hôte, et hors de portée des raccourcis de mise au point du jeu
+(F3, F9, F11, F12, lus par `GetAsyncKeyState` en touches virtuelles). Code DirectInput = `0x80 |`
+l'octet :
+
+| joueur | actions `00`..`08`, `0b`..`0f` (14 boutons, dans l'ordre du tableau ci-dessus) |
+|---|---|
+| 2 | `0x81` `0x82` `0x83` `0x84` `0x85` `0x86` `0x87` `0x88` `0x89` `0x8A` `0x8B` `0x8C` `0x8D` `0x8E` |
+| 3 | `0x8F` `0x91` `0x92` `0x93` `0x94` `0x95` `0x96` `0x97` `0x98` `0x9A` `0x9B` `0x9E` `0x9F` `0xA3` |
+| 4 | `0xA5` `0xA6` `0xA7` `0xA8` `0xA9` `0xAB` `0xAC` `0xAD` `0xAF` `0xB1` `0xB3` `0xB4` `0xB9` `0xBA` |
+
+Les actions `09` et `0a` ne posent aucun bit, les combinaisons `10`..`13` restent sans touche, la
+table 1 des joueurs 2 à 4 est vidée. Conséquence visible : pendant une session, la page des touches
+du menu Options affiche ces liaisons comme des touches inconnues — elles ne sont pas dans la table
+de libellés `DAT_00562e18`.
+
 ## Pièges connus
 
 - **Le fichier réellement écrit contient des clés périmées.** `WritePrivateProfileString` ajoute et

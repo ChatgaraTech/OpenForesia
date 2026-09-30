@@ -6,7 +6,8 @@
     Quatre temps (openspec/changes/archive/2026-09-26-install-from-iso, lot 5) :
 
       1. publie le jeu en autonome x86, élagué, en un seul OpenForesia.exe — le runtime .NET y est
-         lié, réduit à ce que le jeu appelle : ni DLL ni prérequis chez le joueur ;
+         lié, réduit à ce que le jeu appelle : ni DLL ni prérequis chez le joueur ; et de même
+         OpenForesiaMultiplayer.exe, le multijoueur, à côté ;
       2. le zippe dans OpenForesia.Installer\Jeu\jeu.zip, que l'installeur embarque ;
       3. publie l'installeur en un seul fichier autonome ;
       4. contrôle que rien de ce qui sort ne contient une donnée du jeu, et retire le zip — sans lui,
@@ -67,11 +68,19 @@ try {
               '-p:ILLinkTreatWarningsAsErrors=true', '-p:PublishSingleFile=true',
               '-p:EnableCompressionInSingleFile=true', '-p:DebugType=none', "-p:Version=$Version", '-o', $temporaire)
 
+    # Le multijoueur (openspec/changes/add-multiplayer-streaming) : son exe à côté de celui du jeu,
+    # publié de même — élagué, en un seul fichier —, dans le même zip.
+    Publier @((Join-Path $depot 'OpenForesia.Multiplayer\OpenForesia.Multiplayer.csproj'), '-c', 'Release', '-r', 'win-x86',
+              '--self-contained', 'true', '-p:PublishTrimmed=true', '-p:TrimMode=full',
+              '-p:ILLinkTreatWarningsAsErrors=true', '-p:PublishSingleFile=true',
+              '-p:EnableCompressionInSingleFile=true', '-p:DebugType=none', "-p:Version=$Version", '-o', $temporaire)
+
     $fichiersJeu = Get-ChildItem $temporaire -Recurse -File |
-        ForEach-Object { $_.FullName.Substring($temporaire.Length + 1) }
+        ForEach-Object { $_.FullName.Substring($temporaire.Length + 1) } | Sort-Object
     Controler-Contenu $fichiersJeu 'le jeu publié'
-    if (@($fichiersJeu).Count -ne 1 -or $fichiersJeu -ne 'OpenForesia.exe') {
-        throw "le jeu publié doit tenir en OpenForesia.exe seul ; il contient : $($fichiersJeu -join ', ')"
+    $attendusJeu = 'OpenForesia.exe', 'OpenForesiaMultiplayer.exe'
+    if (Compare-Object @($fichiersJeu) $attendusJeu) {
+        throw "le jeu publié doit tenir en $($attendusJeu -join ' et ') ; il contient : $($fichiersJeu -join ', ')"
     }
 
     Etape "2. Zip du jeu pour l'installeur"

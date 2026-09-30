@@ -1,0 +1,1 @@
+"D:\Open Foresia Project\GitHub Project\OpenForesia\OpenForesia.Multiplayer\bin\Debug\net10.0-windows\OpenForesiaMultiplayer.exe"
