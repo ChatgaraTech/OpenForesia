@@ -52,7 +52,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Tests", "OpenFo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Installer", "OpenForesia.Installer\OpenForesia.Installer.csproj", "{893C3900-0BD0-46B3-B317-C7CB2A9CBE96}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Multiplayer", "OpenForesia.Multiplayer\OpenForesia.Multiplayer.csproj", "{A830C2E4-E966-4836-948C-CDE5079639AE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Lanceur", "OpenForesia.Lanceur\OpenForesia.Lanceur.csproj", "{A830C2E4-E966-4836-948C-CDE5079639AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

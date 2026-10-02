@@ -7,9 +7,10 @@
 
       1. publie le jeu en autonome x86, élagué, en un seul OpenForesia.exe — le runtime .NET y est
          lié, réduit à ce que le jeu appelle : ni DLL ni prérequis chez le joueur ; et de même
-         OpenForesiaMultiplayer.exe, le multijoueur, à côté ;
+         OpenForesiaLanceur.exe, le lanceur (seul, héberger, rejoindre), à côté ;
       2. le zippe dans OpenForesia.Installer\Jeu\jeu.zip, que l'installeur embarque ;
-      3. publie l'installeur en un seul fichier autonome ;
+      3. publie l'installeur en un seul fichier autonome, et pose à côté le lanceur seul (pour
+         l'ami qui veut seulement rejoindre) ;
       4. contrôle que rien de ce qui sort ne contient une donnée du jeu, et retire le zip — sans lui,
          un installeur de développement retombe sur la build du dépôt.
 
@@ -19,7 +20,7 @@
         OpenForesia.Tools\publish-release.ps1
         OpenForesia.Tools\publish-release.ps1 -Version 0.2.0
 
-    Sortie : OpenForesia.Installer\bin\Release\publie\OpenForesia-Setup.exe
+    Sortie : OpenForesia.Installer\bin\Release\publie\OpenForesia-Setup.exe et OpenForesiaLanceur.exe
 #>
 [CmdletBinding()]
 param(
@@ -68,9 +69,9 @@ try {
               '-p:ILLinkTreatWarningsAsErrors=true', '-p:PublishSingleFile=true',
               '-p:EnableCompressionInSingleFile=true', '-p:DebugType=none', "-p:Version=$Version", '-o', $temporaire)
 
-    # Le multijoueur (openspec/changes/add-multiplayer-streaming) : son exe à côté de celui du jeu,
-    # publié de même — élagué, en un seul fichier —, dans le même zip.
-    Publier @((Join-Path $depot 'OpenForesia.Multiplayer\OpenForesia.Multiplayer.csproj'), '-c', 'Release', '-r', 'win-x86',
+    # Le lanceur (openspec/changes/add-multiplayer-streaming, renommé par add-launcher-solo-gamepad) :
+    # son exe à côté de celui du jeu, publié de même — élagué, en un seul fichier —, dans le même zip.
+    Publier @((Join-Path $depot 'OpenForesia.Lanceur\OpenForesia.Lanceur.csproj'), '-c', 'Release', '-r', 'win-x86',
               '--self-contained', 'true', '-p:PublishTrimmed=true', '-p:TrimMode=full',
               '-p:ILLinkTreatWarningsAsErrors=true', '-p:PublishSingleFile=true',
               '-p:EnableCompressionInSingleFile=true', '-p:DebugType=none', "-p:Version=$Version", '-o', $temporaire)
@@ -78,7 +79,7 @@ try {
     $fichiersJeu = Get-ChildItem $temporaire -Recurse -File |
         ForEach-Object { $_.FullName.Substring($temporaire.Length + 1) } | Sort-Object
     Controler-Contenu $fichiersJeu 'le jeu publié'
-    $attendusJeu = 'OpenForesia.exe', 'OpenForesiaMultiplayer.exe'
+    $attendusJeu = 'OpenForesia.exe', 'OpenForesiaLanceur.exe'
     if (Compare-Object @($fichiersJeu) $attendusJeu) {
         throw "le jeu publié doit tenir en $($attendusJeu -join ' et ') ; il contient : $($fichiersJeu -join ', ')"
     }
@@ -99,11 +100,17 @@ try {
               '-p:DebugType=none', "-p:Version=$Version",
               '-o', $sortie)
 
+    # Le lanceur seul, à côté du Setup (add-launcher-solo-gamepad, design D8) : pour l'ami qui veut
+    # seulement rejoindre, sans le jeu ni l'ISO. Le même exe que celui du zip.
+    Copy-Item (Join-Path $temporaire 'OpenForesiaLanceur.exe') $sortie
+
     Etape "4. Contrôles"
     $setup = Join-Path $sortie 'OpenForesia-Setup.exe'
     if (-not (Test-Path $setup)) { throw "OpenForesia-Setup.exe n'a pas été produit" }
-    $autres = Get-ChildItem $sortie -File | Where-Object Name -ne 'OpenForesia-Setup.exe'
+    $publies = 'OpenForesia-Setup.exe', 'OpenForesiaLanceur.exe'
+    $autres = Get-ChildItem $sortie -File | Where-Object { $publies -notcontains $_.Name }
     if ($autres) { throw "la publication a laissé d'autres fichiers à côté de l'installeur : $($autres.Name -join ', ')" }
+    Controler-Contenu @(Get-ChildItem $sortie -File | ForEach-Object Name) 'la publication'
 
     # editions.json : que des chemins, des tailles et des sommes.
     $editions = Get-Content (Join-Path $depot 'OpenForesia.Installer\Editions\editions.json') -Raw | ConvertFrom-Json
@@ -112,7 +119,11 @@ try {
     if (Compare-Object $champs $attendus) { throw "editions.json porte des champs inattendus : $($champs -join ', ')" }
     Write-Host "   editions.json : $(@($editions.editions.fichiers).Count) fichiers décrits, champs $($champs -join ', ')"
 
-    Write-Host ("`nOpenForesia-Setup.exe {0} : {1:N1} Mo`n{2}" -f $Version, ((Get-Item $setup).Length / 1MB), $setup) -ForegroundColor Green
+    Write-Host ""
+    foreach ($nom in $publies) {
+        $fichier = Join-Path $sortie $nom
+        Write-Host ("{0} {1} : {2:N1} Mo`n{3}" -f $nom, $Version, ((Get-Item $fichier).Length / 1MB), $fichier) -ForegroundColor Green
+    }
 }
 finally {
     # Le zip ne sert qu'à la publication : laissé en place, il ferait embarquer le jeu à chaque

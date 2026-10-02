@@ -129,12 +129,16 @@ Deux autres tables du binaire portent les mêmes valeurs, pour la remise aux val
 - `DAT_00564a68`, 20 entiers — la table manette, celle que la page de configuration des boutons
   recopie sur sa dernière ligne (`s_JoyBindingDefaults_00564a68`).
 
-## Les touches fantômes du multijoueur
+## Les touches fantômes du lanceur
 
-`OpenForesiaMultiplayer.exe` (`openspec/changes/add-multiplayer-streaming`, design D2) pilote les
-joueurs 2 à 4 en réécrivant **leur table 0** avec des touches qu'aucun clavier ne porte, puis en
-simulant leur appui (`SendInput`, `KEYEVENTF_SCANCODE`). La table du joueur 1 n'est jamais écrite ;
-celles des joueurs 2 à 4 sont remises à la fin de la session.
+`OpenForesiaLanceur.exe` (ex-`OpenForesiaMultiplayer.exe` : `openspec/changes/add-multiplayer-streaming`,
+design D2, puis `add-launcher-solo-gamepad`, design D2) pilote les joueurs 2 à 4 en réécrivant **leur
+table 0** avec des touches qu'aucun clavier ne porte, puis en simulant leur appui (`SendInput`,
+`KEYEVENTF_SCANCODE`). La manette du joueur 1 passe par le même chemin, dans **sa table 1** (le
+clavier de secours) : sa table 0, le clavier principal, n'est jamais écrite. Seuls les joueurs d'une
+session sont écrits (le joueur 1 en solo, les quatre en hébergement) ; leurs tables sont
+sauvegardées dans `OpenForesia.cfg.lanceur` (`OpenForesia.cfg.multijoueur` avant le renommage,
+encore relu) et remises **après la fin du jeu**, ou au lancement suivant du lanceur.
 
 **Mesure du 2026-09-30** (`OpenForesiaMultiplayer.exe --mesurer-touches`, disposition AZERTY
 `0x040C040C`) : un clavier DirectInput ouvert exactement comme le jeu l'ouvre (version 5, format de
@@ -152,6 +156,17 @@ l'octet :
 | 2 | `0x81` `0x82` `0x83` `0x84` `0x85` `0x86` `0x87` `0x88` `0x89` `0x8A` `0x8B` `0x8C` `0x8D` `0x8E` |
 | 3 | `0x8F` `0x91` `0x92` `0x93` `0x94` `0x95` `0x96` `0x97` `0x98` `0x9A` `0x9B` `0x9E` `0x9F` `0xA3` |
 | 4 | `0xA5` `0xA6` `0xA7` `0xA8` `0xA9` `0xAB` `0xAC` `0xAD` `0xAF` `0xB1` `0xB3` `0xB4` `0xB9` `0xBA` |
+| 1 (table 1) | `0xBB` `0xBC` `0xBD` `0xBE` `0xBF` `0xC0` `0xC1` `0xC2` `0xC3` `0xC4` `0x55` `0x60` `0x61` `0x74` |
+
+**Le joueur 1 (2026-10-02)** prend les quatorze codes suivants parmi les 45 validés et non retenus.
+Il ne reste que **dix codes étendus** (`E0 3B`..`E0 44` ; `E0 45` est rejeté) ; les quatre autres sont
+des codes simples. `MapVirtualKeyEx` (`MAPVK_VSC_TO_VK_EX`, disposition `0x040C040C`, aucune frappe)
+donne une touche virtuelle **nulle** à tous les codes étendus candidats et aux codes simples `0x55`,
+`0x60`, `0x61`, `0x70`, `0x72`, `0x74`, `0x75`, `0x77`..`0x7A`, `0x7D`, `0x7F`. Parmi ceux-là, on écarte
+ceux que des claviers japonais, coréen ou brésilien portent (`0x70` Kana, `0x73` Ro, `0x79`
+Henkan, `0x7B` Muhenkan, `0x7D` Yen, `0x71`/`0x72` Hanja/Hangul, `0x7E`), et on prend les premiers
+dans l'ordre du rapport : `0x55`, `0x60`, `0x61`, `0x74`. **À confirmer** par une nouvelle mesure
+(`OpenForesiaLanceur.exe --mesurer-touches`, qui en exige désormais 56).
 
 Les actions `09` et `0a` ne posent aucun bit, les combinaisons `10`..`13` restent sans touche, la
 table 1 des joueurs 2 à 4 est vidée. Conséquence visible : pendant une session, la page des touches

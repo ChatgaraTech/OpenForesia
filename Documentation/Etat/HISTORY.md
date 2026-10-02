@@ -4,6 +4,20 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-10-02
+
+- feat : OpenForesia-Setup 0.4.0 (22 Mo) — le lanceur `OpenForesiaLanceur.exe` (jouer seul à la manette, héberger, rejoindre) remplace le multijoueur ; publié aussi seul à côté du Setup (10,3 Mo), pour l'ami qui ne fait que rejoindre
+- doc : change `add-multiplayer-streaming` archivé (`openspec/changes/archive/2026-10-02-add-multiplayer-streaming`), spec `multiplayer-streaming` créée et accordée au lanceur (nom du programme ; seules les touches de secours du joueur 1 sont écrites, et remises) ; restent ouverts les essais à distance avec des amis (4.5, 5.6)
+- doc : change `add-launcher-solo-gamepad` archivé (`openspec/changes/archive/2026-10-02-add-launcher-solo-gamepad`), spec `game-launcher` créée dans `openspec/specs/` ; restent ouverts la mesure de confirmation des touches du joueur 1, les essais d'installeur (mise à jour d'une 0.3.0, lanceur seul sur un autre PC) et le nom du programme dans la spec du multijoueur
+- fix : lanceur — dans l'accueil, le champ du code touchait le bord droit de la fenêtre (colonne Rejoindre aussi large que la gauche, posée à mi-largeur) : fenêtre élargie (720 px, 380 réduite) et colonne Rejoindre bornée par la marge de droite
+- feat : lanceur — « Jouer seul » : la manette du joueur 1 relayée en touches fantômes dans sa table 1 de `[Controls]` (`Hote/Relais.cs`, toutes les 4 ms, jamais le clavier, mot nul hors premier plan ou écran de configuration ouvert), avec la fenêtre de la partie solo ; `--solo` en console (`add-launcher-solo-gamepad`, lots 2 à 4)
+- feat : lanceur — l'accueil offre Jouer seul, Héberger, Rejoindre, Configurer ma manette et une ligne d'état de la manette ; sans le jeu à côté (ou `--invite-seul`), seulement Rejoindre et la manette ; « Configurer ma manette » aussi dans la fenêtre solo et celle de l'hôte, pris en compte sans relancer le jeu
+- feat : lanceur — l'hôte joue aussi le joueur 1 à la manette (codes des joueurs 1 à 4 écrits) ; le cfg n'est plus remis tant que le jeu tourne, mais à sa fin ou au lancement suivant du lanceur (`Remettre` au démarrage, quel que soit le mode, qui relit aussi l'ancien `OpenForesia.cfg.multijoueur`)
+- feat : installeur — dépose `OpenForesiaLanceur.exe` et le raccourci « OpenForesia Lanceur », retire `OpenForesiaMultiplayer.exe` et les raccourcis « OpenForesia Multijoueur » ; `publish-release.ps1` sort aussi le lanceur seul à côté du Setup
+- feat : `OpenForesia.Multiplayer/` devient `OpenForesia.Lanceur/` (`OpenForesiaLanceur.exe`, espace de noms `OpenForesia.Lanceur`), à comportement constant ; accueil titré « OpenForesia » ; `publish-release.ps1` attend le nouvel exe (lot 1 de `add-launcher-solo-gamepad`)
+- doc : les quatorze touches fantômes du joueur 1 (`E0 3B`..`E0 44`, `0x55`, `0x60`, `0x61`, `0x74`) choisies par `MapVirtualKeyEx`, sans frappe — à confirmer par `--mesurer-touches`, qui en exige maintenant 56 (`OpenForesia.cfg.md`)
+- doc : la manette du joueur 1 n'atteint pas le jeu — `FUN_00523230` (création des joysticks DirectInput) et `FUN_00523340`/`FUN_00522fe0` (leur lecture) ne sont pas reconstruites, la table 2 de `[Controls]` est donc morte et la page manette d'Options ne capture rien ; change `add-launcher-solo-gamepad` proposé (lanceur `OpenForesiaLanceur.exe` : jouer seul, héberger, rejoindre, et la manette du joueur 1 relayée en touches fantômes)
+
 ## 2026-09-30
 
 - feat : multijoueur — qualité d’image « Haute » (1280 × 960, 8 Mbit/s par ami) par défaut, au lieu de « Normale »

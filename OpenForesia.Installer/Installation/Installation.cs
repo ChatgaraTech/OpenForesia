@@ -18,9 +18,16 @@ internal static class Installation
     internal const string NomJeu = "OpenForesia";
     internal const string Executable = "OpenForesia.exe";
 
-    /// <summary>Le multijoueur (openspec/changes/add-multiplayer-streaming), dans le zip du jeu d'une release.</summary>
-    internal const string ExecutableMultijoueur = "OpenForesiaMultiplayer.exe";
-    internal const string NomMultijoueur = "OpenForesia Multijoueur";
+    /// <summary>
+    /// Le lanceur (openspec/changes/add-launcher-solo-gamepad) : jouer seul à la manette, héberger,
+    /// rejoindre. Dans le zip du jeu d'une release.
+    /// </summary>
+    internal const string ExecutableLanceur = "OpenForesiaLanceur.exe";
+    internal const string NomLanceur = "OpenForesia Lanceur";
+
+    /// <summary>Le lanceur sous son premier nom (add-multiplayer-streaming), retiré à la mise à jour et à la désinstallation.</summary>
+    internal const string AncienExecutableMultijoueur = "OpenForesiaMultiplayer.exe";
+    internal const string AncienNomMultijoueur = "OpenForesia Multijoueur";
     internal const string CleDesinstallation = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenForesia";
 
     /// <summary>Au-dela, un chemin du jeu risquerait de depasser les 260 caracteres de Windows.</summary>
@@ -161,15 +168,25 @@ internal static class Installation
                 Raccourcis.Creer(raccourci, exe, "", dossier, "Blaze & Blade, reconstruit", exe);
             }
 
-            // Le multijoueur, s'il est livré avec le jeu (une release ; pas une build de développement).
-            string multijoueur = Path.Combine(dossier, ExecutableMultijoueur);
-            if (File.Exists(multijoueur))
+            // Le multijoueur sous son premier nom, d'une installation précédente : son exe et ses
+            // raccourcis. Le lanceur le remplace.
+            foreach (string ancien in new[]
+                     {
+                         Path.Combine(dossier, AncienExecutableMultijoueur),
+                         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), AncienNomMultijoueur + ".lnk"),
+                         Path.Combine(menu, AncienNomMultijoueur + ".lnk"),
+                     })
+                if (File.Exists(ancien)) File.Delete(ancien);
+
+            // Le lanceur, s'il est livré avec le jeu (une release ; pas une build de développement).
+            string lanceur = Path.Combine(dossier, ExecutableLanceur);
+            if (File.Exists(lanceur))
             {
-                string bureauMulti = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NomMultijoueur + ".lnk");
-                foreach (string raccourci in new[] { bureauMulti, Path.Combine(menu, NomMultijoueur + ".lnk") })
+                string bureauLanceur = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NomLanceur + ".lnk");
+                foreach (string raccourci in new[] { bureauLanceur, Path.Combine(menu, NomLanceur + ".lnk") })
                 {
                     journal.NoterFichier(raccourci);
-                    Raccourcis.Creer(raccourci, multijoueur, "", dossier, "Jouer à plusieurs à distance : héberger ou rejoindre une partie", exe);
+                    Raccourcis.Creer(raccourci, lanceur, "", dossier, "Jouer seul à la manette, héberger ou rejoindre une partie", exe);
                 }
             }
 
