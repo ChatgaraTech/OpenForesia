@@ -116,7 +116,9 @@ internal static class Program
                     null => 0,
                     Interface.FenetreAccueil.Mode.Solo => Solo.ModeSolo.ExecuterFenetre(null),
                     Interface.FenetreAccueil.Mode.Heberger => Interface.FenetreHote.Executer(Protocole.PortParDefaut, null, null, upnp: true),
-                    _ => ModeInvite.Executer(choix.Code!, new ModeInvite.Options(Reconfigurer: choix.Reconfigurer)),
+                    // Reconfigurer depuis l'accueil, c'est son bouton « Configurer ma manette » ; la
+                    // première connexion ouvre de toute façon l'écran si rien n'est configuré.
+                    _ => ModeInvite.Executer(choix.Code!, new ModeInvite.Options(Reconfigurer: false)),
                 };
             default:
                 Console.Error.WriteLine("OpenForesiaLanceur : mode inconnu. Modes : --heberger, --rejoindre, les essais (voir Program.cs) ; sans rien, l'accueil.");

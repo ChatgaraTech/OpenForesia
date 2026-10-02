@@ -18,26 +18,31 @@ internal sealed class FenetreAccueil
     internal enum Mode { Solo, Heberger, Rejoindre }
 
     /// <summary>Ce que le joueur a choisi : rien (fenêtre fermée), jouer seul, héberger, ou rejoindre avec un code.</summary>
-    internal sealed record Choix(Mode Mode, string? Code = null, bool Reconfigurer = false);
+    internal sealed record Choix(Mode Mode, string? Code = null);
 
-    private const int IdHeberger = 10, IdCode = 11, IdReconfigurer = 12, IdRejoindre = 13, IdSolo = 14, IdManette = 15;
-    private const int LargeurComplete = 720, LargeurReduite = 380, Hauteur = 300;
+    // La case « Reconfigurer ma manette » (12) est retirée : le bouton « Configurer ma manette »
+    // ouvre le même écran sur le même manette.json, à tout moment.
+    private const int IdHeberger = 10, IdCode = 11, IdRejoindre = 13, IdSolo = 14, IdManette = 15;
+    // Réduite, l'état de la manette n'a pas la place à droite du bouton (« Manette : Manette
+    // Xbox 1. » y passait à la ligne) : il descend dessous, et la manette remonte sous Rejoindre.
+    private const int LargeurComplete = 720, LargeurReduite = 380, HauteurComplete = 300, HauteurReduite = 290;
     private const nuint Minuterie = 1;
 
     private static FenetreAccueil? s_Instance;
 
     private readonly bool _jeu;
-    private readonly int _largeur;
+    private readonly int _largeur, _hauteur;
     private readonly ConfigManette _config = ConfigManette.Charger() ?? new ConfigManette();
     private readonly float _echelle = GetDpiForSystem() / 96f;
     private readonly IntPtr _police, _policeTitre, _policeCode;
-    private IntPtr _hwnd, _code, _reconfigurer, _etat, _manette;
+    private IntPtr _hwnd, _code, _etat, _manette;
     private Choix? _choix;
 
     private FenetreAccueil(bool jeu)
     {
         _jeu = jeu;
         _largeur = jeu ? LargeurComplete : LargeurReduite;
+        _hauteur = jeu ? HauteurComplete : HauteurReduite;
         _police = CreateFont(-Px(12), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0, "Segoe UI");
         _policeTitre = CreateFont(-Px(16), 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, "Segoe UI");
         _policeCode = CreateFont(-Px(12), 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, "Consolas");
@@ -88,7 +93,7 @@ internal sealed class FenetreAccueil
         }
 
         const uint style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-        var r = new RECT { Droite = Px(_largeur), Bas = Px(Hauteur) };
+        var r = new RECT { Droite = Px(_largeur), Bas = Px(_hauteur) };
         AdjustWindowRectEx(&r, style, false, WS_EX_CONTROLPARENT);
         int l = r.Droite - r.Gauche, h = r.Bas - r.Haut;
         _hwnd = CreateWindowEx(WS_EX_CONTROLPARENT, classe, "OpenForesia", style,
@@ -116,15 +121,19 @@ internal sealed class FenetreAccueil
         Controle("STATIC", "Un ami t'a envoyé un code :", SS_LEFT | SS_NOPREFIX, 0, x, marge + Px(34), largeurRejoindre, Px(20), 0, _police);
         string dernier = File.Exists(CheminDernierCode) ? File.ReadAllText(CheminDernierCode).Trim() : "";
         _code = Controle("EDIT", dernier, WS_TABSTOP | ES_AUTOHSCROLL, WS_EX_CLIENTEDGE, x, marge + Px(56), largeurRejoindre, Px(26), IdCode, _policeCode);
-        _reconfigurer = Controle("BUTTON", "Reconfigurer ma manette", WS_TABSTOP | BS_AUTOCHECKBOX, 0, x, marge + Px(90), largeurRejoindre, Px(22), IdReconfigurer, _police);
-        Controle("BUTTON", "Rejoindre", WS_TABSTOP | (_jeu ? BS_PUSHBUTTON : BS_DEFPUSHBUTTON), 0, x, marge + Px(120), Px(140), Px(32), IdRejoindre, _police);
+        Controle("BUTTON", "Rejoindre", WS_TABSTOP | (_jeu ? BS_PUSHBUTTON : BS_DEFPUSHBUTTON), 0, x, marge + Px(92), Px(140), Px(32), IdRejoindre, _police);
 
         // La manette, en bas, pour tous les choix.
-        int y = marge + Px(194);
+        // Sous la colonne Jouer quand elle est là ; sinon juste sous le bouton Rejoindre.
+        int y = marge + Px(_jeu ? 194 : 150);
         Controle("BUTTON", "Configurer ma manette", WS_TABSTOP | BS_PUSHBUTTON, 0, marge, y, Px(200), Px(30), IdManette, _police);
-        _manette = Controle("STATIC", "", SS_LEFT | SS_NOPREFIX, 0, marge + Px(212), y + Px(6), Px(_largeur) - 2 * marge - Px(212), Px(20), 0, _police);
+        // L'état de la manette : à droite du bouton quand la fenêtre est large, dessous sinon.
+        if (_jeu)
+            _manette = Controle("STATIC", "", SS_LEFT | SS_NOPREFIX, 0, marge + Px(212), y + Px(6), Px(_largeur) - 2 * marge - Px(212), Px(20), 0, _police);
+        else
+            _manette = Controle("STATIC", "", SS_LEFT | SS_NOPREFIX, 0, marge, y + Px(38), Px(_largeur) - 2 * marge, Px(20), 0, _police);
 
-        _etat = Controle("STATIC", "", SS_LEFT | SS_NOPREFIX, 0, marge, Px(Hauteur) - marge - Px(24), Px(_largeur) - 2 * marge, Px(24), 0, _police);
+        _etat = Controle("STATIC", "", SS_LEFT | SS_NOPREFIX, 0, marge, Px(_hauteur) - marge - Px(24), Px(_largeur) - 2 * marge, Px(24), 0, _police);
         EtatManette();
         ShowWindow(_hwnd, SW_SHOW);
         SetTimer(_hwnd, Minuterie, 1000, IntPtr.Zero);
@@ -160,8 +169,7 @@ internal sealed class FenetreAccueil
             File.WriteAllText(CheminDernierCode, code);
         }
         catch (IOException) { }                           // ne pas le retenir n'empêche pas de jouer
-        bool reconfigurer = SendMessage(_reconfigurer, BM_GETCHECK, 0, IntPtr.Zero) == 1;
-        Terminer(new Choix(Mode.Rejoindre, code, reconfigurer));
+        Terminer(new Choix(Mode.Rejoindre, code));
     }
 
     private void Terminer(Choix choix)

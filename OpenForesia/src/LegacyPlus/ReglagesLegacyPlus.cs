@@ -35,6 +35,9 @@ internal static class ReglagesLegacyPlus
     /// <summary>`[Magie] DeplacementEnIncantation` — part de la vitesse de marche gardée pendant une incantation, en centièmes ; 0 = jeu d'origine (LP-006).</summary>
     internal static int DeplacementEnIncantation { get; private set; } = 0;
 
+    /// <summary>`[Magie] SoutienFee` — `oui` : les bonus de la Fée touchent tout le groupe, ses malus tous les ennemis proches, à coup sûr (LP-015).</summary>
+    internal static bool SoutienFee { get; private set; } = false;
+
     /// <summary>`[Rencontres] Frequence` — cadence des rencontres aléatoires, en centièmes ; le délai est divisé d'autant (LP-007).</summary>
     internal static int FrequenceRencontres { get; private set; } = 100;
 
@@ -104,7 +107,7 @@ internal static class ReglagesLegacyPlus
             $"ScalingMagique={Ecrire(ScalingMagique)}, InvulnerabiliteEnnemis={(InvulnerabiliteEnnemis ? "oui" : "non")}, " +
             $"RamassageAuto={(RamassageAuto ? "oui" : "non")}, DeplacementEnIncantation={Ecrire(DeplacementEnIncantation)}, " +
             $"Rencontres : Frequence=x{Ecrire(FrequenceRencontres)}, MonstresMax={MonstresMax}, Formations={FormationsParRencontre}, " +
-            $"Hub={(Hub ? "oui" : "non")}");
+            $"Hub={(Hub ? "oui" : "non")}, SoutienFee={(SoutienFee ? "oui" : "non")}");
     }
 
     private static string Ecrire(int centiemes) =>
@@ -142,6 +145,15 @@ internal static class ReglagesLegacyPlus
         {
             if (LireMultiplicateur(value, 0, 100, out centiemes)) DeplacementEnIncantation = centiemes;
             else Refuser(section, key, value, "de 0 (jeu d'origine) à 1 (vitesse pleine)");
+        }
+        else if (Est("Magie", "SoutienFee"))
+        {
+            // `true` / `false` acceptés en plus de la forme des autres interrupteurs (design D7).
+            if (value.Equals("oui", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("true", StringComparison.OrdinalIgnoreCase)) SoutienFee = true;
+            else if (value.Equals("non", StringComparison.OrdinalIgnoreCase)
+                     || value.Equals("false", StringComparison.OrdinalIgnoreCase)) SoutienFee = false;
+            else Refuser(section, key, value, "oui/true ou non/false (jeu d'origine)");
         }
         else if (Est("Rencontres", "Frequence"))
         {

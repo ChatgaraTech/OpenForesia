@@ -1272,7 +1272,7 @@ public static unsafe partial class Blaze
     /// donne est bien la bonne.
     /// </para>
     /// </summary>
-    private static int AllocEntitySlot(ushort* pool)
+    internal static int AllocEntitySlot(ushort* pool)   // `internal` pour LP-015 : la copie d'un sort de la Fée
     {
         ushort header = *pool;
         if ((byte)header >= (byte)(header >> 8))

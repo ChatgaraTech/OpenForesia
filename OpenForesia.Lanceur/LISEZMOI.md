@@ -58,6 +58,12 @@ NAT : 4G, certaines fibres) ne peut pas héberger pour internet ; et **pendant u
 le lanceur, le clavier de secours du joueur 1** (la seconde colonne de touches des Options : pavé
 numérique, Inser, Suppr… par défaut) **ne marche pas** — c'est sa place que prend la manette.
 
+**Sur Windows 10, un cadre jaune-orange entoure la fenêtre du jeu pendant l'hébergement.** C'est
+Windows qui le dessine, pour signaler qu'une fenêtre est filmée — ici, par le lanceur, qui envoie
+l'image aux amis. Il n'apparaît que sur l'écran de l'hôte : **les amis ne le voient pas**, et il
+ne change rien à la partie. Windows 11 permet de s'en passer, et le lanceur le fait ; Windows 10
+ne le permet pas.
+
 ## Comment ça marche
 
 ```
@@ -138,4 +144,12 @@ réduit d'un ami qui n'a que le lanceur, dans le dépôt).
 - Une session Windows affichée à distance plafonne la capture à sa propre fréquence (32 Hz ici) :
   compter les images de la mire dans ces conditions ne mesure pas le programme.
 - `Thread.Sleep(1)` dort 15,6 ms sans `timeBeginPeriod(1)` : l'hôte et l'ami la demandent.
+- **Le cadre de capture.** `IsBorderRequired = false` (`IGraphicsCaptureSession3`) n'existe qu'à
+  partir de Windows 10.0.20348, c'est-à-dire Windows 11 (et Server 2022) : aucun Windows 10 grand
+  public ne l'a, le cadre y reste. `CaptureFenetre` demande d'abord l'accès « sans cadre »
+  (`GraphicsCaptureAccess.RequestAccessAsync(Borderless)`) et journalise tout refus en
+  `[CAPTURE] …` — sur Windows 10 : « interface absente ». Écartée le 2026-10-02 : passer, sur
+  Windows 10, par la duplication du bureau (DXGI), sans cadre mais qui enverrait aux amis tout ce
+  qui recouvre le jeu. Et un essai sur la mire (`--essai-image`) ne montre jamais le cadre : le
+  lanceur y filme **sa propre** fenêtre, que Windows n'encadre pas.
 - L'encodeur refuse **sans bruit** un réglage mal typé : `MF.Regler` rend faux, le journal le dit.

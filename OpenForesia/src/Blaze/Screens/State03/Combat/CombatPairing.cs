@@ -380,13 +380,14 @@ public static unsafe partial class Blaze
             return 1;
         }
 
-        if ((*(uint*)(victimBlock + 0x14) & 0xf3299500) != 0)
+        if (!LegacyPlus.Coutures.MalusForce() && (*(uint*)(victimBlock + 0x14) & 0xf3299500) != 0)   // Couture legacy ++ (LP-015)
         {
             SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
             return 1;
         }
 
-        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+        if (!LegacyPlus.Coutures.MalusForce()   // Couture legacy ++ (LP-015)
+            && RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
 
         int duration = (*(short*)(attackerBlock + 0x3c) >> 3) + 0x15;
         if (*(ushort*)(victimBlock + 0x90) < duration)
@@ -471,13 +472,14 @@ public static unsafe partial class Blaze
             return 1;
         }
 
-        if ((*(uint*)(victimBlock + 0x14) & 0xf3099500) != 0)
+        if (!LegacyPlus.Coutures.MalusForce() && (*(uint*)(victimBlock + 0x14) & 0xf3099500) != 0)   // Couture legacy ++ (LP-015)
         {
             SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
             return 1;
         }
 
-        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+        if (!LegacyPlus.Coutures.MalusForce()   // Couture legacy ++ (LP-015)
+            && RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
 
         int duration = (*(short*)(attackerBlock + 0x3c) >> 2) + 0x42;
         if (*(ushort*)(victimBlock + 0x94) < duration)

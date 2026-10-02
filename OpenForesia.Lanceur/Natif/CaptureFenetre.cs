@@ -117,20 +117,83 @@ internal sealed unsafe partial class CaptureFenetre : IDisposable
         _session = session;
 
         // Sans le curseur, sans le cadre jaune quand Windows le permet (IsCursorCaptureEnabled :
-        // Session2, put au rang 7 ; IsBorderRequired : Session3, put au rang 7). Un refus est sans gravité.
-        Poser(_session, IID_IGraphicsCaptureSession2, PremiereMethodeWinRT + 1, false);
-        Poser(_session, IID_IGraphicsCaptureSession3, PremiereMethodeWinRT + 1, false);
+        // Session2, put au rang 7 ; IsBorderRequired : Session3, put au rang 7). Un refus est sans
+        // gravité, mais il se journalise. Le cadre ne s'enlève qu'après l'accès « sans cadre »,
+        // demandé une fois par processus (Windows 11 l'accorde d'office à une application non
+        // empaquetée) : sans lui, Windows ignorait la demande et le cadre orange restait autour du jeu.
+        DemanderSansCadre();
+        Poser(_session, IID_IGraphicsCaptureSession2, PremiereMethodeWinRT + 1, false, "IsCursorCaptureEnabled");
+        Poser(_session, IID_IGraphicsCaptureSession3, PremiereMethodeWinRT + 1, false, "IsBorderRequired");
 
         // IGraphicsCaptureSession : StartCapture (6).
         Verifier(((delegate* unmanaged[Stdcall]<void*, int>)Vtable(_session)[PremiereMethodeWinRT])(_session), "GraphicsCaptureSession.StartCapture");
     }
 
-    private static void Poser(void* objet, Guid iid, int rang, bool valeur)
+    private static void Poser(void* objet, Guid iid, int rang, bool valeur, string quoi)
     {
         void* i = Interroger(objet, iid);
-        if (i == null) return;
-        ((delegate* unmanaged[Stdcall]<void*, byte, int>)Vtable(i)[rang])(i, (byte)(valeur ? 1 : 0));
+        if (i == null)
+        {
+            Console.Error.WriteLine($"[CAPTURE] {quoi} : interface absente (Windows trop ancien)");
+            return;
+        }
+        int hr = ((delegate* unmanaged[Stdcall]<void*, byte, int>)Vtable(i)[rang])(i, (byte)(valeur ? 1 : 0));
         Liberer(i);
+        if (hr < 0) Console.Error.WriteLine($"[CAPTURE] {quoi} = {valeur} refusé (0x{hr:X8})");
+    }
+
+    // GraphicsCaptureAccess (Windows.Graphics.winmd) : IGraphicsCaptureAccessStatics.RequestAccessAsync
+    // (rang 6), GraphicsCaptureAccessKind.Borderless = 0 ; la réponse est un AppCapabilityAccessStatus,
+    // Allowed = 4. IAsyncInfo : get_Status au rang 7 (Started 0, Completed 1) ; IAsyncOperation<T> :
+    // GetResults au rang 8.
+    private static readonly Guid IID_IGraphicsCaptureAccessStatics = new("743ED370-06EC-5040-A58A-901F0F757095");
+    private static readonly Guid IID_IAsyncInfo = new("00000036-0000-0000-C000-000000000046");
+    private const int AccesSansCadre = 0, AccesAccorde = 4, OperationEnCours = 0, OperationTerminee = 1;
+    private static bool s_SansCadreDemande;
+
+    /// <summary>
+    /// Demande à Windows l'accès « capture sans cadre », une fois par processus. Jamais bloquant :
+    /// un échec laisse simplement le cadre, et se journalise.
+    /// </summary>
+    private static void DemanderSansCadre()
+    {
+        if (s_SansCadreDemande) return;
+        s_SansCadreDemande = true;
+        void* statiques = null, operation = null, info = null;
+        try
+        {
+            statiques = Fabrique("Windows.Graphics.Capture.GraphicsCaptureAccess", IID_IGraphicsCaptureAccessStatics);
+            Verifier(((delegate* unmanaged[Stdcall]<void*, int, void**, int>)Vtable(statiques)[PremiereMethodeWinRT])(
+                         statiques, AccesSansCadre, &operation), "GraphicsCaptureAccess.RequestAccessAsync");
+
+            info = Interroger(operation, IID_IAsyncInfo);
+            if (info == null) throw new COMException("IAsyncInfo introuvable");
+            int etat = OperationEnCours;
+            for (int attente = 0; attente < 200 && etat == OperationEnCours; attente++)
+            {
+                Verifier(((delegate* unmanaged[Stdcall]<void*, int*, int>)Vtable(info)[PremiereMethodeWinRT + 1])(info, &etat), "IAsyncInfo.Status");
+                if (etat == OperationEnCours) Thread.Sleep(10);
+            }
+            if (etat != OperationTerminee)
+            {
+                Console.Error.WriteLine($"[CAPTURE] accès sans cadre : pas de réponse (état {etat})");
+                return;
+            }
+
+            int statut;
+            Verifier(((delegate* unmanaged[Stdcall]<void*, int*, int>)Vtable(operation)[PremiereMethodeWinRT + 2])(operation, &statut), "RequestAccessAsync.GetResults");
+            if (statut != AccesAccorde) Console.Error.WriteLine($"[CAPTURE] accès sans cadre refusé (statut {statut})");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[CAPTURE] accès sans cadre indisponible : {ex.Message}");
+        }
+        finally
+        {
+            Liberer(info);
+            Liberer(operation);
+            Liberer(statiques);
+        }
     }
 
     /// <summary>La fenêtre capturée existe encore.</summary>

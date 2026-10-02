@@ -250,13 +250,14 @@ public static unsafe partial class Blaze
             return 1;
         }
 
-        if ((*(uint*)(victimBlock + 0x14) & 0xfbaf9500) != 0)
+        if (!LegacyPlus.Coutures.MalusForce() && (*(uint*)(victimBlock + 0x14) & 0xfbaf9500) != 0)   // Couture legacy ++ (LP-015)
         {
             SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
             return 1;
         }
 
-        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+        if (!LegacyPlus.Coutures.MalusForce()   // Couture legacy ++ (LP-015)
+            && RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
 
         int duration = (*(short*)(attackerBlock + 0x3c) >> 3) + 0x1a;
         if (*(ushort*)(victimBlock + 0x96) < duration)
@@ -532,6 +533,7 @@ public static unsafe partial class Blaze
         }
 
         int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        duration = LegacyPlus.Coutures.DureeDEtat(duration);   // Couture legacy ++ (LP-015)
         if (*(ushort*)(victimBlock + 0xa6) < duration)
         {
             *(short*)(victimBlock + 0xa6) = (short)duration;
@@ -562,15 +564,17 @@ public static unsafe partial class Blaze
             return 1;
         }
 
-        if ((*(uint*)(victimBlock + 0x14) & 0x80000000) != 0)
+        if (!LegacyPlus.Coutures.MalusForce() && (*(uint*)(victimBlock + 0x14) & 0x80000000) != 0)   // Couture legacy ++ (LP-015)
         {
             SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
             return 1;
         }
 
-        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+        if (!LegacyPlus.Coutures.MalusForce()   // Couture legacy ++ (LP-015)
+            && RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
 
         int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        duration = LegacyPlus.Coutures.DureeDEtat(duration);   // Couture legacy ++ (LP-015)
         if (*(ushort*)(victimBlock + 0xa8) < duration)
         {
             *(short*)(victimBlock + 0xa8) = (short)duration;
