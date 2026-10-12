@@ -84,6 +84,38 @@ try {
         throw "le jeu publié doit tenir en $($attendusJeu -join ' et ') ; il contient : $($fichiersJeu -join ', ')"
     }
 
+    # Les licences, installées avec le jeu dans Licences\ : la MIT du projet, et la LGPL du décodeur
+    # Indeo 4 porté de FFmpeg (Host/Indeo4/), qu'OpenForesia.exe embarque — la LGPL demande que son
+    # texte accompagne le programme distribué. Le texte de la LGPL est recopié tel quel.
+    $licences = Join-Path $temporaire 'Licences'
+    New-Item -ItemType Directory -Force $licences | Out-Null
+    Copy-Item (Join-Path $depot 'LICENSE') (Join-Path $licences 'OpenForesia-MIT.txt')
+    Copy-Item (Join-Path $depot 'OpenForesia\src\Host\Indeo4\LICENSE-LGPL.txt') (Join-Path $licences 'Indeo4-LGPL-2.1.txt')
+    $lisezmoi = @"
+OpenForesia - licences
+======================
+
+OpenForesia est distribue sous licence MIT : voir OpenForesia-MIT.txt.
+
+Exception : OpenForesia.exe contient un decodeur Indeo 4, utilise pour les cinematiques du jeu.
+C'est un portage en C# du decodeur Indeo 4 de FFmpeg (https://ffmpeg.org), libavcodec/indeo4.c,
+ivi.c et ivi_dsp.c, Copyright (c) 2009-2011 Maxim Poliakovski, revision
+b0d154591161153b0ec55d9527535bc776504899. Comme sa source, il est distribue sous la GNU Lesser
+General Public License, version 2.1 ou (a votre choix) toute version ulterieure : voir
+Indeo4-LGPL-2.1.txt.
+
+Son code source, et celui de tout OpenForesia, est disponible sur
+https://github.com/ChatgaraTech/OpenForesia (dossier OpenForesia/src/Host/Indeo4/). Chacun peut y
+modifier le decodeur et reconstruire le jeu.
+
+Blaze & Blade / Legend of Foresia appartient a ses ayants droit. OpenForesia ne contient aucune
+donnee du jeu et n'a aucun lien avec eux.
+
+Version $Version
+"@
+    [IO.File]::WriteAllText((Join-Path $licences 'LISEZMOI.txt'), $lisezmoi.Replace("`r`n", "`n").Replace("`n", "`r`n"), [Text.UTF8Encoding]::new($true))
+    Write-Host "   les licences : Licences\OpenForesia-MIT.txt, Indeo4-LGPL-2.1.txt, LISEZMOI.txt"
+
     Etape "2. Zip du jeu pour l'installeur"
     New-Item -ItemType Directory -Force (Split-Path $zip) | Out-Null
     if (Test-Path $zip) { Remove-Item $zip -Force }

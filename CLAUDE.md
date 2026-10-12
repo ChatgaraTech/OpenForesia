@@ -267,7 +267,11 @@ below. Keep any dump you rely on under `Legacy/Raw/Blaze/`.
 
 ## Layout
 
-**The repository root holds exactly two files** — `CLAUDE.md` and `OpenForesia.sln`. Everything
+**The repository root holds exactly four files** — `CLAUDE.md`, `OpenForesia.sln`, `README.md`
+(the GitHub front page, for players) and `LICENSE` (MIT), both added 2026-10-12 at Vincent's
+request; release notes live in `Documentation/Releases/`. The MIT licence covers our code only:
+`OpenForesia/src/Host/Indeo4/` stays LGPL 2.1+ (ported from FFmpeg, never relicensable), and
+`Legacy/` and data read from the game belong to the rights holders. Everything
 else lives under one of the directories below. Reorganised 2026-08-21; before that, the
 decompilations, the DLL binaries and eleven `.md` files were all loose at the root.
 

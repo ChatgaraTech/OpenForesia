@@ -6,6 +6,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-10-12
 
+- feat : `publish-release.ps1` installe les licences avec le jeu, dans `Licences\` (`OpenForesia-MIT.txt`, `Indeo4-LGPL-2.1.txt`, `LISEZMOI.txt`, qui dit d'où vient le décodeur et où est sa source) ; OpenForesia-Setup 1.0.0 refait avec
+- doc : licence MIT (`LICENSE` à la racine) ; le décodeur Indeo 4 porté de FFmpeg reste sous LGPL 2.1+, et `Legacy/` comme les données lues du jeu restent hors licence — section « Licence » du README et des notes de version 1.0.0
+- doc : `README.md` à la racine (la page d'accueil GitHub : le projet, l'installation, le lanceur, le multijoueur, Legacy et Legacy Plus, l'éditeur de sauvegarde, le bestiaire) et les notes de version `Documentation/Releases/v1.0.0.md`
+- feat : OpenForesia-Setup 1.0.0 (22 Mo) — LB-001 (retour de la saisie du nom) et LB-059 (clavier virtuel à la manette) ; lanceur seul 10,3 Mo à côté
 - feat : LB-059 (legacy ++) — le clavier virtuel de la saisie du nom se parcourt à la manette du lanceur, comme sur PS1 (croix pose la lettre, rond efface), et aux flèches + Alt au clavier ; pendant la saisie, `FoldKeyboardIntoPadState` n'efface plus que les touches qui tapent un caractère
 - fix : LB-001 corrigé (legacy ++) — revenir de la saisie du nom au carrousel de sélection des personnages (Échap, ou annulation/validation à la manette) ne laisse plus l'écran sourd au clavier : `CharacterSelectSubState1` rallume la traduction clavier→manette sur toutes les sorties
 
