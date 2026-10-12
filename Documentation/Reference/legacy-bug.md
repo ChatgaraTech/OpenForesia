@@ -2431,6 +2431,33 @@ lie les deux processus. Si la réserve échoue, le lanceur joue lui-même par l'
 comprise ; sous débogueur, pas de lanceur. La contrainte des 24 bits reste entière — la supprimer
 demanderait de reprendre chaque endroit du jeu qui suit une adresse masquée (à chiffrer).
 
+**Complément du 2026-10-12 — la réserve se refait sur un processus neuf.** Le jeu installé
+(1.1.0) a encore planté au démarrage, lancé depuis le lanceur : « No free block of 0x280000 bytes
+was available below 0x00D80000 — the largest free region there was 0x1D0000 bytes ». Cause
+mesurée, sans lancer le jeu, en créant `OpenForesia.exe` suspendu et en rejouant `Reserver`
+depuis un processus 32 bits :
+- l'exe publié est un fichier unique qui embarque le runtime : son image fait **0x87D000 octets**
+  (8,5 Mo), avec ASLR. Windows la pose au même endroit pendant toute la session : en
+  **0x00830000** ce jour-là, ce qui occupe tout l'intervalle de 8 à 16 Mo ;
+- sous 0x00830000, la pile et les premiers tas du processus suspendu changent de place à chaque
+  création. Résultat : **un essai sur vingt** sans place pour l'arène (0x280000 d'un seul tenant) ;
+- ce vingtième retombait sur l'ancien chemin (le lanceur joue lui-même, puis deux relances), qui
+  perd à coup sûr dans ces conditions : le runtime a déjà pris le bas de la fenêtre.
+
+**Correction** (`Host/ReserveBasse.cs`, `Lancer`) : un essai sans place tue le jeu suspendu et en
+crée un neuf, jusqu'à **cent** fois (`EssaisDeReserve`, choix de Vincent). Mesuré sur 200 essais :
+6 échecs (3 %), jamais deux de suite ; un essai coûte **2,7 ms**, donc cent font 0,3 s au pire.
+Si les cent échouent, le jeu ne retombe plus sur l'ancien chemin, qui perdrait à coup sûr : il
+affiche un message au joueur (`SignalerManqueDePlace` : il faut un bloc de 2,5 Mo dans les
+16 premiers Mo, relancer le jeu, redémarrer Windows si ça revient) et s'arrête. Même message à la
+fin de l'ancien chemin (`Program.cs`, plus de relance possible), sauf sous débogueur, où
+l'exception détaillée reste. Plus aucun cas ne finit dans la boîte d'erreur .NET.
+
+**La vraie solution reste à faire** : lever la contrainte des 24 bits, que la reconstruction
+fidèle de `winsys3d` a gardée. Une piste intermédiaire reste ouverte : publier l'exe sans ASLR, pour que son
+image tombe toujours en 0x00400000 (0x00400000–0x00C7D000) et laisse 3,5 Mo d'un seul tenant
+sous 16 Mo. Écartée pour l'instant parce qu'elle modifie l'en-tête PE après la publication.
+
 ## LB-057 — Croix et rond : leurs rôles inversés par rapport aux liaisons du joueur
 
 **Statut** : `Corrigé` le 2026-09-30 (legacy ++, confort du joueur, demande de Vincent). **Sans
@@ -2527,7 +2554,7 @@ Maj, Verr Maj, Alt Gr). Le reste passe : les touches fantômes du lanceur, les f
 
 **Ce que ça donne** :
 - **manette par le lanceur** : la grille se parcourt entièrement comme sur PlayStation — avec LB-058,
-  croix pose la lettre, rond efface (et quitte, tampon vide, sur la dernière page de la case de fin).
+  croix pose la lettre, rond efface, et ramène au carrousel quand le nom est vide (LB-060).
 - **clavier** : on tape toujours son nom (Entrée valide, Échap revient, retour arrière efface) ; en
   plus, les flèches déplacent le curseur et **Alt gauche** (croix) pose la lettre. Maj gauche (rond)
   reste muette sur cet écran, sans quoi chaque majuscule effacerait un caractère.
@@ -2536,3 +2563,24 @@ Maj, Verr Maj, Alt Gr). Le reste passe : les touches fantômes du lanceur, les f
 
 La validation sur la case de fin par la manette rejoint le chemin d'annulation pour la remise de
 `DAT_00564a50` ; LB-001 la fait désormais sur toutes les sorties, ce qui rend cette voie sûre.
+
+## LB-060 — À la manette, on ne pouvait pas quitter la saisie du nom
+
+**Constaté** le 2026-10-12 par Vincent, à la manette par le lanceur : sur l'écran de saisie du nom,
+aucun bouton ne ramène au carrousel de sélection des personnages ; seule la touche Échap y arrive.
+
+**Statut** : `Corrigé` le 2026-10-12 (legacy ++, défaut de 1998, comportement choisi par Vincent).
+Sans interrupteur.
+
+**Ce que faisait l'original** (`FUN_00507cb0`, `Legacy/Raw/Blaze/FUN_00507cb0.asm`) : le bouton
+rond (`0x4000`) efface le dernier caractère ; tampon vide, il ne quitte que si le curseur est sur la
+case de fin (`DAT_00578dfc == 7`) **et** si la page de la grille vaut 7 (`DAT_00578df4 == 7`,
+`CMP EDI,ECX` en `0x005081e8`). Or cette page n'est jamais augmentée : elle est mise à 0 à l'entrée
+(`0x00507ce0`), et la seule autre écriture la décrémente quand elle n'est pas déjà nulle
+(`0x0050803e`). Le test ne passe donc jamais : la sortie à la manette est du code mort. Sans
+doute un reste de la version PlayStation, dont la grille avait plusieurs pages (les kana) ; la
+version PC n'en a gardé qu'une.
+
+**Correction** (`Screens/State04/SaveSlots.cs`, `HandlePadNameEntry`) : rond, tampon vide, ramène au
+carrousel où que soit le curseur, comme on l'attend sur PlayStation. La sortie passe par le même
+chemin que celle d'Échap (son, sous-état précédent), et LB-001 y rallume la lecture du clavier.

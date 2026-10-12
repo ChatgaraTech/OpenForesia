@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-10-12
 
+- fix : LB-060 (legacy ++) — à la manette, rond quitte la saisie du nom quand le nom est vide ; l'original exigeait la case « Fin » et une page de grille égale à 7, que rien n'augmente jamais (`DAT_00578df4`) : la sortie à la manette était du code mort, Échap seul revenait
+- feat : OpenForesia-Setup 1.1.1 (22 Mo, refait avec LB-060) — la correction du démarrage (LB-056 : réserve refaite jusqu'à cent fois, puis message au joueur) et le retour à la manette depuis la saisie du nom (LB-060) ; lanceur seul 10,3 Mo à côté ; notes `Documentation/Releases/v1.1.1.md`
+- fix : LB-056 — le jeu installé plantait parfois au démarrage (« No free block of 0x280000 bytes … ») : l'image de l'exe publié (8,5 Mo, runtime compris) occupe 8 à 16 Mo sur cette session Windows, et un essai de réserve sur vingt n'avait plus de place, puis l'ancien chemin perdait à coup sûr ; `ReserveBasse.Lancer` refait la réserve sur un processus suspendu neuf, jusqu'à cent fois (2,7 ms l'essai), puis affiche un message explicite au joueur au lieu du crash .NET (de même au bout de l'ancien chemin)
 - feat : OpenForesia-Setup 1.1.0 (22 Mo) — la 1.0.0 plus les licences installées (`Licences\`) ; lanceur seul 10,3 Mo à côté ; notes de version `Documentation/Releases/v1.1.0.md`
 - doc : README — section « Où en est le projet, et la suite » : un portage brut proche de l'exe (la classe partielle `Blaze`, les DLL remplacées mais fidèles, limites PS1 comprises), et la réécriture sur un moteur moderne comme étape suivante possible
 - doc : README — où trouver l'ISO (Abandonware France), et qu'il faut la version CD-ROM du jeu

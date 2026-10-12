@@ -19,8 +19,9 @@
 //      (Blaze.EnsureDisplayListArena, Blaze.AllocLowZeroed).
 // Le lanceur met le jeu dans un job « tué à la fermeture » : tuer l'un tue l'autre.
 //
-// Si quoi que ce soit échoue avant le réveil, le jeu suspendu est tué et le lanceur joue lui-même,
-// par l'ancien chemin (recherche + relance) : la réserve ne peut que retirer une panne.
+// Si la place manque, le jeu suspendu est tué et un neuf est créé, jusqu'à cent fois ; au-delà, un
+// message explique au joueur qu'il faut relancer. Si c'est le système qui refuse (création du
+// processus, section), le lanceur joue lui-même, par l'ancien chemin (recherche + relance).
 // `OPENFORESIA_SANS_RESERVE=1` désactive la réserve, pour comparer.
 // =====================================================================
 
@@ -44,6 +45,27 @@ internal static unsafe class ReserveBasse
 
     /// <summary>Le bassin des descripteurs bas : ~0x16000 octets aujourd'hui, onze sites.</summary>
     internal const uint TailleBassin = 0x40000;
+
+    /// <summary>
+    /// Processus suspendus essayés avant d'abandonner. Un essai coûte 2,7 ms (mesuré le
+    /// 2026-10-12 : création suspendue, réserve, fin) : cent font 0,3 s au pire.
+    /// </summary>
+    private const int EssaisDeReserve = 100;
+
+    /// <summary>
+    /// Le message du joueur quand la place sous 16 Mo est introuvable, à la place d'une exception
+    /// .NET qui tuerait le processus sans rien dire d'utile.
+    /// </summary>
+    internal static void SignalerManqueDePlace()
+    {
+        MessageBoxW(IntPtr.Zero,
+            "OpenForesia n'a pas pu démarrer.\n\n" +
+            "Comme le jeu d'origine de 1998, il a besoin d'un bloc de mémoire d'un seul tenant " +
+            "(2,5 Mo) placé dans les 16 premiers Mo de son espace mémoire, et Windows ne lui en a " +
+            "pas laissé cette fois-ci. La place change à chaque lancement.\n\n" +
+            "Relancez simplement le jeu. Si le message revient à chaque fois, redémarrez Windows.",
+            "OpenForesia", MB_ICONERROR);
+    }
 
     /// <summary>Ce que le jeu lit dans la section : l'arène, sa forme, le bassin.</summary>
     [StructLayout(LayoutKind.Sequential)]
@@ -99,8 +121,10 @@ internal static unsafe class ReserveBasse
 
     /// <summary>
     /// Lance le jeu suspendu, lui réserve sa place basse, le réveille et l'attend. Rend son code de
-    /// sortie, ou <c>null</c> si la réserve n'a pas pu être posée — le jeu suspendu est alors tué et
-    /// l'appelant joue lui-même.
+    /// sortie, ou <c>null</c> si la réserve n'a pas pu être posée pour une raison système
+    /// (CreateProcess, section) — l'appelant joue alors lui-même. Quand c'est la place qui manque
+    /// en <see cref="EssaisDeReserve"/> essais, le joueur reçoit un message et le jeu s'arrête :
+    /// l'ancien chemin perdrait à coup sûr, le runtime ayant déjà pris le bas de la fenêtre.
     /// </summary>
     internal static int? Lancer()
     {
@@ -116,29 +140,53 @@ internal static unsafe class ReserveBasse
             si.hStdError = erreur;
         }
 
-        PROCESS_INFORMATION pi;
+        // Le jeu suspendu, et une réserve posée dedans. Un essai perdu se refait sur un processus
+        // neuf : l'image de l'exe (8,5 Mo, runtime compris) tombe au même endroit pendant toute la
+        // session Windows — en 0x00830000 le 2026-10-12, ce qui prend tout de 8 à 16 Mo —, mais la
+        // pile et les premiers tas changent de place à chaque création. Mesuré ce jour-là : un
+        // essai sur vingt sans place, et alors l'ancien chemin perdait à coup sûr, le runtime ayant
+        // déjà pris le bas (« No free block of 0x280000 bytes … largest free region 0x1D0000 »,
+        // depuis le lanceur, Vincent).
+        PROCESS_INFORMATION pi = default;
+        Remise remise = default;
         string ligne = Environment.CommandLine;
-        fixed (char* l = ligne)
+        for (int essai = 1; ; essai++)
         {
-            // CreateProcessW peut écrire dans la ligne de commande : une copie.
-            char* copie = stackalloc char[ligne.Length + 1];
-            new ReadOnlySpan<char>(l, ligne.Length).CopyTo(new Span<char>(copie, ligne.Length));
-            copie[ligne.Length] = '\0';
-            if (!CreateProcessW(Environment.ProcessPath, copie, null, null, true, CREATE_SUSPENDED,
-                                null, Environment.CurrentDirectory, &si, &pi))
+            fixed (char* l = ligne)
             {
-                Console.Error.WriteLine($"[RESERVE] CreateProcess a echoue ({Marshal.GetLastWin32Error()}) — le lanceur joue lui-meme");
-                Environment.SetEnvironmentVariable(VariableEnfant, null);
-                return null;
+                // CreateProcessW peut écrire dans la ligne de commande : une copie.
+                char* copie = stackalloc char[ligne.Length + 1];
+                new ReadOnlySpan<char>(l, ligne.Length).CopyTo(new Span<char>(copie, ligne.Length));
+                copie[ligne.Length] = '\0';
+                PROCESS_INFORMATION cree;
+                if (!CreateProcessW(Environment.ProcessPath, copie, null, null, true, CREATE_SUSPENDED,
+                                    null, Environment.CurrentDirectory, &si, &cree))
+                {
+                    Console.Error.WriteLine($"[RESERVE] CreateProcess a echoue ({Marshal.GetLastWin32Error()}) — le lanceur joue lui-meme");
+                    Environment.SetEnvironmentVariable(VariableEnfant, null);
+                    return null;
+                }
+                pi = cree;
             }
+
+            remise = Reserver(pi.hProcess);
+            if (remise.Arene != 0 && remise.Bassin != 0) break;
+
+            TerminateProcess(pi.hProcess, 1);
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
+            if (essai == EssaisDeReserve)
+            {
+                Console.Error.WriteLine($"[RESERVE] aucune place sous 0x01000000 en {EssaisDeReserve} essais — abandon");
+                SignalerManqueDePlace();
+                return 1;
+            }
+            Console.Error.WriteLine($"[RESERVE] essai {essai} sans place sous 0x01000000 — processus neuf");
         }
 
         IntPtr section = IntPtr.Zero;
         try
         {
-            Remise remise = Reserver(pi.hProcess);
-            if (remise.Arene == 0 || remise.Bassin == 0) throw new InvalidOperationException("aucune place sous 0x01000000 dans le jeu suspendu");
-
             section = CreateFileMappingW(INVALID_HANDLE_VALUE, null, PAGE_READWRITE, 0, (uint)sizeof(Remise), Nom(pi.dwProcessId));
             if (section == IntPtr.Zero) throw new InvalidOperationException($"CreateFileMapping ({Marshal.GetLastWin32Error()})");
             var vue = (Remise*)MapViewOfFile(section, FILE_MAP_WRITE, 0, 0, (nuint)sizeof(Remise));
@@ -307,4 +355,6 @@ internal static unsafe class ReserveBasse
     [DllImport("kernel32.dll")] private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
     [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr hObject);
     [DllImport("kernel32.dll")] private static extern IntPtr GetStdHandle(int nStdHandle);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
+    private const uint MB_ICONERROR = 0x10;
 }

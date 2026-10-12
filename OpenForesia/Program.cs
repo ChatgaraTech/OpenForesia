@@ -35,7 +35,15 @@ if (!Startup.ArenaClaimed)
         child!.WaitForExit();
         return child.ExitCode;
     }
-    // Out of attempts: fall through so Blaze.entry throws the descriptive arena error.
+    // Plus d'essai : un message au joueur plutôt que l'exception de Blaze.entry, qui tuait le
+    // processus dans la boîte d'erreur .NET (LB-056, 2026-10-12). Sous débogueur, l'exception
+    // reste : c'est elle qui dit au développeur combien de place il restait.
+    if (!System.Diagnostics.Debugger.IsAttached)
+    {
+        Console.Error.WriteLine("display-list arena: out of attempts — giving up");
+        ReserveBasse.SignalerManqueDePlace();
+        return 1;
+    }
 }
 
 // Les journaux sont en français : sans cela ils partent dans la page de code OEM, et la fenêtre

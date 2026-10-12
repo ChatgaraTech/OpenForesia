@@ -1474,7 +1474,11 @@ public static unsafe partial class Blaze
                 Aud.PlayUiSound39();
                 return false;
             }
-            if (state[5] != 7 || state[3] != 7) return false;
+            // Ghidra: `if (dfc != 7 || df4 != 7) return` — le tampon vide ne quitte que sur la case
+            // de fin ET à la page 7. Écart legacy ++ (LB-060) : la page (`DAT_00578df4`) ne monte
+            // jamais — elle est mise à 0 et seulement décrémentée au-dessus de 0 —, donc l'original
+            // ne quittait jamais la saisie à la manette, Échap seul y parvenait. Rond quitte
+            // désormais dès que le nom est vide, où que soit le curseur, comme sur PlayStation.
 
             Aud.PlayUiSound39();
             state[2] = 0;
