@@ -18,6 +18,7 @@ fonction par fonction en C#, et rendu jouable sur un Windows d'aujourd'hui.**
 
 - [Pourquoi ce projet](#pourquoi-ce-projet)
 - [Comment il est fait](#comment-il-est-fait)
+- [Où en est le projet, et la suite](#où-en-est-le-projet-et-la-suite)
 - [Installer et jouer](#installer-et-jouer)
 - [Le lanceur : jouer à la manette](#le-lanceur--jouer-à-la-manette)
 - [Le multijoueur](#le-multijoueur)
@@ -68,12 +69,41 @@ La méthode est écrite en détail (en français) dans
 [`Documentation/Methode/Strategy.md`](Documentation/Methode/Strategy.md) et
 [`Documentation/Methode/Prompt.md`](Documentation/Methode/Prompt.md).
 
+## Où en est le projet, et la suite
+
+**OpenForesia est aujourd'hui très proche de l'exécutable d'origine.** C'est une rétro-ingénierie
+brute, améliorée (« legacy ++ ») : le jeu marche bien, mais son code reste celui de 1998, transcrit.
+
+- **Le code a la forme du binaire, pas celle d'un jeu conçu en C#.** L'essentiel est une seule
+  grosse classe partielle, `Blaze`, découpée en près de 200 fichiers (environ 210 000 lignes). Ses
+  fonctions gardent leurs adresses d'origine, et la mémoire du jeu est reproduite telle quelle,
+  avec ses pointeurs et ses tables.
+- **Les DLL du jeu d'origine ont disparu, mais pas leur comportement.** Les cinq DLL d'aide de 1998
+  sont remplacées par du code C# (`OpenForesia/src/Libraries/`), qui reproduit fidèlement ce
+  qu'elles faisaient. Elles gardent donc aussi **leurs limites**, en bonne partie héritées du fait
+  que le jeu PC est à l'origine un **portage de la version PlayStation** : liste d'affichage façon
+  PS1, petite résolution logique, nombre limité de monstres à l'écran, etc.
+- Les apports modernes (affichage Direct3D 11, installeur, lanceur, multijoueur, Legacy Plus) sont
+  **posés autour** de ce noyau, sans le réécrire.
+
+**La prochaine étape possible : une réécriture complète.** Maintenant que le jeu existe sous forme
+de sources lisibles, et que son comportement est documenté fonction par fonction, il devient
+possible de le **réécrire entièrement sur un vrai moteur de jeu**, avec des technologies récentes.
+On se débarrasserait ainsi des contraintes de 1998 et de la PlayStation, plutôt que de les
+reproduire. OpenForesia servirait alors de référence : la description exacte de ce que fait le jeu
+d'origine, contre laquelle vérifier la nouvelle version.
+
 ---
 
 ## Installer et jouer
 
-**Il vous faut** : Windows 10 ou 11, et une image ISO du jeu (*Legend of Foresia*, version
-française). Rien d'autre : ni .NET, ni DirectX, ni le CD.
+**Il vous faut** : Windows 10 ou 11, et une image ISO de la **version CD-ROM** du jeu
+(*Legend of Foresia*, version française). Rien d'autre : ni .NET, ni DirectX, ni le CD.
+
+> **Où trouver l'ISO ?** Le jeu est disponible en abandonware sur
+> [Abandonware France](https://www.abandonware-france.org/ltf_abandon/ltf_jeu.php?id=1974&fic=liens).
+> Prenez bien la **version CD-ROM** du jeu : c'est son image ISO que l'installeur attend. Les
+> autres versions proposées ne contiennent pas les fichiers qu'il vérifie.
 
 1. Téléchargez **`OpenForesia-Setup.exe`** depuis la page
    [Releases](https://github.com/ChatgaraTech/OpenForesia/releases).

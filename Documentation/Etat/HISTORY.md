@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-10-12
 
+- feat : OpenForesia-Setup 1.1.0 (22 Mo) — la 1.0.0 plus les licences installées (`Licences\`) ; lanceur seul 10,3 Mo à côté ; notes de version `Documentation/Releases/v1.1.0.md`
+- doc : README — section « Où en est le projet, et la suite » : un portage brut proche de l'exe (la classe partielle `Blaze`, les DLL remplacées mais fidèles, limites PS1 comprises), et la réécriture sur un moteur moderne comme étape suivante possible
+- doc : README — où trouver l'ISO (Abandonware France), et qu'il faut la version CD-ROM du jeu
 - feat : `publish-release.ps1` installe les licences avec le jeu, dans `Licences\` (`OpenForesia-MIT.txt`, `Indeo4-LGPL-2.1.txt`, `LISEZMOI.txt`, qui dit d'où vient le décodeur et où est sa source) ; OpenForesia-Setup 1.0.0 refait avec
 - doc : licence MIT (`LICENSE` à la racine) ; le décodeur Indeo 4 porté de FFmpeg reste sous LGPL 2.1+, et `Legacy/` comme les données lues du jeu restent hors licence — section « Licence » du README et des notes de version 1.0.0
 - doc : `README.md` à la racine (la page d'accueil GitHub : le projet, l'installation, le lanceur, le multijoueur, Legacy et Legacy Plus, l'éditeur de sauvegarde, le bestiaire) et les notes de version `Documentation/Releases/v1.0.0.md`
