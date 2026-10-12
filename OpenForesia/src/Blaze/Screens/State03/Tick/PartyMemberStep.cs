@@ -209,7 +209,7 @@ public static unsafe partial class Blaze
         if ((state & 0x40000000) == 0)
         {
             // La regeneration lente, un centieme d'image, tant qu'aucune touche n'est tenue.
-            if ((*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) == 0)
+            if ((*(ushort*)pad & Input.CombatMask(*(ushort*)(perChar + 0x1fc4))) == 0)
             {
                 short maximum = *(short*)(perChar + 0x14a);
                 if (*(short*)(perChar + 0x14e) < maximum
@@ -291,7 +291,7 @@ public static unsafe partial class Blaze
 
         // Le tampon de commande : quatre images de memoire sur le bouton d'action.
         if (pad[0x0e] != 0) pad[0x0e]--;
-        if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc4)) != 0) pad[0x0e] = 4;
+        if ((*(ushort*)(pad + 2) & Input.CombatMask(*(ushort*)(perChar + 0x1fc4))) != 0) pad[0x0e] = 4;
 
         if ((*slot & 0x10002) == 0)
         {
@@ -361,7 +361,7 @@ public static unsafe partial class Blaze
         // Le coup : bouton d'attaque, pas deja en train de frapper, et le mode de mise au point
         // n'est pas en train de geler le monde.
         if ((state & 0x42) == 0
-            && (*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc0)) != 0
+            && (*(ushort*)(pad + 2) & Input.CombatMask(*(ushort*)(perChar + 0x1fc0))) != 0
             && (sbyte)perChar[0x2b0] != -1
             && s_Unknown_00566c84 != 0
             && (perChar[0x140] & 0x10) == 0)
@@ -376,9 +376,9 @@ public static unsafe partial class Blaze
         // Le tampon de saut : quatre images de memoire sur le bouton, remis a zero si le bouton
         // RELACHE arrive dans la meme image — d'ou les deux mots de manette lus, +2 et +4.
         if ((sbyte)pad[0x0c] != 0) pad[0x0c]--;
-        if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc2)) != 0) pad[0x0c] = 4;
+        if ((*(ushort*)(pad + 2) & Input.CombatMask(*(ushort*)(perChar + 0x1fc2))) != 0) pad[0x0c] = 4;
 
-        if ((*(ushort*)(perChar + 0x1fc2) & *(ushort*)(pad + 4)) != 0)
+        if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc2)) & *(ushort*)(pad + 4)) != 0)
         {
             pad[0x0c] = 0;
             *(short*)(s + 0x9a) = 0x6000;
@@ -389,7 +389,7 @@ public static unsafe partial class Blaze
             if (pad[0x0c] == 0)
             {
                 // Rien de tampon : reste le bouton de garde, qui libere une texture et un son.
-                if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fca)) != 0)
+                if ((*(ushort*)(pad + 2) & Input.CombatMask(*(ushort*)(perChar + 0x1fca))) != 0)
                 {
                     Winsys3d.ReleaseTexture(0x18);
                     uint held = *slot;
@@ -427,7 +427,7 @@ public static unsafe partial class Blaze
             if ((*slot & 0x46) != 0 || entry[0x0a] == 0) return;
 
             entry[0x0a]--;
-            if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc2)) == 0) return;
+            if ((*(ushort*)(pad + 2) & Input.CombatMask(*(ushort*)(perChar + 0x1fc2))) == 0) return;
 
             entry[0x0a] = 0;
             uint before = *slot;

@@ -194,7 +194,7 @@ internal static unsafe class EcranMenu
         byte type = Jeu.Inp.s_PlayerSlots_005e9188[s_Joueur * 0x4c];
         byte* pad = Jeu.Inp.s_InputStateBase_00604a20 + type * 0x10;
         byte appuis = pad[2];
-        ushort action = *(ushort*)(s_PerChar + 0x1fc4);
+        ushort action = OpenForesia.Blaze.Input.CombatMask(*(ushort*)(s_PerChar + 0x1fc4));
         bool valider = (*(ushort*)(pad + 2) & action) != 0;
 
         Etage etage = Sommet;

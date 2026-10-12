@@ -107,9 +107,11 @@ internal static class Desinstallation
 
         // Le jeu doit etre ferme : Windows refuse d'effacer un executable en cours.
         string exe = Path.Combine(dossier, Installation.Executable);
-        while (JeuEnCours(exe))
+        string lanceur = Path.Combine(dossier, Installation.ExecutableLanceur);
+        string multijoueur = Path.Combine(dossier, Installation.AncienExecutableMultijoueur);
+        while (JeuEnCours(exe) || JeuEnCours(lanceur) || JeuEnCours(multijoueur))
         {
-            if (MessageBox(IntPtr.Zero, "OpenForesia est en cours d'exécution. Fermez le jeu, puis cliquez sur OK.",
+            if (MessageBox(IntPtr.Zero, "OpenForesia est en cours d'exécution. Fermez le jeu et le lanceur, puis cliquez sur OK.",
                     Titre, MB_OKCANCEL | MB_ICONWARNING) != IDOK)
                 return;
         }
@@ -127,6 +129,10 @@ internal static class Desinstallation
         // Raccourcis et entree « Applications installees ».
         Supprimer(() => File.Delete(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), Installation.NomJeu + ".lnk")));
+        Supprimer(() => File.Delete(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), Installation.NomLanceur + ".lnk")));
+        Supprimer(() => File.Delete(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), Installation.AncienNomMultijoueur + ".lnk")));
         Supprimer(() => Directory.Delete(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Programs), Installation.NomJeu), recursive: true));
         Supprimer(() => Registry.CurrentUser.DeleteSubKeyTree(Installation.CleDesinstallation, throwOnMissingSubKey: false));

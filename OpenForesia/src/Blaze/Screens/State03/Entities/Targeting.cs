@@ -63,10 +63,12 @@ public static unsafe partial class Blaze
 
         for (int index = 0; index < count; index++, combo += 0x30)
         {
-            if (length != combo[-1]) continue;          // la longueur, en +0x1f de la fiche
+            byte* lue = LegacyPlus.Coutures.CombinaisonDuSort(perChar, index, combo);   // Couture legacy ++ (LP-016)
+
+            if (length != lue[-1]) continue;            // la longueur, en +0x1f de la fiche
 
             int matched = 0;
-            while (matched < length && entry[0x0c + matched] == combo[matched]) matched++;
+            while (matched < length && entry[0x0c + matched] == lue[matched]) matched++;
 
             if (matched == length) return index;
         }

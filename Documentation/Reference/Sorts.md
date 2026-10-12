@@ -217,18 +217,32 @@ autre.
 
 La posture vit dans `ApplyGroundMotion_0051A020`, sur `entité + 0x18` :
 
-**État 5 — l'incantation.** Le bouton est maintenu. Le compte à rebours `+0x14` part de la durée
-`+0x13` de la fiche du sort **mémorisé** (`+0x2b6`), et le coût de ce sort est déjà recopié dans
-`+0x204`. Chaque bouton de face pressé s'empile dans `entrée[0x0c + n]` sous la forme
-`(manette >> 8) & 0xf0`, et `entrée[0x0b]` compte les coups, plafonné à seize.
+**État 5 — l'incantation, par deux entrées** (relu le 2026-10-02 ; ce document ne connaissait que
+la première, et la reconstruction appelait la seconde « annulation ») :
 
-**Le relâchement — le choix du sort.** `PickCastTarget_0051A5D0` compare la combinaison saisie à
-celle de chaque fiche de l'école, longueur d'abord, puis octet par octet. Elle rend l'indice du
-premier sort qui correspond, ou `-1`.
+| entrée | compte à rebours `+0x14` | ce qui part |
+|---|---|---|
+| le **bouton de classe** (`+0x1fc4`) | la durée `+0x13` du sort **mémorisé** (`+0x2b6`) ; relâcher avant la fin abandonne | le sort mémorisé, à la fin du décompte |
+| **SELECT** (masque `0x0001`, F1 au clavier) | **zéro** : c'est le **mode combinaison** | le sort dont la combinaison correspond, au relâchement |
+
+En mode combinaison, tant que SELECT est tenu, chaque appui de face s'empile dans
+`entrée[0x0c + n]` sous la forme `(Input.ComboButtons(manette) >> 8) & 0xf0`, et `entrée[0x0b]`
+compte les coups, plafonné à seize. **Le codage est celui que le menu dessine** : `0x10` △,
+`0x20` ✕, `0x40` ○, `0x80` □ — relevé en jeu (Balle de feu, `20 10 20`, s'affiche ✕ △ ✕), et ce
+n'est pas l'ordre PlayStation de `s_PadButtonMasks_00564f18`. `Input.ComboButtons` défait
+l'échange de LB-058 ; sans elle, ✕ et □ étaient inversés (complément de LB-058).
+
+**Le relâchement de SELECT — le choix du sort.** `PickCastTarget_0051A5D0` compare la combinaison
+saisie à celle de chaque fiche de l'école, longueur d'abord, puis octet par octet. Elle rend l'indice
+du premier sort qui correspond, ou `-1`.
 
 - combinaison reconnue **et** sort connu → son coût remplace `+0x204`, l'indice est retenu, on passe
-  à l'état 6 ;
+  à l'état 6 — **le sort mémorisé n'est pas changé** ;
 - sinon → la posture est abandonnée, sans effet et sans coût.
+
+**Legacy ++ LP-016** (`[Magie] CombinaisonsLibres`) : la comparaison porte sur les **raccourcis du
+personnage** (`+0x1c00` de sa fiche, voir `FormatSauvegarde.md`), saisis dans l'onglet magie, au
+lieu des combinaisons des fiches.
 
 **État 6 — le déclenchement**, à la fin de l'animation :
 
@@ -243,9 +257,6 @@ if (*(ushort*)(perChar + 0x204) <= *(short*)(perChar + 0x14e))
 **Le coût n'est prélevé que s'il est couvert, et sinon rien ne se passe du tout** : l'incantation
 part, l'animation se joue, et le sort ne sort pas. Il n'y a ni message ni son de refus à cet
 endroit — le personnage a simplement l'air de rater.
-
-**L'annulation** (bouton 1 pendant l'incantation) laisse l'animation aller au bout mais lâche un
-`0xbd` et n'arme rien.
 
 `CastSpell_0053A980` finit le travail : elle écrit la famille et l'indice dans `+6` de l'entité
 (famille en octet haut, indice en octet bas), neutralise `+0x74`, `+0x78` et `+0x0a` le temps de

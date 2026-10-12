@@ -892,8 +892,13 @@ internal sealed unsafe class Input(GameMemory mem)
 
         // Ghidra: if (DAT_00564a50 == 0) the raw state is zeroed before use â€” a keyboard-enable
         // gate. Recovered from Legacy/Binaries/Blaze.exe as 1, so the state is kept.
+        // Écart legacy ++ (LB-059) : l'original efface ici les 0xFC premiers octets de l'état, tout
+        // le clavier — pendant la saisie du nom, le clavier virtuel ne répondait donc qu'à une
+        // vraie manette, que le port ne lit plus (le lanceur la rejoue en touches clavier). On
+        // n'efface plus que les touches qui tapent un caractère : flèches, Alt et touches
+        // fantômes du lanceur pilotent la grille comme sur PlayStation.
         if (s_KeyboardEnabled_00564a50 == 0)
-            NativeMemory.Fill(deviceState, 0x3f * sizeof(uint), 0);
+            ClearTypingKeys(deviceState);
 
         // Ghidra: state[0x1c] |= state[0x9c]; state[0x9c] = 0. Those two DirectInput scancodes are
         // DIK_RETURN and DIK_NUMPADENTER: the keypad's Enter is folded into the main one.
@@ -953,6 +958,16 @@ internal sealed unsafe class Input(GameMemory mem)
                     buttons = accumulated;
                 }
 
+                // Écart legacy ++ (LB-057) : croix et rond échangés. L'original écrit ici 0x4000
+                // pour la liaison « croix » et 0x2000 pour « rond » ; en jeu, Vincent trouve leurs
+                // rôles inversés par rapport à ses liaisons. Échangés sans interrupteur, à sa
+                // demande (2026-09-30).
+                buttons = SwapCrossAndCircle(buttons);
+                // Écart legacy ++ (LB-058) : carré et rond échangés à leur tour, pour que la croix
+                // valide dans les menus comme sur PlayStation. Les menus lisent 0x8000 en dur ;
+                // le combat, lui, lit les boutons de la fiche et les repasse par CombatMask, qui
+                // annule cet échange — il ne change donc rien en combat.
+                buttons = SwapSquareAndCircle(buttons);
                 *(ushort*)(padState + entry + 6) = buttons;
             }
             else
@@ -991,6 +1006,82 @@ internal sealed unsafe class Input(GameMemory mem)
     /// characters are being typed.
     /// </summary>
     private int s_KeyboardEnabled_00564a50 = 1;
+
+    /// <summary>
+    /// Écart legacy ++ (LB-059) : les scancodes DirectInput qui font naître un caractère dans la
+    /// file de <c>GetKBChar</c> pendant la saisie du nom — chiffres et lettres, ponctuation, Échap,
+    /// retour arrière, tabulation, Entrée, espace, le pavé numérique (Verr Num allumé), la touche
+    /// <c>&lt;&gt;</c> des claviers AZERTY et celles des claviers japonais et brésiliens qui tapent
+    /// —, plus les modificateurs qui servent à taper : les deux Maj (liées à rond par défaut, elles
+    /// effaceraient un caractère à chaque majuscule), Verr Maj et Alt Gr. Ctrl gauche reste lu :
+    /// Alt Gr le presse aussi, mais il tombe sur le carré, que la grille ignore.
+    /// </summary>
+    private static ReadOnlySpan<byte> TypingKeys =>
+    [
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
+        0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a,
+        0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x39, 0x3a,
+        0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 0x50, 0x51, 0x52, 0x53,
+        0x56, 0x73, 0x7d, 0x7e, 0x9c, 0xb5, 0xb8,
+    ];
+
+    /// <summary>
+    /// Écart legacy ++ (LB-059) : remplace, pendant la saisie du nom, l'effacement de tout le
+    /// clavier par celui des seules <see cref="TypingKeys"/>.
+    /// </summary>
+    private static void ClearTypingKeys(byte* deviceState)
+    {
+        foreach (byte scancode in TypingKeys) deviceState[scancode] = 0;
+    }
+
+    /// <summary>
+    /// Écart legacy ++ (LB-057) : échange les bits croix (<c>0x4000</c>) et rond (<c>0x2000</c>)
+    /// d'un mot de manette actif bas — ce qui est lié à « croix » agit comme le rond de l'original,
+    /// et inversement. Pas dans l'original.
+    /// </summary>
+    private static ushort SwapCrossAndCircle(ushort buttons)
+    {
+        const ushort Cross = 0x4000, Circle = 0x2000;
+        ushort swapped = (ushort)(buttons & ~(Cross | Circle));
+        if ((buttons & Cross) != 0) swapped |= Circle;
+        if ((buttons & Circle) != 0) swapped |= Cross;
+        return swapped;
+    }
+
+    /// <summary>
+    /// Écart legacy ++ (LB-058) : échange les bits carré (<c>0x8000</c>) et rond (<c>0x2000</c>)
+    /// d'un mot de manette. Posé après <see cref="SwapCrossAndCircle"/>, il fait arriver la liaison
+    /// « croix » sur <c>0x8000</c>, le bit que les menus lisent pour valider. Son propre inverse.
+    /// </summary>
+    private static ushort SwapSquareAndCircle(ushort buttons)
+    {
+        const ushort Square = 0x8000, Circle = 0x2000;
+        ushort swapped = (ushort)(buttons & ~(Square | Circle));
+        if ((buttons & Square) != 0) swapped |= Circle;
+        if ((buttons & Circle) != 0) swapped |= Square;
+        return swapped;
+    }
+
+    /// <summary>
+    /// Écart legacy ++ (LB-058) : un masque de bouton de la fiche d'un personnage (<c>+0x1fc0</c>,
+    /// <c>+0x1fc2</c>, <c>+0x1fc4</c>, <c>+0x1fca</c> — attaque, saut, action, menu rapide), passé
+    /// par le même échange que le mot de manette. Comme un échange est son propre inverse,
+    /// <c>mot &amp; CombatMask(masque)</c> vaut ce que l'original obtenait : le combat ne voit pas
+    /// LB-058, seuls les menus, qui lisent leurs bits en dur, le voient. Chaque lecture de ces
+    /// masques passe par ici ; la fiche, elle, n'est jamais modifiée.
+    /// </summary>
+    internal static ushort CombatMask(ushort mask) => SwapSquareAndCircle(mask);
+
+    /// <summary>
+    /// Écart legacy ++ (LB-058, complément du 2026-10-02) : les boutons de face d'un mot de manette
+    /// tels que le combat les voit — LB-058 défait, LB-057 gardé, exactement comme
+    /// <see cref="CombatMask"/>. Pour la saisie des combinaisons de sort, qui <b>enregistre</b> les
+    /// bits pressés et les compare aux octets de la fiche, que le menu dessine <c>0x10</c> △,
+    /// <c>0x20</c> ✕, <c>0x40</c> ○, <c>0x80</c> □ (relevé en jeu : Balle de feu, octets
+    /// <c>20 10 20</c>, s'affiche ✕ △ ✕). Sans elle, ✕ et □ étaient échangés.
+    /// </summary>
+    internal static ushort ComboButtons(ushort buttons) => SwapSquareAndCircle(buttons);
 
     /// <summary>Ghidra: FUN_00523520 @ 0x00523520 â€” <c>DAT_00564a50 = 1</c>, nothing else.</summary>
     internal void EnablePadKeyboard() => s_KeyboardEnabled_00564a50 = 1;

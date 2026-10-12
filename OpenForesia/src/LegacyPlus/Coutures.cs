@@ -305,6 +305,76 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Resolution GestionnaireInstalle = (entite, table, indice, gestionnaire) => gestionnaire;
 
+    /// <summary>La pose d'un effet d'état par un sort : le lanceur, la victime, et l'effet d'origine à appliquer.</summary>
+    internal delegate uint PoseDEffet(uint* lanceur, uint* victime, delegate*<uint*, uint*, int, uint> effet);
+
+    /// <summary>
+    /// Couture LP-015 — à chaque pose d'effet des sorts de l'école 2 (<c>Spells/School2Elementalist.cs</c>),
+    /// juste après le prêt de la paire famille/indice au lanceur (<c>+0x06</c>/<c>+0x07</c>). Rend
+    /// le résultat de l'effet sur la victime d'origine ; par défaut, un appel :
+    /// <c>effet(lanceur, victime, 0)</c>.
+    /// </summary>
+    internal static PoseDEffet EffetDeFee = (lanceur, victime, effet) => effet(lanceur, victime, 0);
+
+    /// <summary>
+    /// Couture LP-015 — devant le masque d'immunité et devant le jet de sauvegarde des effets 8,
+    /// 10, 11 et 20, en court-circuit : vrai, ni l'un ni l'autre n'est consulté, et le jet n'est
+    /// pas tiré. Par défaut, faux.
+    /// </summary>
+    internal static Func<bool> MalusForce = () => false;
+
+    /// <summary>
+    /// Couture LP-015 — la durée que les effets 19 et 20 viennent de calculer, avant de la comparer
+    /// à celle qui court. Par défaut, la même.
+    /// </summary>
+    internal static Func<int, int> DureeDEtat = duree => duree;
+
+    /// <summary>La cible qu'un sort vient de se choisir : le sort, et la cible trouvée.</summary>
+    internal delegate byte* Cible(byte* sort, byte* cible);
+
+    /// <summary>
+    /// Couture LP-015 — la recherche de cible des sorts de l'école 2 qui visent un seul être
+    /// (Vitesse, les quatre Matéria, Coussin d'air, Superman, Gros sabots), à la première image du
+    /// sort. Rend la cible à garder ; par défaut, la même.
+    /// </summary>
+    internal static Cible CibleDeFee = (sort, cible) => cible;
+
+    /// <summary>La combinaison d'un sort pour un personnage : sa fiche de personnage, le rang du sort dans son école, et ce que le jeu lit.</summary>
+    internal delegate byte* Combinaison(byte* personnage, int indice, byte* lue);
+
+    /// <summary>
+    /// Couture LP-016 — dans la boucle de <c>PickCastTarget_0051A5D0</c> (Ghidra: FUN_0051a5d0),
+    /// le pointeur sur les coups de la fiche du sort (<c>fiche + 0x20</c>, longueur en <c>[-1]</c>).
+    /// Rend un pointeur au même format ; par défaut, celui de la fiche.
+    /// </summary>
+    internal static Combinaison CombinaisonDuSort = (personnage, indice, lue) => lue;
+
+    /// <summary>
+    /// Couture LP-016 — dans <c>DrawSpellTab</c>, la fiche dont l'onglet magie dessine la
+    /// combinaison (longueur en <c>+0x1f</c>, coups en <c>+0x20..</c>). Par défaut, la fiche.
+    /// </summary>
+    internal static Combinaison CombinaisonAffichee = (personnage, indice, lue) => lue;
+
+    /// <summary>L'onglet magie à son entrée : le personnage, le mot de manette, et le sort visé (-1 hors de la tranche ; opposé si non appris).</summary>
+    internal delegate void Onglet(byte* personnage, ushort* pad, int sortVise);
+
+    /// <summary>
+    /// Couture LP-016 — en tête de <c>DrawSpellTab</c>, avant toute lecture de la manette. Un tweak
+    /// peut effacer <c>pad[1]</c> (les appuis de l'image) et <c>pad[3]</c> (la répétition). Par
+    /// défaut, rien.
+    /// </summary>
+    internal static Onglet OngletSorts = (personnage, pad, sortVise) => { };
+
+    /// <summary>Le lancer du projectile d'un sort : sa graine, et l'engendrement d'origine.</summary>
+    internal delegate void Projectile(byte* graine, Action engendrer);
+
+    /// <summary>
+    /// Couture LP-015 — l'engendrement de la bulle de Dodo, de la note de Chant sirènes et de la
+    /// boule d'Écrase, par leur graine. L'enfant recopie la graine, cap <c>+0x32</c> compris. Par
+    /// défaut, un engendrement.
+    /// </summary>
+    internal static Projectile ProjectileDeFee = (graine, engendrer) => engendrer();
+
     static Coutures()
     {
         try
@@ -322,6 +392,8 @@ internal static unsafe class Coutures
             Arene.Installer();
             AreneDirecteur.Installer();
             AreneGreffe.Installer();
+            SoutienFee.Installer();
+            CombinaisonsLibres.Installer();
 #if DEBUG
             // Les outils de diagnostic n'existent que dans la version Debug : la version publiée
             // (publish-release.ps1, -c Release) ne les installe jamais, même avec la clé.
@@ -366,6 +438,14 @@ internal static unsafe class Coutures
             AvantGestionnaire = entite => { };
             ApresGestionnaire = entite => { };
             GestionnaireInstalle = (entite, table, indice, gestionnaire) => gestionnaire;
+            EffetDeFee = (lanceur, victime, effet) => effet(lanceur, victime, 0);
+            MalusForce = () => false;
+            DureeDEtat = duree => duree;
+            ProjectileDeFee = (graine, engendrer) => engendrer();
+            CibleDeFee = (sort, cible) => cible;
+            CombinaisonDuSort = (personnage, indice, lue) => lue;
+            CombinaisonAffichee = (personnage, indice, lue) => lue;
+            OngletSorts = (personnage, pad, sortVise) => { };
         }
     }
 }

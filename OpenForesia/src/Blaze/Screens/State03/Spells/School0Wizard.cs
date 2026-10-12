@@ -1509,7 +1509,7 @@ public static unsafe partial class Blaze
                 int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                 ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+                if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
                 {
                     state |= 0x2000000;                    // le bouton est relache
                     *(uint*)e = state;
@@ -3575,7 +3575,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0) *(uint*)e |= 0x2000000;
 
             // Ghidra: LAB_0047dd9f — quatre PM toutes les vingt images, le double de Wonder.
             if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
@@ -3980,7 +3980,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0) *(uint*)e |= 0x2000000;
 
             if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
             {
@@ -4225,7 +4225,7 @@ public static unsafe partial class Blaze
                 int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                 ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+                if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0) *(uint*)e |= 0x2000000;
 
                 // DIX images, pas vingt : c'est le seul a cette cadence.
                 if (*(uint*)Mem.Entity(0x005f2cf0) % 10 == 0)
@@ -4575,7 +4575,7 @@ public static unsafe partial class Blaze
                 int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                 ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+                if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0) *(uint*)e |= 0x2000000;
 
                 if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
                 {
@@ -4974,7 +4974,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0) *(uint*)e |= 0x2000000;
 
             if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
             {
@@ -5490,7 +5490,7 @@ public static unsafe partial class Blaze
                     ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
                     byte* perChar = GetMainMemPtr() + index * 0x2000 + 0xf0000;
 
-                    if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+                    if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0) *(uint*)e |= 0x2000000;
                 }
                 else if (*(short*)(e + 0x10) >= 0x28)
                 {
@@ -5950,7 +5950,7 @@ public static unsafe partial class Blaze
                 int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                 ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+                if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0) *(uint*)e |= 0x2000000;
 
                 if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
                 {
@@ -6514,7 +6514,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 state |= 0x2000000;
                 *(uint*)e = state;
@@ -7917,7 +7917,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 state |= 0x2000000;
                 *(uint*)e = state;

@@ -35,6 +35,12 @@ contournements déclarés.
 
 ## LB-001 — Sortir de la saisie du nom par Échap bloque l'écran de sélection
 
+**Statut** : `Corrigé` le 2026-10-12 (legacy ++, défaut de 1998, demande de Vincent). **Sans
+interrupteur** : un écran qui ne répond plus n'est pas un comportement qu'un joueur voudrait garder.
+`CharacterSelectSubState1` (`Screens/State04/CharacterCreation.cs`) appelle `EnablePadKeyboard()`
+(`FUN_00523520`) à côté de `EnableKBInput(0)`, donc sur les trois sorties qui l'oubliaient ; le
+chemin « Entrée » le faisait déjà, le rappel y est sans effet.
+
 **Constaté** le 2026-08-15 par Vincent sur le jeu officiel, puis reproduit à l'identique dans
 OpenForesia.
 
@@ -108,7 +114,7 @@ d'annulation) rendent tous deux `true`, ce que l'appelant traduit par `EnableKBI
 
 **Où porterait un correctif** : un appel à `EnablePadKeyboard()` (`FUN_00523520`) à côté du
 `EnableKBInput(0)` de `CharacterSelectSubState1`, ce qui couvrirait les trois sorties d'un coup.
-Une ligne. Non appliqué — ce serait une déviation par rapport à 1998.
+Une ligne. Appliqué le 2026-10-12 (voir le statut ci-dessus).
 
 ---
 
@@ -2424,3 +2430,109 @@ nommée d'après le PID du jeu, le réveille et l'attend. Le jeu **engage** ces 
 lie les deux processus. Si la réserve échoue, le lanceur joue lui-même par l'ancien chemin, relance
 comprise ; sous débogueur, pas de lanceur. La contrainte des 24 bits reste entière — la supprimer
 demanderait de reprendre chaque endroit du jeu qui suit une adresse masquée (à chiffrer).
+
+## LB-057 — Croix et rond : leurs rôles inversés par rapport aux liaisons du joueur
+
+**Statut** : `Corrigé` le 2026-09-30 (legacy ++, confort du joueur, demande de Vincent). **Sans
+interrupteur**, par choix explicite de Vincent (« dans le jeu, point barre »).
+
+**Ce que faisait l'original** : `FoldKeyboardIntoPadState` écrit le bit `0x4000` pour ce qui est lié
+à l'action « croix » et `0x2000` pour « rond » (`s_PadButtonMasks_00564f18`, le format du pad
+PlayStation). Constat de Vincent, en jeu et en multijoueur : croix et rond agissent à l'inverse de
+ce qu'il a lié. Ce que le code établit par ailleurs : dans les menus, **carré valide et croix
+revient** (`test-protocol.md`, `WorldMapMenu.cs`), et rond fait avancer certains curseurs ; en jeu,
+les actions (attaque, saut, magie, action) sont **attribuées par personnage** aux mots `+0x1fc0` à
+`+0x1fca`, fixés à la création — la cause exacte de l'inversion ressentie n'est pas établie.
+
+**Correction** (`Engine/Input.cs`, `FoldKeyboardIntoPadState`, `SwapCrossAndCircle`) : le mot de
+manette de chaque joueur est écrit avec les bits `0x4000` et `0x2000` échangés, après le cumul des
+trois tables de liaisons (clavier principal, clavier secondaire, boutons de manette). Ce qui est lié
+à « croix » agit comme le rond de l'original, et inversement — partout où le jeu lit la manette :
+menus, combat, les quatre joueurs, les touches fantômes du multijoueur comprises. Les liaisons
+elles-mêmes (`[Controls]`, l'écran des touches des Options) ne changent pas.
+
+**Conséquence pour les essais** : le jeton `ESC` de `playtest.ps1` (lié à croix) donne désormais
+`0x2000`, et un jeton lié à rond donnerait `0x4000` — « revenir » dans un menu passe par la touche
+liée à rond. La validation (carré, `ENTER`) n'est pas touchée.
+
+## LB-058 — La croix valide dans les menus, comme sur PlayStation
+
+**Statut** : `Corrigé` le 2026-09-30 (legacy ++, confort du joueur, demande de Vincent). **Sans
+interrupteur**, comme LB-057 ; **les menus seulement**, choix explicite de Vincent : le combat ne
+bouge pas.
+
+**Ce que faisait l'original** : les menus lisent leurs boutons **en dur** dans le mot de manette —
+`0x8000` (carré) valide, `0x4000` (croix) revient (`WorldMapMenu.cs`, `QuickMenu.cs`,
+`UiWindow.cs`, `SaveSlots.cs`, `Inventory.cs`, `WorldMapDepot.cs`, les dialogues de
+`WorldMapScript.cs`…, des dizaines de sites, certains en lecture d'octet). Le combat, lui, ne lit
+jamais un bit en dur : il croise le mot avec les **masques de la fiche du personnage** — `+0x1fc0`
+attaque (carré par défaut), `+0x1fc2` saut (croix), `+0x1fc4` action et magie (rond), `+0x1fca` menu
+rapide (triangle). Sur PlayStation, la croix valide.
+
+**Correction** (`Engine/Input.cs`) : après l'échange de LB-057, `SwapSquareAndCircle` échange à son
+tour les bits `0x8000` et `0x2000` du mot de chaque joueur. Au total, dans les menus : la liaison
+croix porte `0x8000` et **valide**, la liaison rond porte `0x4000` et **revient**, la liaison carré
+porte `0x2000`. Pour que le combat n'en voie rien, **chaque lecture d'un masque de la fiche** passe
+par `Input.CombatMask`, le même échange : un échange étant son propre inverse,
+`mot & CombatMask(masque)` vaut exactement ce que donnait LB-057 seul. La fiche n'est jamais
+modifiée (les sauvegardes restent celles de l'original). Les sites : `grep -rn CombatMask` — les
+Écoles de magie, `SpellCasting.cs`, `PartyMemberStep.cs`, `QuickMenu.cs`, et les deux écrans
+legacy ++ qui lisent le bouton d'action (`EcranMenu.cs`, `MarchandsHub.cs`). Les seules écritures
+restantes des masques (`WorldMapMenu.cs`, remappage inatteignable ; la création ; `DebugParty.cs`)
+écrivent des valeurs de fiche, pas des lectures, et restent telles quelles. Les tests en dur qui
+masquent `0xa000` (tenir une porte) ou `0xf000` (n'importe quel bouton de face) sont invariants par
+l'échange.
+
+**Au clavier** : avec les liaisons par défaut, **Échap (croix) valide** désormais dans les menus,
+Maj gauche (rond) revient, et **Entrée (carré) n'y fait plus rien**. À revoir si un joueur au
+clavier doit être servi : il suffirait de changer les liaisons par défaut, pas le code.
+
+**Conséquence pour les essais** : `playtest.ps1` valide `-Entry` en tapant Échap ; dans `-Then`,
+`ESC` valide et `LSHIFT` revient (`test-protocol.md`).
+
+**Complément du 2026-10-02 — un site oublié : la saisie des combinaisons de sort.** Le mode
+combinaison (tenir SELECT, F1 au clavier, taper △ ○ ✕ □, relâcher) **enregistre** les bits pressés
+(`(mot >> 8) & 0xf0`) et les compare aux octets de la fiche, que le menu dessine `0x10` △, `0x20` ✕,
+`0x40` ○, `0x80` □ (relevé en jeu : Balle de feu, `20 10 20`, s'affiche ✕ △ ✕ — dans ce jeu PC,
+`0x2000` est la croix, ce que LB-057 rétablissait). Ce n'est pas un test « n'importe quel bouton de
+face », invariant par l'échange : avec LB-058, ✕ et □ étaient échangés à la saisie, et une
+combinaison tapée telle qu'affichée ne partait pas — constat de Vincent. **Correction** :
+`Input.ComboButtons` défait LB-058 seul avant l'enregistrement, comme `CombatMask` pour le combat
+(`Spells/SpellCasting.cs`). Une première version défaisait aussi LB-057 : Alt, Espace, Alt lançait
+alors Pieds mouillés au lieu de Balle de feu. Le pictogramme du menu est de nouveau le bouton à presser, pour les
+quatre. Le commentaire de cette branche la disait « annulation » ; c'est l'entrée du mode
+combinaison, corrigé.
+
+## LB-059 — La grille de saisie du nom ne répondait qu'à une vraie manette
+
+**Statut** : `Corrigé` le 2026-10-12 (legacy ++, confort du joueur, demande de Vincent : « sur PS1
+on peut naviguer dans le menu avec les caractères »). **Sans interrupteur** : rien n'est retiré, la
+frappe au clavier marche comme avant.
+
+**Ce que faisait l'original** : l'écran de saisie du nom (`CharacterSelectSubState1`) dessine un
+clavier virtuel et sait le parcourir à la manette (`HandlePadNameEntry` : flèches, croix pose la
+lettre, rond efface, START saute sur la case de fin). Mais sa première image éteint `DAT_00564a50`
+(`FUN_00523530`), et `FoldKeyboardIntoPadState` efface alors **tout** l'état clavier avant de le
+plier en manettes, pour que la frappe d'un nom ne déplace pas aussi le curseur. Seule la zone
+joystick (`+0x100`) survit. Or le port ne lit aucune manette : le lanceur rejoue la manette en
+**touches fantômes** clavier (table 1 du joueur 1), effacées comme le reste. Résultat : la grille
+était injoignable, il fallait taper le nom au clavier.
+
+**Correction** (`Engine/Input.cs`, `FoldKeyboardIntoPadState`, `ClearTypingKeys`) : pendant la
+saisie, on n'efface plus que les touches qui **tapent un caractère** (`TypingKeys` : lettres,
+chiffres, ponctuation, Échap, Entrée, retour arrière, tabulation, espace, pavé numérique, `<>`
+AZERTY, touches japonaises et brésiliennes qui tapent) et les modificateurs de frappe (les deux
+Maj, Verr Maj, Alt Gr). Le reste passe : les touches fantômes du lanceur, les flèches (`0xC8`…, table
+1), Alt gauche, Ctrl gauche, les touches de fonction.
+
+**Ce que ça donne** :
+- **manette par le lanceur** : la grille se parcourt entièrement comme sur PlayStation — avec LB-058,
+  croix pose la lettre, rond efface (et quitte, tampon vide, sur la dernière page de la case de fin).
+- **clavier** : on tape toujours son nom (Entrée valide, Échap revient, retour arrière efface) ; en
+  plus, les flèches déplacent le curseur et **Alt gauche** (croix) pose la lettre. Maj gauche (rond)
+  reste muette sur cet écran, sans quoi chaque majuscule effacerait un caractère.
+- Les flèches **du pavé numérique** (table 0) restent muettes : Verr Num allumé, elles tapent des
+  chiffres.
+
+La validation sur la case de fin par la manette rejoint le chemin d'annulation pour la remise de
+`DAT_00564a50` ; LB-001 la fait désormais sur toutes les sorties, ce qui rend cette voie sûre.

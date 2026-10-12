@@ -37,6 +37,8 @@ src/LegacyPlus/
    Arene.cs                 LP-012 — le mode arène : l'aller vers 4/9, la salle vidée, la fin (scénette, bourse, portail), la défaite, la sauvegarde
    AreneDirecteur.cs        LP-012 — les programmes de l'arène, leurs vagues, la naissance et le palier (PV, dégâts), les boss rush et leur pause (LP-014)
    AreneGreffe.cs           LP-013 — la greffe : un monstre d'une autre sous-zone dans l'arène (maillage, texture et sa place en VRAM par vague, espèce, IA, sons), et le contexte de sa sous-zone pour ses effets
+   SoutienFee.cs            LP-015 — la Fée en soutien : bonus au groupe, malus aux ennemis proches sans jet ni immunité, quatre bulles, durée ÷ 2 des versions individuelles
+   CombinaisonsLibres.cs    LP-016 — les raccourcis de sort par personnage : saisie dans l'onglet magie, reconnaissance au lancer, rangement en +0x1c00 de la fiche
    CatalogueObjets.cs       LP-008, repris — l'index nom → fiche et vignette, lu dans les fichiers du jeu
    BoutiqueAchat.cs         LP-008, repris — l'achat : bourse, emplacement, rangement, icône
    BoutiqueVente.cs         LP-011 — le rachat de la Voleuse : inventaire hors équipement, coffre (écrit la sauvegarde)

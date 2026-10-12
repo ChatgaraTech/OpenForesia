@@ -17,6 +17,17 @@ internal static class Installation
 {
     internal const string NomJeu = "OpenForesia";
     internal const string Executable = "OpenForesia.exe";
+
+    /// <summary>
+    /// Le lanceur (openspec/changes/add-launcher-solo-gamepad) : jouer seul à la manette, héberger,
+    /// rejoindre. Dans le zip du jeu d'une release.
+    /// </summary>
+    internal const string ExecutableLanceur = "OpenForesiaLanceur.exe";
+    internal const string NomLanceur = "OpenForesia Lanceur";
+
+    /// <summary>Le lanceur sous son premier nom (add-multiplayer-streaming), retiré à la mise à jour et à la désinstallation.</summary>
+    internal const string AncienExecutableMultijoueur = "OpenForesiaMultiplayer.exe";
+    internal const string AncienNomMultijoueur = "OpenForesia Multijoueur";
     internal const string CleDesinstallation = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenForesia";
 
     /// <summary>Au-dela, un chemin du jeu risquerait de depasser les 260 caracteres de Windows.</summary>
@@ -155,6 +166,28 @@ internal static class Installation
             {
                 journal.NoterFichier(raccourci);
                 Raccourcis.Creer(raccourci, exe, "", dossier, "Blaze & Blade, reconstruit", exe);
+            }
+
+            // Le multijoueur sous son premier nom, d'une installation précédente : son exe et ses
+            // raccourcis. Le lanceur le remplace.
+            foreach (string ancien in new[]
+                     {
+                         Path.Combine(dossier, AncienExecutableMultijoueur),
+                         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), AncienNomMultijoueur + ".lnk"),
+                         Path.Combine(menu, AncienNomMultijoueur + ".lnk"),
+                     })
+                if (File.Exists(ancien)) File.Delete(ancien);
+
+            // Le lanceur, s'il est livré avec le jeu (une release ; pas une build de développement).
+            string lanceur = Path.Combine(dossier, ExecutableLanceur);
+            if (File.Exists(lanceur))
+            {
+                string bureauLanceur = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), NomLanceur + ".lnk");
+                foreach (string raccourci in new[] { bureauLanceur, Path.Combine(menu, NomLanceur + ".lnk") })
+                {
+                    journal.NoterFichier(raccourci);
+                    Raccourcis.Creer(raccourci, lanceur, "", dossier, "Jouer seul à la manette, héberger ou rejoindre une partie", exe);
+                }
             }
 
             string desinstaller = Path.Combine(menu, "Désinstaller OpenForesia.lnk");

@@ -244,7 +244,7 @@ internal static unsafe class MarchandsHub
     private static void Parler(uint* membre, byte* pad, byte* perChar, byte* descripteur)
     {
         if (BoutiqueEcran.Ouvert) return;
-        ushort action = *(ushort*)(perChar + 0x1fc4);
+        ushort action = OpenForesia.Blaze.Input.CombatMask(*(ushort*)(perChar + 0x1fc4));
         if ((*(ushort*)(pad + 2) & action) == 0) return;
         if ((*membre & 0x80000000) == 0 || (*membre & 0x50000000) != 0) return;
         if ((descripteur[0x8c7] & 1) != 0) return;

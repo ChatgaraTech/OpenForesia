@@ -1,3 +1,16 @@
+## Fiches de sort — table `+0x9c` a 0x0001bc, 8 famille(s)
+
+| famille | pointeur | fiches | premier | dernier |
+|---:|---:|---:|---|---|
+| 0 | 0x000e68 | 29 | Balle de feu | Fusion |
+| 1 | 0x0013d8 | 24 | Pardon | Ange |
+| 2 | 0x001858 | 20 | Dodo | Terre |
+| 3 | 0x001c18 | 7 | Lavande | Belladone |
+| 4 | 0x001d68 | 1 | ³ª²ò | ³ª²ò |
+| 5 | 0x001d98 | 1 | ±Û | ±Û |
+| 6 | 0x001dc8 | 1 | ½Àë½Ä | ½Àë½Ä |
+| 7 | 0x001df8 | 40 | ù²èÝÀ¯Á | ÒÃµ½Ï¯¼­ |
+
 ## Zone 0 — 3332 octets, 105 sous-zone(s)
 
 ### Zone 0, sous-zone 0 — repertoire de 14860 octets

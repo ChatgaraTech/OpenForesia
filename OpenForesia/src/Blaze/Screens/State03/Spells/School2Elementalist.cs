@@ -120,8 +120,8 @@ public static unsafe partial class Blaze
         *(byte**)(e + 0x78) = null;
         *(ushort*)(e + 0x1a) = 4;
 
-        SpawnStatusEffectEntity_0047AC40(
-            e, (int*)(e + 0x1c), Descriptors00551B60(), 0x53, e[0x0b], -1);
+        LegacyPlus.Coutures.ProjectileDeFee(e, () => SpawnStatusEffectEntity_0047AC40(   // Couture legacy ++ (LP-015)
+            e, (int*)(e + 0x1c), Descriptors00551B60(), 0x53, e[0x0b], -1));
 
         // ET IL S'EFFACE : le mot d'etat entier a zero, donc plus de 0x80000000.
         *(uint*)e = 0;
@@ -251,7 +251,7 @@ public static unsafe partial class Blaze
                 // fonction est pure, l'appel est donc sans effet. Transcrit tel quel.
                 _ = GetEntityStatBlock((uint*)victim);
 
-                ApplyStatusEffect_0053B730(*(uint**)(e + 0x74), (uint*)victim, 0);
+                LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), (uint*)victim, &ApplyStatusEffect_0053B730);   // Couture legacy ++ (LP-015)
 
                 *(uint*)victim |= 0x40;
                 *(ushort*)(victim + 0x96) = 0x10;
@@ -393,7 +393,7 @@ public static unsafe partial class Blaze
         }
 
         // Ghidra: LAB_00476fe9
-        byte* target = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+        byte* target = LegacyPlus.Coutures.CibleDeFee(e, FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1));   // Couture legacy ++ (LP-015)
 
         if (target == null)
         {
@@ -571,7 +571,7 @@ public static unsafe partial class Blaze
                 // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
                 *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
-                if (ApplyStatusEffect_0053BDA0(*(uint**)(e + 0x74), (uint*)victim, 0) != 0)
+                if (LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), (uint*)victim, &ApplyStatusEffect_0053BDA0) != 0)   // Couture legacy ++ (LP-015)
                 {
                     // Resiste : rien n'est aplati, et le sabot mourra a l'image suivante.
                     *(uint*)e |= 0x1004000;
@@ -724,7 +724,7 @@ public static unsafe partial class Blaze
         byte* e = record;
 
         // Faute de voisin dans son camp, elle rend le lanceur : Vitesse ne rate jamais.
-        byte* target = FindTargetAround_00474BA0(e, 0);
+        byte* target = LegacyPlus.Coutures.CibleDeFee(e, FindTargetAround_00474BA0(e, 0));   // Couture legacy ++ (LP-015)
 
         *(byte**)(e + 0x78) = target;
         *(byte**)(e + 0x70) = target;
@@ -814,8 +814,8 @@ public static unsafe partial class Blaze
                 // LE SECOND ANNEAU SEUL. La paire famille/indice, pretee au lanceur en un mot.
                 *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
-                ApplyStatusEffect_0053BD10(
-                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+                LegacyPlus.Coutures.EffetDeFee(
+                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), &ApplyStatusEffect_0053BD10);   // Couture legacy ++ (LP-015)
             }
 
             Aud.QueueDelayedSoundScript(DelayedSoundScript00551888(), (int*)(e + 0x1c));
@@ -928,7 +928,7 @@ public static unsafe partial class Blaze
             *(short*)(e + 0x2e) = -64;
 
             // Faute de voisin dans son camp, elle rend le lanceur : la Materia ne rate jamais.
-            target = FindTargetAround_00474BA0(e, 0);
+            target = LegacyPlus.Coutures.CibleDeFee(e, FindTargetAround_00474BA0(e, 0));   // Couture legacy ++ (LP-015)
 
             *(byte**)(e + 0x78) = target;
             *(byte**)(e + 0x70) = target;
@@ -985,7 +985,7 @@ public static unsafe partial class Blaze
             // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
             *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
-            ApplyStatusEffect_0053B100(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+            LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), *(uint**)(e + 0x78), &ApplyStatusEffect_0053B100);   // Couture legacy ++ (LP-015)
 
             *(uint*)e = 0;
         }
@@ -1082,7 +1082,7 @@ public static unsafe partial class Blaze
             *(short*)(e + 0x2e) = -64;
 
             // Faute de voisin dans son camp, elle rend le lanceur : la Materia ne rate jamais.
-            target = FindTargetAround_00474BA0(e, 0);
+            target = LegacyPlus.Coutures.CibleDeFee(e, FindTargetAround_00474BA0(e, 0));   // Couture legacy ++ (LP-015)
 
             *(byte**)(e + 0x78) = target;
             *(byte**)(e + 0x70) = target;
@@ -1135,7 +1135,7 @@ public static unsafe partial class Blaze
             *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
             // LA TROISIEME DIFFERENCE : l'effet 4, duree en +0x88 et intensite en +0xe6.
-            ApplyStatusEffect_0053B1B0(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+            LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), *(uint**)(e + 0x78), &ApplyStatusEffect_0053B1B0);   // Couture legacy ++ (LP-015)
 
             *(uint*)e = 0;
         }
@@ -1178,7 +1178,7 @@ public static unsafe partial class Blaze
             *(short*)(e + 0x2e) = -64;
 
             // Faute de voisin dans son camp, elle rend le lanceur : la Materia ne rate jamais.
-            target = FindTargetAround_00474BA0(e, 0);
+            target = LegacyPlus.Coutures.CibleDeFee(e, FindTargetAround_00474BA0(e, 0));   // Couture legacy ++ (LP-015)
 
             *(byte**)(e + 0x78) = target;
             *(byte**)(e + 0x70) = target;
@@ -1231,7 +1231,7 @@ public static unsafe partial class Blaze
             *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
             // LA TROISIEME DIFFERENCE : l'effet 5, duree en +0x8a et intensite en +0xe8.
-            ApplyStatusEffect_0053B260(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+            LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), *(uint**)(e + 0x78), &ApplyStatusEffect_0053B260);   // Couture legacy ++ (LP-015)
 
             *(uint*)e = 0;
         }
@@ -1279,7 +1279,7 @@ public static unsafe partial class Blaze
             *(short*)(e + 0x2e) = -64;
 
             // Faute de voisin dans son camp, elle rend le lanceur : la Materia ne rate jamais.
-            target = FindTargetAround_00474BA0(e, 0);
+            target = LegacyPlus.Coutures.CibleDeFee(e, FindTargetAround_00474BA0(e, 0));   // Couture legacy ++ (LP-015)
 
             *(byte**)(e + 0x78) = target;
             *(byte**)(e + 0x70) = target;
@@ -1332,7 +1332,7 @@ public static unsafe partial class Blaze
             *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
             // LA TROISIEME DIFFERENCE : l'effet 6, duree en +0x8c et intensite en +0xea.
-            ApplyStatusEffect_0053B310(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+            LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), *(uint**)(e + 0x78), &ApplyStatusEffect_0053B310);   // Couture legacy ++ (LP-015)
 
             *(uint*)e = 0;
         }
@@ -1451,8 +1451,8 @@ public static unsafe partial class Blaze
         // Un seul enregistrement d'atlas, la ou Dodo en parcourait quatre.
         *(ushort*)(e + 0x1a) = 1;
 
-        SpawnStatusEffectEntity_0047AC40(
-            e, (int*)(e + 0x1c), Descriptors00551BC0(), 0x54, e[0x0b], -1);
+        LegacyPlus.Coutures.ProjectileDeFee(e, () => SpawnStatusEffectEntity_0047AC40(   // Couture legacy ++ (LP-015)
+            e, (int*)(e + 0x1c), Descriptors00551BC0(), 0x54, e[0x0b], -1));
 
         // ET IL S'EFFACE.
         *(uint*)e = 0;
@@ -1569,7 +1569,7 @@ public static unsafe partial class Blaze
                 // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
                 *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
-                if (ApplyStatusEffect_0053B4B0(*(uint**)(e + 0x74), (uint*)victim, 0) == 0)
+                if (LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), (uint*)victim, &ApplyStatusEffect_0053B4B0) == 0)   // Couture legacy ++ (LP-015)
                 {
                     *(byte**)(e + 0x70) = null;
                     *(int*)(e + 0x44) = 0;
@@ -1698,8 +1698,8 @@ public static unsafe partial class Blaze
         *(byte**)(e + 0x78) = null;
         *(ushort*)(e + 0x1a) = 4;
 
-        SpawnStatusEffectEntity_0047AC40(
-            e, (int*)(e + 0x1c), Descriptors00551A78(), 0x55, e[0x0b], -1);
+        LegacyPlus.Coutures.ProjectileDeFee(e, () => SpawnStatusEffectEntity_0047AC40(   // Couture legacy ++ (LP-015)
+            e, (int*)(e + 0x1c), Descriptors00551A78(), 0x55, e[0x0b], -1));
 
         // ET IL S'EFFACE.
         *(uint*)e = 0;
@@ -1820,7 +1820,7 @@ public static unsafe partial class Blaze
                 // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
                 *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
-                if (ApplyStatusEffect_0053B660(*(uint**)(e + 0x74), (uint*)victim, 0) == 0)
+                if (LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), (uint*)victim, &ApplyStatusEffect_0053B660) == 0)   // Couture legacy ++ (LP-015)
                 {
                     // ET ELLE ENGENDRE : la marque part dans l'AUTRE table d'entites.
                     e[0x04] = 2;
@@ -2107,7 +2107,7 @@ public static unsafe partial class Blaze
                     int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                     ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                    if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+                    if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
                     {
                         *(uint*)e |= 0x2000000;               // le bouton est relache
                     }
@@ -2354,7 +2354,7 @@ public static unsafe partial class Blaze
         if (*(short*)(e + 0x10) == 0)
         {
             // Faute de voisin dans son camp, elle rend le lanceur : le coussin se pose toujours.
-            carrier = FindTargetAround_00474BA0(e, 0);
+            carrier = LegacyPlus.Coutures.CibleDeFee(e, FindTargetAround_00474BA0(e, 0));   // Couture legacy ++ (LP-015)
 
             *(byte**)(e + 0x78) = carrier;
             *(byte**)(e + 0x70) = carrier;
@@ -2391,7 +2391,7 @@ public static unsafe partial class Blaze
             // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
             *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
-            ApplyStatusEffect_0053C2A0(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+            LegacyPlus.Coutures.EffetDeFee(*(uint**)(e + 0x74), *(uint**)(e + 0x78), &ApplyStatusEffect_0053C2A0);   // Couture legacy ++ (LP-015)
 
             *(uint*)e = 0;
         }
@@ -2541,7 +2541,7 @@ public static unsafe partial class Blaze
                     int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
                     ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-                    if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+                    if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
                     {
                         *(uint*)e |= 0x2000000;               // le bouton est relache
                     }
@@ -2976,7 +2976,7 @@ public static unsafe partial class Blaze
             *(short*)(e + 0x2e) = -64;
 
             // Faute de voisin dans son camp, elle rend le lanceur : le sort se pose toujours.
-            carrier = FindTargetAround_00474BA0(e, 0);
+            carrier = LegacyPlus.Coutures.CibleDeFee(e, FindTargetAround_00474BA0(e, 0));   // Couture legacy ++ (LP-015)
 
             *(byte**)(e + 0x78) = carrier;
             *(byte**)(e + 0x70) = carrier;
@@ -3107,8 +3107,8 @@ public static unsafe partial class Blaze
                 // LE SECOND ANNEAU SEUL. La paire famille/indice, pretee au lanceur en un mot.
                 *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
 
-                ApplyStatusEffect_0053C160(
-                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+                LegacyPlus.Coutures.EffetDeFee(
+                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), &ApplyStatusEffect_0053C160);   // Couture legacy ++ (LP-015)
             }
 
             // ET IL SE FERME EN SILENCE : pas de script de sons differes, contrairement a Vitesse.
@@ -3544,7 +3544,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }
@@ -4154,7 +4154,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }
@@ -4388,7 +4388,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }
@@ -4581,7 +4581,7 @@ public static unsafe partial class Blaze
             int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
             ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
 
-            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            if ((Input.CombatMask(*(ushort*)(perChar + 0x1fc4)) & pad) == 0)
             {
                 *(uint*)e |= 0x2000000;                   // le bouton est relache
             }

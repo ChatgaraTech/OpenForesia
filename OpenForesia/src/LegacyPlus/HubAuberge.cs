@@ -292,13 +292,21 @@ internal static unsafe class HubAuberge
         Passer(membre);
     }
 
-    /// <summary>Le passage vers le hub (D4), depuis la réception chargée.</summary>
+    /// <summary>
+    /// Le passage vers le hub (D4), depuis la réception chargée — pour CHAQUE joueur qui entre dans le
+    /// téléporteur. Comme une porte du jeu (opcode 17) : le membre est marqué parti et figé, et la
+    /// salle ne se recharge que quand tous les membres le sont (<c>PrepareLeaderAndPartyFlags</c>,
+    /// <c>0x005de030 &gt;= taille du groupe</c>). À plusieurs, le second joueur refait donc le même
+    /// geste ; le refuser (« un passage est engagé ») laissait le premier figé pour toujours (essai de
+    /// Vincent en multijoueur, 2026-09-30).
+    /// </summary>
     private static void Passer(uint* membre)
     {
         byte chargee = Jeu.s_Unknown_00566c88;
-        if (Jeu.s_Unknown_005de52c != chargee)   // un passage est déjà engagé
+        bool dejaEngage = Jeu.s_Unknown_005de52c == Hub;
+        if (Jeu.s_Unknown_005de52c != chargee && !dejaEngage)   // un autre passage est engagé (une porte, un script)
         {
-            Journal($"téléporteur ignoré : un passage est engagé (sous-zone chargée {chargee}, demandée {Jeu.s_Unknown_005de52c})");
+            Journal($"téléporteur ignoré : un autre passage est engagé (sous-zone chargée {chargee}, demandée {Jeu.s_Unknown_005de52c})");
             return;
         }
 
@@ -308,6 +316,13 @@ internal static unsafe class HubAuberge
         *(ushort*)(m + 0x12) += 1;
         *(short*)(m + 0x98) = *(short*)(m + 0x32);
         *membre = *membre & 0xf7fffdff | 0x2000;
+
+        if (dejaEngage)
+        {
+            // Les globales du passage sont déjà posées par le premier : seul ce membre part à son tour.
+            Journal($"J{m[8] + 1} prend le téléporteur à son tour (passage vers le hub déjà engagé)");
+            return;
+        }
 
         s_Origine = chargee;
         s_Aller = true;
