@@ -2502,3 +2502,37 @@ combinaison tapée telle qu'affichée ne partait pas — constat de Vincent. **C
 alors Pieds mouillés au lieu de Balle de feu. Le pictogramme du menu est de nouveau le bouton à presser, pour les
 quatre. Le commentaire de cette branche la disait « annulation » ; c'est l'entrée du mode
 combinaison, corrigé.
+
+## LB-059 — La grille de saisie du nom ne répondait qu'à une vraie manette
+
+**Statut** : `Corrigé` le 2026-10-12 (legacy ++, confort du joueur, demande de Vincent : « sur PS1
+on peut naviguer dans le menu avec les caractères »). **Sans interrupteur** : rien n'est retiré, la
+frappe au clavier marche comme avant.
+
+**Ce que faisait l'original** : l'écran de saisie du nom (`CharacterSelectSubState1`) dessine un
+clavier virtuel et sait le parcourir à la manette (`HandlePadNameEntry` : flèches, croix pose la
+lettre, rond efface, START saute sur la case de fin). Mais sa première image éteint `DAT_00564a50`
+(`FUN_00523530`), et `FoldKeyboardIntoPadState` efface alors **tout** l'état clavier avant de le
+plier en manettes, pour que la frappe d'un nom ne déplace pas aussi le curseur. Seule la zone
+joystick (`+0x100`) survit. Or le port ne lit aucune manette : le lanceur rejoue la manette en
+**touches fantômes** clavier (table 1 du joueur 1), effacées comme le reste. Résultat : la grille
+était injoignable, il fallait taper le nom au clavier.
+
+**Correction** (`Engine/Input.cs`, `FoldKeyboardIntoPadState`, `ClearTypingKeys`) : pendant la
+saisie, on n'efface plus que les touches qui **tapent un caractère** (`TypingKeys` : lettres,
+chiffres, ponctuation, Échap, Entrée, retour arrière, tabulation, espace, pavé numérique, `<>`
+AZERTY, touches japonaises et brésiliennes qui tapent) et les modificateurs de frappe (les deux
+Maj, Verr Maj, Alt Gr). Le reste passe : les touches fantômes du lanceur, les flèches (`0xC8`…, table
+1), Alt gauche, Ctrl gauche, les touches de fonction.
+
+**Ce que ça donne** :
+- **manette par le lanceur** : la grille se parcourt entièrement comme sur PlayStation — avec LB-058,
+  croix pose la lettre, rond efface (et quitte, tampon vide, sur la dernière page de la case de fin).
+- **clavier** : on tape toujours son nom (Entrée valide, Échap revient, retour arrière efface) ; en
+  plus, les flèches déplacent le curseur et **Alt gauche** (croix) pose la lettre. Maj gauche (rond)
+  reste muette sur cet écran, sans quoi chaque majuscule effacerait un caractère.
+- Les flèches **du pavé numérique** (table 0) restent muettes : Verr Num allumé, elles tapent des
+  chiffres.
+
+La validation sur la case de fin par la manette rejoint le chemin d'annulation pour la remise de
+`DAT_00564a50` ; LB-001 la fait désormais sur toutes les sorties, ce qui rend cette voie sûre.

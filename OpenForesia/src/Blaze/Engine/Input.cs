@@ -892,8 +892,13 @@ internal sealed unsafe class Input(GameMemory mem)
 
         // Ghidra: if (DAT_00564a50 == 0) the raw state is zeroed before use â€” a keyboard-enable
         // gate. Recovered from Legacy/Binaries/Blaze.exe as 1, so the state is kept.
+        // Écart legacy ++ (LB-059) : l'original efface ici les 0xFC premiers octets de l'état, tout
+        // le clavier — pendant la saisie du nom, le clavier virtuel ne répondait donc qu'à une
+        // vraie manette, que le port ne lit plus (le lanceur la rejoue en touches clavier). On
+        // n'efface plus que les touches qui tapent un caractère : flèches, Alt et touches
+        // fantômes du lanceur pilotent la grille comme sur PlayStation.
         if (s_KeyboardEnabled_00564a50 == 0)
-            NativeMemory.Fill(deviceState, 0x3f * sizeof(uint), 0);
+            ClearTypingKeys(deviceState);
 
         // Ghidra: state[0x1c] |= state[0x9c]; state[0x9c] = 0. Those two DirectInput scancodes are
         // DIK_RETURN and DIK_NUMPADENTER: the keypad's Enter is folded into the main one.
@@ -1001,6 +1006,34 @@ internal sealed unsafe class Input(GameMemory mem)
     /// characters are being typed.
     /// </summary>
     private int s_KeyboardEnabled_00564a50 = 1;
+
+    /// <summary>
+    /// Écart legacy ++ (LB-059) : les scancodes DirectInput qui font naître un caractère dans la
+    /// file de <c>GetKBChar</c> pendant la saisie du nom — chiffres et lettres, ponctuation, Échap,
+    /// retour arrière, tabulation, Entrée, espace, le pavé numérique (Verr Num allumé), la touche
+    /// <c>&lt;&gt;</c> des claviers AZERTY et celles des claviers japonais et brésiliens qui tapent
+    /// —, plus les modificateurs qui servent à taper : les deux Maj (liées à rond par défaut, elles
+    /// effaceraient un caractère à chaque majuscule), Verr Maj et Alt Gr. Ctrl gauche reste lu :
+    /// Alt Gr le presse aussi, mais il tombe sur le carré, que la grille ignore.
+    /// </summary>
+    private static ReadOnlySpan<byte> TypingKeys =>
+    [
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
+        0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a,
+        0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x39, 0x3a,
+        0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 0x50, 0x51, 0x52, 0x53,
+        0x56, 0x73, 0x7d, 0x7e, 0x9c, 0xb5, 0xb8,
+    ];
+
+    /// <summary>
+    /// Écart legacy ++ (LB-059) : remplace, pendant la saisie du nom, l'effacement de tout le
+    /// clavier par celui des seules <see cref="TypingKeys"/>.
+    /// </summary>
+    private static void ClearTypingKeys(byte* deviceState)
+    {
+        foreach (byte scancode in TypingKeys) deviceState[scancode] = 0;
+    }
 
     /// <summary>
     /// Écart legacy ++ (LB-057) : échange les bits croix (<c>0x4000</c>) et rond (<c>0x2000</c>)

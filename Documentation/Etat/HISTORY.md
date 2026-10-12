@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-10-12
 
+- feat : LB-059 (legacy ++) — le clavier virtuel de la saisie du nom se parcourt à la manette du lanceur, comme sur PS1 (croix pose la lettre, rond efface), et aux flèches + Alt au clavier ; pendant la saisie, `FoldKeyboardIntoPadState` n'efface plus que les touches qui tapent un caractère
 - fix : LB-001 corrigé (legacy ++) — revenir de la saisie du nom au carrousel de sélection des personnages (Échap, ou annulation/validation à la manette) ne laisse plus l'écran sourd au clavier : `CharacterSelectSubState1` rallume la traduction clavier→manette sur toutes les sorties
 
 ## 2026-10-02
