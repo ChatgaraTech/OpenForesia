@@ -339,6 +339,32 @@ internal static unsafe class Coutures
     /// </summary>
     internal static Cible CibleDeFee = (sort, cible) => cible;
 
+    /// <summary>La combinaison d'un sort pour un personnage : sa fiche de personnage, le rang du sort dans son école, et ce que le jeu lit.</summary>
+    internal delegate byte* Combinaison(byte* personnage, int indice, byte* lue);
+
+    /// <summary>
+    /// Couture LP-016 — dans la boucle de <c>PickCastTarget_0051A5D0</c> (Ghidra: FUN_0051a5d0),
+    /// le pointeur sur les coups de la fiche du sort (<c>fiche + 0x20</c>, longueur en <c>[-1]</c>).
+    /// Rend un pointeur au même format ; par défaut, celui de la fiche.
+    /// </summary>
+    internal static Combinaison CombinaisonDuSort = (personnage, indice, lue) => lue;
+
+    /// <summary>
+    /// Couture LP-016 — dans <c>DrawSpellTab</c>, la fiche dont l'onglet magie dessine la
+    /// combinaison (longueur en <c>+0x1f</c>, coups en <c>+0x20..</c>). Par défaut, la fiche.
+    /// </summary>
+    internal static Combinaison CombinaisonAffichee = (personnage, indice, lue) => lue;
+
+    /// <summary>L'onglet magie à son entrée : le personnage, le mot de manette, et le sort visé (-1 hors de la tranche ; opposé si non appris).</summary>
+    internal delegate void Onglet(byte* personnage, ushort* pad, int sortVise);
+
+    /// <summary>
+    /// Couture LP-016 — en tête de <c>DrawSpellTab</c>, avant toute lecture de la manette. Un tweak
+    /// peut effacer <c>pad[1]</c> (les appuis de l'image) et <c>pad[3]</c> (la répétition). Par
+    /// défaut, rien.
+    /// </summary>
+    internal static Onglet OngletSorts = (personnage, pad, sortVise) => { };
+
     /// <summary>Le lancer du projectile d'un sort : sa graine, et l'engendrement d'origine.</summary>
     internal delegate void Projectile(byte* graine, Action engendrer);
 
@@ -367,6 +393,7 @@ internal static unsafe class Coutures
             AreneDirecteur.Installer();
             AreneGreffe.Installer();
             SoutienFee.Installer();
+            CombinaisonsLibres.Installer();
 #if DEBUG
             // Les outils de diagnostic n'existent que dans la version Debug : la version publiée
             // (publish-release.ps1, -c Release) ne les installe jamais, même avec la clé.
@@ -416,6 +443,9 @@ internal static unsafe class Coutures
             DureeDEtat = duree => duree;
             ProjectileDeFee = (graine, engendrer) => engendrer();
             CibleDeFee = (sort, cible) => cible;
+            CombinaisonDuSort = (personnage, indice, lue) => lue;
+            CombinaisonAffichee = (personnage, indice, lue) => lue;
+            OngletSorts = (personnage, pad, sortVise) => { };
         }
     }
 }

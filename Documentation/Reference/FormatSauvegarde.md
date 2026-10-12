@@ -74,6 +74,7 @@ Le format « title frame » de la PlayStation, rempli par `WriteCardSaveFile` :
 | `+0x2c0..` | | liste d'inventaire affichée — **reconstruite** par le menu | |
 | `+0x2e0..+0x2ff` | 32 | progression (la banque SYSTEM) : bits 0 à 8 les neuf cristaux, bit 9 la dalle, bit 12 la page « Cristaux » du menu ; `+0x2fe` les destinations, voir ci-dessous | `mode-debug.md` |
 | `+0x300..+0x1bff` | 10 × `0x280` | l'inventaire | ci-dessous |
+| `+0x1c00..+0x1cff` | 256 | **jamais lu ni écrit par le jeu de 1998** (aucun décalage `0x1c..` dans `Blaze.c`). Legacy ++ LP-016 y range les raccourcis de sort du personnage : `+0x1c00 + indice × 5`, un octet de longueur (0..8, 0 = vide) puis huit coups d'un quartet (△ 1, ✕ 2, ○ 4, □ 8 ; le coup k dans le quartet bas de l'octet `1 + k/2` si k est pair, haut sinon) ; zéro = vide, une entrée invalide se lit vide | `LegacyPlus/CombinaisonsLibres.cs` |
 | `+0x1d00..+0x1eff` | 8 × 64 | les huit banques d'état (FLAG, WORK, TEMP, ITEM, puis `0x005e9720`, `0x005e92c0`, `0x005e9980`, `0x005e9360`) | `RestorePartyGlobals` |
 | `+0x1f00` | 1 | `0` : l'état partagé qui suit est présent | idem |
 | `+0x1f01..+0x1f03` | 3 | lieu de reprise : zone, sous-zone, point d'entrée | idem |

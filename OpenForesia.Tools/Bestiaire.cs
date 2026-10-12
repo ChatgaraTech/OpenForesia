@@ -1543,17 +1543,19 @@ internal static partial class Bestiaire
     }
 
     /// <summary>
-    /// Un octet de combinaison rendu en lettres : <c>T</c> triangle, <c>O</c> rond, <c>X</c> croix,
-    /// <c>C</c> carre — l'ordre des bits de <c>s_PadButtonMasks_00564f18</c> decale de huit. Un
-    /// octet a plusieurs bits donne plusieurs lettres, et c'est voulu : deux boutons tenus dans la
-    /// meme image ne font qu'un coup dans la combinaison.
+    /// Un octet de combinaison rendu en lettres : <c>T</c> triangle, <c>X</c> croix, <c>O</c> rond,
+    /// <c>C</c> carre — les pictogrammes que le menu du jeu dessine pour <c>0x10</c>, <c>0x20</c>,
+    /// <c>0x40</c>, <c>0x80</c>. Relevé en jeu le 2026-10-02 (Balle de feu, <c>20 10 20</c>,
+    /// s'affiche ✕ △ ✕) ; ce n'est pas l'ordre PlayStation de <c>s_PadButtonMasks_00564f18</c>, que
+    /// ce rendu suivait jusque-là (<c>0x20</c> lu rond). Un octet a plusieurs bits donne plusieurs
+    /// lettres, et c'est voulu : deux boutons tenus dans la meme image ne font qu'un coup.
     /// </summary>
     private static string Buttons(byte value)
     {
         var text = new StringBuilder();
         if ((value & 0x10) != 0) text.Append('T');
-        if ((value & 0x20) != 0) text.Append('O');
-        if ((value & 0x40) != 0) text.Append('X');
+        if ((value & 0x20) != 0) text.Append('X');
+        if ((value & 0x40) != 0) text.Append('O');
         if ((value & 0x80) != 0) text.Append('C');
         return text.Length == 0 ? "." : text.ToString();
     }

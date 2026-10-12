@@ -296,7 +296,15 @@ public static unsafe partial class Blaze
                 ? HandlePadNameEntry(pad, scratch, state)
                 : HandleTypedNameEntry(typed, scratch, state);
 
-            if (leaving) EnableKBInput(0);
+            if (leaving)
+            {
+                EnableKBInput(0);
+                // Écart legacy ++ (LB-001) : l'original s'arrête là — seul le chemin « Entrée »
+                // de HandleTypedNameEntry rallume la traduction clavier→manette éteinte à la
+                // première frame. Après Échap, l'annulation ou la validation à la manette, le
+                // carrousel restait sourd au clavier. On la rallume pour les trois sorties.
+                Inp.EnablePadKeyboard();           // Ghidra: FUN_00523520
+            }
         }
 
         return DrawNameEntryScreen(otBase, primCursor, scratch, state);

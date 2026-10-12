@@ -339,7 +339,12 @@ public static unsafe partial class Blaze
 
                     if ((*(ushort*)(pad + 2) & 1) != 0 && s_Unknown_00566c84 != 0)
                     {
-                        // Annulation : l'incantation part quand meme, mais sans effet retenu.
+                        // Le MODE COMBINAISON, par le bouton 0x0001 (SELECT, F1 au clavier) : compte
+                        // a rebours a zero et saisie remise a vide. Tant que le bouton est tenu, les
+                        // boutons de face s'empilent ; relache, PickCastTarget_0051A5D0 cherche la
+                        // fiche dont la combinaison correspond (plus bas). Le bouton de classe, lui,
+                        // charge le sort memorise. (Ce commentaire disait « annulation » jusqu'au
+                        // 2026-10-02 : c'etait faux.)
                         *slot = held | 0x1000004;
                         *(uint*)(s + 0x18) = 5;
                         entry[0x0b] = 0;
@@ -400,8 +405,11 @@ public static unsafe partial class Blaze
                         }
                         else if ((*(ushort*)(pad + 2) & 0xf000) != 0 && entry[0x0b] < 0x10)
                         {
-                            // Le bouton est tenu : chaque direction s'empile dans la combinaison.
-                            entry[0x0c + entry[0x0b]] = (byte)((*(ushort*)(pad + 2) >> 8) & 0xf0);
+                            // Le bouton est tenu : chaque bouton de face s'empile dans la combinaison.
+                            // Écart legacy ++ (LB-058) : l'original enregistrait le mot tel quel ;
+                            // il est rendu au codage de 1998 avant, pour que le bouton pressé soit
+                            // celui que le menu dessine.
+                            entry[0x0c + entry[0x0b]] = (byte)((Input.ComboButtons(*(ushort*)(pad + 2)) >> 8) & 0xf0);
                             entry[0x0b]++;
                         }
                     }

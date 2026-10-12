@@ -4,8 +4,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-10-12
+
+- fix : LB-001 corrigé (legacy ++) — revenir de la saisie du nom au carrousel de sélection des personnages (Échap, ou annulation/validation à la manette) ne laisse plus l'écran sourd au clavier : `CharacterSelectSubState1` rallume la traduction clavier→manette sur toutes les sorties
+
 ## 2026-10-02
 
+- feat : OpenForesia-Setup 0.6.0 (22 Mo) — LP-016, les raccourcis de sort par personnage (`[Magie] CombinaisonsLibres`, désactivé par défaut) ; les combinaisons de sort d'origine tapées telles qu'affichées (complément de LB-058) ; lanceur seul 10,3 Mo à côté
+- doc : change `add-legacy-plus-custom-combos` archivé (`openspec/changes/archive/2026-10-02-add-legacy-plus-custom-combos`), spec `gameplay-custom-combos` créée dans `openspec/specs/` ; LP-016 validé en jeu par Vincent
+- feat : LP-016, les raccourcis de sort par personnage (`[Magie] CombinaisonsLibres`, `src/LegacyPlus/CombinaisonsLibres.cs`, coutures `CombinaisonDuSort`, `CombinaisonAffichee`, `OngletSorts`) — saisie dans l'onglet magie par SELECT, rangement en `+0x1c00` de la fiche ; écrit, build propre, à tester en jeu
+- doc : le bestiaire (`sorts.csv`, `SortsAtteignables.md`, régénéré — il était vide) nomme les coups d'après les pictogrammes du jeu, `0x20` = X, `0x40` = O ; `Sorts.md` décrit les deux entrées de l'incantation (bouton de classe, SELECT) ; `FormatSauvegarde.md` porte `+0x1c00..+0x1cff`
+- doc : change `add-legacy-plus-custom-combos` proposé (LP-016, `[Magie] CombinaisonsLibres`) — des raccourcis de sort par personnage, saisis dans l'onglet magie par SELECT, reconnus par le mode combinaison, rangés dans la fiche en `+0x1c00` (trou de 256 octets entre l'inventaire et les banques, jamais touché par le jeu de 1998) ; établi au passage que le menu dessine `0x20` en ✕ et `0x40` en ○
+- fix : combinaisons de sort (tenir SELECT / F1, taper △ ○ ✕ □, relâcher) — la saisie enregistrait le mot de manette après l'échange de LB-058, et ✕ et □ étaient inversés : elle passe par `Input.ComboButtons`, qui défait LB-058 comme `CombatMask` (complément de LB-058) ; le commentaire qui appelait « annulation » l'entrée du mode combinaison est corrigé
 - feat : OpenForesia-Setup 0.5.2 (22 Mo) — la 0.5.1 plus la demande d'accès « sans cadre » de la capture et sa journalisation ; lanceur seul 10,3 Mo à côté
 - doc : lanceur — sur Windows 10, le cadre jaune-orange autour du jeu pendant l'hébergement est celui de la capture de Windows, impossible à retirer avant Windows 11 (`IsBorderRequired`, build 20348) ; invisible pour les amis ; expliqué dans le `LISEZMOI` du lanceur. La capture demande désormais l'accès « sans cadre » et journalise un refus (`[CAPTURE] …`)
 - feat : OpenForesia-Setup 0.5.1 (22 Mo) — la 0.5.0 (LP-015) plus les deux corrections de l'accueil du lanceur (état de la manette en mode réduit, case « Reconfigurer ma manette » retirée) ; lanceur seul 10,3 Mo à côté

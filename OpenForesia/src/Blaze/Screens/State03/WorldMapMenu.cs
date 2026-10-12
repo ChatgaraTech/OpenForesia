@@ -1731,6 +1731,9 @@ public static unsafe partial class Blaze
     private static uint* DrawSpellTab(
         uint* otBase, uint* cursor, byte* slot, byte* character, ushort* pad, int listBefore)
     {
+        LegacyPlus.Coutures.OngletSorts(character, pad,
+            s_Unknown_005de718 >= 0 ? s_SpellList_005de6a0[s_Unknown_005de6f8] : -1);   // Couture legacy ++ (LP-016)
+
         byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
         byte* root = MenuDescriptor(0);
         byte* sprite = s_MenuSprite_005de5f8;
@@ -1959,9 +1962,12 @@ public static unsafe partial class Blaze
         *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
         *(uint*)(sprite + 4) = 0x1000000;
 
-        for (int entry = 0; entry < record[0x1f]; entry++)
+        byte* combo = LegacyPlus.Coutures.CombinaisonAffichee(
+            character, s_SpellList_005de6a0[s_Unknown_005de6f8], record);   // Couture legacy ++ (LP-016)
+
+        for (int entry = 0; entry < combo[0x1f]; entry++)
         {
-            uint bits = record[0x20 + entry];
+            uint bits = combo[0x20 + entry];
 
             int set = 0;
             for (int b = 0; b < 4; b++, bits >>= 1) if ((bits & 0x10) != 0) set++;

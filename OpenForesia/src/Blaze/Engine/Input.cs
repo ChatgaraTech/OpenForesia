@@ -1040,6 +1040,16 @@ internal sealed unsafe class Input(GameMemory mem)
     /// </summary>
     internal static ushort CombatMask(ushort mask) => SwapSquareAndCircle(mask);
 
+    /// <summary>
+    /// Écart legacy ++ (LB-058, complément du 2026-10-02) : les boutons de face d'un mot de manette
+    /// tels que le combat les voit — LB-058 défait, LB-057 gardé, exactement comme
+    /// <see cref="CombatMask"/>. Pour la saisie des combinaisons de sort, qui <b>enregistre</b> les
+    /// bits pressés et les compare aux octets de la fiche, que le menu dessine <c>0x10</c> △,
+    /// <c>0x20</c> ✕, <c>0x40</c> ○, <c>0x80</c> □ (relevé en jeu : Balle de feu, octets
+    /// <c>20 10 20</c>, s'affiche ✕ △ ✕). Sans elle, ✕ et □ étaient échangés.
+    /// </summary>
+    internal static ushort ComboButtons(ushort buttons) => SwapSquareAndCircle(buttons);
+
     /// <summary>Ghidra: FUN_00523520 @ 0x00523520 â€” <c>DAT_00564a50 = 1</c>, nothing else.</summary>
     internal void EnablePadKeyboard() => s_KeyboardEnabled_00564a50 = 1;
 

@@ -35,6 +35,12 @@ contournements déclarés.
 
 ## LB-001 — Sortir de la saisie du nom par Échap bloque l'écran de sélection
 
+**Statut** : `Corrigé` le 2026-10-12 (legacy ++, défaut de 1998, demande de Vincent). **Sans
+interrupteur** : un écran qui ne répond plus n'est pas un comportement qu'un joueur voudrait garder.
+`CharacterSelectSubState1` (`Screens/State04/CharacterCreation.cs`) appelle `EnablePadKeyboard()`
+(`FUN_00523520`) à côté de `EnableKBInput(0)`, donc sur les trois sorties qui l'oubliaient ; le
+chemin « Entrée » le faisait déjà, le rappel y est sans effet.
+
 **Constaté** le 2026-08-15 par Vincent sur le jeu officiel, puis reproduit à l'identique dans
 OpenForesia.
 
@@ -108,7 +114,7 @@ d'annulation) rendent tous deux `true`, ce que l'appelant traduit par `EnableKBI
 
 **Où porterait un correctif** : un appel à `EnablePadKeyboard()` (`FUN_00523520`) à côté du
 `EnableKBInput(0)` de `CharacterSelectSubState1`, ce qui couvrirait les trois sorties d'un coup.
-Une ligne. Non appliqué — ce serait une déviation par rapport à 1998.
+Une ligne. Appliqué le 2026-10-12 (voir le statut ci-dessus).
 
 ---
 
@@ -2483,3 +2489,16 @@ clavier doit être servi : il suffirait de changer les liaisons par défaut, pas
 
 **Conséquence pour les essais** : `playtest.ps1` valide `-Entry` en tapant Échap ; dans `-Then`,
 `ESC` valide et `LSHIFT` revient (`test-protocol.md`).
+
+**Complément du 2026-10-02 — un site oublié : la saisie des combinaisons de sort.** Le mode
+combinaison (tenir SELECT, F1 au clavier, taper △ ○ ✕ □, relâcher) **enregistre** les bits pressés
+(`(mot >> 8) & 0xf0`) et les compare aux octets de la fiche, que le menu dessine `0x10` △, `0x20` ✕,
+`0x40` ○, `0x80` □ (relevé en jeu : Balle de feu, `20 10 20`, s'affiche ✕ △ ✕ — dans ce jeu PC,
+`0x2000` est la croix, ce que LB-057 rétablissait). Ce n'est pas un test « n'importe quel bouton de
+face », invariant par l'échange : avec LB-058, ✕ et □ étaient échangés à la saisie, et une
+combinaison tapée telle qu'affichée ne partait pas — constat de Vincent. **Correction** :
+`Input.ComboButtons` défait LB-058 seul avant l'enregistrement, comme `CombatMask` pour le combat
+(`Spells/SpellCasting.cs`). Une première version défaisait aussi LB-057 : Alt, Espace, Alt lançait
+alors Pieds mouillés au lieu de Balle de feu. Le pictogramme du menu est de nouveau le bouton à presser, pour les
+quatre. Le commentaire de cette branche la disait « annulation » ; c'est l'entrée du mode
+combinaison, corrigé.
