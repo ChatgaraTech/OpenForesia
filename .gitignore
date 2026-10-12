@@ -66,3 +66,10 @@ OpenForesia.Tools/worldmaptick-baseline.txt
 
 # Le jeu publie, zippe par OpenForesia.Tools/publish-release.ps1 pour etre embarque dans l'installeur
 OpenForesia.Installer/Jeu/
+
+# Ce qui vient de 1998 et appartient aux ayants droit : chacun fournit le sien, rien n'est publié.
+# Le binaire et ses DLL (Blaze.exe, winsys3d.dll…, ir41_32.ax), et ce qui en est dérivé
+# mécaniquement : la décompilation Ghidra et les relevés de désassemblage.
+Legacy/Binaries/
+Legacy/Decompiled/
+Legacy/Raw/

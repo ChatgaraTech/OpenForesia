@@ -1,1 +1,0 @@
-"D:\Open Foresia Project\GitHub Project\OpenForesia\OpenForesia.Lanceur\bin\Debug\net10.0-windows\OpenForesiaLanceur.exe"

@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-10-12
 
+- doc : avant le passage du dépôt en public — `Legacy/Binaries/` (Blaze.exe, DLL, ir41_32.ax), `Legacy/Decompiled/` et `Legacy/Raw/` sortent du suivi (`.gitignore`, copies locales gardées), `.idea/` aussi ; les deux `.bat` de `tests/Multiplayer/` (dont un chemin réseau local) supprimés ; l'historique, lui, les porte encore
 - fix : LB-060 (legacy ++) — à la manette, rond quitte la saisie du nom quand le nom est vide ; l'original exigeait la case « Fin » et une page de grille égale à 7, que rien n'augmente jamais (`DAT_00578df4`) : la sortie à la manette était du code mort, Échap seul revenait
 - feat : OpenForesia-Setup 1.1.1 (22 Mo, refait avec LB-060) — la correction du démarrage (LB-056 : réserve refaite jusqu'à cent fois, puis message au joueur) et le retour à la manette depuis la saisie du nom (LB-060) ; lanceur seul 10,3 Mo à côté ; notes `Documentation/Releases/v1.1.1.md`
 - fix : LB-056 — le jeu installé plantait parfois au démarrage (« No free block of 0x280000 bytes … ») : l'image de l'exe publié (8,5 Mo, runtime compris) occupe 8 à 16 Mo sur cette session Windows, et un essai de réserve sur vingt n'avait plus de place, puis l'ancien chemin perdait à coup sûr ; `ReserveBasse.Lancer` refait la réserve sur un processus suspendu neuf, jusqu'à cent fois (2,7 ms l'essai), puis affiche un message explicite au joueur au lieu du crash .NET (de même au bout de l'ancien chemin)

@@ -500,8 +500,10 @@ fields of the form `= Arena(0x…)` returned `null + offset` and the game threw 
 
 `Blaze.c` is a **code-only** decompilation: Ghidra emitted function bodies but not the
 `.data`/`.rdata` sections, and it left some bodies undecompiled entirely. Two gap classes follow,
-and **both are now solvable inside the repo** — the binary is committed at
-`Legacy/Binaries/Blaze.exe`.
+and **both are solvable locally** — the binary lives at `Legacy/Binaries/Blaze.exe`. **Since
+2026-10-12 `Legacy/Binaries/`, `Legacy/Decompiled/` and `Legacy/Raw/` are no longer tracked**
+(`.gitignore`; the repo is going public and they belong to the rights holders): they exist on the
+working machine only, and a fresh clone has to be given them by hand. Never re-add them.
 
 **Values that live in initialized data** (string literals, lookup tables, statically initialized
 function pointers such as `PTR_FUN_0056c96c`) are not in `Blaze.c` at any price. Read them out of
