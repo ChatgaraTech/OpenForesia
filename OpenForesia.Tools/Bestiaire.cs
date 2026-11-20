@@ -346,8 +346,9 @@ internal static partial class Bestiaire
     /// genre). Un sommet fait huit octets : x et y dans le dword de tete, z au short de <c>+4</c>.
     /// Les champs du morceau sont des decalages relatifs a son debut (RelocateModelEntry,
     /// FUN_00532450) : <c>+0x24</c> les matieres, <c>+0x28</c> les faces, <c>+4</c> leur nombre,
-    /// les sommets a <c>+0x40</c>. Les morceaux viennent des quatre listes <c>+0x14..+0x20</c> du
-    /// repertoire de sous-zone, dans l'ordre ou <c>LoadWorldMapSubArea</c> les empile.
+    /// les sommets a <c>+0x40</c>. <b>Seule la liste 0 (<c>+0x14</c>) est de la collision</b> :
+    /// les listes 1 a 3 sont l'affichage, en faces de 0x20 octets (DrawChunk) ; les lire ici sortait
+    /// des indices hors sommets. Voir <c>ExportCarte/LectureCarte.cs</c> et <c>Conception/08-Exports.md</c>.
     /// </summary>
     public static void Terrain(string dossierDonnees, int zone, int sousZone)
     {
@@ -364,7 +365,7 @@ internal static partial class Bestiaire
 
         Console.WriteLine("liste,morceau,face,sommets,genre,attributs,sol,xmin,xmax,ymin,ymax,zmin,zmax");
         int global = 0;
-        for (int list = 0; list < 4; list++)
+        for (int list = 0; list < 1; list++)   // la liste 0 seule : la collision
         {
             int entries = a.I32(0x14 + list * 4);
             for (int k = 0; a.In(entries + k * 8, 8) && a.I32(entries + k * 8) != 0; k++, global++)

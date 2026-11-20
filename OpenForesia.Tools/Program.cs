@@ -124,6 +124,27 @@ if (args[0] is "effets-boss")
     return;
 }
 
+// L'exporteur de cartes (openspec/changes/add-map-exporter), hors jeu :
+// `exporter-carte [dossier-jeu] [zone [sous-zone]] --sortie <dossier hors du depot>`.
+if (args[0] is "exporter-carte")
+{
+    string? dossierArg = null, sortie = null;
+    var nombres = new List<int>();
+    for (int i = 1; i < args.Length; i++)
+    {
+        if (args[i] is "--sortie" && i + 1 < args.Length) sortie = args[++i];
+        else if (int.TryParse(args[i], out int n)) nombres.Add(n);
+        else if (dossierArg == null && !args[i].StartsWith("--")) dossierArg = args[i];
+        else { Console.WriteLine($"Option inconnue : {args[i]}"); PrintUsage(); return; }
+    }
+    if (sortie == null || nombres.Count > 2) { PrintUsage(); return; }
+    string? dossier = dossierArg ?? DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Environment.ExitCode = Bestiaire.ExporterCarte(dossier, nombres.Count > 0 ? nombres[0] : null,
+                                                   nombres.Count > 1 ? nombres[1] : null, sortie);
+    return;
+}
+
 // Les points d'entree d'une sous-zone (LP-012, l'arene), lus hors jeu :
 // `entrees <zone> <sous-zone> [dossier]`.
 if (args[0] is "entrees" && args.Length >= 3)
@@ -420,6 +441,7 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools at <path> <va> [octets]    dumpe les octets a une adresse virtuelle Ghidra");
     Console.WriteLine("  OpenForesia.Tools disasm <path> <va> [octets] desassemble x86-32 a partir d'une VA Ghidra");
     Console.WriteLine("  OpenForesia.Tools bestiaire [<donnees>] [--zone N] [--sortie <dir>]");
+    Console.WriteLine("  OpenForesia.Tools exporter-carte [<donnees>] [zone [sous-zone]] --sortie <dir hors depot>");
     Console.WriteLine("                                               especes, fiches, formations et butin, lus dans les donnees");
     Console.WriteLine(@"                                               du jeu (defaut : OpenForesia\bin\Debug\net10.0)");
     Console.WriteLine("  OpenForesia.Tools montee                     simulateur de montee de niveau (fenetre)");

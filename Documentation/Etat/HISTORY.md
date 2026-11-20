@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-11-20
 
+- feat : `OpenForesia.Tools exporter-carte` — chaque sous-zone en glTF 2.0 texturé (terrain, calque de collision, modèles de décor placés), placements JSON (formations nommées, coffres et leur contenu, décor actif, entrées), vue complète du dessus en PNG (nue et annotée) et page de visite 3D autonome ; un dossier par zone nommé comme le jeu, hors du dépôt seulement. Tout le jeu : 160 sous-zones, aucune face illisible, aucun texel hors des images chargées
+- fix : le verbe `terrain` lisait les quatre listes de morceaux comme de la collision ; seule la liste 0 en est (les trois autres sont l'affichage, en faces de 0x20 octets)
+- doc : `Conception/08-Exports.md` — les formats établis (morceaux, faces d'affichage, de collision et de décor, placement, résolution page + palette d'une TIM) et ce que l'export ne rend pas (éclairage, brouillard)
+
+- doc : nouveau dossier `Conception/` — le jeu décrit en termes de jeu, pour un jeu neuf inspiré (Unreal) : vue d'ensemble, personnages et formules dérivées, combat, magie, objets et butin, monde et boss, héritage PS1 (à réinterpréter, défauts, Legacy Plus), et le plan des exporteurs (`08-Exports.md` : format glTF + JSON, ce qu'on sait des morceaux, faces, TIM, ce qui reste à établir)
 - feat : conseils du compendium — jusqu'à trois builds par classe (Guerrier et Nain : force brute / robuste ; Prêtre : soutien / combat / tank ; Voleur : coups / altérations ; Sorcier et Fée : puissance / sans malédiction ; Sylphide : polyvalente / plutôt magie / plutôt combat ; Chasseur : un seul), la Sylphide polyvalente fixée telle que validée par Vincent et tenue par le contrôle
 - fix : conseils du compendium — le Sorcier et la Fée pesaient trop leur défense : le Bâton des sages passait devant le Bâton d'Apollon (MATT +82 contre +30) ; la défense compte désormais moitié moins que la MATT pour eux, et le contrôle l'exige
 - feat : le compendium propose l'équipement conseillé pour chacune des huit classes (vue « Conseils par classe ») — arme, armure, bouclier, deux accessoires, avec des remplaçants et où les trouver ; une appréciation chiffrée à la main, limitée aux objets qu'un monstre ou un coffre donne, contrôlée par `check-bestiairev2.mjs`

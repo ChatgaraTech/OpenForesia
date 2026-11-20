@@ -221,6 +221,20 @@ the next one starts. `census-spells.sh` turns that CSV into `Documentation/Etat/
 **finding a new table in a resource blob**: the regions follow one another without gaps, so a
 table's end is the next header pointer, and a region's first bytes usually say what it holds.
 
+**Exporting the maps — `exporter-carte`.** Same offline load chain, for a remake's visual base
+(`Conception/`). It writes each sub-area as textured glTF 2.0 (terrain, collision layer, placed
+decor models), `placements.json`, a full top view PNG (plain and annotated) and a standalone WebGL
+`visite.html`. Output goes into one folder per zone (`03 - La forêt`) and one sub-folder per
+sub-area. It **refuses an output folder inside the repo**, because these are game data:
+
+```powershell
+dotnet run --project OpenForesia.Tools -- exporter-carte [dossier] [zone [sous-zone]] --sortie <hors du depot>
+```
+
+Code in `OpenForesia.Tools/ExportCarte/`, every reader marked `Miroir de :`. Formats and what is not
+rendered (lighting, fog) are in `Conception/08-Exports.md`. Only chunk list 0 is collision (16-byte
+faces); lists 1–3 are display (0x20-byte faces, already in world coordinates).
+
 **Checking the Indeo 4 decoder — `indeo`.** `indeo OpenForesia\bin\Debug\net10.0\French\Teps.AVI` decodes every frame of a
 film twice — through `ir41_32.ax` in `IF09` output (native YVU9; its RGB24 is dithered, useless as a
 reference) and through `Host/Indeo4/`, the C# port of FFmpeg's decoder (LGPL 2.1+, read its `LISEZMOI.md`) —
@@ -289,6 +303,9 @@ Documentation/   tout ce que le projet a appris
   Methode/       Prompt.md, Strategy.md
   Reference/     DataSymbols.md, legacy-bug.md, MonteeDeNiveau.md, Sorts.md, OpenForesia.cfg.md
   Tests/         test-protocol.md, test-todo-later.md, et les analyses ponctuelles
+
+Conception/      le jeu decrit en termes de jeu, pour un jeu neuf inspire (Unreal) : systemes, regles chiffrees,
+                 contenu, heritage PS1, et le plan des exporteurs (cartes, modeles, scenario)
 
 tests/           les raccourcis de lancement a double-cliquer (banc.bat : la salle d’essai)
 ```
