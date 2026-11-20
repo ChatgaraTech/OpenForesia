@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compendium des objets</title>
+<!--
+  bestiairev2.html — le compendium des objets de Blaze & Blade.
+
+  GENERE : ne pas editer bestiairev2.html, editer ce modele puis relancer
+      node OpenForesia.Tools/Html/build-bestiairev2.mjs
+      node OpenForesia.Tools/Html/check-bestiairev2.mjs
+
+  L'interface s'adresse a un joueur (LISEZMOI.md des outils HTML) : aucun decalage ni octet a
+  l'ecran. Les renvois techniques restent dans ces commentaires et dans build-bestiairev2.mjs :
+    ATT / DEF / MATT / MDEF   bonus +0x20, indices 8, 9, 12, 13 (Bestiaire/LISEZMOI.md)
+    caracteristiques          bonus +0x20, indices 0..6 ; l'indice 7 tombe sur une case que le jeu
+                              ne lit pas (« sans effet »)
+    resistances cachees       indices 10, 11, 14, 15 — HYPOTHESE, le jeu ne les nomme pas
+    elements                  les huit octets signes de +0x18
+    classes                   l'octet bas de +0x12 ; le type, son octet haut
+    butin                     FUN_0053a920 (plage 56 a niveau egal ou en dessous, 100 au mieux) et
+                              modele+0x22 contre rand() % 1000
+-->
+<style>
+  :root {
+    --bg: #f4f1ea; --panel: #fffdf8; --panel2: #f8f4ea; --ink: #2a2620; --muted: #6f675a; --faint: #a59c8c;
+    --line: #e2dccd; --accent: #8a5a12; --accent-soft: #f3e6cc; --good: #2f7a3a; --bad: #b0412c;
+    --chip: #efe9dc; --shadow: 0 1px 2px rgba(60,45,20,.08), 0 4px 16px rgba(60,45,20,.06);
+    --att: #b5472d; --def: #2e6aa8; --matt: #7c4bb3; --mdef: #23877a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17150f; --panel: #211e17; --panel2: #1b1913; --ink: #ece5d6; --muted: #a99f8c; --faint: #6f6757;
+      --line: #36312626; --line: #353025; --accent: #e0b25c; --accent-soft: #3a3020; --good: #6cc27a; --bad: #e57a62;
+      --chip: #2c281f; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+      --att: #e57a62; --def: #6fa6e0; --matt: #b892e6; --mdef: #5cc4b4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17150f; --panel: #211e17; --panel2: #1b1913; --ink: #ece5d6; --muted: #a99f8c; --faint: #6f6757;
+    --line: #353025; --accent: #e0b25c; --accent-soft: #3a3020; --good: #6cc27a; --bad: #e57a62;
+    --chip: #2c281f; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    --att: #e57a62; --def: #6fa6e0; --matt: #b892e6; --mdef: #5cc4b4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 20px 24px 8px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  h1 { font: 600 24px/1.2 Georgia, "Times New Roman", serif; margin: 0; letter-spacing: .01em; }
+  header .sub { color: var(--muted); }
+  header .spacer { flex: 1; }
+  button, select, input { font: inherit; color: inherit; }
+  .btn { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+
+  .toolbar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 24px 12px; border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+  .search { flex: 1 1 240px; min-width: 200px; position: relative; }
+  .search input { width: 100%; padding: 8px 12px 8px 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); }
+  .search input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--faint); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 11px; cursor: pointer; white-space: nowrap; }
+  .chip .n { color: var(--faint); font-size: 12px; margin-left: 4px; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  .chip.on .n { color: inherit; opacity: .75; }
+  select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); max-width: 100%; }
+  label.inline { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 20px; padding: 16px 24px 120px; align-items: start; }
+  .count { color: var(--muted); margin: 0 0 10px; font-size: 13px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid;
+    grid-template-columns: 52px 1fr; gap: 4px 10px; cursor: pointer; box-shadow: var(--shadow); text-align: left; }
+  .card:hover { border-color: var(--accent); }
+  .card.sel { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .card .ic { grid-row: span 2; }
+  .card .nm { font-weight: 600; line-height: 1.25; }
+  .card .meta { color: var(--muted); font-size: 12px; }
+  .card .vals { grid-column: 1 / -1; display: flex; gap: 4px; flex-wrap: wrap; min-height: 22px; }
+
+  .icon { width: 48px; height: 48px; image-rendering: pixelated; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line); display: block; }
+  .icon.big { width: 96px; height: 96px; border-radius: 12px; }
+  .icon.sm { width: 32px; height: 32px; border-radius: 6px; }
+  .noicon { display: grid; place-items: center; color: var(--faint); font-size: 10px; }
+
+  .v { font-size: 12px; padding: 1px 7px; border-radius: 6px; background: var(--chip); white-space: nowrap; font-variant-numeric: tabular-nums; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .v b { font-weight: 600; }
+  .v.att b { color: var(--att); } .v.def b { color: var(--def); } .v.matt b { color: var(--matt); } .v.mdef b { color: var(--mdef); }
+  .neg { color: var(--bad); } .pos { color: var(--good); }
+
+  table.list { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+  table.list th, table.list td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.list th { font-size: 12px; color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; background: var(--panel2); }
+  table.list th.num, table.list td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.list th.sorted { color: var(--accent); }
+  table.list tr.row { cursor: pointer; }
+  table.list tr.row:hover td { background: var(--panel2); }
+  table.list tr.sel td { background: var(--accent-soft); }
+  table.list td.z { color: var(--faint); }
+
+  aside.detail { min-width: 0; overflow-x: hidden; position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow: auto; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: var(--shadow); }
+  .detail .empty { padding: 40px 24px; color: var(--muted); text-align: center; }
+  .dhead { display: grid; grid-template-columns: 96px 1fr; gap: 14px; padding: 18px; border-bottom: 1px solid var(--line); background: var(--panel2); border-radius: 14px 14px 0 0; }
+  .dhead h2 { margin: 0 0 4px; font: 600 20px/1.2 Georgia, serif; }
+  .dhead .kind { color: var(--muted); font-size: 13px; }
+  .dhead .acts { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .close { display: none; }
+  .quote { margin: 0; padding: 14px 18px; font-family: Georgia, serif; font-style: italic; color: var(--ink); border-bottom: 1px solid var(--line); }
+  .quote::before { content: "« "; color: var(--accent); } .quote::after { content: " »"; color: var(--accent); }
+  .sec { padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .sec:last-child { border-bottom: 0; }
+  .sec h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .sec ul { margin: 0; padding-left: 18px; }
+  .sec li { margin: 2px 0; }
+  .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .when { margin: 0 0 6px; font-weight: 600; }
+  .when .cond { font-weight: 400; color: var(--muted); }
+  .v.pw { background: var(--accent-soft); }
+  .big4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .big4 > div { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 6px; text-align: center; }
+  .big4 .k { font-size: 11px; color: var(--muted); }
+  .big4 .x { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .big4 .att .x { color: var(--att); } .big4 .def .x { color: var(--def); } .big4 .matt .x { color: var(--matt); } .big4 .mdef .x { color: var(--mdef); }
+  .big4 .zero .x { color: var(--faint); }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-variant-numeric: tabular-nums; }
+  .kv span:nth-child(even) { text-align: right; font-weight: 600; }
+  .els { display: flex; flex-wrap: wrap; gap: 5px; }
+  .el { border-radius: 8px; padding: 2px 8px; font-size: 12px; border: 1px solid var(--line); background: var(--chip); }
+  .el i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+  .classes { display: flex; flex-wrap: wrap; gap: 4px; }
+  .cls { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--faint); text-decoration: line-through; }
+  .cls.ok { color: var(--ink); background: var(--accent-soft); border-color: transparent; text-decoration: none; }
+  table.src { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.src th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+  table.src td { padding: 3px 4px; border-bottom: 1px dashed var(--line); vertical-align: top; }
+  table.src td.num, table.src th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .zl { color: var(--muted); font-size: 12px; }
+
+  .tray { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--panel); border-top: 1px solid var(--line); box-shadow: 0 -4px 20px rgba(0,0,0,.12);
+    padding: 8px 24px; display: none; }
+  .tray.on { display: block; }
+  .tray .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tray .pill { display: inline-flex; align-items: center; gap: 6px; background: var(--chip); border-radius: 999px; padding: 2px 4px 2px 2px; }
+  .tray .pill button { border: 0; background: transparent; cursor: pointer; color: var(--muted); padding: 0 6px; }
+  .tray .cmp { overflow-x: auto; margin-top: 8px; max-height: 50vh; overflow-y: auto; }
+  table.cmp { border-collapse: collapse; font-size: 13px; }
+  table.cmp th, table.cmp td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+  table.cmp th:first-child, table.cmp td:first-child { text-align: left; color: var(--muted); position: sticky; left: 0; background: var(--panel); }
+  table.cmp td.best { color: var(--good); font-weight: 600; }
+
+  details.help { margin: 0 24px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; }
+  details.help summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  details.help p, details.help li { color: var(--muted); max-width: 900px; }
+
+  .adv-intro { color: var(--muted); max-width: 900px; margin: 0 0 14px; font-size: 14px; }
+  .adv { display: grid; gap: 14px; }
+  .adv-cls { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .adv-cls h2 { margin: 0 0 4px; font-size: 18px; }
+  .adv-cls .note { color: var(--muted); margin: 0 0 10px; font-size: 14px; max-width: 900px; }
+  .adv-build { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
+  .adv-build h3 { margin: 0 0 2px; font-size: 15px; color: var(--accent); }
+  .adv-build .bdesc { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
+  .adv-slot { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; padding: 8px 0; border-top: 1px dashed var(--line); }
+  .adv-slot .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-top: 6px; }
+  .adv-pick { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: none; border: 0; padding: 4px; border-radius: 8px; color: inherit; font: inherit; cursor: pointer; }
+  .adv-pick:hover { background: var(--panel2); }
+  .adv-pick .nm { font-weight: 600; }
+  .adv-pick .why { color: var(--muted); font-size: 13px; }
+  .adv-pick .where { color: var(--faint); font-size: 12px; }
+  .adv-alt { font-size: 13px; color: var(--muted); padding-left: 4px; }
+  .adv-alt button { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+  @media (max-width: 1000px) {
+    main { grid-template-columns: 1fr; padding: 12px 16px 120px; }
+    header, .toolbar { padding-left: 16px; padding-right: 16px; }
+    details.help { margin: 0 16px 12px; }
+    aside.detail { display: none; position: fixed; inset: 0; top: 0; max-height: none; border-radius: 0; z-index: 20; }
+    aside.detail.open { display: block; }
+    .dhead { border-radius: 0; }
+    .close { display: inline-block; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .hide-sm { display: none; }
+    .adv-slot { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Compendium des objets</h1>
+  <span class="sub" id="sub"></span>
+  <span class="spacer"></span>
+  <button class="btn" id="theme" title="Changer de thème">Thème</button>
+</header>
+
+<details class="help">
+  <summary>Comment lire ce compendium</summary>
+  <ul>
+    <li><b>ATT, DEF, MATT, MDEF</b> : attaque, défense, attaque magique et défense magique ajoutées quand l'objet est équipé. Le jeu ne fait jamais descendre une valeur sous zéro : un malus s'arrête à zéro.</li>
+    <li><b>Caractéristiques</b> : les bonus ajoutés aux sept caractéristiques du personnage.</li>
+    <li><b>Éléments</b> : l'affinité élémentaire de l'objet, en positif ou en négatif. D'après les relevés, ces valeurs ne comptent que pour les deux derniers emplacements d'équipement.</li>
+    <li><b>Force et résistance aux altérations</b> : quatre valeurs que le jeu n'affiche jamais. Quand une altération d'état (poison, pétrification…) est tentée, le jeu compare la <i>force</i> de celui qui l'inflige à la <i>résistance</i> de la cible ; il existe deux jeux de ce type, notés I et II.</li>
+    <li><b>À l'usage</b> : ce que fait l'objet quand on s'en sert depuis l'inventaire.</li>
+    <li><b>Pouvoir</b> : ce que fait l'objet <i>tant qu'il est équipé</i>, au moment indiqué — en frappant, en recevant un coup, en lançant un sort, en tombant au combat… Traduit automatiquement de ses instructions : seuls les effets dont le sens est sûr sont écrits en clair, le reste est signalé « pas encore décrit ». Les noms de monstres donnés après « contre » sont ceux que le jeu range dans la famille visée.</li>
+    <li><b>Monstres</b> : « Objet » est la chance qu'un monstre lâche un objet plutôt que de l'argent, avant le bonus de la Chance du tueur (la moitié de sa Chance, en dixièmes de pour cent). « Part » est la part de <i>cet</i> objet dans son butin : à niveau égal ou inférieur, puis au mieux, avec 44 niveaux d'avance sur le monstre.</li>
+    <li><b>Coffres</b> : un coffre tire son contenu au hasard dans une liste ; le pourcentage est la chance d'y trouver cet objet.</li>
+    <li>Les objets que ni un monstre ni un coffre ne donnent viennent d'un marchand ou du scénario.</li>
+  </ul>
+</details>
+
+<div class="toolbar">
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Chercher un objet, une description, un sort…" autocomplete="off">
+  </div>
+  <div class="chips" id="types"></div>
+  <select id="cls" title="Classe"></select>
+  <select id="elt" title="Élément"></select>
+  <select id="src" title="Provenance"></select>
+  <select id="zone" title="Lieu"></select>
+  <label class="inline">Trier
+    <select id="sort"></select>
+  </label>
+  <button class="btn" id="dir" title="Inverser l'ordre">↓</button>
+  <div class="chips" id="view"></div>
+</div>
+
+<main>
+  <section>
+    <p class="count" id="count"></p>
+    <div id="results"></div>
+  </section>
+  <aside class="detail" id="detail"></aside>
+</main>
+
+<div class="tray" id="tray"></div>
+
+<script>
+const DATA = /*__DATA__*/{ items: [], generated: '' };
+
+/*__CORE_BEGIN__*/
+// Le noyau : tout ce qui transforme les donnees en texte, sans DOM. Le controle
+// (check-bestiairev2.mjs) l'execute sous node sur toutes les fiches, tous les filtres et tous les tris.
+const Core = (() => {
+  // Le vocabulaire : celui de l'editeur de sauvegarde et de Bestiaire/LISEZMOI.md.
+  const CLASSES = ['Guerrier', 'Prêtre', 'Voleur', 'Sorcier', 'Chasseur', 'Elfe', 'Nain', 'Fée'];
+  const ELEMENTS = ['Feu', 'Eau', 'Terre', 'Air', 'Lumière', 'Nuit', 'Divin', 'Maléfique'];
+  const ELCOL = ['#d9542b', '#3b82c4', '#8a6a35', '#5fb3a1', '#e6c33a', '#5a4a8a', '#e8e0c0', '#9b2f5a'];
+  const STATS = ['Force', 'Intelligence', 'Volonté', 'Agilité', 'Constitution', 'Puissance magique', 'Chance'];
+  // Les indices 10, 11, 14, 15 du bonus : ce que lisent les deux jets de resistance aux alterations
+  // (RollSavingThrow_0053A6C0 : assaillant +0x34, victime +0x36 ; RollSavingThrowB_0053A790 : +0x3c, +0x3e).
+  const RES = ['Force d’altération I', 'Résistance aux altérations I', 'Force d’altération II', 'Résistance aux altérations II'];
+  const ZONES = ['La ville', 'La mine abandonnée', 'La montagne du dragon de feu', 'La forêt', 'La vieille tour',
+    'Le labyrinthe des morts', 'Le château de l’immortel', 'Les ruines', 'La vallée d’argent', 'Les ruines dans le lac', 'La grotte scellée'];
+  const TYPES = [['', 'Tout'], ['Arme', 'Armes'], ['Armure', 'Armures'], ['Bouclier', 'Boucliers'], ['Accessoire', 'Accessoires'], ['Objet', 'Objets']];
+  const SOURCES = [['', 'Toute provenance'], ['m', 'Lâché par un monstre'], ['c', 'Trouvé en coffre'], ['n', 'Marchand ou scénario'], ['u', 'Utilisable'], ['p', 'Avec un pouvoir']];
+
+  const sum = (a) => a.reduce((s, x) => s + x, 0);
+  const SORTS = {
+    nom:   { label: 'Nom', key: (it) => it.n, text: true },
+    att:   { label: 'ATT', key: (it) => it.a },
+    def:   { label: 'DEF', key: (it) => it.df },
+    matt:  { label: 'MATT', key: (it) => it.ma },
+    mdef:  { label: 'MDEF', key: (it) => it.md },
+    pow:   { label: 'Puissance (ATT+DEF+MATT+MDEF)', key: (it) => it.a + it.df + it.ma + it.md },
+    car:   { label: 'Bonus de caractéristiques', key: (it) => sum(it.car) },
+    el:    { label: 'Affinités élémentaires', key: (it) => sum(it.el.map(Math.abs)) },
+    res:   { label: 'Altérations (force et résistance)', key: (it) => sum(it.res) },
+    zone:  { label: 'Première apparition', key: (it) => it.zones.length ? it.zones[0] : 99 },
+    src:   { label: 'Nombre de sources', key: (it) => it.drops.length + it.chests.length },
+  };
+  // Pour chaque tri numerique, le sens par defaut est decroissant (le plus fort d'abord).
+  const defaultDir = (k) => SORTS[k].text || k === 'zone' ? 1 : -1;
+
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const fold = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’']/g, "'");
+  const signed = (x) => (x > 0 ? '+' : '') + x;
+  const fmtPct = (x) => (Math.round(x * 10) / 10).toLocaleString('fr-FR') + ' %';
+  const displayName = (it) => it.v ? `${it.n} (${it.v})` : it.n;
+
+  // ---------------------------------------------------------------- les images (PlayStation 4 bpp)
+  // Palette de seize couleurs 15 bits puis image 24x24, deux pixels par octet (editeur-sauvegarde).
+  function decodeIcon(hex) {
+    if (!hex || hex.length < 0x140 * 2) return null;
+    const b = new Uint8Array(0x140);
+    for (let i = 0; i < 0x140; i++) b[i] = parseInt(hex.substr(i * 2, 2), 16);
+    const pal = [];
+    for (let i = 0; i < 16; i++) {
+      const c = b[i * 2] | b[i * 2 + 1] << 8;
+      pal.push(c === 0 ? [0, 0, 0, 0] : [(c & 31) * 255 / 31 | 0, (c >> 5 & 31) * 255 / 31 | 0, (c >> 10 & 31) * 255 / 31 | 0, 255]);
+    }
+    const out = new Uint8ClampedArray(24 * 24 * 4);
+    let opaque = 0;
+    for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) {
+      const byte = b[0x20 + y * 12 + (x >> 1)];
+      const p = pal[x & 1 ? byte >> 4 : byte & 15], o = (y * 24 + x) * 4;
+      out[o] = p[0]; out[o + 1] = p[1]; out[o + 2] = p[2]; out[o + 3] = p[3];
+      if (p[3]) opaque++;
+    }
+    return opaque ? out : null;
+  }
+
+  // ---------------------------------------------------------------- recherche, filtres, tri
+  function haystack(it) {
+    if (!it._h) it._h = fold([it.n, it.d, it.t, ...(it.use || []), ...(it.sec ? [it.sec.w, it.sec.c, ...it.sec.l] : []), ...it.drops.map(d => d.m)].join(' '));
+    return it._h;
+  }
+  function filter(items, st) {
+    const words = fold(st.q || '').split(/\s+/).filter(Boolean);
+    return items.filter((it) => {
+      if (st.type && it.t !== st.type) return false;
+      if (st.cls !== '' && st.cls !== undefined && !(it.c & (1 << st.cls))) return false;
+      if (st.elt !== '' && st.elt !== undefined && !it.el[st.elt]) return false;
+      if (st.zone !== '' && st.zone !== undefined) {
+        const z = +st.zone;
+        if (z === 0 ? !it.town : !it.zones.includes(z)) return false;
+      }
+      if (st.src === 'm' && !it.drops.length) return false;
+      if (st.src === 'c' && !it.chests.length) return false;
+      if (st.src === 'n' && (it.drops.length || it.chests.length)) return false;
+      if (st.src === 'u' && !it.use) return false;
+      if (st.src === 'p' && !it.sec) return false;
+      for (const w of words) if (!haystack(it).includes(w)) return false;
+      return true;
+    });
+  }
+  function sort(items, key, dir) {
+    const s = SORTS[key] || SORTS.nom;
+    const out = items.slice();
+    out.sort((a, b) => {
+      const x = s.key(a), y = s.key(b);
+      const c = s.text ? x.localeCompare(y, 'fr') : x - y;
+      return c * dir || a.n.localeCompare(b.n, 'fr') || a.v - b.v;
+    });
+    return out;
+  }
+
+  // ---------------------------------------------------------------- les morceaux de page
+  const iconTag = (it, url, cls) => url
+    ? `<img class="icon ${cls || ''}" src="${url}" alt="">`
+    : `<div class="icon noicon ${cls || ''}">?</div>`;
+  function valueChips(it) {
+    const v = [];
+    if (it.a) v.push(`<span class="v att">ATT <b>${signed(it.a)}</b></span>`);
+    if (it.df) v.push(`<span class="v def">DEF <b>${signed(it.df)}</b></span>`);
+    if (it.ma) v.push(`<span class="v matt">MATT <b>${signed(it.ma)}</b></span>`);
+    if (it.md) v.push(`<span class="v mdef">MDEF <b>${signed(it.md)}</b></span>`);
+    it.el.forEach((x, k) => { if (x) v.push(`<span class="v" title="${ELEMENTS[k]}"><i style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${ELCOL[k]};margin-right:4px"></i>${ELEMENTS[k]} <b class="${x < 0 ? 'neg' : ''}">${signed(x)}</b></span>`); });
+    if (!v.length && it.use) v.push(`<span class="v" title="${esc(it.use[0])}">${esc(it.use[0])}</span>`);
+    if (it.sec) v.push(`<span class="v pw" title="${esc(it.sec.w + ' : ' + it.sec.l[0])}">✦ Pouvoir</span>`);
+    return v.join('');
+  }
+  function kindLine(it) {
+    const parts = [it.t];
+    if (it.zones.length) parts.push(ZONES[it.zones[0]]);
+    else if (it.town) parts.push(ZONES[0]);
+    return parts.map(esc).join(' · ');
+  }
+  function cardHtml(it, url, selected) {
+    return `<button class="card${selected ? ' sel' : ''}" data-id="${it.id}">
+      <span class="ic">${iconTag(it, url)}</span>
+      <span class="nm">${esc(displayName(it))}</span>
+      <span class="meta">${kindLine(it)}</span>
+      <span class="vals">${valueChips(it)}</span></button>`;
+  }
+  const COLS = [['', ''], ['nom', 'Nom'], ['', 'Type'], ['att', 'ATT'], ['def', 'DEF'], ['matt', 'MATT'], ['mdef', 'MDEF'], ['car', 'Carac.'], ['zone', 'Lieu']];
+  function tableHtml(list, urlOf, selId, sortKey) {
+    const num = (k) => ['att', 'def', 'matt', 'mdef', 'car'].includes(k);
+    const head = COLS.map(([k, l]) => `<th${k ? ` data-sort="${k}"` : ''} class="${num(k) ? 'num' : ''}${k === sortKey ? ' sorted' : ''}${k === 'car' || k === 'zone' ? ' hide-sm' : ''}">${l}</th>`).join('');
+    const cell = (x) => x ? `<span class="${x < 0 ? 'neg' : ''}">${signed(x)}</span>` : '<span class="z">·</span>';
+    const rows = list.map((it) => `<tr class="row${it.id === selId ? ' sel' : ''}" data-id="${it.id}">
+      <td>${iconTag(it, urlOf(it), 'sm')}</td><td>${esc(displayName(it))}</td><td>${esc(it.t)}</td>
+      <td class="num">${cell(it.a)}</td><td class="num">${cell(it.df)}</td><td class="num">${cell(it.ma)}</td><td class="num">${cell(it.md)}</td>
+      <td class="num hide-sm">${cell(sum(it.car))}</td>
+      <td class="hide-sm zl">${esc(it.zones.length ? ZONES[it.zones[0]] : it.town ? ZONES[0] : '')}</td></tr>`).join('');
+    return `<table class="list"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function technical(it) {
+    // « Ce que fait l'objet », en phrases : la description technique.
+    const L = [];
+    const big = [['ATT', it.a], ['DEF', it.df], ['MATT', it.ma], ['MDEF', it.md]].filter(([, x]) => x);
+    if (big.length) L.push(big.map(([k, x]) => `${signed(x)} ${k}`).join(', '));
+    it.car.forEach((x, k) => { if (x) L.push(`${signed(x)} en ${STATS[k]}`); });
+    it.el.forEach((x, k) => { if (x) L.push(`${x > 0 ? 'Affinité' : 'Faiblesse'} ${ELEMENTS[k]} ${signed(x)}`); });
+    it.res.forEach((x, k) => { if (x) L.push(`${RES[k]} ${signed(x)}`); });
+    if (it.x7) L.push(`Un bonus de ${signed(it.x7)} que le jeu ne lit jamais <span class="zl">(sans effet)</span>`);
+    return L;
+  }
+
+  function detailHtml(it, url, inCompare) {
+    const h = [];
+    h.push(`<div class="dhead">${iconTag(it, url, 'big')}<div>
+      <h2>${esc(displayName(it))}</h2>
+      <div class="kind">${esc(it.t)}${it.st ? ' · se cumule' : ''}${it.cons !== null && it.cons !== undefined ? (it.cons === 100 ? ' · disparaît à l’usage' : it.cons > 0 ? ` · ${it.cons} % de chance de s’user` : ' · réutilisable') : ''}</div>
+      <div class="acts"><button class="btn${inCompare ? '' : ' primary'}" data-act="cmp" data-id="${it.id}">${inCompare ? 'Retirer de la comparaison' : 'Comparer'}</button>
+      <button class="btn close" data-act="close">Fermer</button></div></div></div>`);
+    if (it.d) h.push(`<p class="quote">${esc(it.d)}</p>`);
+
+    if (it.t !== 'Objet' || it.a || it.df || it.ma || it.md) {
+      const box = (cls, k, x) => `<div class="${cls}${x ? '' : ' zero'}"><div class="k">${k}</div><div class="x">${x ? signed(x) : '0'}</div></div>`;
+      h.push(`<div class="sec"><h3>Combat</h3><div class="big4">${box('att', 'ATT', it.a)}${box('def', 'DEF', it.df)}${box('matt', 'MATT', it.ma)}${box('mdef', 'MDEF', it.md)}</div></div>`);
+    }
+    const tech = technical(it);
+    if (tech.length) h.push(`<div class="sec"><h3>Ce que l’objet apporte</h3><ul>${tech.map((l) => `<li>${l}</li>`).join('')}</ul></div>`);
+    if (it.use) h.push(`<div class="sec"><h3>À l’usage</h3><ul>${it.use.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`);
+    if (it.sec) h.push(`<div class="sec"><h3>Pouvoir</h3><p class="when">${esc(it.sec.w)}${it.sec.c ? ` <span class="cond">— ${esc(it.sec.c)}</span>` : ''}</p>
+      <ul>${it.sec.l.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`);
+    if (it.el.some(Boolean)) h.push(`<div class="sec"><h3>Éléments</h3><div class="els">${it.el.map((x, k) => x ? `<span class="el"><i style="background:${ELCOL[k]}"></i>${ELEMENTS[k]} <b class="${x < 0 ? 'neg' : ''}">${signed(x)}</b></span>` : '').join('')}</div></div>`);
+    if (it.c) h.push(`<div class="sec"><h3>Qui peut l’équiper</h3><div class="classes">${CLASSES.map((c, k) => `<span class="cls${it.c & (1 << k) ? ' ok' : ''}">${c}</span>`).join('')}</div></div>`);
+
+    const where = [];
+    if (it.drops.length) {
+      where.push(`<table class="src"><thead><tr><th>Monstre</th><th class="num" title="Chance que le monstre lâche un objet">Objet</th><th class="num" title="Part de cet objet dans le butin : à niveau égal, puis au mieux">Part</th></tr></thead><tbody>${
+        it.drops.map((d) => `<tr><td>${esc(d.m)}<div class="zl">${esc(ZONES[d.z])}${d.l ? ' — ' + esc(d.l) : ''}${d.pl > 1 ? ` · ${d.pl} placés` : ''}</div></td>
+          <td class="num">${fmtPct(d.o)}</td><td class="num">${d.r56 === d.r100 ? fmtPct(d.r56) : `${fmtPct(d.r56)} → ${fmtPct(d.r100)}`}</td></tr>`).join('')}</tbody></table>`);
+    }
+    if (it.chests.length) {
+      where.push(`<table class="src"><thead><tr><th>Coffre</th><th class="num">Chance</th></tr></thead><tbody>${
+        it.chests.map((c) => `<tr><td>${esc(ZONES[c.z])}${c.n > 1 ? ` <span class="zl">· ${c.n} coffres</span>` : ''}<div class="zl">${esc(c.l || '')}</div></td><td class="num">${fmtPct(c.p)}</td></tr>`).join('')}</tbody></table>`);
+    }
+    if (!where.length) where.push(`<p class="note" style="margin:0">Ni un monstre ni un coffre ne le donnent : il vient d’un marchand ou du scénario.</p>`);
+    h.push(`<div class="sec"><h3>Où le trouver</h3>${where.join('<div style="height:10px"></div>')}</div>`);
+    return h.join('');
+  }
+
+  const CMP_ROWS = [
+    ['ATT', (it) => it.a], ['DEF', (it) => it.df], ['MATT', (it) => it.ma], ['MDEF', (it) => it.md],
+    ...STATS.map((s, k) => [s, (it) => it.car[k]]),
+    ...ELEMENTS.map((e, k) => [e, (it) => it.el[k]]),
+    ...RES.map((r, k) => [r, (it) => it.res[k]]),
+  ];
+  function compareHtml(list, urlOf) {
+    if (!list.length) return '';
+    const head = `<tr><th></th>${list.map((it) => `<th>${iconTag(it, urlOf(it), 'sm')}<div style="max-width:120px;white-space:normal">${esc(displayName(it))}</div></th>`).join('')}</tr>`;
+    const rows = CMP_ROWS.filter(([, f]) => list.some((it) => f(it))).map(([label, f]) => {
+      const vals = list.map(f), best = Math.max(...vals);
+      return `<tr><td>${esc(label)}</td>${vals.map((x) => `<td class="${list.length > 1 && x === best && x ? 'best' : ''}">${x ? signed(x) : '·'}</td>`).join('')}</tr>`;
+    }).join('');
+    const cls = `<tr><td>Classes</td>${list.map((it) => `<td style="white-space:normal;max-width:140px;text-align:left">${it.c ? CLASSES.filter((_, k) => it.c & (1 << k)).join(', ') : '—'}</td>`).join('')}</tr>`;
+    return `<table class="cmp">${head}${rows}${cls}</table>`;
+  }
+
+  // LES CONSEILS : le classement est calcule par build-bestiairev2.mjs (adviceScore) ; ici, seulement
+  // le texte. Une appreciation, pas une donnee du jeu — la page le dit en tete.
+  const SLOT_LABEL = { Arme: 'Arme', Armure: 'Armure', Bouclier: 'Bouclier', Accessoire: 'Accessoires' };
+  function whereText(it) {
+    const how = [it.drops.length ? 'sur un monstre' : '', it.chests.length ? 'dans un coffre' : ''].filter(Boolean).join(' ou ');
+    const z = it.zones.length ? ZONES[it.zones[0]] : '';
+    return [z, how].filter(Boolean).join(', ');
+  }
+  function adviceHtml(advice, byId, urlOf, cls) {
+    const list = advice.filter((a) => cls === '' || a.c === +cls);
+    const intro = `<p class="adv-intro">Ce qui suit est une <b>appréciation</b>, pas une donnée du jeu. Elle compte l’ATT et la DEF à poids égal pour un combattant, la MATT avant tout pour un lanceur de sorts, et chiffre chaque pouvoir à la main. Deux faits du jeu la guident : les bonus de caractéristiques d’un objet (Force, Volonté…) <b>ne font pas monter</b> l’ATT ou la DEF, qui sont calculées avant l’équipement ; et les affinités élémentaires ne comptent que pour les accessoires. Seuls sont proposés les objets qu’un monstre lâche ou qu’un coffre contient. Chaque classe a jusqu’à trois builds, selon la façon de la jouer ; une classe qui n’en a qu’un n’a pas de variante qui changerait vraiment l’équipement. Le premier choix est le plus fort trouvé dans le jeu ; « Autres choix » donne des remplaçants, souvent plus faciles à trouver.</p>`;
+    const pick = (p) => {
+      const it = byId.get(p.id);
+      return `<button class="adv-pick" data-id="${it.id}">${iconTag(it, urlOf(it), 'sm')}<span><span class="nm">${esc(displayName(it))}</span><br><span class="why">${esc(p.why)}</span><br><span class="where">${esc(whereText(it))}</span></span></button>`;
+    };
+    const slotHtml = (sl) => {
+      const chosen = sl.picks.slice(0, sl.n), alt = sl.picks.slice(sl.n);
+      return `<div class="adv-slot"><div class="lab">${SLOT_LABEL[sl.t]}</div><div>${chosen.map(pick).join('')}${alt.length ? `<div class="adv-alt">Autres choix : ${alt.map((p) => `<button data-id="${p.id}">${esc(displayName(byId.get(p.id)))}</button>`).join(', ')}</div>` : ''}</div></div>`;
+    };
+    const buildHtml = (b, k, all) => `<div class="adv-build">${all.length > 1 ? `<h3>Build ${k + 1} — ${esc(b.name)}</h3>` : `<h3>${esc(b.name)}</h3>`}<p class="bdesc">${esc(b.desc)}</p>${b.slots.map(slotHtml).join('')}</div>`;
+    return intro + `<div class="adv">${list.map((a) => `<div class="adv-cls"><h2>${esc(CLASSES[a.c])}</h2><p class="note">${esc(a.note)}</p>${a.builds.map(buildHtml).join('')}${a.builds[0].slots.some((sl) => sl.t === 'Bouclier') ? '' : '<p class="adv-alt">Aucun bouclier ne lui est permis.</p>'}</div>`).join('')}</div>`;
+  }
+
+  return { CLASSES, ELEMENTS, STATS, ZONES, TYPES, SOURCES, SORTS, defaultDir, esc, fold, decodeIcon, filter, sort,
+    cardHtml, tableHtml, detailHtml, compareHtml, displayName, technical, adviceHtml };
+})();
+/*__CORE_END__*/
+
+// =====================================================================================================
+// Le DOM
+// =====================================================================================================
+const $ = (id) => document.getElementById(id);
+const items = DATA.items;
+const byId = new Map(items.map((it) => [it.id, it]));
+
+const iconCache = new Map();
+function iconUrl(it) {
+  if (iconCache.has(it.id)) return iconCache.get(it.id);
+  let url = '';
+  const rgba = Core.decodeIcon(it.i);
+  if (rgba) {
+    const c = document.createElement('canvas');
+    c.width = 24; c.height = 24;
+    c.getContext('2d').putImageData(new ImageData(rgba, 24, 24), 0, 0);
+    url = c.toDataURL();
+  }
+  iconCache.set(it.id, url);
+  return url;
+}
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('compendium.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('compendium.' + k, JSON.stringify(v)); } catch { /* sans stockage */ } },
+};
+const st = { q: '', type: '', cls: '', elt: '', src: '', zone: '', sort: store.get('sort', 'nom'), dir: store.get('dir', 1), view: store.get('view', 'grille'), sel: null, cmp: [] };
+
+function fillSelect(sel, opts) { sel.innerHTML = opts.map(([v, l]) => `<option value="${Core.esc(v)}">${Core.esc(l)}</option>`).join(''); }
+fillSelect($('cls'), [['', 'Toutes les classes'], ...Core.CLASSES.map((c, k) => [String(k), c])]);
+fillSelect($('elt'), [['', 'Tous les éléments'], ...Core.ELEMENTS.map((e, k) => [String(k), e])]);
+fillSelect($('src'), Core.SOURCES);
+fillSelect($('zone'), [['', 'Tous les lieux'], ...Core.ZONES.map((z, k) => [String(k), z])]);
+fillSelect($('sort'), Object.entries(Core.SORTS).map(([k, s]) => [k, s.label]));
+$('sort').value = st.sort;
+
+function renderChips() {
+  const base = Core.filter(items, { ...st, type: '' });
+  $('types').innerHTML = Core.TYPES.map(([v, l]) => {
+    const n = v ? base.filter((it) => it.t === v).length : base.length;
+    return `<button class="chip${st.type === v ? ' on' : ''}" data-type="${v}">${l}<span class="n">${n}</span></button>`;
+  }).join('');
+  $('view').innerHTML = [['grille', 'Grille'], ['tableau', 'Tableau'], ['conseils', 'Conseils par classe']].map(([v, l]) => `<button class="chip${st.view === v ? ' on' : ''}" data-view="${v}">${l}</button>`).join('');
+  $('dir').textContent = st.dir > 0 ? '↑' : '↓';
+}
+
+function render() {
+  renderChips();
+  if (st.view === 'conseils') {
+    $('count').textContent = st.cls === '' ? 'L’équipement conseillé pour chacune des huit classes — choisis une classe pour n’en voir qu’une' : `L’équipement conseillé pour : ${Core.CLASSES[+st.cls]}`;
+    $('results').innerHTML = Core.adviceHtml(DATA.advice || [], byId, iconUrl, st.cls);
+    renderDetail(); renderTray(); return;
+  }
+  const list = Core.sort(Core.filter(items, st), st.sort, st.dir);
+  $('count').textContent = list.length === items.length ? `${items.length} objets` : `${list.length} objets sur ${items.length}`;
+  $('results').innerHTML = !list.length
+    ? `<p class="count">Aucun objet ne correspond.</p>`
+    : st.view === 'tableau'
+      ? Core.tableHtml(list, iconUrl, st.sel, st.sort)
+      : `<div class="grid">${list.map((it) => Core.cardHtml(it, iconUrl(it), it.id === st.sel)).join('')}</div>`;
+  renderDetail();
+  renderTray();
+}
+function renderDetail() {
+  const it = byId.get(st.sel);
+  $('detail').innerHTML = it ? Core.detailHtml(it, iconUrl(it), st.cmp.includes(it.id))
+    : `<div class="empty">Choisis un objet pour voir sa fiche.</div>`;
+}
+function renderTray() {
+  const t = $('tray');
+  t.classList.toggle('on', st.cmp.length > 0);
+  if (!st.cmp.length) { t.innerHTML = ''; return; }
+  const list = st.cmp.map((id) => byId.get(id));
+  t.innerHTML = `<div class="bar"><b>Comparaison</b>${list.map((it) => `<span class="pill"><img class="icon sm" style="width:22px;height:22px" src="${iconUrl(it) || ''}" alt="">${Core.esc(Core.displayName(it))}<button data-act="uncmp" data-id="${it.id}" title="Retirer">✕</button></span>`).join('')}
+    <span style="flex:1"></span><button class="btn" data-act="clearcmp">Vider</button></div>
+    <div class="cmp">${Core.compareHtml(list, iconUrl)}</div>`;
+}
+
+function select(id) {
+  st.sel = id;
+  document.querySelectorAll('.card.sel, tr.sel').forEach((n) => n.classList.remove('sel'));
+  document.querySelectorAll(`[data-id="${id}"].card, tr[data-id="${id}"]`).forEach((n) => n.classList.add('sel'));
+  renderDetail();
+  $('detail').classList.add('open');
+  $('detail').scrollTop = 0;
+}
+
+let qTimer = 0;
+$('q').addEventListener('input', (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => { st.q = e.target.value; render(); }, 120); });
+for (const k of ['cls', 'elt', 'src', 'zone']) $(k).addEventListener('change', (e) => { st[k] = e.target.value; render(); });
+$('sort').addEventListener('change', (e) => { st.sort = e.target.value; st.dir = Core.defaultDir(st.sort); store.set('sort', st.sort); store.set('dir', st.dir); render(); });
+$('dir').addEventListener('click', () => { st.dir = -st.dir; store.set('dir', st.dir); render(); });
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-type],[data-view],[data-sort],[data-act],[data-id]');
+  if (!t) return;
+  if (t.dataset.type !== undefined) { st.type = t.dataset.type; render(); return; }
+  if (t.dataset.view) { st.view = t.dataset.view; store.set('view', st.view); render(); return; }
+  if (t.dataset.sort) {
+    if (st.sort === t.dataset.sort) st.dir = -st.dir; else { st.sort = t.dataset.sort; st.dir = Core.defaultDir(st.sort); }
+    $('sort').value = st.sort; store.set('sort', st.sort); store.set('dir', st.dir); render(); return;
+  }
+  const act = t.dataset.act;
+  if (act === 'close') { $('detail').classList.remove('open'); return; }
+  if (act === 'cmp') {
+    const id = +t.dataset.id;
+    if (st.cmp.includes(id)) st.cmp = st.cmp.filter((x) => x !== id);
+    else { st.cmp.push(id); if (st.cmp.length > 5) st.cmp.shift(); }
+    renderDetail(); renderTray(); return;
+  }
+  if (act === 'uncmp') { st.cmp = st.cmp.filter((x) => x !== +t.dataset.id); renderDetail(); renderTray(); return; }
+  if (act === 'clearcmp') { st.cmp = []; renderDetail(); renderTray(); return; }
+  if (t.dataset.id !== undefined && !act) select(+t.dataset.id);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') $('detail').classList.remove('open');
+  if (e.key === '/' && document.activeElement !== $('q')) { e.preventDefault(); $('q').focus(); }
+});
+
+// Le theme : clair, sombre, ou celui du systeme.
+(function () {
+  const apply = (v) => { if (v) document.documentElement.dataset.theme = v; else delete document.documentElement.dataset.theme; };
+  let theme = store.get('theme', '');
+  apply(theme);
+  $('theme').addEventListener('click', () => {
+    const dark = theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    theme = dark ? 'light' : 'dark';
+    store.set('theme', theme); apply(theme);
+  });
+})();
+
+$('sub').textContent = `${items.length} objets, armes et protections du jeu`;
+render();
+</script>
+</body>
+</html>

@@ -232,7 +232,9 @@ deux rangées de quatre, puis **deux valeurs longues** prises à `+0x30` et `+0x
 | `+0x18` | 8 octets **signés** | **les huit éléments**, affichés dans l'ordre `s_StatSlotOrder_00566ad0 = [2,1,0,3,4,5,6,7]` |
 | `+0x12` | masque 8 bits | **les classes qui peuvent l'équiper** |
 | `+0x20` | 16 `short` | ce qu'`ApplyEquipmentStatBonuses` ajoute aux statistiques du personnage — les indices 0 à 7 vont aux caractéristiques, les indices **8, 9, 12 et 13 sont l'ATT, la DEF, la MATT et la MDEF**, et les indices 10, 11, 14 et 15 ne s'affichent que derrière le verrou de mise au point — voir plus bas |
-| `+0x8a` | `short` | ajouté à la valeur bornée à `[0, 99]` de `+0x156` |
+| `+0x8a` | `short` | ajouté à la valeur bornée à `[0, 99]` de `+0x156` — le pas de la **régénération de PM au repos** (toutes les 100 images) |
+| `+0x82` | script | le **pouvoir** : un second script de l'objet, joué quand l'équipement reçoit l'événement `+0x84` |
+| `+0x84` | octet | **l'événement** qui déclenche `+0x82` — voir « Les pouvoirs des objets » plus bas |
 
 Les huit octets de `+0x18` ne s'appliquent qu'aux **deux derniers emplacements** d'équipement.
 
@@ -324,8 +326,14 @@ le dit, pas le code. Quatre relevés concordent :
 - sur les 128 objets qui en posent au moins une, **66 posent toutes les leurs à la même valeur** ;
 - une arme pure n'y touche jamais : le Glaive et la Longue épée ne posent que l'indice 8.
 
-**Ça reste une hypothèse.** Aucun lecteur n'est identifié — le combat n'est pas reconstruit — et le
-jeu ne leur donne aucun libellé, même en mise au point. À écrire comme telle jusqu'à preuve.
+**Établi depuis le 2026-11-20 : ce sont les deux jets de résistance aux altérations.** Le combat est
+reconstruit (`Screens/State03/Combat/CombatPairing.cs`) et leurs lecteurs sont connus :
+`RollSavingThrow_0053A6C0` oppose l'emplacement 2 (`+0x34`) de l'assaillant à l'emplacement 3
+(`+0x36`) de la victime, `RollSavingThrowB_0053A790` l'emplacement 6 (`+0x3c`) au 7 (`+0x3e`), et la
+force de l'assaillant règle aussi la durée de l'altération (`+0x34 >> 2`, `+0x3c >> 2` ou `>> 3`).
+Les noms retenus par le compendium : **Force d'altération I / Résistance aux altérations I** (indices
+10 / 11) et **Force d'altération II / Résistance aux altérations II** (14 / 15). Le jeu ne leur donne
+toujours aucun libellé.
 
 Elles **sont dessinées**  — mais seulement quand le verrou `DAT_005633a8` est
 tombé, c'est-à-dire après « Gurkha » : une colonne nue en bas à droite, en `x = 0xd4`, **sans
@@ -506,3 +514,106 @@ onze de la forêt, les 166 du jeu — et se lisent une par une dans le binaire. 
 `especes.csv` est le pont : elle donne, pour chaque monstre nommé, le numéro qui l'aiguille dans la
 table de sauts `0x0056ad48`. C'est la première fois que le chantier des 166 gestionnaires a des
 **noms** en face de ses numéros.
+
+#### Les pouvoirs des objets (`+0x82`, `+0x84`)
+
+Relevé du 2026-11-20 sur la reconstruction (`Blaze.c` n'était pas sur le disque ce jour-là) : chaque
+objet équipé reçoit des **événements**, et ceux dont `+0x84` vaut le numéro de l'événement jouent
+leur script `+0x82` dans la même machine que le script d'usage `+0x80` (23 opcodes). Les numéros
+émis et leur moment :
+
+| événement | quand |
+|---:|---|
+| 0 | toutes les 20 images, en permanence |
+| 1 | le bouton d'attaque part |
+| 2 / 3 | avant / après le calcul d'un coup porté au corps à corps (assaillant) |
+| 5 | début d'une incantation, juste après que la durée du sort a été posée dans l'entité `+0x14` |
+| 6 | le sort part, juste avant que son coût en PM (`+0x204`) soit prélevé |
+| 7 | un sort ou un effet du porteur vise une cible (`PrepareCombatPair` / `ResolveSpellHit`, assaillant) |
+| 8 / 9 | jet de résistance I / II (assaillant) |
+| 10 | un membre du groupe subit des dégâts |
+| 12 / 13 | avant / après avoir été frappé au corps à corps |
+| 14 | le balayage de corps à corps d'un monstre vise le porteur |
+| 17 | un sort ou un effet vise le porteur (`PrepareCombatPair`, victime) |
+| 18 / 19 | jet de résistance I / II (victime) |
+| 20 | le porteur inflige des dégâts |
+| 21 | le porteur tombe (bit `0x40000000`) |
+
+Ce qui en sort de notable : **Pentacle de prince / magique** réduisent la durée d'incantation de 25 /
+50 % (événement 5, `+0x14` de l'entité) ; **Couronne de la lune / du soleil** et **Corne du diable**
+le coût en PM du sort de 25 / 50 / 10 % (événement 6, `+0x204`) ; les capes et chapeaux portent la
+résistance d'un jet au maximum contre une altération précise (événements 18/19) ; les armes « contre »
+testent les bits de famille `modèle+0x24` de la cible. `build-bestiairev2.mjs` traduit ces scripts
+(`describeEvent`) ; ce qu'il ne sait pas lire est dit « pas encore décrit » (la plupart des
+altérations, dont le nom n'est pas établi).
+
+**Les motifs qui ne se lisent pas ligne à ligne** (`specialPower`, relevés le 2026-11-20 en
+croisant le script avec le code qui lit ce qu'il écrit) :
+
+- **les « réflecteurs » n'en sont pas** (Bague réflectrice, Bouclier réflecteur, Cuirasse au
+  miroir, Réflector, Robe de l'ombre, Anneau du roi Salomon) : sur l'événement 17, si le sort qui
+  vise le porteur est des familles 0 à 2, ils posent pour une image le bit `0x100000` de `+0x140`
+  (durée `+0x1b2`). `PrepareCombatPair` et `ResolveSpellHit` lisent ce bit **juste après** les
+  événements et rendent « le coup ne passe pas » : le sort est annulé, rien n'est renvoyé ;
+- **Chaussuresvol** pose le bit `0x400000`, que le sondage de terrain de `PartyMemberStep` traite
+  comme la classe 7 (la Fée) sur les sols marqués `0x400` ;
+- **Miroir d'eau / de la porte** posent `0x2000000` / `0x4000000` (durées `+0x182` / `+0x184`) :
+  au coup porté, `ResolveMeleeHit` pose la marque de l'élément le plus fort de la victime, ou
+  affiche son nom et ses PV — le bandeau qui sinon n'apparaît qu'en mise au point ;
+- **Hache de la sauvagerie, Os de guerrier sauvage** : sous la moitié des PV, la rage (`0x200`,
+  ATT ×1,5, DEF ÷2 dans `FinalizeEquipmentEffects`), durée `+0x19c` = Force d'altération I / 4 + 66 ;
+- **Dropneal, Baguette de l'alchimiste** refont à l'identique le gain d'expérience de
+  `ResolveMeleeHit` (`(rang - niveau) / 32 + 1` dans `+0x158`) : l'expérience par coup est doublée ;
+- **Armure de Satan, Robe du démon** lisent `+0x15c`, le compte des victimes : DEF + victimes / 20,
+  les deux résistances aux altérations + victimes / 40 (compte borné à 9 999) ;
+- **les quatre boucliers élémentaires** : contre un monstre dont l'affinité la plus forte (`stats+0x18`)
+  est leur élément, 1 chance sur 5 de rendre affinité / 8 + 1 PV ;
+- les sous-types que les scripts font naître et qui comptent : `0x3b` repousse la cible (Durandal,
+  Corne du Minotaure), `0x49` tire un projectile (Flèche de faucon), `0x4b` le trait du sort de
+  monstre de la famille 4 (Bahamut), `0x55` tient la cible (Genocide, Faux de la mort).
+
+**Deux erreurs de lecture corrigées le même jour**, à ne pas refaire :
+
+- **le code d'élément d'un coup (`+0x202`) est décalé de deux** : `DominantElement_005399E0` rend
+  l'indice de l'élément le plus fort **plus deux**, et zéro quand il n'y en a pas. Le code 2 est le
+  Feu, 9 le Mal ; il n'existe pas de « types 8 et 9 non identifiés ». Les objets le confirment tous :
+  l'Aquachâle protège du Feu (code 2), l'Amulette de la lumière des Ténèbres (code 7), l'Anneau des
+  éléments vaut pour les codes 2 à 5, les quatre éléments classiques ;
+- **l'opcode 16 ne parcourt pas le groupe** : il choisit une cible par un indice pris dans la banque
+  de variables. Les pouvoirs y mettent l'indice du porteur (`entité+0x08`) : la Plume dominicale et
+  la Poupée Dummy relèvent **le porteur seul**, avec tous ses PV ou un tiers. Seuls les scripts
+  d'usage qui font varier l'indice (Aile de Séraphin) visent tout le groupe.
+
+**Les autres motifs du 2026-11-20** : les armures qui réduisent un élément retirent aux dégâts
+l'affinité de l'assaillant pour cet élément (`stats+0x18 + code - 2`) puis divisent par 2 ou 4, au
+moins 1 — sauf le **Bouclier de Bartschas**, qui pour les Ténèbres lit l'affinité de **Feu**, un
+défaut des données de 1998 ; les armes à altération portent la Force d'altération à 999 le temps de
+l'effet, qui réussit alors à coup sûr hors immunité ; la **Béquille** pose le bit de pétrification
+directement, sans jet ni masque d'immunité ; les **gants** (argent, runes, sacrés) donnent au porteur
+l'effet 0, le bit `0x8000000` qui lève la division par quatre contre une famille que l'arme ne
+mord pas ; l'**Anneau de Satan** tient le bit `0x10` (le bouton d'attaque ne répond plus) tant
+qu'il est porté. **Les noms des altérations viennent du jeu lui-même.** Les descriptions des sorts du Prêtre,
+dans l'ordre des fiches, s'alignent une à une sur la levée que chaque sort appelle :
+
+| bit | effet | nom (sort qui le lève, sa description) | ce que fait le bit |
+|---|---|---|---|
+| `1` | 30 | **poison** (Antidote, « Neutralise un empoisonnement ») | −3 % des PV max toutes les 30 images |
+| `2` | 31 | **ensorcellement** (Antisort, « Libère d'un ensorcellement ») | −3 % des PM max toutes les 30 images, plus de régénération des PM |
+| `4` | 7 | **paralysie** (Lourdes, « Libère totalement d'une paralysie » ; l'herbe Mercuriale aussi) | aucun lecteur dans la reconstruction |
+| `8` | 8 | **confusion** (Marteau, « Libère d'un état de confusion psychique », avec la rage `0x200`) | direction tirée au hasard, plus d'incantation |
+| `0x10` | 9 | **malédiction** (Délivrance, « Libère d'une malédiction ») | le bouton d'attaque ne répond plus |
+| `0x20` | 10 | **mutisme** (Micro, « Guérit une personne muette ») | plus d'incantation (masque `0x3e8`), les objets restent permis (`0x3c0`) |
+| `0x40` | 11 | **sommeil** (le sort de Fée Dodo, « Endort l'adversaire avec des flèches hypnotisantes », pose cet effet) | levé par tout coup reçu ; la victime ne peut plus agir |
+| `0x80` | 12 | **étourdissement** — nom **déduit**, le jeu ne l'écrit nulle part : sa marque est quatre éclats qui tournent au-dessus de la tête, posés par les coups lourds (Troll, Kraaken, Belzébuth, Jeune dragon), le Black Jack, et par des PM tombés à zéro (« l'épuisement de l'âme » de la Sauge) | la victime ne peut plus agir ; la durée la plus courte de la table |
+| `0x8000` | 20 | **ralentissement** (le sort de Fée Gros sabots, « Des esprits freinent les mouvements de l'adversaire ») — les Bottes ailées et les Chaussures à plumes y résistent | aucun lecteur dans la reconstruction |
+| `0x100` | 13 | **pétrification** (Calgon, « Libère de la pétrification ») | −5 % des PV max toutes les 30 images |
+
+Les recoupements : la Croix (« protège de toutes les malédictions », dit sa description japonaise
+restée dans `BLAZE.ALL`) résiste à l'effet 9 ; l'Anneau de Satan et l'Épée de la fatalité, deux
+objets « maudits » en japonais, posent le bit `0x10` sur leur porteur ; la Carte de la peur
+(« 敵に混乱効果 », confusion sur l'ennemi) pose l'effet 8 ; la fontaine de la 3e zone dit « Tu es
+paralysé », « Tu perds la tête », « Tu es muet ». **Les descriptions des herbes Hysopius
+(« anti-confusion ») et Belladone (« Annule les sortilèges ») ne collent pas** à ce qu'elles lèvent
+(bits `2` et `0x10`) : les sept fiches du Prêtre l'emportent, l'herboristerie est de toute façon
+injouable. L'effet 29 n'est pas une guérison : il efface les bits `0x400` à `0x80000`, les hausses
+et baisses de caractéristiques — une dissipation.
