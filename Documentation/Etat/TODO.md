@@ -1306,11 +1306,9 @@ d'entités traversent maintenant sans lever.
 > sous-système de caméra avec elle** (`Screens/State03/WorldMapCamera.cs`, `FUN_004011c0` et douze
 > appelées).
 >
-> Du sous-système caméra il ne reste que le sous-bloc d'**occlusion**
-> (`0x00401913`..`0x00401b6d`, plus `FUN_004029e0` et `FUN_00402d60`), qui **n'est pas sur le
-> chemin au repos** — sa garde rend la main avant, playtest à l'appui. Son blocage est la donnée et
-> non le code : les deux tables `0x00604ba0` / `0x00604d30` ont une étendue que l'indexation
-> apparente contredit, à trancher au désassembleur (voir `DataSymbols.md`).
+> Le sous-bloc d'**occlusion** (`0x00401913`..`0x00401b6d`, `FUN_004029e0`, `FUN_00402d60`) est
+> transcrit depuis le 2026-11-27 — le sous-système caméra est complet. À vérifier en jeu : l'étage 2
+> de la vieille tour, où il plantait.
 >
 > Les descripteurs de sprite et les tables de panneaux **sont relevés et en place**, et le bloc de
 > pile est établi (voir plus haut).

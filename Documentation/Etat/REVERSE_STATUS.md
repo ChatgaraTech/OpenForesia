@@ -9129,6 +9129,13 @@ de `grep`.
 
 ### Ce qui reste du sous-système
 
+> **Fermé le 2026-11-27** : le sous-bloc est transcrit (`ProbeCameraOcclusion_004011C0` et ses
+> quatre appelées), les deux tables se sont révélées un seul bloc entrelacé (voir `DataSymbols.md`),
+> et la garde décrite ci-dessous était **fausse** : `Blaze.c` n'a aucune sortie avant le test des
+> faces, il étale seulement le travail sur cinq images. Le C# en avait inventé une, qui ne tenait que
+> parce que `DAT_00571348` n'était jamais écrit. Le plantage est venu à l'étage 2 de la vieille
+> tour, premier lieu où une image est allée au bout du mode 1.
+
 Le sous-bloc d'**occlusion** (`0x00401913`..`0x00401b6d`) et ses deux appelées `FUN_004029e0` /
 `FUN_00402d60`. Le blocage n'est pas le code — c'est la **donnée** : les deux tables parallèles
 `0x00604ba0` et `0x00604d30`, espacées de `0x190` et indexées par `(cellule * 200 + n) * 4`, ont une

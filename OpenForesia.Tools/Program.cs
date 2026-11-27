@@ -145,6 +145,23 @@ if (args[0] is "exporter-carte")
     return;
 }
 
+// L'exporteur de modeles animes, hors jeu : `exporter-modeles [dossier-jeu] --sortie <dossier hors du depot>`.
+if (args[0] is "exporter-modeles")
+{
+    string? dossierArg = null, sortie = null;
+    for (int i = 1; i < args.Length; i++)
+    {
+        if (args[i] is "--sortie" && i + 1 < args.Length) sortie = args[++i];
+        else if (dossierArg == null && !args[i].StartsWith("--")) dossierArg = args[i];
+        else { Console.WriteLine($"Option inconnue : {args[i]}"); PrintUsage(); return; }
+    }
+    if (sortie == null) { PrintUsage(); return; }
+    string? dossier = dossierArg ?? DossierDonneesParDefaut();
+    if (dossier == null) { PrintUsage(); return; }
+    Environment.ExitCode = Bestiaire.ExporterModeles(dossier, sortie);
+    return;
+}
+
 // Les points d'entree d'une sous-zone (LP-012, l'arene), lus hors jeu :
 // `entrees <zone> <sous-zone> [dossier]`.
 if (args[0] is "entrees" && args.Length >= 3)
@@ -442,6 +459,7 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools disasm <path> <va> [octets] desassemble x86-32 a partir d'une VA Ghidra");
     Console.WriteLine("  OpenForesia.Tools bestiaire [<donnees>] [--zone N] [--sortie <dir>]");
     Console.WriteLine("  OpenForesia.Tools exporter-carte [<donnees>] [zone [sous-zone]] --sortie <dir hors depot>");
+    Console.WriteLine("  OpenForesia.Tools exporter-modeles [<donnees>] --sortie <dir hors depot>");
     Console.WriteLine("                                               especes, fiches, formations et butin, lus dans les donnees");
     Console.WriteLine(@"                                               du jeu (defaut : OpenForesia\bin\Debug\net10.0)");
     Console.WriteLine("  OpenForesia.Tools montee                     simulateur de montee de niveau (fenetre)");

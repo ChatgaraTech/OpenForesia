@@ -1259,7 +1259,18 @@ internal static unsafe class D3D11Backend
         // l'original était calé sur le 60 Hz de son mode d'affichage. Un vrai limiteur à 60 images
         // par seconde serait plus fidèle encore ; ce n'est pas fait ici, où l'on se contente de
         // restituer le comportement du `Flip` d'origine.
-        SilkMarshal.ThrowHResult(s_SwapChain.Present(1, 0));
+        long avantPresent = System.Diagnostics.Stopwatch.GetTimestamp();
+        int hrPresent = s_SwapChain.Present(1, 0);
+        long apresPresent = System.Diagnostics.Stopwatch.GetTimestamp();
+        SilkMarshal.ThrowHResult(hrPresent);
+
+        // Écart legacy ++ (LB-061) : la réserve ci-dessus est levée — après la présentation, on
+        // attend l'échéance suivante d'une horloge à 60 Hz. Le jeu ne va donc jamais plus vite que
+        // celui de 1998, quel que soit l'écran, et même si la synchronisation cesse d'être honorée.
+        LimiteurCadence.Attendre();
+
+        // ECHAFAUDAGE (2026-11-21) : la trace de cadence, Debug seulement — voir Host/TraceCadence.cs.
+        TraceCadence.Image(hrPresent, avantPresent, apresPresent, System.Diagnostics.Stopwatch.GetTimestamp());
 
         static TlVertex Vertex(float x, float y, float u, float v) => new()
         {

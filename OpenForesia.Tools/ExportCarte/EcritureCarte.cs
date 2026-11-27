@@ -45,7 +45,6 @@ internal static partial class Bestiaire
         public readonly Dictionary<(ushort, ushort), int> Index = new();
         public readonly List<byte[]> Rgba = new();
         public readonly List<(ushort TPage, ushort Clut)> Cles = new();
-        public int TexelsInconnus;
 
         public int Pour(Carte carte, Materiau m)
         {
@@ -104,13 +103,13 @@ internal static partial class Bestiaire
             var acc = new JsonObject
             {
                 ["bufferView"] = Vues.Count - 1, ["componentType"] = 5126, ["count"] = data.Length / comps,
-                ["type"] = comps == 3 ? "VEC3" : "VEC2",
+                ["type"] = comps switch { 1 => "SCALAR", 2 => "VEC2", 3 => "VEC3", _ => "VEC4" },
             };
             if (minmax)
             {
-                var mn = new float[3] { float.MaxValue, float.MaxValue, float.MaxValue };
-                var mx = new float[3] { float.MinValue, float.MinValue, float.MinValue };
-                for (int i = 0; i < data.Length; i++) { mn[i % 3] = Math.Min(mn[i % 3], data[i]); mx[i % 3] = Math.Max(mx[i % 3], data[i]); }
+                var mn = Enumerable.Repeat(float.MaxValue, comps).ToArray();
+                var mx = Enumerable.Repeat(float.MinValue, comps).ToArray();
+                for (int i = 0; i < data.Length; i++) { mn[i % comps] = Math.Min(mn[i % comps], data[i]); mx[i % comps] = Math.Max(mx[i % comps], data[i]); }
                 acc["min"] = new JsonArray(mn.Select(v => (JsonNode)v).ToArray());
                 acc["max"] = new JsonArray(mx.Select(v => (JsonNode)v).ToArray());
             }

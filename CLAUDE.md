@@ -235,6 +235,8 @@ Code in `OpenForesia.Tools/ExportCarte/`, every reader marked `Miroir de :`. For
 rendered (lighting, fog) are in `Conception/08-Exports.md`. Only chunk list 0 is collision (16-byte
 faces); lists 1–3 are display (0x20-byte faces, already in world coordinates).
 
+**Exporting the animated models — `exporter-modeles`.** `exporter-modeles [dossier] --sortie <hors du depot>` writes every animated model — the 16 heroes, then each sub-area's `+0x2c` models with their `+0x7c` animations, named from the species — as an animated glTF, one folder per model, plus an `index.html` gallery that replays the animations. Same refusal of an output folder inside the repo. Format and limits (30 fps assumed) in `Conception/08-Exports.md`.
+
 **Checking the Indeo 4 decoder — `indeo`.** `indeo OpenForesia\bin\Debug\net10.0\French\Teps.AVI` decodes every frame of a
 film twice — through `ir41_32.ax` in `IF09` output (native YVU9; its RGB24 is dithered, useless as a
 reference) and through `Host/Indeo4/`, the C# port of FFmpeg's decoder (LGPL 2.1+, read its `LISEZMOI.md`) —

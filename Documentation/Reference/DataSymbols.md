@@ -1153,20 +1153,138 @@ Les trois dernières sont dans le voisinage que la carte du monde doit lire (`DA
 La colonne **écart** est la distance jusqu'au symbole d'adresse suivant. Un écart plus petit que la
 taille déclarée du symbole est un recouvrement, donc un défaut.
 
+> **Refait le 2026-11-27** depuis les sources, par l'analyseur de `OpenForesia.Tests`
+> (`MemoryLayout.Symbols` : tout champ de `src/Blaze/` dont le nom porte une VA), plus les deux
+> lignes `s_VtBlock` qu'il ne voit pas. L'index en était resté à **405 lignes (393 adresses) pour 714 symboles** :
+> tout ce qui a été modélisé depuis le découpage d'août manquait. Un écart **0** signale deux noms
+> pour une même adresse — le sujet du test 4. La « correction locale » du 2026-08-25 (la bande
+> `0x005de5f8`..`0x005de6f0`, que l'ancien index ignorait) est intégrée à la table et retirée.
+
 | VA | symbole C# | écart | fichier |
 |---|---|---:|---|
+| `0x0052403c` | `s_ItemFamily_0052403c` | 167876 | `Screens/State03/Items/ItemScript.cs` |
 | `0x0054d000` | `s_GammaScale_0054d000` | 116 | `Engine/Input.cs` |
-| `0x0054d074` | `s_GammaScale_0054d074` | 17868 | `Screens/State00/MainMenu.cs` |
-| `0x00551640` | `s_EntityParams_00551640` | 7240 | `Memory/GameMemory.cs` |
+| `0x0054d074` | `s_GammaScale_0054d074` | 8140 | `Screens/State00/MainMenu.cs` |
+| `0x0054f040` | `s_CameraHeightMax_0054f040` | 4 | `Screens/State03/WorldMapCamera.cs` |
+| `0x0054f044` | `s_CameraHeightMin_0054f044` | 4 | `Screens/State03/WorldMapCamera.cs` |
+| `0x0054f048` | `s_OccluderDx_0054f048` | 40 | `Screens/State03/WorldMapCamera.cs` |
+| `0x0054f070` | `s_OccluderDz_0054f070` | 3992 | `Screens/State03/WorldMapCamera.cs` |
+| `0x00550008` | `s_Descriptors_00550008` | 56 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550040` | `s_Descriptors_00550040` | 32 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550060` | `s_Descriptors_00550060` | 24 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550078` | `s_Descriptors_00550078` | 24 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550090` | `s_Descriptors_00550090` | 120 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550108` | `s_Descriptors_00550108` | 48 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550138` | `s_Descriptors_00550138` | 16 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550148` | `s_Descriptors_00550148` | 32 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550168` | `s_Descriptors_00550168` | 192 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550228` | `s_Descriptors_00550228` | 32 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550248` | `s_Descriptors_00550248` | 32 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550268` | `s_Descriptors_00550268` | 24 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550280` | `s_Descriptors_00550280` | 208 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550350` | `s_Descriptors_00550350` | 16 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550360` | `s_Descriptors_00550360` | 40 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550388` | `s_Descriptors_00550388` | 136 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550410` | `s_Descriptors_00550410` | 32 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550430` | `s_Descriptors_00550430` | 8 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550438` | `s_Descriptors_00550438` | 16 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550448` | `s_Descriptors_00550448` | 24 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550460` | `s_Descriptors_00550460` | 32 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00550480` | `s_Descriptors_00550480` | 240 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550570` | `s_Descriptors_00550570` | 40 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550598` | `s_Descriptors_00550598` | 368 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550708` | `s_Descriptors_00550708` | 32 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550728` | `s_Descriptors_00550728` | 24 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550740` | `s_Descriptors_00550740` | 232 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550828` | `s_Descriptors_00550828` | 96 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550888` | `s_Descriptors_00550888` | 8 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550890` | `s_Descriptors_00550890` | 200 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00550958` | `s_Descriptors_00550958` | 40 | `Screens/State03/Effects/UndergroundRuinsParticles.cs` |
+| `0x00550980` | `s_Descriptors_00550980` | 8 | `Screens/State03/Effects/UndergroundRuinsParticles.cs` |
+| `0x00550988` | `s_Descriptors_00550988` | 1664 | `Screens/State03/Effects/SilverValleyParticles.cs` |
+| `0x00551008` | `s_Descriptors_00551008` | 64 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551048` | `s_Descriptors_00551048` | 32 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551068` | `s_Descriptors_00551068` | 8 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00551070` | `s_Descriptors_00551070` | 168 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551118` | `s_Descriptors_00551118` | 24 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00551130` | `s_Descriptors_00551130` | 8 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551138` | `s_Descriptors_00551138` | 24 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00551150` | `s_Descriptors_00551150` | 8 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00551158` | `s_Descriptors_00551158` | 8 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00551160` | `s_Descriptors_00551160` | 192 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551220` | `s_Descriptors_00551220` | 32 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551240` | `s_Descriptors_00551240` | 16 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551250` | `s_Descriptors_00551250` | 40 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551278` | `s_Descriptors_00551278` | 184 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551330` | `s_Descriptors_00551330` | 216 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551408` | `s_Descriptors_00551408` | 8 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00551410` | `s_Descriptors_00551410` | 240 | `Screens/State03/Effects/ImmortalCastleParticles.cs` |
+| `0x00551500` | `s_Descriptors_00551500` | 24 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00551518` | `s_Descriptors_00551518` | 16 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00551528` | `s_Descriptors_00551528` | 264 | `Screens/State03/Cutscene/ForestScenes.cs` |
+| `0x00551630` | `s_Descriptors_00551630` | 16 | `Screens/State03/Items/ItemSpawns.cs` |
+| `0x00551640` | `s_EntityParams_00551640` | 468 | `Memory/GameMemory.cs` |
+| `0x00551814` | `s_DeveloperNotice_00551814` | 68 | `Screens/State03/Handlers/Forest.cs` |
+| `0x00551858` | `s_TrapSoundScript_00551858` | 16 | `Screens/State03/Effects/TrapScripts.cs` |
+| `0x00551868` | `s_ResistSoundScript_00551868` | 16 | `Screens/State03/Effects/TrapScripts.cs` |
+| `0x00551878` | `s_DelayedSoundScript_00551878` | 16 | `Screens/State03/Spells/School2Elementalist.cs` |
+| `0x00551888` | `s_DelayedSoundScript_00551888` | 184 | `Screens/State03/Spells/School2Elementalist.cs` |
+| `0x00551940` | `s_DelayedSoundScript_00551940` | 56 | `Screens/State03/Spells/School2Elementalist.cs` |
+| `0x00551978` | `s_DelayedSoundScript_00551978` | 696 | `Screens/State03/Spells/School2Elementalist.cs` |
+| `0x00551c30` | `s_StaticEntityHandlers_00551c30` | 768 | `Screens/State03/Dispatch/StaticEntityTables.cs` |
+| `0x00551f30` | `s_StaticEntityHandlers_00551f30` | 768 | `Screens/State03/Dispatch/StaticEntityTables.cs` |
+| `0x00552230` | `s_StaticEntityHandlers_00552230` | 768 | `Screens/State03/Dispatch/StaticEntityTables.cs` |
+| `0x00552530` | `s_DelayedSoundScript_00552530` | 24 | `Screens/State03/Effects/HitAndResistMarkers.cs` |
+| `0x00552548` | `s_DelayedSoundScript_00552548` | 16 | `Screens/State03/Effects/HitAndResistMarkers.cs` |
+| `0x00552558` | `s_DelayedSoundScript_00552558` | 16 | `Screens/State03/Effects/HitAndResistMarkers.cs` |
+| `0x00552568` | `s_DelayedSoundScript_00552568` | 16 | `Screens/State03/Effects/HitAndResistMarkers.cs` |
+| `0x00552578` | `s_DelayedSoundScript_00552578` | 16 | `Screens/State03/Effects/HitAndResistMarkers.cs` |
+| `0x00552588` | `s_DelayedSoundScript_00552588` | 16 | `Screens/State03/Spells/School0Wizard.cs` |
+| `0x00552598` | `s_DelayedSoundScript_00552598` | 104 | `Screens/State03/Spells/School0Wizard.cs` |
+| `0x00552600` | `s_DelayedSoundScript_00552600` | 16 | `Screens/State03/Effects/MiscMarkers.cs` |
+| `0x00552610` | `s_DelayedSoundScript_00552610` | 40 | `Screens/State03/Effects/MiscMarkers.cs` |
+| `0x00552638` | `s_ExplosionSoundScript_00552638` | 88 | `Screens/State03/Effects/ForestParticlesA.cs` |
+| `0x00552690` | `s_DelayedSoundScript_00552690` | 128 | `Screens/State03/Effects/LabyrinthParticles.cs` |
+| `0x00552710` | `s_DelayedSoundScript_00552710` | 16 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00552720` | `s_DelayedSoundScript_00552720` | 40 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00552748` | `s_SoundScript_00552748` | 16 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00552758` | `s_SoundScript_00552758` | 16 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00552768` | `s_SoundScript_00552768` | 24 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00552780` | `s_SoundScript_00552780` | 16 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00552790` | `s_SoundScript_00552790` | 112 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00552800` | `s_SoundScript_00552800` | 32 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00552820` | `s_SoundScript_00552820` | 48 | `Screens/State03/Combat/Projectiles.cs` |
+| `0x00552850` | `s_DelayedSoundScript_00552850` | 24 | `Screens/State03/Effects/SealedCaveParticles.cs` |
+| `0x00552868` | `s_Spells_00552868` | 160 | `Screens/State03/Ai/Inn.cs` |
+| `0x00552908` | `s_TrollProbes_00552908` | 40 | `Screens/State03/Ai/Mine/Troll.cs` |
+| `0x00552930` | `s_RedDragonProbes_00552930` | 40 | `Screens/State03/Ai/FireMountain/RedDragon.cs` |
+| `0x00552958` | `s_RedDragonSpells_00552958` | 8 | `Screens/State03/Ai/FireMountain/RedDragon.cs` |
+| `0x00552960` | `s_GrizzlyProbes_00552960` | 24 | `Screens/State03/Ai/Forest/Grizzly.cs` |
+| `0x00552978` | `s_SpellGestures_00552978` | 24 | `Screens/State03/Ai/SceneEntityAiCommon.cs` |
+| `0x00552990` | `s_TrentProbes_00552990` | 1680 | `Screens/State03/Ai/Forest/Trent.cs` |
+| `0x00553020` | `s_Spells_00553020` | 48 | `Screens/State03/Ai/Inn.cs` |
+| `0x00553050` | `s_EifridtSpells_00553050` | 8 | `Screens/State03/Ai/SealedCave/Eifridt.cs` |
+| `0x00553058` | `s_DelayedSoundScript_00553058` | 24 | `Screens/State03/Ai/SealedCave/Eifridt.cs` |
+| `0x00553070` | `s_DelayedSoundScript_00553070` | 144 | `Screens/State03/Ai/SealedCave/Eifridt.cs` |
+| `0x00553100` | `s_DelayedSoundScript_00553100` | 24 | `Screens/State03/Ai/SealedCave/Lordemon.cs` |
+| `0x00553118` | `s_DelayedSoundScript_00553118` | 72 | `Screens/State03/Ai/SealedCave/Lordemon.cs` |
+| `0x00553160` | `s_DelayedSoundScript_00553160` | 48 | `Screens/State03/Ai/SealedCave/Lordemon.cs` |
+| `0x00553190` | `s_BlackAngelSpells_00553190` | 120 | `Screens/State03/Ai/SealedCave/BlackAngel.cs` |
+| `0x00553208` | `s_BeelzebubSpells_00553208` | 8 | `Screens/State03/Ai/SealedCave/Beelzebub.cs` |
+| `0x00553210` | `s_DelayedSoundScript_00553210` | 32 | `Screens/State03/Ai/SealedCave/Beelzebub.cs` |
+| `0x00553230` | `s_DelayedSoundScript_00553230` | 72 | `Screens/State03/Ai/SealedCave/Beelzebub.cs` |
+| `0x00553278` | `s_DelayedSoundScript_00553278` | 16 | `Screens/State03/Ai/SealedCave/Beelzebub.cs` |
 | `0x00553288` | `s_VtBlock` — les 197 blocs de sauts d'entites, un pool contigu | 46624 | `Engine/EntityVTables.cs` |
-| `0x0055e8a8` | `s_AreaHandlerSource_0055e8a8` | 7760 | `Engine/Resources.cs` |
+| `0x0055e8a8` | `s_AreaHandlerSource_0055e8a8` | 704 | `Engine/Resources.cs` |
+| `0x0055eb68` | `s_CutsceneVerbTable_0055eb68` | 7056 | `Screens/State03/Cutscene/CutsceneVerbs.cs` |
 | `0x005606f8` | `s_Unknown_005606f8` | 48 | `Memory/GameMemory.cs` |
 | `0x00560728` | `s_StatusDescriptor_00560728` | 51 | `Memory/GameMemory.cs` |
 | `0x0056075b` | `s_Unknown_0056075b` | 8 | `Memory/GameMemory.cs` |
 | `0x00560763` | `s_Unknown_00560763` | 2161 | `Memory/GameMemory.cs` |
 | `0x00560fd4` | `s_Unknown_00560fd4` | 27 | `Screens/State04/SaveSlots.cs` |
 | `0x00560fef` | `s_Unknown_00560fef` | 1 | `Memory/GameMemory.cs` |
-| `0x00560ff0` | `s_UiDescriptors_00560ff0` | 6760 | `Memory/GameMemory.cs` |
+| `0x00560ff0` | `s_UiDescriptors_00560ff0` | 6744 | `Memory/GameMemory.cs` |
+| `0x00562a48` | `s_SelectFlags_00562a48` | 16 | `Screens/State04/CharacterSelect.cs` |
 | `0x00562a58` | `s_SceneToneTable_00562a58` | 64 | `Memory/GameMemory.cs` |
 | `0x00562a98` | `s_SelectSubStateBytes_00562a98` | 32 | `Memory/GameMemory.cs` |
 | `0x00562ab8` | `s_ClassStartIcon_00562ab8` | 8 | `Screens/State04/CharacterCreation.cs` |
@@ -1180,39 +1298,69 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00562bd8` | `s_AccentSourceTable_00562bd8` | 64 | `Engine/SaveData.cs` |
 | `0x00562c18` | `s_AccentTargetTable_00562c18` | 132 | `Engine/SaveData.cs` |
 | `0x00562c9c` | `s_IdeographicSpace_00562c9c` | **0** | `Screens/State04/SaveSlots.cs` |
-| `0x00562c9c` | `s_Unknown_00562c9c` | 380 | `Screens/State06/Inventory.cs` |
+| `0x00562c9c` | `s_Unknown_00562c9c` | 4 | `Screens/State06/Inventory.cs` |
+| `0x00562ca0` | `s_PostureHandlers_00562ca0` | 32 | `Screens/State03/Tick/PartyMemberStep.cs` |
+| `0x00562cc0` | `s_PostureSpeed_00562cc0` | 32 | `Screens/State03/Tick/PartyMemberStep.cs` |
+| `0x00562ce0` | `s_InputHandlers_00562ce0` | 16 | `Screens/State03/Tick/PartyMemberStep.cs` |
+| `0x00562cf0` | `s_MeleeProbes_00562cf0` | 216 | `Screens/State03/Physics/TriggerVolumes.cs` |
+| `0x00562dc8` | `s_PadDirection_00562dc8` | 80 | `Screens/State03/Tick/PartyMemberStep.cs` |
 | `0x00562e18` | `s_KeyScancodes_00562e18` | 88 | `Screens/State00/Options.cs` |
 | `0x00562e70` | `s_JoyButtonScan_00562e70` | 40 | `Screens/State00/Options.cs` |
 | `0x00562e98` | `s_JoyButtonLabelStorage_00562e98` | 1 | `Screens/State00/Options.cs` |
 | `0x00562e99` | `s_JoyButtonLabel_00562e99` | 39 | `Screens/State00/Options.cs` |
 | `0x00562ec0` | `s_KeyActionIndex_00562ec0` | 24 | `Screens/State00/Options.cs` |
 | `0x00562ed8` | `s_KeyRowTable_00562ed8` | 392 | `Screens/State00/Options.cs` |
-| `0x00563060` | `s_KeyArrowColumn_00563060` | 232 | `Screens/State00/Options.cs` |
+| `0x00563060` | `s_KeyArrowColumn_00563060` | 72 | `Screens/State00/Options.cs` |
+| `0x005630a8` | `s_Options_005630a8` | 160 | `Screens/State00/Options.cs` |
 | `0x00563148` | `s_RowSpriteRecord_00563148` | 24 | `Screens/State01/PartySetup.cs` |
 | `0x00563160` | `s_SaveDeviceName_00563160` | 16 | `Engine/SaveData.cs` |
-| `0x00563170` | `s_SaveFolderName_00563170` | 136 | `Engine/SaveData.cs` |
-| `0x005631f8` | `s_DataRootPath_005631f8` | 432 | `Memory/GameMemory.cs` |
+| `0x00563170` | `s_SaveFolderName_00563170` | 104 | `Engine/SaveData.cs` |
+| `0x005631d8` | `s_WindowTitle_005631d8` | 32 | `Engine/Audio.cs` |
+| `0x005631f8` | `s_DataRootPath_005631f8` | 336 | `Memory/GameMemory.cs` |
+| `0x00563348` | `s_PanelExtra_00563348` | 8 | `Screens/State03/Tick/WorldMapHud.cs` |
+| `0x00563350` | `s_ChangeKindLabels_00563350` | 16 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00563360` | `s_ChangeStateLabels_00563360` | 8 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00563368` | `s_DebugTexPage_00563368` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
 | `0x005633a8` | `s_DebugModeLatch_005633a8` | 8 | `Memory/GameMemory.cs` |
 | `0x005633b0` | `s_WorldMapDescriptor_005633b0` | 2220 | `Screens/State03/WorldMap.cs` |
 | `0x00563c5c` | `s_Unknown_00563c5c` | 27 | `Screens/State03/WorldMap.cs` |
-| `0x00563c77` | `s_Unknown_00563c77` | 2249 | `Screens/State03/WorldMap.cs` |
+| `0x00563c77` | `s_Unknown_00563c77` | 1 | `Screens/State03/WorldMap.cs` |
+| `0x00563c78` | `s_MonitorBox_00563c78` | 2248 | `Screens/State03/WorldMapDebugMenu.cs` |
 | `0x00564540` | `s_Unknown_00564540` | 8 | `Screens/State03/WorldMap.cs` |
 | `0x00564548` | `s_CellSweepCorner_00564548` | 16 | `Memory/GameMemory.cs` |
 | `0x00564558` | `s_CellSkipTables_00564558` | 160 | `Memory/GameMemory.cs` |
 | `0x005645f8` | `s_WorldMapStep_005645f8` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005645fc` | `s_Unknown_005645fc` | 4 | `Screens/State03/WorldMap.cs` |
-| `0x00564600` | `s_SpellCounts_00564600` | 80 | `Screens/State03/Tick/PartyMemberStep.cs` |
-| `0x00564650` | `s_WorldMapCamera_00564650` | 956 | `Screens/State03/WorldMap.cs` |
+| `0x00564600` | `s_SpellCounts_00564600` | 8 | `Screens/State03/Tick/PartyMemberStep.cs` |
+| `0x00564608` | `s_SpellLabelBase_00564608` | 56 | `Screens/State03/WorldMapMenu.cs` |
+| `0x00564640` | `s_SpellPages_00564640` | 16 | `Screens/State03/WorldMapMenu.cs` |
+| `0x00564650` | `s_WorldMapCamera_00564650` | 440 | `Screens/State03/WorldMap.cs` |
+| `0x00564808` | `s_ErrorMarkerAtlas_00564808` | 248 | `Screens/State03/Combat/HitResolution.cs` |
+| `0x00564900` | `s_StatusBits_00564900` | 40 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x00564928` | `s_PanelX_00564928` | 16 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x00564938` | `s_PanelX_00564938` | 16 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x00564948` | `s_PanelX_00564948` | 16 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x00564958` | `s_PanelX_00564958` | 180 | `Screens/State03/Tick/SpriteAtlas.cs` |
 | `0x00564a0c` | `s_SlashLabel_00564a0c` | 4 | `Screens/State06/Inventory.cs` |
-| `0x00564a10` | `s_PageWaitCommand_00564a10` | 28 | `Screens/State06/Inventory.cs` |
-| `0x00564a2c` | `s_CursorGlyph_00564a2c` | 20 | `Screens/DebugParty.cs` |
+| `0x00564a10` | `s_MonitorStream_00564a10` | **0** | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00564a10` | `s_PageWaitCommand_00564a10` | 4 | `Screens/State06/Inventory.cs` |
+| `0x00564a14` | `s_HpLabel_00564a14` | 4 | `Screens/State06/Inventory.cs` |
+| `0x00564a18` | `s_MinusGlyph_00564a18` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00564a1c` | `s_ChgLabel_00564a1c` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00564a20` | `s_DptLabel_00564a20` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00564a24` | `s_LocLabel_00564a24` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00564a28` | `s_AngLabel_00564a28` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00564a2c` | `s_CursorGlyph_00564a2c` | 4 | `Screens/DebugParty.cs` |
+| `0x00564a30` | `s_BitCursorGlyph_00564a30` | 16 | `Screens/State03/WorldMapDebugMenu.cs` |
 | `0x00564a40` | `s_CheatSequence_00564a40` | 8 | `Engine/UiText.cs` |
-| `0x00564a48` | `s_DeviceCapFlag_00564a48` | 4 | `Engine/Input.cs` |
-| `0x00564a4c` | `s_Unknown_00564a4c` | 4 | `Screens/State00/MainMenu.cs` |
-| `0x00564a50` | `s_KeyboardEnabled_00564a50` | 24 | `Engine/Input.cs` |
+| `0x00564a48` | `s_DeviceCapFlag_00564a48` | 4 | `Memory/GameMemory.cs` |
+| `0x00564a4c` | `s_Unknown_00564a4c` | 4 | `Memory/GameMemory.cs` |
+| `0x00564a50` | `s_KeyboardEnabled_00564a50` | 6 | `Engine/Input.cs` |
+| `0x00564a56` | `s_MenuSlideDone_00564a56` | 18 | `Screens/State03/Tick/SpriteAtlas.cs` |
 | `0x00564a68` | `s_JoyBindingDefaults_00564a68` | 80 | `Screens/State00/Options.cs` |
 | `0x00564ab8` | `s_KeyBindingDefaults_00564ab8` | 1120 | `Screens/State00/Options.cs` |
-| `0x00564f18` | `s_PadButtonMasks_00564f18` | 200 | `Engine/Input.cs` |
+| `0x00564f18` | `s_PadButtonMasks_00564f18` | 72 | `Engine/Input.cs` |
+| `0x00564f60` | `s_Controls_00564f60` | 128 | `Screens/State00/Options.cs` |
 | `0x00564fe0` | `s_ItemMenuDescriptors_00564fe0` | 51 | `Screens/State06/ItemMenu.cs` |
 | `0x00565013` | `s_Unknown_00565013` | 8 | `Screens/State06/Inventory.cs` |
 | `0x0056501b` | `s_Unknown_0056501b` | 2188 | `Screens/State06/Inventory.cs` |
@@ -1221,7 +1369,8 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00566170` | `s_ItemMenuEditDescriptor_00566170` | 2280 | `Screens/State06/ItemMenu.cs` |
 | `0x00566a58` | `s_CardSlotIds_00566a58` | 56 | `Screens/State06/Inventory.cs` |
 | `0x00566a90` | `s_CardSlotLists_00566a90` | 56 | `Screens/State06/Inventory.cs` |
-| `0x00566ac8` | `s_ItemMenuSubState_00566ac8` | 4 | `Screens/State06/ItemMenu.cs` |
+| `0x00566ac8` | `s_ItemMenuSubState_00566ac8` | **0** | `Screens/State06/ItemMenu.cs` |
+| `0x00566ac8` | `s_ItemMenuSubStatePair_00566ac8` | 4 | `Screens/State06/ItemMenu.cs` |
 | `0x00566acc` | `s_Unknown_00566acc` | 4 | `Screens/State06/ItemMenu.cs` |
 | `0x00566ad0` | `s_StatSlotOrder_00566ad0` | 8 | `Screens/State06/Inventory.cs` |
 | `0x00566ad8` | `s_ItemPanelIcons_00566ad8` | 48 | `Screens/State06/Inventory.cs` |
@@ -1229,16 +1378,18 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00566b48` | `s_ItemIconSprite_00566b48` | 8 | `Screens/State06/Inventory.cs` |
 | `0x00566b50` | `s_EquippedMarker_00566b50` | 8 | `Screens/State06/Inventory.cs` |
 | `0x00566b58` | `s_InventoryLabels_00566b58` | 40 | `Screens/State06/ItemMenu.cs` |
+| `0x00566b80` | `s_UnknownItemText_00566b80` | **0** | `Screens/State03/WorldMapMenu.cs` |
 | `0x00566b80` | `s_UnknownStatLabel_00566b80` | 4 | `Screens/State06/Inventory.cs` |
 | `0x00566b84` | `s_UnknownItemLabel_00566b84` | 8 | `Screens/State06/Inventory.cs` |
-| `0x00566b8c` | `s_DashesLabel_00566b8c` | 92 | `Screens/State01/PartySetup.cs` |
-| `0x00566be8` | `s_DecimalDivisors_00566be8` | 40 | `Engine/UiText.cs` |
+| `0x00566b8c` | `s_DashesLabel_00566b8c` | 84 | `Screens/State01/PartySetup.cs` |
+| `0x00566be0` | `s_Unknown_00566be0` | 8 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x00566be8` | `s_DecimalDivisors_00566be8` | **0** | `Engine/UiText.cs` |
+| `0x00566be8` | `s_PowersOfTen_00566be8` | 40 | `Screens/State03/WorldMapDepot.cs` |
 | `0x00566c10` | `s_WorldMapUploadRect_00566c10` | 24 | `Screens/State03/WorldMap.cs` |
 | `0x00566c28` | `s_GlyphAtlas_00566c28` | 8 | `Screens/State00/MainMenu.cs` |
 | `0x00566c30` | `s_NumeralTileRecord_00566c30` | 24 | `Screens/State04/SaveSlots.cs` |
 | `0x00566c48` | `s_MenuScreenBlock_00566c48` | 40 | `Screens/State00/MainMenu.cs` |
-| `0x00566c70` | `s_MenuRenderBlock_00566c70` | **0** | `Screens/State00/MainMenu.cs` |
-| `0x00566c70` | `s_ViewRect_00566c70` | 20 | `Screens/State03/WorldMap.cs` |
+| `0x00566c70` | `s_ViewRect_00566c70` | 20 | `Memory/GameMemory.cs` |
 | `0x00566c84` | `s_Unknown_00566c84` | 4 | `Screens/DebugParty.cs` |
 | `0x00566c88` | `s_Unknown_00566c88` | 4 | `Screens/DebugParty.cs` |
 | `0x00566c8c` | `s_Unknown_00566c8c` | 4 | `Screens/DebugParty.cs` |
@@ -1254,8 +1405,39 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00567b58` | `s_VtPtr_00567b58` | 704 | `Engine/EntityVTables.cs` |
 | `0x00567e18` | `s_VtPtr_00567e18` | 1664 | `Engine/EntityVTables.cs` |
 | `0x00568498` | `s_SaveNameTemplate_00568498` | 120 | `Screens/State04/CharacterCreation.cs` |
-| `0x00568510` | `s_ControllerBannerText_00568510` | 9024 | `Engine/SaveData.cs` |
-| `0x0056a850` | `s_MenuLayout_0056a850` | 592 | `Screens/State03/Tick/WorldMapHud.cs` |
+| `0x00568510` | `s_ControllerBannerText_00568510` | 32 | `Engine/SaveData.cs` |
+| `0x00568530` | `s_MenuDescriptors_00568530` | 8992 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a850` | `s_MenuLayout_0056a850` | 1 | `Screens/State03/Tick/WorldMapHud.cs` |
+| `0x0056a851` | `s_SpeechIconIndex_0056a851` | 71 | `Screens/State03/Tick/WorldMapHud.cs` |
+| `0x0056a898` | `s_ClassTabs_0056a898` | 48 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a8c8` | `s_TabIcons_0056a8c8` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a8d0` | `s_StatOrder_0056a8d0` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a8d8` | `s_ItemStatOrder_0056a8d8` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a8e0` | `s_MenuDecorHead_0056a8e0` | 16 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a8f0` | `s_MenuDecorStats_0056a8f0` | 88 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a948` | `s_MenuDecorItems_0056a948` | 48 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a978` | `s_MenuDecorSpells_0056a978` | 48 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a9a8` | `s_CardPortIds_0056a9a8` | 56 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a9e0` | `s_CardSlotLayouts_0056a9e0` | 16 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056a9f0` | `s_CardSlotPositions_0056a9f0` | 40 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056aa18` | `s_ConfigRowOffsets_0056aa18` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056aa20` | `s_ControllerTypeNames_0056aa20` | 16 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056aa30` | `s_ToggleNames_0056aa30` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056aa38` | `s_ButtonOrder_0056aa38` | 96 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056aa98` | `s_ButtonMasks_0056aa98` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056aaa0` | `s_IconTables_0056aaa0` | **0** | `Screens/State03/Handlers/Chests.cs` |
+| `0x0056aaa0` | `s_ReactionAnimations_0056aaa0` | 64 | `Screens/State03/Handlers/Chests.cs` |
+| `0x0056aae0` | `s_ItemSprites_0056aae0` | **0** | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056aae0` | `s_SpeechIcons_0056aae0` | 80 | `Screens/State03/Handlers/Chests.cs` |
+| `0x0056ab30` | `s_SpeechBubble_0056ab30` | 8 | `Screens/State03/Handlers/Chests.cs` |
+| `0x0056ab38` | `s_SpeechDigits_0056ab38` | 56 | `Screens/State03/Handlers/Chests.cs` |
+| `0x0056ab70` | `s_SpeechMarker_0056ab70` | 120 | `Screens/State03/Handlers/Chests.cs` |
+| `0x0056abe8` | `s_ConfigStrings_0056abe8` | 56 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056ac20` | `s_Sauvegarde_0056ac20` | 12 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056ac2c` | `s_TitleSentinel_0056ac2c` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056ac30` | `s_EquipRowLabels_0056ac30` | 32 | `Screens/State03/WorldMapMenu.cs` |
+| `0x0056ac50` | `s_MovieNameEnding_0056ac50` | 80 | `Screens/State07/Ending.cs` |
+| `0x0056aca0` | `s_ReachMarkerAtlas_0056aca0` | 8 | `Screens/State03/Combat/HitResolution.cs` |
 | `0x0056aca8` | `s_ResourceFixupSchema_0056aca8` | 160 | `Engine/Resources.cs` |
 | `0x0056ad48` | `s_Vt_0056ad48` | 128 | `Engine/Resources.cs` |
 | `0x0056adc8` | `s_Vt_0056adc8` | 256 | `Engine/Resources.cs` |
@@ -1300,7 +1482,20 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x0056d2a0` | `s_AreaToMenuIndex_0056d2a0` | 16 | `Screens/State02/Destination.cs` |
 | `0x0056d2b0` | `s_MenuIndexToArea_0056d2b0` | 16 | `Screens/State02/Destination.cs` |
 | `0x0056d2c0` | `s_DifficultyBonus_0056d2c0` | 128 | `Screens/State04/CharacterCreation.cs` |
-| `0x0056d340` | `s_StatusTimerMasks_0056d340` | 2584 | `Screens/State03/Tick/WorldSimulationStep.cs` |
+| `0x0056d340` | `s_StatusTimerMasks_0056d340` | 256 | `Screens/State03/Tick/WorldSimulationStep.cs` |
+| `0x0056d440` | `s_ClassBodyMetrics_0056d440` | 2016 | `Screens/State03/Tick/WorldMapHud.cs` |
+| `0x0056dc20` | `s_DepotDeviceIds_0056dc20` | 56 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dc58` | `s_DepotRows_0056dc58` | 16 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dc68` | `s_DepotRowPos_0056dc68` | 40 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dc90` | `s_Unknown_0056dc90` | 8 | `Screens/State03/WorldMapScript.cs` |
+| `0x0056dc98` | `s_DepotStatOrder_0056dc98` | 8 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dca0` | `s_DepotIcons_0056dca0` | 16 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dcb0` | `s_DepotIcons_0056dcb0` | 48 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dce0` | `s_DepotFrame_0056dce0` | 8 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dce8` | `s_DepotKeepMark_0056dce8` | 8 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dcf0` | `s_DepotClassMarks_0056dcf0` | 64 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dd30` | `s_DepotNameSuffix_0056dd30` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x0056dd34` | `s_DepotSeparator_0056dd34` | 36 | `Screens/State03/WorldMapDepot.cs` |
 | `0x0056dd58` | `s_MenuContext_0056dd58` | 2244 | `Screens/State00/Options.cs` |
 | `0x0056e61c` | `s_MenuSelection_0056e61c` | 3 | `Screens/State00/MainMenu.cs` |
 | `0x0056e61f` | `s_Unknown_0056e61f` | 81 | `Screens/State00/MainMenu.cs` |
@@ -1309,21 +1504,24 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x0056e7b0` | `s_GlyphWidths_0056e7b0` | 192 | `Engine/UiText.cs` |
 | `0x0056e870` | `s_ScanTable_0056e870` | 324 | `Engine/UiText.cs` |
 | `0x0056e9b4` | `s_HalfWidthCodes_0056e9b4` | 12 | `Engine/UiText.cs` |
-| `0x0056e9c0` | `s_RandSeed_0056e9c0` | 11072 | `Memory/GameMemory.cs` |
+| `0x0056e9c0` | `s_RandSeed_0056e9c0` | 10416 | `Memory/GameMemory.cs` |
+| `0x00571270` | `s_ViewParams_00571270` | 432 | `Memory/GameMemory.cs` |
+| `0x00571420` | `s_ForestSceneBlock_00571420` | 224 | `Screens/State03/Effects/ForestParticlesB.cs` |
 | `0x00571500` | `s_EntityState_00571500` | 1340 | `Memory/GameMemory.cs` |
 | `0x00571a3c` | `s_Unknown_00571a3c` | 4356 | `Screens/State00/MainMenu.cs` |
 | `0x00572b40` | `s_EmptyLabel_00572b40` | 8 | `Screens/State04/CharacterCreation.cs` |
 | `0x00572b48` | `s_SceneEntity_00572b48` | 156 | `Memory/GameMemory.cs` |
 | `0x00572be4` | `s_SceneParticles_00572be4` | 628 | `Memory/GameMemory.cs` |
 | `0x00572e58` | `s_SceneIcons_00572e58` | 1248 | `Screens/State04/SaveSlots.cs` |
-| `0x00573338` | `s_SelectScratch_00573338` | 24 | `Screens/State04/SaveSlots.cs` |
+| `0x00573338` | `s_SelectScratch_00573338` | 24 | `Memory/GameMemory.cs` |
 | `0x00573350` | `s_Dice_00573350` | 456 | `Screens/State04/CharacterCreation.cs` |
 | `0x00573518` | `s_SelectSlots_00573518` | 20232 | `Screens/State04/SaveSlots.cs` |
 | `0x00578420` | `s_CharacterSlots_00578420` | 2496 | `Memory/GameMemory.cs` |
 | `0x00578de0` | `s_CardLoadResult_00578de0` | 4 | `Screens/State04/CharacterCreation.cs` |
-| `0x00578de4` | `s_StatSource_00578de4` | 32 | `Screens/State04/CharacterCreation.cs` |
+| `0x00578de4` | `s_StatSource_00578de4` | 4 | `Screens/State04/CharacterCreation.cs` |
+| `0x00578de8` | `s_SelectState_00578de8` | 28 | `Screens/State04/CharacterSelect.cs` |
 | `0x00578e04` | `s_DiceRolled_00578e04` | 8 | `Screens/State04/CharacterCreation.cs` |
-| `0x00578e0c` | `s_CardPhase_00578e0c` | 4 | `Screens/State04/CharacterCreation.cs` |
+| `0x00578e0c` | `s_CardPhase_00578e0c` | 4 | `Memory/GameMemory.cs` |
 | `0x00578e10` | `s_CardPrevPhase_00578e10` | 4 | `Screens/State04/CharacterCreation.cs` |
 | `0x00578e14` | `s_CardPhaseChanged_00578e14` | 4 | `Screens/State04/CharacterCreation.cs` |
 | `0x00578e18` | `s_CardCursor_00578e18` | 8 | `Screens/State04/CharacterCreation.cs` |
@@ -1353,9 +1551,12 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005a9de0` | `s_UiKeyboardBits_005a9de0` | 65536 | `Screens/State00/Options.cs` |
 | `0x005b9de0` | `s_UiAtlas1Bits_005b9de0` | 65536 | `Screens/State00/Options.cs` |
 | `0x005c9de0` | `s_UiAtlas2Bits_005c9de0` | 65536 | `Screens/State00/Options.cs` |
-| `0x005d9de0` | `s_Unknown_005d9de0` | 4 | `Screens/State00/MainMenu.cs` |
-| `0x005d9de4` | `s_UiSetupDone_005d9de4` | 20 | `Screens/State00/Options.cs` |
-| `0x005d9df8` | `s_UiFrameColourKey_005d9df8` | 8 | `Screens/State00/Options.cs` |
+| `0x005d9de0` | `s_Unknown_005d9de0` | 4 | `Memory/GameMemory.cs` |
+| `0x005d9de4` | `s_UiSetupDone_005d9de4` | 4 | `Screens/State00/Options.cs` |
+| `0x005d9de8` | `s_UiFrameColourKey_005d9de8` | 8 | `Screens/State00/Options.cs` |
+| `0x005d9df0` | `s_UiAtlasColourKey_005d9df0` | 8 | `Screens/State00/Options.cs` |
+| `0x005d9df8` | `s_UiFrameColourKey_005d9df8` | **0** | `Screens/State00/Options.cs` |
+| `0x005d9df8` | `s_UiRestoreColourKey_005d9df8` | 8 | `Screens/State00/Options.cs` |
 | `0x005d9e00` | `s_UiRepeatActive_005d9e00` | 4 | `Screens/State00/Options.cs` |
 | `0x005d9e04` | `s_UiKeyEdges_005d9e04` | 4 | `Screens/State00/Options.cs` |
 | `0x005d9e08` | `s_UiRepeatCounter_005d9e08` | 4 | `Screens/State00/Options.cs` |
@@ -1368,16 +1569,45 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005d9e3c` | `s_UiKeySelection_005d9e3c` | 4 | `Screens/State00/Options.cs` |
 | `0x005d9e40` | `s_UiKeyScroll_005d9e40` | 4 | `Screens/State00/Options.cs` |
 | `0x005d9e44` | `s_UiControlSelection_005d9e44` | 4 | `Screens/State00/Options.cs` |
-| `0x005d9e48` | `s_UiOptionsSelection_005d9e48` | 7712 | `Screens/State00/Options.cs` |
-| `0x005dbc68` | `s_WorldPanels_005dbc68` | 9160 | `Screens/State03/WorldMap.cs` |
+| `0x005d9e48` | `s_UiOptionsSelection_005d9e48` | 6640 | `Screens/State00/Options.cs` |
+| `0x005db838` | `s_MusicWaitHandles_005db838` | 36 | `Engine/Audio.cs` |
+| `0x005db85c` | `s_MainWindow_005db85c` | 44 | `Engine/Audio.cs` |
+| `0x005db888` | `s_PrimaryFormat_005db888` | 640 | `Engine/Audio.cs` |
+| `0x005dbb08` | `s_FlagMirror_005dbb08` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbb48` | `s_DebugSystemIndex_005dbb48` | 8 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbb50` | `s_ChangeBit_005dbb50` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbb90` | `s_ChangeState_005dbb90` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbbd0` | `s_ChangeIndex_005dbbd0` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbc10` | `s_ChangeCount_005dbc10` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbc14` | `s_DebugQuest_005dbc14` | 4 | `Screens/State03/WorldMap.cs` |
+| `0x005dbc18` | `s_DebugPlayer_005dbc18` | 4 | `Screens/State03/WorldMap.cs` |
+| `0x005dbc1c` | `s_DebugItemIndex_005dbc1c` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbc20` | `s_DebugWorkIndex_005dbc20` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbc24` | `s_DebugBitCursor_005dbc24` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbc28` | `s_ChangeKind_005dbc28` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005dbc68` | `s_PartyPanelDescriptors_005dbc68` | **0** | `Screens/State03/Tick/WorldMapHud.cs` |
+| `0x005dbc68` | `s_WorldPanels_005dbc68` | 8992 | `Screens/State03/WorldMap.cs` |
+| `0x005ddf88` | `s_DebugFlagIndex_005ddf88` | 8 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005ddf90` | `s_SystemMirror_005ddf90` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005ddfd0` | `s_DebugMap_005ddfd0` | 4 | `Screens/State03/WorldMap.cs` |
+| `0x005ddfd4` | `s_DebugTempIndex_005ddfd4` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005ddfd8` | `s_ItemMirror_005ddfd8` | 64 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005de018` | `s_Unknown_005de018` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005de01c` | `s_DebugMenuSelection_005de01c` | 4 | `Screens/State03/WorldMapDebugMenu.cs` |
+| `0x005de020` | `s_DebugOverlayEnabled_005de020` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de024` | `s_Unknown_005de024` | 4 | `Memory/GameMemory.cs` |
+| `0x005de028` | `s_Unknown_005de028` | 4 | `Memory/GameMemory.cs` |
+| `0x005de02c` | `s_WorldFlags_005de02c` | 4 | `Memory/GameMemory.cs` |
 | `0x005de030` | `s_CameraBlock_005de030` | 4 | `Memory/GameMemory.cs` |
-| `0x005de034` | `s_Unknown_005de034` | 204 | `Screens/State04/CharacterCreation.cs` |
+| `0x005de034` | `s_Unknown_005de034` | 140 | `Screens/State04/CharacterCreation.cs` |
+| `0x005de0c0` | `s_GameOverDescriptor_005de0c0` | 8 | `Screens/State09/GameOver.cs` |
+| `0x005de0c8` | `s_ItemNameScratch_005de0c8` | 56 | `Screens/State03/WorldMapMenu.cs` |
 | `0x005de100` | `s_ItemMenuArena_005de100` | 16 | `Memory/GameMemory.cs` |
 | `0x005de110` | `s_ItemNameScratch_005de110` | 68 | `Screens/State06/Inventory.cs` |
 | `0x005de154` | `s_Unknown_005de154` | 4 | `Screens/State00/MainMenu.cs` |
 | `0x005de158` | `s_Unknown_005de158` | 4 | `Screens/State00/MainMenu.cs` |
 | `0x005de15c` | `s_Unknown_005de15c` | 4 | `Screens/State00/MainMenu.cs` |
-| `0x005de160` | `s_SizeSetting_005de160` | 4 | `Screens/State00/Options.cs` |
+| `0x005de160` | `s_SizeSetting_005de160` | 4 | `Memory/GameMemory.cs` |
 | `0x005de164` | `s_CheatIndex_005de164` | 4 | `Engine/UiText.cs` |
 | `0x005de168` | `s_Unknown_005de168` | 360 | `Engine/Input.cs` |
 | `0x005de2d0` | `s_ItemValue_005de2d0` | 8 | `Screens/State06/Inventory.cs` |
@@ -1406,46 +1636,98 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005de4e8` | `s_ItemMenuCardSlot_005de4e8` | **0** | `Screens/State06/Inventory.cs` |
 | `0x005de4e8` | `s_ItemMenuLoaded_005de4e8` | 4 | `Screens/State06/Inventory.cs` |
 | `0x005de4ec` | `s_ItemGridScroll_005de4ec` | 4 | `Screens/State06/Inventory.cs` |
-| `0x005de4f0` | `s_ItemMenuVisible_005de4f0` | **0** | `Screens/State06/Inventory.cs` |
-| `0x005de4f0` | `s_ItemMenuTarget_005de4f0` | 4 | `Screens/State06/Inventory.cs` |
+| `0x005de4f0` | `s_ItemMenuTarget_005de4f0` | **0** | `Screens/State06/Inventory.cs` |
+| `0x005de4f0` | `s_ItemMenuVisible_005de4f0` | 4 | `Screens/State06/Inventory.cs` |
 | `0x005de4f4` | `s_Unknown_005de4f4` | 4 | `Screens/State06/Inventory.cs` |
 | `0x005de4f8` | `s_KeyPage_005de4f8` | 4 | `Screens/State06/Inventory.cs` |
 | `0x005de4fc` | `s_KeyColumn_005de4fc` | 4 | `Screens/State06/Inventory.cs` |
 | `0x005de500` | `s_KeyRow_005de500` | 4 | `Screens/State06/Inventory.cs` |
 | `0x005de504` | `s_ItemNameLength_005de504` | 4 | `Screens/State06/Inventory.cs` |
 | `0x005de508` | `s_ItemRenamed_005de508` | 4 | `Screens/State06/Inventory.cs` |
-| `0x005de50c` | `s_Unknown_005de50c` | 16 | `Screens/State06/ItemMenu.cs` |
-| `0x005de51c` | `s_Unknown_005de51c` | 12 | `Screens/State00/MainMenu.cs` |
+| `0x005de50c` | `s_Unknown_005de50c` | 4 | `Screens/State06/ItemMenu.cs` |
+| `0x005de510` | `s_GameStateId_005de510` | 8 | `Screens/GameStates.cs` |
+| `0x005de518` | `s_Unknown_005de518` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de51c` | `s_Unknown_005de51c` | 4 | `Screens/State00/MainMenu.cs` |
+| `0x005de520` | `s_Unknown_005de520` | 8 | `Memory/GameMemory.cs` |
 | `0x005de528` | `s_Unknown_005de528` | 4 | `Engine/Resources.cs` |
 | `0x005de52c` | `s_Unknown_005de52c` | 4 | `Screens/State02/Destination.cs` |
 | `0x005de530` | `s_Unknown_005de530` | 4 | `Screens/State02/Destination.cs` |
 | `0x005de534` | `s_Unknown_005de534` | 4 | `Screens/State03/WorldMap.cs` |
-| `0x005de538` | `s_Unknown_005de538` | 4 | `Engine/Resources.cs` |
-| `0x005de53c` | `s_Unknown_005de53c` | 16 | `Screens/DebugParty.cs` |
-| `0x005de54c` | `s_Unknown_005de54c` | 8 | `Screens/State03/WorldMap.cs` |
+| `0x005de538` | `s_Unknown_005de538` | 4 | `Memory/GameMemory.cs` |
+| `0x005de53c` | `s_Unknown_005de53c` | 4 | `Screens/DebugParty.cs` |
+| `0x005de540` | `s_Unknown_005de540` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de544` | `s_Unknown_005de544` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de548` | `s_Unknown_005de548` | 4 | `Screens/State03/WorldMapScript.cs` |
+| `0x005de54c` | `s_Unknown_005de54c` | 4 | `Screens/State03/WorldMap.cs` |
+| `0x005de550` | `s_Unknown_005de550` | 4 | `Screens/State03/WorldMapCamera.cs` |
 | `0x005de554` | `s_Unknown_005de554` | 4 | `Engine/Input.cs` |
-| `0x005de558` | `s_EntityList_005de558` | 480 | `Engine/Resources.cs` |
+| `0x005de558` | `s_EntityList_005de558` | 160 | `Engine/Resources.cs` |
+| `0x005de5f8` | `s_MenuSprite_005de5f8` | 24 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de610` | `s_IconRect_005de610` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de618` | `s_MarkerCursor_005de618` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de620` | `s_ItemMessageScratch_005de620` | 128 | `Screens/State03/Handlers/Chests.cs` |
+| `0x005de6a0` | `s_SpellList_005de6a0` | 8 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de6a8` | `s_KeyItemIndex_005de6a8` | 32 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de6c8` | `s_MapModelBlock_005de6c8` | 40 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de6f0` | `s_MenuPage_005de6f0` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de6f4` | `s_Unknown_005de6f4` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de6f8` | `s_Unknown_005de6f8` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de6fc` | `s_Unknown_005de6fc` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de700` | `s_CardSlotCursor_005de700` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de704` | `s_Unknown_005de704` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de708` | `s_Unknown_005de708` | 4 | `Screens/State03/Tick/PartyMemberStep.cs` |
+| `0x005de70c` | `s_Unknown_005de70c` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de710` | `s_Unknown_005de710` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de714` | `s_Unknown_005de714` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de718` | `s_Unknown_005de718` | 4 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005de71c` | `s_Unknown_005de71c` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de720` | `s_Unknown_005de720` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de724` | `s_Unknown_005de724` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005de728` | `s_ViewerModelSet_005de728` | 8 | `Screens/State08/ModelViewer.cs` |
+| `0x005de730` | `s_FaceWalkHistory_005de730` | 8 | `Memory/GameMemory.cs` |
 | `0x005de738` | `s_Unknown_005de738` | 176 | `Screens/DebugParty.cs` |
-
-> **Correction locale, 2026-08-25.** L'écart de 480 déclaré sur `0x005de558` est celui d'un index
-> qui n'a pas suivi : la bande `0x005de5f8`..`0x005de6f0` porte depuis plusieurs séances des
-> symboles que la table ci-dessous n'a jamais listés. Relevé pour cette bande seule, dans l'ordre :
->
-> | VA | symbole C# | taille | fichier |
-> |---|---|---:|---|
-> | `0x005de5f8` | `s_MenuSprite_005de5f8` | 20 | `Screens/State03/WorldMapMenu.cs` |
-> | `0x005de620` | `s_ItemMessageScratch_005de620` | 128 | `Screens/State03/Handlers/Chests.cs` |
-> | `0x005de6a8` | `s_KeyItemIndex_005de6a8` | 32 | `Screens/State03/WorldMapMenu.cs` |
-> | `0x005de6f0` | `s_MenuPage_005de6f0` | 4 | `Screens/State03/WorldMapMenu.cs` |
->
-> Les trois écarts internes se referment sans recouvrement (`0x005de60c` → `0x005de620`,
-> `0x005de6a0` → `0x005de6a8`, `0x005de6c8` → `0x005de6f0`). Le reste de l'index n'a pas été
-> re-vérifié : le prendre comme un état daté, pas comme une garantie.
 | `0x005de7e8` | `s_Unknown_005de7e8` | 4 | `Screens/State01/PartySetup.cs` |
 | `0x005de7ec` | `s_Unknown_005de7ec` | 4 | `Screens/State01/PartySetup.cs` |
 | `0x005de7f0` | `s_Unknown_005de7f0` | 4 | `Screens/State01/PartySetup.cs` |
 | `0x005de7f4` | `s_Unknown_005de7f4` | 48 | `Screens/State01/PartySetup.cs` |
-| `0x005de824` | `s_Particles_005de824` | 6060 | `Screens/State02/Destination.cs` |
+| `0x005de824` | `s_Particles_005de824` | 4968 | `Screens/State02/Destination.cs` |
+| `0x005dfb8c` | `s_DelayedSoundCursor_005dfb8c` | 4 | `Engine/Audio.cs` |
+| `0x005dfb90` | `s_DelayedSounds_005dfb90` | 648 | `Engine/Audio.cs` |
+| `0x005dfe18` | `s_Unknown_005dfe18` | 8 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfe20` | `s_DepotSprite_005dfe20` | 24 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfe38` | `s_DepotIconRect_005dfe38` | 8 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfe40` | `s_Unknown_005dfe40` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfe44` | `s_Unknown_005dfe44` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfe48` | `s_Unknown_005dfe48` | 8 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfe50` | `s_DepotMessage_005dfe50` | 128 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfed0` | `s_DepotKeep_005dfed0` | 24 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfee8` | `s_Unknown_005dfee8` | 12 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfef4` | `s_DepotRect_005dfef4` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfef8` | `s_Unknown_005dfef8` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dfefc` | `s_DepotRect_005dfefc` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff00` | `s_Unknown_005dff00` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff04` | `s_Unknown_005dff04` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff08` | `s_Unknown_005dff08` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff0c` | `s_Unknown_005dff0c` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff10` | `s_Unknown_005dff10` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff14` | `s_Unknown_005dff14` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff18` | `s_Unknown_005dff18` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff1c` | `s_Unknown_005dff1c` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff20` | `s_Unknown_005dff20` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff24` | `s_Unknown_005dff24` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff28` | `s_Unknown_005dff28` | 4 | `Screens/State03/WorldMapScript.cs` |
+| `0x005dff2c` | `s_Unknown_005dff2c` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff30` | `s_Unknown_005dff30` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff34` | `s_Unknown_005dff34` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff38` | `s_Unknown_005dff38` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff3c` | `s_Unknown_005dff3c` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff40` | `s_DepotSlots_005dff40` | 24 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff58` | `s_Unknown_005dff58` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff5c` | `s_Unknown_005dff5c` | 4 | `Screens/State03/WorldMapScript.cs` |
+| `0x005dff60` | `s_Unknown_005dff60` | 4 | `Screens/State03/WorldMapScript.cs` |
+| `0x005dff64` | `s_Unknown_005dff64` | 28 | `Screens/State03/WorldMapScript.cs` |
+| `0x005dff80` | `s_Unknown_005dff80` | 4 | `Screens/State03/WorldMapDepot.cs` |
+| `0x005dff84` | `s_Unknown_005dff84` | 76 | `Screens/State03/WorldMapDepot.cs` |
 | `0x005dffd0` | `s_GlyphMode_005dffd0` | 8 | `Engine/UiText.cs` |
 | `0x005dffd8` | `s_DbcsRowScratch_005dffd8` | 16 | `Engine/UiText.cs` |
 | `0x005dffe8` | `s_Unknown_005dffe8` | 788 | `Engine/UiText.cs` |
@@ -1455,24 +1737,34 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005e8304` | `s_StagingWrite_005e8304` | 4 | `Engine/UiText.cs` |
 | `0x005e8308` | `s_TextState_005e8308` | 4 | `Engine/UiText.cs` |
 | `0x005e830c` | `s_TrimAnchor_005e830c` | 4 | `Engine/UiText.cs` |
-| `0x005e8310` | `s_Unknown_005e8310` | 4 | `Screens/State00/MainMenu.cs` |
+| `0x005e8310` | `s_Unknown_005e8310` | 4 | `Memory/GameMemory.cs` |
 | `0x005e8314` | `s_OtCursor_005e8314` | 4 | `Engine/UiText.cs` |
 | `0x005e8318` | `s_LineIndex_005e8318` | 4 | `Engine/UiText.cs` |
 | `0x005e831c` | `s_UploadCursor_005e831c` | 4 | `Engine/UiText.cs` |
 | `0x005e8320` | `s_PenX_005e8320` | 4 | `Engine/UiText.cs` |
 | `0x005e8324` | `s_SpriteCursor_005e8324` | 4 | `Engine/UiText.cs` |
-| `0x005e8328` | `s_BreakPen_005e8328` | 504 | `Engine/UiText.cs` |
-| `0x005e8520` | `s_SoundBankHeader_005e8520` | 160 | `Screens/State03/WorldMap.cs` |
+| `0x005e8328` | `s_BreakPen_005e8328` | 24 | `Engine/UiText.cs` |
+| `0x005e8340` | `s_SoundDirectory_005e8340` | 480 | `Memory/GameMemory.cs` |
+| `0x005e8520` | `s_SoundBankHeader_005e8520` | 136 | `Screens/State03/WorldMap.cs` |
+| `0x005e85a8` | `s_LevelUpPhysicalOdds_005e85a8` | 2 | `Screens/State03/Combat/Progression.cs` |
+| `0x005e85aa` | `s_LevelUpMentalOdds_005e85aa` | 6 | `Screens/State03/Combat/Progression.cs` |
+| `0x005e85b0` | `s_LevelUpGains_005e85b0` | 16 | `Screens/State03/Combat/Progression.cs` |
 | `0x005e85c0` | `s_PartyListArena_005e85c0` | **0** | `Memory/GameMemory.cs` |
 | `0x005e85c0` | `s_PartySelectionOrder_005e85c0` | 128 | `Screens/State01/PartySetup.cs` |
-| `0x005e8640` | `s_PartyRowText_005e8640` | 2240 | `Screens/State01/PartySetup.cs` |
-| `0x005e8f00` | `s_EntityDecodeTable_005e8f00` | 192 | `Screens/State00/MainMenu.cs` |
+| `0x005e8640` | `s_PartyRowText_005e8640` | 2200 | `Screens/State01/PartySetup.cs` |
+| `0x005e8ed8` | `s_Unknown_005e8ed8` | 2 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005e8eda` | `s_Unknown_005e8eda` | 2 | `Screens/State03/Tick/SpriteAtlas.cs` |
+| `0x005e8edc` | `s_Unknown_005e8edc` | 4 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005e8ee0` | `s_Unknown_005e8ee0` | 32 | `Screens/State03/WorldMapMenu.cs` |
+| `0x005e8f00` | `s_EntityDecodeTable_005e8f00` | 192 | `Memory/GameMemory.cs` |
 | `0x005e8fc0` | `s_EntityDecodeTable_005e8fc0` | 64 | `Engine/Resources.cs` |
 | `0x005e9000` | `s_GameArena_005e9000` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9000` | `s_PartyAbilityMask_005e9000` | 32 | `Screens/State04/SaveSlots.cs` |
 | `0x005e9020` | `s_PartySize_005e9020` | 64 | `Screens/State04/SaveSlots.cs` |
-| `0x005e9060` | `s_StateBank2_005e9060` | **0** | `Memory/GameMemory.cs` |
-| `0x005e9060` | `s_PanelSelection_005e9060` | 10 | `Memory/GameMemory.cs` |
+| `0x005e9060` | `s_PanelSelection_005e9060` | **0** | `Memory/GameMemory.cs` |
+| `0x005e9060` | `s_StateBank2_005e9060` | 2 | `Memory/GameMemory.cs` |
+| `0x005e9062` | `s_Unknown_005e9062` | 3 | `Screens/State03/Handlers/LabyrinthMecanismes.cs` |
+| `0x005e9065` | `s_Unknown_005e9065` | 5 | `Screens/State03/Handlers/LabyrinthMecanismes.cs` |
 | `0x005e906a` | `s_StatTotal_005e906a` | 22 | `Screens/State04/CharacterCreation.cs` |
 | `0x005e9080` | `s_Unknown_005e9080` | 26 | `Screens/State06/Inventory.cs` |
 | `0x005e909a` | `s_Unknown_005e909a` | 1 | `Screens/State04/SaveSlots.cs` |
@@ -1481,35 +1773,36 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005e909d` | `s_Unknown_005e909d` | 1 | `Screens/State04/SaveSlots.cs` |
 | `0x005e909e` | `s_Unknown_005e909e` | 1 | `Screens/State04/SaveSlots.cs` |
 | `0x005e909f` | `s_Unknown_005e909f` | 225 | `Memory/GameMemory.cs` |
-| `0x005e9180` | `s_EntitySlotTable_005e9180` | **0** | `Engine/Resources.cs` |
+| `0x005e9180` | `s_EntitySlotTable_005e9180` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9180` | `s_SlotArea_005e9180` | 8 | `Engine/Input.cs` |
 | `0x005e9188` | `s_PlayerSlots_005e9188` | 296 | `Engine/Input.cs` |
 | `0x005e92b0` | `s_Unknown_005e92b0` | 16 | `Screens/DebugParty.cs` |
-| `0x005e92c0` | `s_StateBank5_005e92c0` | **0** | `Memory/GameMemory.cs` |
-| `0x005e92c0` | `s_Bank_005e92c0` | 72 | `Screens/State01/PartySetup.cs` |
+| `0x005e92c0` | `s_Bank_005e92c0` | **0** | `Screens/State01/PartySetup.cs` |
+| `0x005e92c0` | `s_StateBank5_005e92c0` | 72 | `Memory/GameMemory.cs` |
 | `0x005e9308` | `s_ScenePitch_005e9308` | 2 | `Memory/GameMemory.cs` |
 | `0x005e930a` | `s_SceneYaw_005e930a` | 2 | `Memory/GameMemory.cs` |
 | `0x005e930c` | `s_SceneRoll_005e930c` | 20 | `Memory/GameMemory.cs` |
 | `0x005e9320` | `s_EquipPairs_005e9320` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e9360` | `s_StateBank7_005e9360` | **0** | `Memory/GameMemory.cs` |
-| `0x005e9360` | `s_Bank_005e9360` | 64 | `Screens/State01/PartySetup.cs` |
+| `0x005e9360` | `s_Bank_005e9360` | **0** | `Screens/State01/PartySetup.cs` |
+| `0x005e9360` | `s_StateBank7_005e9360` | 64 | `Memory/GameMemory.cs` |
 | `0x005e93a0` | `s_BackColourR_005e93a0` | 2 | `Memory/GameMemory.cs` |
 | `0x005e93a2` | `s_BackColourG_005e93a2` | 2 | `Memory/GameMemory.cs` |
 | `0x005e93a4` | `s_BackColourB_005e93a4` | 28 | `Memory/GameMemory.cs` |
 | `0x005e93c0` | `s_SlotFlags_005e93c0` | 624 | `Engine/Input.cs` |
 | `0x005e9630` | `s_Unknown_005e9630` | 16 | `Memory/GameMemory.cs` |
-| `0x005e9640` | `s_AnimationTable_005e9640` | 64 | `Screens/State04/CharacterSelect.cs` |
+| `0x005e9640` | `s_AnimationTable_005e9640` | 64 | `Memory/GameMemory.cs` |
 | `0x005e9680` | `s_PartyAnimationResult_005e9680` | 32 | `Screens/DebugParty.cs` |
 | `0x005e96a0` | `s_ModelTable_005e96a0` | 64 | `Screens/State04/CharacterSelect.cs` |
-| `0x005e96e0` | `s_StateBank0_005e96e0` | **0** | `Memory/GameMemory.cs` |
-| `0x005e96e0` | `s_Bank_005e96e0` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e9720` | `s_StateBank4_005e9720` | **0** | `Memory/GameMemory.cs` |
-| `0x005e9720` | `s_Bank_005e9720` | 64 | `Screens/State01/PartySetup.cs` |
+| `0x005e96e0` | `s_Bank_005e96e0` | **0** | `Screens/State01/PartySetup.cs` |
+| `0x005e96e0` | `s_StateBank0_005e96e0` | 36 | `Memory/GameMemory.cs` |
+| `0x005e9704` | `s_CastleGiftDone_005e9704` | 28 | `Screens/State03/WorldMapScript.cs` |
+| `0x005e9720` | `s_Bank_005e9720` | **0** | `Screens/State01/PartySetup.cs` |
+| `0x005e9720` | `s_StateBank4_005e9720` | 64 | `Memory/GameMemory.cs` |
 | `0x005e9760` | `s_Unknown_005e9760` | 32 | `Screens/State03/WorldMap.cs` |
-| `0x005e9780` | `s_StateBank1_005e9780` | **0** | `Memory/GameMemory.cs` |
-| `0x005e9780` | `s_Bank_005e9780` | 64 | `Screens/State01/PartySetup.cs` |
+| `0x005e9780` | `s_Bank_005e9780` | **0** | `Screens/State01/PartySetup.cs` |
+| `0x005e9780` | `s_StateBank1_005e9780` | 64 | `Memory/GameMemory.cs` |
 | `0x005e97c0` | `s_MainResourceBuffer_005e97c0` | 4 | `Memory/GameMemory.cs` |
-| `0x005e97c4` | `s_MainResourceDirectory_005e97c4` | 4 | `Engine/Resources.cs` |
+| `0x005e97c4` | `s_MainResourceDirectory_005e97c4` | 4 | `Memory/GameMemory.cs` |
 | `0x005e97c8` | `s_Unknown_005e97c8` | 4 | `Screens/State00/MainMenu.cs` |
 | `0x005e97cc` | `s_Unknown_005e97cc` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005e97d0` | `s_Unknown_005e97d0` | 4 | `Screens/State00/MainMenu.cs` |
@@ -1527,16 +1820,17 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005e9824` | `s_Unknown_005e9824` | 4 | `Engine/Resources.cs` |
 | `0x005e9828` | `s_Unknown_005e9828` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005e982c` | `s_Unknown_005e982c` | 20 | `Screens/State03/WorldMap.cs` |
-| `0x005e9840` | `s_StateBank3_005e9840` | **0** | `Memory/GameMemory.cs` |
-| `0x005e9840` | `s_Bank_005e9840` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e9880` | `s_EnvBlock_005e9880` | **0** | `Memory/GameMemory.cs` |
-| `0x005e9880` | `s_DrawEnv0_005e9880` | 92 | `Memory/GameMemory.cs` |
+| `0x005e9840` | `s_Bank_005e9840` | **0** | `Screens/State01/PartySetup.cs` |
+| `0x005e9840` | `s_StateBank3_005e9840` | 44 | `Memory/GameMemory.cs` |
+| `0x005e986c` | `s_CastleGiftPending_005e986c` | 20 | `Screens/State03/WorldMapScript.cs` |
+| `0x005e9880` | `s_DrawEnv0_005e9880` | **0** | `Memory/GameMemory.cs` |
+| `0x005e9880` | `s_EnvBlock_005e9880` | 92 | `Memory/GameMemory.cs` |
 | `0x005e98dc` | `s_DispEnv0_005e98dc` | 20 | `Memory/GameMemory.cs` |
 | `0x005e98f0` | `s_DrawEnv1_005e98f0` | 92 | `Memory/GameMemory.cs` |
 | `0x005e994c` | `s_DispEnv1_005e994c` | 20 | `Memory/GameMemory.cs` |
 | `0x005e9960` | `s_FadeCounter_005e9960` | 32 | `Screens/State00/MainMenu.cs` |
-| `0x005e9980` | `s_StateBank6_005e9980` | **0** | `Memory/GameMemory.cs` |
-| `0x005e9980` | `s_Bank_005e9980` | 348 | `Screens/State01/PartySetup.cs` |
+| `0x005e9980` | `s_Bank_005e9980` | **0** | `Screens/State01/PartySetup.cs` |
+| `0x005e9980` | `s_StateBank6_005e9980` | 348 | `Memory/GameMemory.cs` |
 | `0x005e9adc` | `s_Unknown_005e9adc` | 2692 | `Screens/State03/WorldMap.cs` |
 | `0x005ea560` | `s_EntityStatBlocks_005ea560` | 9376 | `Screens/State04/CharacterCreation.cs` |
 | `0x005eca00` | `s_EntityArena_005eca00` | 5316 | `Memory/GameMemory.cs` |
@@ -1550,8 +1844,10 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x006008d0` | `s_Unknown_006008d0` | 4 | `Memory/GameMemory.cs` |
 | `0x006008d4` | `s_Unknown_006008d4` | 4 | `Memory/GameMemory.cs` |
 | `0x006008d8` | `s_Unknown_006008d8` | 8 | `Memory/GameMemory.cs` |
-| `0x006008e0` | `s_CameraMatrix_006008e0` | 36 | `Memory/GameMemory.cs` |
-| `0x00600904` | `s_OverrideDestC_00600904` | 16420 | `Engine/Resources.cs` |
+| `0x006008e0` | `s_CameraMatrix_006008e0` | 32 | `Memory/GameMemory.cs` |
+| `0x00600900` | `s_LevelSoundBank_00600900` | 4 | `Memory/GameMemory.cs` |
+| `0x00600904` | `s_OverrideDestC_00600904` | 16412 | `Engine/Resources.cs` |
+| `0x00604920` | `s_BaseSoundBank_00604920` | 8 | `Memory/GameMemory.cs` |
 | `0x00604928` | `s_CameraVector_00604928` | 8 | `Memory/GameMemory.cs` |
 | `0x00604930` | `s_OverrideDestB_00604930` | 16 | `Engine/Resources.cs` |
 | `0x00604940` | `s_CardPathDescriptor_00604940` | 32 | `Engine/SaveData.cs` |
@@ -1559,7 +1855,9 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00604980` | `s_CardSlotIndex_00604980` | 1 | `Screens/State04/SaveSlots.cs` |
 | `0x00604981` | `s_CardEntryCount_00604981` | 1 | `Screens/State04/SaveSlots.cs` |
 | `0x00604982` | `s_Unknown_00604982` | 2 | `Screens/State04/SaveSlots.cs` |
-| `0x00604984` | `s_CardCursorSlot_00604984` | 6 | `Screens/State04/SaveSlots.cs` |
+| `0x00604984` | `s_CardCursorSlot_00604984` | 4 | `Screens/State04/SaveSlots.cs` |
+| `0x00604988` | `s_CardIconAngle_00604988` | **0** | `Screens/State04/SaveSlots.cs` |
+| `0x00604988` | `s_CardIconSpin_00604988` | 2 | `Screens/State04/SaveSlots.cs` |
 | `0x0060498a` | `s_Unknown_0060498a` | 2 | `Screens/State04/SaveSlots.cs` |
 | `0x0060498c` | `s_CardIconFrameCount_0060498c` | 48 | `Screens/State04/SaveSlots.cs` |
 | `0x006049bc` | `s_CardDirectoryEntries_006049bc` | 68 | `Screens/State04/SaveSlots.cs` |
@@ -1571,9 +1869,14 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00604b0c` | `s_JoyBlock1_00604b0c` | 34 | `Engine/Input.cs` |
 | `0x00604b2e` | `s_JoyAxis2_00604b2e` | 34 | `Engine/Input.cs` |
 | `0x00604b50` | `s_KeyboardState_00604b50` | 4 | `Engine/Input.cs` |
-| `0x00604b54` | `s_JoystickDevice_00604b54` | 4 | `Platform/Startup.cs` |
+| `0x00604b54` | `s_JoystickDevice_00604b54` | 4 | `Memory/GameMemory.cs` |
 | `0x00604b58` | `s_CardReadEventHandles_00604b58` | 16 | `Engine/SaveData.cs` |
-| `0x00604b68` | `s_CardWriteEventHandles_00604b68` | 7256 | `Engine/SaveData.cs` |
+| `0x00604b68` | `s_CardWriteEventHandles_00604b68` | 16 | `Engine/SaveData.cs` |
+| `0x00604b78` | `s_CutsceneActive_00604b78` | 4 | `Engine/SaveData.cs` |
+| `0x00604b7c` | `s_SavedViewMode_00604b7c` | 4 | `Engine/SaveData.cs` |
+| `0x00604b80` | `s_CameraResetArmed_00604b80` | 4 | `Screens/State03/Handlers/Common.cs` |
+| `0x00604b84` | `s_CameraResetMask_00604b84` | 28 | `Screens/State03/Handlers/Common.cs` |
+| `0x00604ba0` | `s_OccluderCache_00604ba0` | 7200 | `Screens/State03/WorldMapCamera.cs` |
 | `0x006067c0` | `s_ViewBlock_006067c0` | — | `Memory/GameMemory.cs` |
 
 
@@ -1603,17 +1906,19 @@ coup d'œil** : lu en dwords, le premier tableau donne `0xffff, 0, 1, 0xffff…`
 des sentinelles plutôt qu'à des offsets. C'est la lecture en `short` — celle que fait le code — qui
 révèle la grille.
 
-## 0x00604ba0 et 0x00604d30 — le cache de maillage de la caméra (non modélisé)
+## 0x00604ba0 et 0x00604d30 — le cache de maillage de la caméra
 
-Deux tableaux **parallèles** de pointeurs, espacés de `0x190`, indexés par
-`(cellule * 200 + n) * 4` dans `FUN_004011c0`. Le premier donne un enregistrement de face, le
-second la table de sommets qui va avec. Le compte par cellule vit dans `DAT_005712a8[cellule]`.
+**Tranché le 2026-11-27 : un seul bloc entrelacé**, `s_OccluderCache_00604ba0`
+(`Screens/State03/WorldMapCamera.cs`), `0x1c20` octets. Les deux bases sont indexées par le même
+registre, `(cellule * 200 + n) * 4` (`0x004019e4` / `0x004019ea`), et `n` est plafonné à 99 par
+`FUN_00402de0` : une cellule occupe 200 mots — les 100 premiers sont les pointeurs de face (base
+`0x00604ba0`), les 100 suivants la table de sommets de chacune (base `0x00604d30` =
+`0x00604ba0 + 100 * 4`). Neuf cellules × `0x320` = `0x1c20`, qui finit **pile à `0x006067c0`**,
+le début de `ViewBlock` : c'est le recoupement qui valide la lecture. Le compte par cellule vit
+dans `DAT_005712a8[cellule]` (neuf entiers, dans `ViewParams`).
 
-**Leur étendue n'est pas établie** : l'indexation par `cellule * 200` suggère 9 × 200 entrées, ce
-qui déborderait largement l'écart de 0x190 entre les deux bases. Soit le compte réel par cellule est
-petit, soit l'une des deux bases est mal identifiée. À trancher au désassembleur avant de les
-modéliser — les allouer sur la foi de l'indexation apparente reproduirait un débordement qui
-n'existe peut-être pas.
+L'« étendue contredite » de l'ancienne note venait de lire les deux bases comme deux tableaux
+indépendants : il n'y a pas de débordement, les deux moitiés d'une cellule se suivent.
 
 
 ## Les descripteurs de sprite de la moitié dessin (0x00564680, 0x00566c18)

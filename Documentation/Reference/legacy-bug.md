@@ -2584,3 +2584,62 @@ version PC n'en a gardé qu'une.
 **Correction** (`Screens/State04/SaveSlots.cs`, `HandlePadNameEntry`) : rond, tampon vide, ramène au
 carrousel où que soit le curseur, comme on l'attend sur PlayStation. La sortie passe par le même
 chemin que celle d'Échap (son, sous-état précédent), et LB-001 y rallume la lecture du clavier.
+
+## LB-061 — Le jeu n'avait pas d'autre frein que la synchronisation de l'écran
+
+**Statut** : `Corrigé` le 2026-11-20 (legacy ++, demande de Vincent). **Sans interrupteur** : le
+limiteur rend la vitesse du jeu de 1998, il n'en change pas l'équilibre.
+
+**Ce que faisait l'original** : le jeu avance d'un cran par image, sans mesurer le temps. Le mode de
+cadence de winsys3d (`SetTimingMode`, ordinal 822) reste à 0 — seule la page « Timing » du menu de
+mise en route l'appelle —, et en mode 0 l'attente d'image (ordinal 132) rend la main tout de suite.
+Toute la cadence venait du `Flip` DirectDraw, bloquant sur le balayage d'un écran à 60 Hz.
+
+**Ce que le port en faisait** : `Present(1, 0)` (`Host/D3D11Backend.cs`), le même frein et le seul.
+Deux conséquences que l'original n'avait pas :
+
+- sur un écran à 120 Hz ou plus, **tout le jeu va deux fois plus vite** ou davantage (réserve notée
+  dans `Present` dès le 2026-08-18, et dans l'entrée du voile de confort ci-dessus) ;
+- si Windows ou le pilote cesse d'honorer la synchronisation alors que l'image continue de
+  s'afficher, plus rien ne freine. **Vécu une fois** par Vincent, en partie à trois, après environ
+  une heure : jeu fluide, comportement normal, mais quatre à cinq fois trop rapide, compteur
+  d'images « infini ». Pas reproduit les jours suivants, même en longues sessions ; la cause côté
+  système n'est pas établie. Ce n'est pas LB-047 : un `VSyncDelayed` bloqué saute le dessin du
+  monde, l'écran se serait figé ou vidé.
+
+**Correction** (`Host/LimiteurCadence.cs`, appelé juste après `Present(1, 0)`) : une échéance toutes
+les 1/60 s, attendue par une minuterie haute résolution puis une courte attente active. Placée
+**après** la présentation, elle n'attend presque jamais sur un écran à 60 Hz — `Present` l'a déjà
+fait —, et ne retarde donc pas l'image d'un balayage. Après un arrêt de plus de quatre périodes
+(chargement, film, fenêtre déplacée), l'horloge repart de maintenant au lieu d'enchaîner des images
+pour « rattraper ». Les films (`Host/MoviePlayback.cs`) ont leur propre horloge et n'y passent pas.
+
+## LB-062 — Trois balayages de la grille du monde lisaient hors de la grille
+
+**Statut** : `Corrigé` le 2026-11-27 (legacy ++, accord de Vincent). **Sans interrupteur** : rien de
+ce que l'original lit dans la grille ne change, seules les lectures hors grille disparaissent.
+
+**Ce que faisait l'original** : trois balayages cherchent une entité dans les neuf cases autour
+d'une position — `FUN_00519af0` (les coups portés aux entités de scène : sorts du groupe, dont la
+tête du Démon polaire), `FUN_00519940` (`Physics/TriggerVolumes.cs`) et `FUN_005197d0`
+(`Combat/Progression.cs`). Ils calculent la rangée par `(case Z + 0x389f) * 0x20` et ne la bornent
+que vers le haut (`< 0x71800`). Les deux pages de grille, `MainMem + 0x1c4000` (le décor posé) et
+`0x1c5000` (les entités), sont remises à zéro et rebâties à chaque pas ; jusqu'à 32 cases hors de la
+carte en Z négatif, la lecture tombe dans la première et ne trouve que des chaînes valides ou vides.
+**Au-delà, elle sort des deux pages** : n'importe quel mot de `MainMem` est suivi comme un pointeur
+d'entité, puis comme un chaînage `+0x68`. En X et en Z positif, la borne existe (`case < 0x20`,
+rangée `< 0x71800`), et le balayage des contacts (`Physics/MotionAndContact.cs`) borne les deux
+côtés.
+
+**Ce que le port en faisait** : la même chose, et la mémoire n'ayant pas le contenu de 1998, le
+pointeur lu tombe hors de toute allocation : `AccessViolationException` dans
+`ProbeMeleeTarget_00474CA0`, sous `TickPolarDemonHead_00480080`. **Vécu** par Vincent en 1.1.2.0, à
+trois, dans la première sous-zone de la vieille tour contre les elfes ; une tête de Démon polaire
+était partie très loin du lanceur peu avant. Non reproduit : c'est la seule lecture hors allocation
+que le chemin de la pile permette, pas une observation directe.
+
+**Correction** (`GridRowBelowPages`, `Tick/WorldSimulationStep.cs`, appelée par les trois sites) :
+une rangée avant `0x71000` — le début de la page `0x1c4000` — est traitée comme une case vide. En
+Debug, les vingt premières coupes s'écrivent à la console (`[LB-062]`, site et position), pour
+établir pourquoi une entité se trouve si loin ; la question de la tête qui part au loin reste
+ouverte.

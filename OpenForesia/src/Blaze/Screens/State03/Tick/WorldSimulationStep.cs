@@ -72,6 +72,33 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     /// <param name="gridOffset">0x1c4000 ou 0x1c5000 — l'origine de la grille dans MainMem.</param>
+    /// <summary>
+    /// Écart legacy ++ (LB-062) : la borne basse que les trois balayages en <c>0x389f</c>
+    /// (<c>FUN_00519940</c>, <c>FUN_00519af0</c>, le choix de cible de <c>Combat/Progression.cs</c>)
+    /// n'ont pas. Ils ne bornent la rangee que vers le haut (<c>&lt; 0x71800</c>) : plus de 32 cases
+    /// hors de la carte en Z negatif, la lecture sort des deux pages de grille
+    /// (<c>0x1c4000..0x1c6000</c>, rebaties a chaque pas) et suit des donnees quelconques de MainMem
+    /// comme des pointeurs d'entite — AccessViolation (tete du Demon polaire, vieille tour, 1.1.2).
+    /// Rend <c>true</c> quand la rangee tombe avant la premiere page : la case est alors vide.
+    /// Tout ce que l'original lit DANS les pages est inchange.
+    /// </summary>
+    private static bool GridRowBelowPages(uint row, int* position, string site)
+    {
+        if (row >= 0x71000) return false;
+
+        if (Diagnostic.Actif && s_GridRowCutLogged < 20)
+        {
+            s_GridRowCutLogged++;
+            Console.WriteLine(
+                $"[LB-062] {site} : rangee 0x{row:x} hors grille, position " +
+                $"({position[0] >> 0xc}, {position[1] >> 0xc}, {position[2] >> 0xc}) — case ignoree");
+        }
+
+        return true;
+    }
+
+    private static int s_GridRowCutLogged;
+
     private static void LinkIntoWorldGrid(byte* mainMem, int gridOffset, byte* record)
     {
         uint cellX = (uint)(((*(int*)(record + 0x1c) >> 0xc) + 0x2000) >> 9);

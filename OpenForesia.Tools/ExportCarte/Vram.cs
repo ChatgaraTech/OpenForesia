@@ -90,6 +90,59 @@ internal sealed class Vram
         return true;
     }
 
+    /// <summary>
+    /// Une TIM posee a des rectangles imposes : palette rangee lineairement sur
+    /// <paramref name="clutLargeur"/> mots de large a partir de (<paramref name="clutX"/>,
+    /// <paramref name="clutY"/>), image en (<paramref name="px"/>, <paramref name="py"/>). Range le
+    /// couple page / palette a l'emplacement <paramref name="slot"/> de la table. Miroir de :
+    /// la seconde texture de LoadPartyMemberResources (Screens/DebugParty.cs), qui ne passe pas par
+    /// DecodeResourceChunk.
+    /// </summary>
+    public void LoadTimAt(byte[] tim, int slot, int clutX, int clutY, int clutLargeur, int px, int py)
+    {
+        if (tim.Length < 8 || BitConverter.ToUInt32(tim, 0) != 0x10) return;
+        uint flags = BitConverter.ToUInt32(tim, 4);
+        int off = 8;
+        uint mode = (flags & 8) != 0 ? flags & 7 : 2;
+        if ((flags & 8) != 0)
+        {
+            int len = BitConverter.ToInt32(tim, off);
+            int w = BitConverter.ToUInt16(tim, off + 8), h = BitConverter.ToUInt16(tim, off + 10);
+            for (int i = 0; i < w * h && off + 12 + i * 2 + 1 < tim.Length; i++)
+                Put(clutX + i % clutLargeur, clutY + i / clutLargeur, BitConverter.ToUInt16(tim, off + 12 + i * 2));
+            off += len;
+        }
+        if (off + 12 <= tim.Length)
+        {
+            int w = BitConverter.ToUInt16(tim, off + 8), h = BitConverter.ToUInt16(tim, off + 10);
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    int at = off + 12 + (y * w + x) * 2;
+                    if (at + 1 >= tim.Length) break;
+                    Put(px + x, py + y, BitConverter.ToUInt16(tim, at));
+                }
+        }
+        int tpage = ((px >> 2) & 0xf0) | (py & 0x100);
+        tpage |= 0x2000;
+        tpage = (short)tpage >> 4;
+        tpage |= ((int)mode & 3) << 7;
+        while (Slots.Count <= slot) Slots.Add((0, 0));
+        Slots[slot] = ((ushort)tpage, (ushort)(clutY << 6 | (clutX >> 4)));
+    }
+
+    /// <summary>Comme <see cref="LoadTim"/>, mais range le couple a un emplacement impose.</summary>
+    public void LoadTimSlot(byte[] tim, int slot, byte meta0, byte meta1, byte meta2)
+    {
+        int avant = Slots.Count;
+        LoadTim(tim, meta0, meta1, meta2);
+        var pair = Slots[^1];
+        Slots.RemoveAt(Slots.Count - 1);
+        while (Slots.Count <= slot) Slots.Add((0, 0));
+        Slots[slot] = pair;
+        _ = avant;
+    }
+
     private void Put(int x, int y, ushort v)
     {
         x &= Width - 1;

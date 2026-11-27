@@ -4,8 +4,26 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-11-27
+
+- feat : OpenForesia-Setup 1.1.3 (22,0 Mo) — l'occlusion de la caméra (plus de plantage dans la vieille tour), LB-062 (Démon polaire) et Trouille à la cadence d'Éclair sous LP-004 ; lanceur seul 10,3 Mo à côté ; notes `Documentation/Releases/v1.1.3.md`
+- fix : LP-004 — avec `InvulnerabiliteEnnemis = non`, Trouille touchait à chaque image : son fantôme crache une luciole par image et chaque luciole comptait pour une attaque neuve ; les lucioles d'un même fantôme sont désormais une seule attaque, qui touche une victime une fois toutes les huit images, comme un filament d'Éclair (`VerrouParAttaquant.cs`, aucune ligne du legacy touchée) ; à tester en jeu
+- fix : LB-062 — trois balayages de la grille du monde (`FUN_00519af0`, `FUN_00519940`, `FUN_005197d0`) n'avaient pas de borne basse : plus de 32 cases hors de la carte en Z négatif, ils suivaient des données quelconques de `MainMem` comme des pointeurs d'entité (AccessViolation sous la tête du Démon polaire, vieille tour, 1.1.2.0) ; une rangée hors des deux pages de grille est désormais une case vide, et le Debug écrit `[LB-062]` avec la position
+- feat : l'occlusion de la caméra automatique (`FUN_004011c0` de `0x00401913` à `0x00401b6d`, `FUN_00402d60`, `FUN_00402de0`, `FUN_004029e0`, `FUN_00402cb0`) — le segment caméra → meneur est testé contre les faces du décor des neuf cases voisines, étalé sur cinq images ; plus de plantage `FUN_00402d60` à l'étage 2 de la vieille tour
+- fix : la fin du mode de vue 1 sortait avant le test des faces quand `DAT_00571348 == 0` et qu'un tour était en cours — `Blaze.c` n'a pas cette sortie ; et `DAT_00571348` était lu comme un entier, c'est un mot (`cmp word` à `0x004017fb`)
+- doc : `0x00604ba0` / `0x00604d30` ne sont pas deux tables mais un seul bloc entrelacé de neuf cellules de 200 mots (100 faces, puis 100 tables de sommets) — `0x1c20` octets, qui finissent pile à `0x006067c0`
+- doc : l'index de la carte des symboles (`DataSymbols.md`) refait depuis les sources par l'analyseur de `OpenForesia.Tests` — 716 lignes (692 adresses) au lieu de 405 (393), écarts recalculés ; aucune adresse de l'ancien index perdue, la « correction locale » du 2026-08-25 intégrée
+
+## 2026-11-21
+
+- feat : trace de cadence (`Host/TraceCadence.cs`, Debug seulement) — `trace-cadence.log` à côté de l'exe note chaque seconde où `Present` n'attend plus l'écran (retour différent de S_OK, présentations de moins de 2 ms, plus de 70 images/s), les changements de premier plan, et une ligne de vie par minute ; pour l'emballement observé sur la machine Windows 10 (LB-061). `dotnet publish … -p:TraceCadence=1` l'active dans un exe Release de test ; `publish-release.ps1` ne le pose jamais
+- doc : l'emballement ne vient pas de LB-047 — ce débordement figerait l'image (plus aucune présentation) et frapperait aussi la machine Windows 11, qui ne l'a jamais montré
+
 ## 2026-11-20
 
+- fix : limiteur à 60 images par seconde après chaque présentation (LB-061) — le jeu allait plus vite que celui de 1998 sur un écran à 120 Hz, et sans aucun frein si la synchronisation de l'écran cessait d'être honorée (vécu une fois : jeu fluide, quatre à cinq fois trop rapide)
+- feat : `OpenForesia.Tools exporter-modeles` — tous les modèles animés (16 héros, 283 monstres et personnages dédoublonnés) en glTF animé, texture comprise, et une galerie `index.html` qui les liste et rejoue leurs animations ; 299 modèles, 1 624 animations
+- doc : `Conception/08-Exports.md` — le format d'animation (squelette propre à chaque animation, poses, parents, os des parties) et ce qui reste (rythme, faces texturées hors de leur image)
 - feat : `OpenForesia.Tools exporter-carte` — chaque sous-zone en glTF 2.0 texturé (terrain, calque de collision, modèles de décor placés), placements JSON (formations nommées, coffres et leur contenu, décor actif, entrées), vue complète du dessus en PNG (nue et annotée) et page de visite 3D autonome ; un dossier par zone nommé comme le jeu, hors du dépôt seulement. Tout le jeu : 160 sous-zones, aucune face illisible, aucun texel hors des images chargées
 - fix : le verbe `terrain` lisait les quatre listes de morceaux comme de la collision ; seule la liste 0 en est (les trois autres sont l'affichage, en faces de 0x20 octets)
 - doc : `Conception/08-Exports.md` — les formats établis (morceaux, faces d'affichage, de collision et de décor, placement, résolution page + palette d'une TIM) et ce que l'export ne rend pas (éclairage, brouillard)

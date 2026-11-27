@@ -19,6 +19,12 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
+    <!-- `-p:TraceCadence=1` : un exe de test qui ecrit trace-cadence.log meme en Release
+         (Host/TraceCadence.cs). Jamais pose par publish-release.ps1 : la release reste sans journal. -->
+    <PropertyGroup Condition="'$(TraceCadence)' == '1'">
+        <DefineConstants>$(DefineConstants);TRACE_CADENCE</DefineConstants>
+    </PropertyGroup>
+
     <ItemGroup>
         <!-- Aucun binaire de 1998 n'est plus livre. Les cinq DLL d'aide ne le sont plus depuis le
              2026-09-23 : leur code est en C# (src/Libraries/), et les donnees qu'on y lisait encore

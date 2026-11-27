@@ -18,7 +18,16 @@
 // Rien n'est écrit dans la mémoire du jeu : `+0x96` et `0x40` continuent d'être posés et décomptés,
 // donc le clignotement, le recul, l'interruption et la fin d'une entité morte sont ceux d'origine.
 // Ne tire aucun nombre aléatoire.
+//
+// TROUILLE (2026-11-27, demande de Vincent). Son fantôme (0x89) crache UNE LUCIOLE PAR IMAGE
+// (0x8a), et chaque luciole est une entité neuve, donc une « attaque » neuve : avec la règle
+// ci-dessus, chacune frappait — un coup par image. Dans le jeu d'origine, le verrou partagé les
+// arrêtait. Ici, l'attaque d'une luciole est son FANTÔME, et elle frappe au rythme d'un filament
+// d'Éclair : une fois toutes les huit images par victime (le filament accroché décharge
+// `(âge & 7) == 1`, `TickThunderStrand_0047E6F0`).
 // =====================================================================
+
+using Jeu = OpenForesia.Blaze.Blaze;
 
 namespace OpenForesia.LegacyPlus;
 
@@ -61,6 +70,14 @@ internal static unsafe class VerrouParAttaquant
     /// </summary>
     private static bool Protegee(Coutures.Balayage balayage, byte* source, byte* victime, bool verrouOrigine)
     {
+        byte* fantome = balayage != Coutures.Balayage.Melee ? FantomeDeTrouille(source) : null;
+        if (fantome != null)
+        {
+            // La cadence d'Éclair, tenue même si le verrou d'origine est retombé entre-temps.
+            return s_Fenetres.TryGetValue(((nint)fantome, (nint)victime), out Fenetre t)
+                && s_Image - t.Debut < t.Duree;
+        }
+
         if (!verrouOrigine) return false;
         var cle = ((nint)source, (nint)victime);
 
@@ -73,6 +90,26 @@ internal static unsafe class VerrouParAttaquant
 
         if (!s_Fenetres.TryGetValue(cle, out Fenetre f)) return false;
         return f.Duree == 0 || s_Image - f.Debut < f.Duree;
+    }
+
+    /// <summary>La cadence d'un filament d'Éclair accroché : une décharge toutes les huit images.</summary>
+    private const int CadenceTrouille = 8;
+
+    /// <summary>
+    /// Le fantôme de Trouille dont <paramref name="source"/> est une luciole, ou <c>null</c>. Une
+    /// luciole naît par <c>SpawnCastEntity_0047AAE0</c> dans la table des incantations
+    /// (<c>0x005edee0</c>, 0x80 places de 0x9c) : sous-type <c>0x8a</c> en <c>+0x05</c>, son père en
+    /// <c>+0x6c</c>, lui-même de sous-type <c>0x89</c>. La plage est vérifiée d'abord : ailleurs,
+    /// <c>+0x6c</c> ne désigne pas forcément un père.
+    /// </summary>
+    private static byte* FantomeDeTrouille(byte* source)
+    {
+        byte* table = Jeu.Mem.Entity(0x005edee0);
+        if (source < table || source >= table + 0x80 * 0x9c || source[0x05] != 0x8a) return null;
+
+        byte* pere = *(byte**)(source + 0x6c);
+        if (pere < table || pere >= table + 0x80 * 0x9c || pere[0x05] != 0x89) return null;
+        return pere;
     }
 
     /// <summary>
@@ -92,6 +129,13 @@ internal static unsafe class VerrouParAttaquant
 
     private static void Noter(Coutures.Balayage balayage, byte* source, byte* victime)
     {
+        byte* fantome = balayage != Coutures.Balayage.Melee ? FantomeDeTrouille(source) : null;
+        if (fantome != null)
+        {
+            s_Fenetres[((nint)fantome, (nint)victime)] = new Fenetre { Debut = s_Image, Duree = CadenceTrouille };
+            return;
+        }
+
         var cle = ((nint)source, (nint)victime);
 
         if (balayage == Coutures.Balayage.Melee)

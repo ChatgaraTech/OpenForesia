@@ -77,6 +77,9 @@ public static unsafe partial class Blaze
             for (int columns = 3; columns != 0; columns--, cell++)
             {
                 if (cell >= 0x20 || row >= 0x71800) continue;
+                // Écart legacy ++ (LB-062) : l'original n'a pas de borne basse — hors des deux pages
+                // de grille, il suivait des donnees quelconques comme des pointeurs.
+                if (GridRowBelowPages(row, position, "FUN_00519940")) continue;
 
                 for (byte* victim = *(byte**)(mainMem + (cell + row) * 4);
                      victim != null;

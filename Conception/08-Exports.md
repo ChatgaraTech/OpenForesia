@@ -173,9 +173,43 @@ les textures d'une carte lui appartiennent entièrement.
 Le verbe `classes` liste, pour les seize identités (classe × sexe), le paquet de modèle (en
 **parties**), le paquet d'animation et les deux textures, depuis le répertoire de l'état 1.
 
+### Les modèles animés — `exporter-modeles`
+
+```powershell
+dotnet run --project OpenForesia.Tools -- exporter-modeles [dossier] --sortie <hors du depot>
+```
+
+Tous les modèles animés du jeu : les seize héros (répertoire de l'état 1) puis, sous-zone par
+sous-zone, les paquets `+0x2c` avec leurs animations `+0x7c` (même rang), nommés par les espèces
+`+0x4c` qui les emploient (octet 0 = le modèle, octets 2-3 = le décalage de palette, octet 4 = la
+fiche). Un modèle identique (mêmes octets, mêmes animations, même texture) n'est écrit qu'une fois ;
+les variantes de palette (« Goblin (2) ») sont des modèles distincts. Les gens de l'auberge n'ont
+pas de nom dans leur fiche (« £ ») : ils sortent en « Personnage N ». Code dans
+`OpenForesia.Tools/ExportModeles/`, chaque lecteur marqué `Miroir de :`.
+
+Sortie : un dossier par zone (et `Héros/`), un sous-dossier par modèle avec `modele.gltf`,
+`modele.bin`, `texture.png` et `donnees.js`, plus `index.html` (la galerie : liste, recherche,
+visionneuse qui rejoue les animations comme le jeu les calcule) et `resume.txt`.
+
+**Le format établi** (Miroir de : `RelocateAnimationBundle`, `DrawAnimatedModel`) — une animation
+porte son propre squelette : `+0x12` os, `+0x14` parties, `+0x16` images ; huit pointeurs en
+`+0x20`, relatifs à `entrée + entrée[0]` ; `+0x20` les poses (0x10 octets : trois angles sur 4 096,
+une translation, une échelle uniforme où 0x1000 = 1), `+0x24` le parent de chaque os puis l'os de
+chaque partie, `+0x28` l'indice de pose de chaque os, image par image. `W[0] = L[0]`,
+`W[i] = W[parent] · L[i]`. **Le nombre d'os change d'une animation à l'autre chez un modèle sur
+deux** (156 sur 299) : le glTF anime donc directement les parties (un nœud par partie, la
+transformation monde de son os), pas un squelette commun. La texture se calcule une seule fois,
+sur la première partie, et sert à toutes.
+
+**Ce qui n'est pas établi** : le rythme — l'export suppose **30 images par seconde** ; les
+animations n'ont pas de nom (elles sont numérotées) ; certaines faces lisent une zone de la page
+qui n'est pas leur image (bruit multicolore, par exemple sur les oreilles du Goblin) — la règle de
+texture du jeu n'est donc pas entièrement reproduite ; la « Barricade » de la forêt n'a aucun quad
+(le jeu ne dessine que les quads d'un modèle animé).
+
 ## Ce qui reste à établir
 
-1. Le format d'une animation (le paquet `+0x7c`) et la hiérarchie des parties.
+1. Le rythme des animations, et la règle de texture des faces qui lisent hors de leur image.
 2. Le facteur d'échelle vers Unreal, sur une mesure connue.
 3. Le sens des **sections** de décor (`+0x30`) : des états du scénario, ou des groupes chargés
    ensemble ?

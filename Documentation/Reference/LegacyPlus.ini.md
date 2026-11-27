@@ -47,6 +47,11 @@ flèches et sorts passent, et un guerrier enchaîne ses coups ; une même attaqu
 deux fois. Le clignotement, le recul et l'interruption restent ceux d'origine. Les frames
 d'invulnérabilité **du groupe** ne changent pas.
 
+**Trouille** (depuis le 2026-11-27) : son fantôme lance une luciole par image, et chaque luciole
+comptait comme une attaque neuve, donc touchait à chaque image. Avec `non`, toutes les lucioles d'un
+même fantôme comptent pour **une seule attaque**, qui touche une victime **une fois toutes les huit
+images**, la cadence d'un filament d'Éclair. Avec `oui`, rien ne change.
+
 ## Les boutiques des marchands du hub — `LegacyPlus\Boutique*.ini` (LP-010)
 
 Quatre fichiers à part, dans le dossier `LegacyPlus\` à côté de l'exécutable, un par marchand du hub :

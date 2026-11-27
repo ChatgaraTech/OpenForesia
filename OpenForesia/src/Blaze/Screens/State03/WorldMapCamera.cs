@@ -24,6 +24,7 @@
 // FUN_004011c0 confirmerait les quarante champs d'un coup.
 
 using System;
+using System.Runtime.InteropServices;
 
 namespace OpenForesia.Blaze;
 
@@ -75,10 +76,9 @@ public static unsafe partial class Blaze
     /// degager le groupe.
     /// </para>
     /// <para>
-    /// <b>Le sous-bloc d'occlusion n'est pas transcrit</b> : il lit deux tables
-    /// (<c>0x00604ba0</c> et <c>0x00604d30</c>) dont l'etendue n'est pas etablie — voir
-    /// <see cref="CollectOccluders_00402D60"/>. Il est garde par <c>DAT_00571348</c> et le mot de
-    /// <c>0x00571380</c>.
+    /// Le sous-bloc d'occlusion (<see cref="ProbeCameraOcclusion_004011C0"/>, transcrit le
+    /// 2026-11-27) tourne a chaque image qui arrive au bout : il n'a pas de garde de sortie, seul
+    /// son travail est etale sur cinq images par le mot bas de <c>DAT_00571380</c>.
     /// </para>
     /// </summary>
     private static void ApplyViewMode_004011C0(int mode)
@@ -343,8 +343,9 @@ public static unsafe partial class Blaze
             }
         }
 
-        // La secousse, puis l'occlusion.
-        if (*(int*)Mem.ViewParams(0x00571348) != 0
+        // La secousse, puis l'occlusion. DAT_00571348 est un MOT (`cmp word [571348h], bx` a
+        // 0x004017fb) : c'est le nombre de faces qui coupaient la vue au dernier tour complet.
+        if (*(short*)Mem.ViewParams(0x00571348) != 0
             && *(short*)Mem.ViewParams(0x00571380) == 0
             && *(short*)Mem.ViewParams(0x0057127e) < 0x3c)
         {
@@ -355,13 +356,6 @@ public static unsafe partial class Blaze
                 (short)(*(short*)Mem.ViewParams(0x0057127a) * 100 + ViewAngle[1]),
                 ViewAngle[2]);
             (*(short*)Mem.ViewParams(0x0057127e))++;
-        }
-
-        if (*(int*)Mem.ViewParams(0x00571348) == 0
-            && *(short*)Mem.ViewParams(0x00571380) != 0)
-        {
-            RaiseCameraOverParty();
-            return;
         }
 
         ProbeCameraOcclusion_004011C0();
@@ -1030,27 +1024,290 @@ public static unsafe partial class Blaze
         if ((*(ushort*)LeaderPadState() & 0xf00) != 0) *CameraFlags |= 0x40;
     }
 
+    // Ghidra: DAT_00604ba0 / DAT_00604d30 — le cache des faces d'occlusion. Ce n'est PAS deux
+    // tableaux : c'est un seul bloc entrelace de neuf cellules de 200 mots. Les 100 premiers mots
+    // d'une cellule sont les faces (base 0x00604ba0), les 100 suivants la table de sommets de
+    // chacune (base 0x00604d30 = 0x00604ba0 + 100 * 4). L'indice d'une cellule (`cellule * 200 + n`)
+    // et le plafond de n a 99 (FUN_00402de0) se recoupent : 9 * 0x320 = 0x1c20, qui finit PILE a
+    // 0x006067c0, le debut de ViewBlock. Releve le 2026-11-27 au desassembleur (0x004019e4 /
+    // 0x004019ea, meme registre d'indice).
+    private static readonly byte* s_OccluderCache_00604ba0 = (byte*)NativeMemory.AllocZeroed(0x1c20);
+
+    private static uint* OccluderFace(int cell, int n)
+        => (uint*)(s_OccluderCache_00604ba0 + (cell * 200 + n) * 4);
+
+    private static uint* OccluderVertices(int cell, int n)
+        => (uint*)(s_OccluderCache_00604ba0 + 0x190 + (cell * 200 + n) * 4);
+
+    // Ghidra: DAT_0054f048 / DAT_0054f070 — les neuf decalages (dx, dz) du voisinage 3x3, ranges
+    // au pas de quatre octets ; le code n'en lit que le mot bas. Relus dans Blaze.exe.
+    private static readonly short[] s_OccluderDx_0054f048 = { -1, 0, 1, -1, 0, 1, -1, 0, 1 };
+    private static readonly short[] s_OccluderDz_0054f070 = { -1, -1, -1, 0, 0, 0, 1, 1, 1 };
+
     /// <summary>
-    /// Ghidra: le bloc de <c>0x00401913</c>..<c>0x00401b6d</c> — <b>l'occlusion</b> : la camera
-    /// teste le segment qui la joint au meneur contre les faces du decor voisin, et se rapproche
-    /// quand quelque chose s'interpose.
+    /// Ghidra: le bloc de <c>0x0040186b</c>..<c>0x00401b6d</c> de FUN_004011c0 — <b>l'occlusion</b> :
+    /// la camera teste le segment qui la joint au meneur contre les faces du decor voisin.
+    ///
+    /// <para>
+    /// Le travail est etale sur cinq images, par le mot bas de <c>DAT_00571380</c> : a 0, les neuf
+    /// cellules autour de la camera sont recollectees (<see cref="CollectOccluders_00402D60"/>) et la
+    /// cellule 0 testee ; puis 1-2, 3-4, 5-6, 7-8, et retour a 0. Le nombre de faces qui coupent la
+    /// vue s'accumule dans <c>DAT_005712dc</c>, et passe dans <c>DAT_00571348</c> a chaque tour
+    /// complet : c'est lui qui arme la secousse de l'appelant (un pas d'angle de cote, dans le sens
+    /// que choisit le bloc « pas d'obstacle »).
+    /// </para>
     /// </summary>
     private static void ProbeCameraOcclusion_004011C0()
-        => throw new NotImplementedException(
-            "FUN_004011c0 : le sous-bloc d'occlusion (0x00401913..0x00401b6d) n'est pas transcrit. " +
-            "Il balaie neuf cellules de decor par FUN_00402d60 (dont les neuf couples de decalages " +
-            "sont releves dans DataSymbols.md sous 0x0054f048/0x0054f070), puis teste chaque face " +
-            "par FUN_004029e0 — une intersection segment/quadrilatere de 75 lignes qui tire " +
-            "FUN_00402cb0. **Le blocage est la donnee, pas le code** : les deux tables paralleles " +
-            "0x00604ba0 et 0x00604d30, espacees de 0x190 et indexees par (cellule * 200 + n) * 4, " +
-            "ont une etendue que l'indexation apparente contredit. La trancher au desassembleur " +
-            "avant de les allouer — voir DataSymbols.md.");
+    {
+        short* round = (short*)Mem.ViewParams(0x00571380);
+        short* hits = (short*)Mem.ViewParams(0x005712dc);
+        short* lastHits = (short*)Mem.ViewParams(0x00571348);
 
-    /// <summary>Ghidra: FUN_00402d60 @ 0x00402d60 (24 l.) — le remplissage d'une cellule de la
-    /// grille d'occlusion.</summary>
-    private static void CollectOccluders_00402D60(short dx, short dz, int cell)
-        => throw new NotImplementedException(
-            $"FUN_00402d60 (0x00402d60), cellule {cell} : non transcrite. Elle remplit " +
-            "DAT_005712a8[cellule] et les deux tables 0x00604ba0 / 0x00604d30 dont l'etendue reste " +
-            "a etablir. Tire FUN_00402de0.");
+        if (*lastHits == 0)
+        {
+            if (*round == 0)
+            {
+                // Rien ne coupait la vue au dernier tour : on choisit de quel cote la camera
+                // s'ecarterait. Le pas d'angle vertical suit l'inclinaison courante, le pas lateral
+                // l'ecart entre le cap de la camera et celui du meneur.
+                ushort yaw = (ushort)(ViewAngle[1] & 0xfff);
+                // Ghidra: `_DAT_006067e8 &= 0xfffffff` — le dword couvre les deux premiers angles,
+                // seul le quartet haut du second tombe.
+                ViewAngle[1] = (short)(ViewAngle[1] & 0x0fff);
+
+                byte* leader = Inp.s_SlotFlags_005e93c0 + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c;
+                short gap = (short)((-*(short*)(leader + 0x32) & 0xfff) - yaw);
+                if (gap < 0) gap = (short)(gap + ((0xfffu - (uint)gap) & 0xf000));
+                while (gap > 0xfff) gap -= 0x1000;
+
+                *CameraFlags &= 0xfffffffd;
+                *(short*)Mem.ViewParams(0x00571278) = (short)(ViewAngle[0] < 0x201 ? 1 : -1);
+                *(short*)Mem.ViewParams(0x0057127a) = (short)(gap > 0x7ff ? -1 : 1);
+
+                RefillOccluderCells();
+            }
+        }
+        else if (*round == 0)
+        {
+            RefillOccluderCells();
+        }
+
+        // Le test : la cellule du tour, et la suivante hors du tour 0.
+        short first = *round;
+        int last = first + (first != 0 ? 1 : 0);
+        int* counts = (int*)Mem.ViewParams(0x005712a8);
+        byte* leaderSlot = Inp.s_SlotFlags_005e93c0 + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c;
+
+        short* v0 = stackalloc short[4];
+        short* v1 = stackalloc short[4];
+        short* v2 = stackalloc short[4];
+        short* v3 = stackalloc short[4];
+        short* eye = stackalloc short[3];
+        short* target = stackalloc short[3];
+
+        for (int cell = first; cell <= last; cell = (short)(cell + 1))
+        {
+            for (short n = 0; n < counts[cell]; n++)
+            {
+                uint* face = (uint*)*OccluderFace(cell, n);
+                byte* vertices = (byte*)*OccluderVertices(cell, n);
+
+                // Quatre sommets de huit octets, recopies : FUN_004029e0 retourne leur Y en place.
+                *(ulong*)v0 = *(ulong*)(vertices + (face[0] & 0xffff) * 8);
+                *(ulong*)v1 = *(ulong*)(vertices + (face[0] >> 0x10) * 8);
+                *(ulong*)v2 = *(ulong*)(vertices + (face[1] & 0xffff) * 8);
+                *(ulong*)v3 = *(ulong*)(vertices + (face[1] >> 0x10) * 8);
+
+                eye[0] = (short)(*(int*)Mem.ViewParams(0x00571300) >> 0xc);
+                eye[1] = (short)(*(int*)Mem.ViewParams(0x00571304) >> 0xc);
+                eye[2] = (short)(*(int*)Mem.ViewParams(0x00571308) >> 0xc);
+                target[0] = (short)(*(int*)(leaderSlot + 0x1c) >> 0xc);
+                target[1] = (short)((short)(*(int*)(leaderSlot + 0x20) >> 0xc) + 0x50);
+                target[2] = (short)(*(int*)(leaderSlot + 0x24) >> 0xc);
+
+                int result = SegmentCrossesQuad_004029E0(
+                    ((face[6] & 1) != 0 ? 1 : 0) + 3, v0, v1, v2, v3, eye, target);
+
+                if ((short)result == 1 && (face[7] & 0x2000000) == 0)
+                {
+                    (*hits)++;
+                }
+            }
+        }
+
+        short next = first == 0 ? (short)1 : (short)(first + 2);
+        *round = next > 8 ? (short)0 : next;
+    }
+
+    /// <summary>Ghidra: <c>0x00401913</c>..<c>0x00401981</c> — le debut d'un tour : le compte du tour
+    /// passe dans <c>DAT_00571348</c>, puis les neuf cellules sont recollectees.</summary>
+    private static void RefillOccluderCells()
+    {
+        short* hits = (short*)Mem.ViewParams(0x005712dc);
+        *(short*)Mem.ViewParams(0x00571348) = *hits;
+
+        ushort* calm = (ushort*)Mem.ViewParams(0x005713a4);
+        if (*hits == 0)
+        {
+            // Quatre tours de suite sans obstacle remettent a zero le compteur de secousses.
+            ushort ticks = (ushort)(*calm + 1);
+            *calm = (ushort)(ticks & 0x0fff);
+            if ((ticks & 0xfff) > 3)
+            {
+                *(short*)Mem.ViewParams(0x0057127e) = 0;
+            }
+        }
+        else
+        {
+            *calm = 0;
+        }
+
+        *hits = 0;
+        for (int cell = 0; cell < 9; cell++)
+        {
+            CollectOccluders_00402D60(s_OccluderDx_0054f048[cell], s_OccluderDz_0054f070[cell], (short)cell);
+        }
+    }
+
+    /// <summary>Ghidra: FUN_00402d60 @ 0x00402d60 — le remplissage d'une cellule de la grille
+    /// d'occlusion, sur tous les morceaux de decor de la sous-zone (la meme liste close par 0xff que
+    /// la premiere famille du dessin, <c>DrawChunkListA</c>).</summary>
+    private static void CollectOccluders_00402D60(short dx, short dz, short cell)
+    {
+        byte* list = ((byte**)*(byte**)(s_Unknown_005e97cc + 0x80))[s_Unknown_005f2ce0[8]];
+        *(short*)Mem.ViewParams(0x005713b4) = 0;
+        uint chunkBase = *Mem.Entity(0x00600832);
+        ((int*)Mem.ViewParams(0x005712a8))[cell] = 0;
+
+        for (; *list != 0xff; list++)
+        {
+            CollectChunkCellFaces_00402DE0(
+                ((byte**)Mem.Entity(0x005f7bc0))[chunkBase + *list], (sbyte)dx, (sbyte)dz, cell);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00402de0 @ 0x00402de0 — les faces d'un morceau de decor dans une case de sa
+    /// grille 32 x 32 (cases de 0x200 unites, origine a -0x2000) : la case de la camera, decalee
+    /// de (dx, dz).
+    ///
+    /// <para>La case commence par deux mots de huit compteurs d'un octet, suivis des numeros de
+    /// face (16 bits). Le total des huit compteurs s'ajoute au compte de la cellule, plafonne a 99 ;
+    /// chaque face est rangee dans le cache avec, pour table de sommets, <c>morceau + 0x40</c>.</para>
+    /// </summary>
+    private static void CollectChunkCellFaces_00402DE0(byte* chunk, sbyte dx, sbyte dz, short cell)
+    {
+        byte* faces = *(byte**)(chunk + 0x28);
+        byte* vertices = chunk + 0x40;
+        int* camera = *(int**)Mem.Entity(0x005edebc);
+
+        byte x = (byte)((byte)(((camera[0] >> 0xc) + 0x2000) >> 9) + dx);
+        byte z = (byte)((byte)(((camera[2] >> 0xc) + 0x2000) >> 9) + dz);
+        if (x >= 0x20 || z >= 0x20) return;
+
+        uint* box = ((uint**)*(byte**)(chunk + 0x34))[z * 0x20 + x];
+        uint lo = box[0];
+        uint hi = box[1];
+
+        int* count = (int*)Mem.ViewParams(0x005712a8) + cell;
+        *count += (int)((lo >> 0x10 & 0xff) + (lo >> 0x18) + (lo >> 8 & 0xff) + (hi >> 0x10 & 0xff)
+                        + (hi >> 0x18) + (hi >> 8 & 0xff) + (lo & 0xff) + (hi & 0xff));
+        if (*count > 99) *count = 99;
+
+        // Ghidra lit chaque numero par un dword au pas de deux octets et n'en garde que le mot bas :
+        // on lit le mot, meme valeur, sans deborder du dernier.
+        ushort* number = (ushort*)(box + 2);
+        short* slot = (short*)Mem.ViewParams(0x005713b4);
+
+        while (hi != 0 || lo != 0)
+        {
+            for (uint left = lo & 0xff; left != 0; left--)
+            {
+                int index = *slot;
+                (*slot)++;
+                *OccluderFace(cell, index) = (uint)(*number++ * 0x20 + faces);
+                *OccluderVertices(cell, index) = (uint)vertices;
+                if (*slot > 99) *slot = 99;
+            }
+
+            // Les huit compteurs defilent comme un seul mot de 64 bits.
+            lo = (hi << 0x18) | (lo >> 8);
+            hi >>= 8;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004029e0 @ 0x004029e0 — <b>le segment coupe-t-il le quadrilatere ?</b> Le
+    /// segment va de <paramref name="eye"/> a <paramref name="target"/>, le quadrilatere est
+    /// (a, b, c, d). Le Y des quatre sommets est retourne en place (repere du decor vers celui de
+    /// la camera). Rend 1 si le point d'intersection avec le plan tombe dans la face, 2 si le
+    /// segment est parallele au plan, 0 sinon. Le premier parametre (3 ou 4) n'est pas lu.
+    /// </summary>
+    private static int SegmentCrossesQuad_004029E0(
+        int unusedSides, short* a, short* b, short* c, short* d, short* eye, short* target)
+    {
+        a[1] = (short)-a[1];
+        b[1] = (short)-b[1];
+        c[1] = (short)-c[1];
+        d[1] = (short)-d[1];
+
+        int by = b[1];
+        int bz = b[2];
+        int bx = b[0];
+
+        // La normale (nx, ny, nz) = (local_20, local_1c, local_18), chaque produit reduit de 8 bits.
+        int* normal = stackalloc int[3];
+        normal[2] = ((a[0] - bx) * (c[1] - by) - (c[0] - bx) * (a[1] - by)) >> 8;
+        normal[0] = ((a[1] - by) * (c[2] - bz) - (a[2] - bz) * (c[1] - by)) >> 8;
+        normal[1] = ((c[0] - bx) * (a[2] - bz) - (a[0] - bx) * (c[2] - bz)) >> 8;
+
+        int ey = eye[1];
+        int ez = eye[2];
+        int ex = eye[0];
+        int sideEye = (bz - ez) * normal[2] + (bx - ex) * normal[0] + (by - ey) * normal[1];
+
+        int ty = target[1];
+        int tz = target[2];
+        int tx = target[0];
+        int sideTarget = (by - ty) * normal[1] + (bz - tz) * normal[2] + (b[0] - tx) * normal[0];
+
+        // Les deux bouts du meme cote strict du plan : pas d'intersection.
+        if ((sideEye >= 1 && sideTarget >= 1) || (sideEye <= -1 && sideTarget <= -1)) return 0;
+
+        int fromEye = (ez - b[2]) * normal[2] + (ex - b[0]) * normal[0] + (ey - b[1]) * normal[1];
+        int span = fromEye - ((ty - b[1]) * normal[1] + (tz - b[2]) * normal[2] + (tx - b[0]) * normal[0]);
+        if (span == 0) return 2;
+
+        int t = (fromEye * 0x100) / span;
+        int* hit = stackalloc int[3];
+        hit[2] = ((tz - ez) * t + ez * 0x100) >> 8;
+        hit[1] = ((ty - ey) * t + ey * 0x100) >> 8;
+        hit[0] = ((tx - ex) * t + ex * 0x100) >> 8;
+
+        int edgeAB = EdgeSide_00402CB0(a, b, normal, hit);
+        int edgeBC = EdgeSide_00402CB0(b, c, normal, hit);
+        int edgeCD = EdgeSide_00402CB0(c, d, normal, hit);
+        int edgeDA = EdgeSide_00402CB0(d, a, normal, hit);
+
+        if (edgeAB >= 0)
+        {
+            if (edgeBC >= 0 && edgeCD >= 0 && edgeDA >= 0) return 1;
+            return 0;
+        }
+
+        if (edgeBC < 0 && edgeCD < 0 && edgeDA < 0) return 1;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_00402cb0 @ 0x00402cb0 — de quel cote de l'arete (p, q) tombe le point,
+    /// vu le long de la normale : le produit mixte ((q - p) x n) . (point - p), au signe pres.</summary>
+    private static int EdgeSide_00402CB0(short* p, short* q, int* normal, int* point)
+    {
+        int dz = q[2] - p[2];
+        int dx = q[0] - p[0];
+        int dy = q[1] - p[1];
+        return (normal[0] * dz - dx * normal[2]) * (point[1] - p[1])
+             + (dx * normal[1] - normal[0] * dy) * (point[2] - p[2])
+             + (normal[2] * dy - normal[1] * dz) * (point[0] - p[0]);
+    }
 }
